@@ -13,8 +13,9 @@ import { VERT, fragFor, LINE_VERT, LINE_FRAG } from './shader.js';
 import { SPACES, spaceFor, spaceForOption } from './spaces.js';
 import { PRESETS, PRESET_KEYS } from './worlds.js';
 import { createWorldMenu } from './menu.js';
+import { worldMotionFor } from './world-motion.js';
 import {
-  S3G, s3SDF, s3Control, s3Step, s3Collide, s3LapFraction, S3_LAP,
+  S3G, s3LapFraction, S3_LAP,
 } from './s3.js';
 import {
   PLAYER_R, WALK_SPEED, JUMP, ROPE_RANGE, FLY_SPEED,
@@ -1773,48 +1774,20 @@ function hideBoot() {
  * spherical program leaves every ray off the 3-sphere and draws black.
  */
 function resetForCurvature() {
-  if (geomKey() !== 'h3') {
-    clearBoomerang(); clearBlock(); clearCut(); clearDecoy(); clearPortals();
-    blastFx = null;
-    grounded = false;
-  }
-  if (sphereFloorWorld()) {
-    // On the floor at the start line, facing along the lap. Level pitch, not
-    // the dropper's steep one: here you run rather than fall.
-    player = S2R.lapStart();
-    vel = [0, 0, 0];
-    yaw = 0; pitch = 0; roll = 0; rollRate = 0;
-    tilt = [0, 0]; tiltVel = [0, 0]; prevVel = [0, 0, 0];
-    camSwing = { axis: [0, 0, 1], angle: 0, vel: 0 };
-    grapple = null;
-    banked = 0;
-    return;
-  }
-  if (productWorld()) {
-    // On the deck at the top of the shaft, looking down. The pitch matters:
-    // the gates are below you and a run timed from a camera aimed at the
-    // horizon starts with nothing on screen, which is exactly the failure
-    // beginRun exists to prevent in the hyperbolic courses.
-    player = H2R.dropperStart();
-    vel = [0, 0, 0];
-    yaw = 0; pitch = -1.15; roll = 0; rollRate = 0;
-    tilt = [0, 0]; tiltVel = [0, 0]; prevVel = [0, 0, 0];
-    camSwing = { axis: [0, 0, 1], angle: 0, vel: 0 };
-    grapple = null;
-    banked = 0;
-    return;
-  }
-  if (!sphericalWorld()) { reset(); return; }
-  player = S3G.IDENTITY;
-  vel = [0, 0, 0];
-  yaw = 0; pitch = 0; roll = 0; rollRate = 0;
+  const motion = worldMotionFor(geomKey());
+  if (!motion) { reset(); return; }
+  clearBoomerang(); clearBlock(); clearCut(); clearDecoy(); clearPortals();
+  blastFx = null;
+  grounded = false;
+  const spawn = motion.spawn();
+  player = spawn.M; vel = spawn.vel; yaw = spawn.yaw; pitch = spawn.pitch;
+  roll = 0; rollRate = 0;
   tilt = [0, 0]; tiltVel = [0, 0]; prevVel = [0, 0, 0];
   camSwing = { axis: [0, 0, 1], angle: 0, vel: 0 };
   grapple = null;
   banked = 0;
-  s3Start = player;
+  if (sphericalWorld()) s3Start = player;
 }
-
 /** Reset using this world's placement and restart its course at the start line. */
 function restartWorld() {
   keys.clear();
@@ -1844,13 +1817,6 @@ function s3Want(basis) {
   return m > 1e-9 ? [w[0] / m, w[1] / m, w[2] / m] : [0, 0, 0];
 }
 
-/** One substep of spherical flight. Three calls, and that is the whole model. */
-function stepS3(h, want) {
-  vel = s3Control(vel, want, h);
-  [player, vel] = s3Step(player, vel, h);
-  [player, vel] = s3Collide(player, vel, s3SDF);
-}
-
 /**
  * What the keys ask for while falling: a HORIZONTAL direction, and nothing
  * else. You cannot steer the fall, only the drift, which is what a dropper is.
@@ -1874,50 +1840,18 @@ function h2rWant(basis) {
   return wl > 1e-9 ? [wx / wl, wy / wl] : [0, 0];
 }
 
-/**
- * One substep of running on the sphere floor, and the run's clock with it.
- *
- * The same three calls the other two slices use -- control, step, collide --
- * plus a jump, which is here because the height is EUCLIDEAN and a jump is the
- * one place a player notices that: it is the schoolbook parabola, apex
- * exactly v^2/2g, and it is identical at every running speed because the two
- * factors of the product do not interact.
- */
-function stepS2R(h, want) {
-  const p0 = S2R.point(player);
-  const onGround = S2R.grounded(player, S2R.s2rSDF);
-  if (onGround && keys.has('Space')) vel = S2R.jump(vel);
-  vel = S2R.s2rControl(vel, want, onGround, h);
-  [player, vel] = S2R.s2rStep(player, vel, h);
-  [player, vel] = S2R.s2rCollide(player, vel, S2R.s2rSDF);
-  if (run && course) {
-    if (runStep(run, h, p0, S2R.point(player), null) >= 0) hoopFlash = 0.35;
+/** Advance motion and its course in the same chart (these worlds do not fold). */
+function stepWorldMotion(motion, h, want) {
+  const p0 = motion.point(player);
+  [player, vel] = motion.step(player, vel, want, keys.has('Space'), h);
+  if (motion.course && run && course) {
+    if (runStep(run, h, p0, motion.point(player), null) >= 0) hoopFlash = 0.35;
   }
 }
-
-/**
- * One substep of the fall, and the run's clock with it.
- *
- * The run is advanced HERE rather than in the shared block below because that
- * block is about the quotient: it hands runStep `bankFrom`, the substep's
- * start point carried through whatever fold happened during it. There is no
- * fold here, so the raw start point is already in the same chart as the end
- * one and the segment is honest as it stands.
- */
-function stepH2R(h, want) {
-  const p0 = H2R.point(player);
-  vel = H2R.h2rFall(vel, want, h);
-  [player, vel] = H2R.stepFall(player, vel, h);
-  [player, vel] = H2R.h2rCollide(player, vel, H2R.h2rSDF);
-  if (run && course) {
-    if (runStep(run, h, p0, H2R.point(player), null) >= 0) hoopFlash = 0.35;
-  }
-}
-
 function courseOn() { return optVal('course') !== 'off'; }
 function buildCourse() {
-  if (optVal('course') === 'lap') return S2R.lapCourse();
-  if (optVal('course') === 'dropper') return H2R.dropperCourse();
+  const motion = worldMotionFor(geomKey());
+  if (motion && motion.course) return motion.course();
   return optVal('course') === 'grapple' ? grappleCourse() : geodesicCourse(0, 6);
 }
 
@@ -2482,18 +2416,16 @@ function frame(now) {
   // Free flight in S^3 is a different integrator on a different group, so it
   // takes the substep and nothing else in this loop applies: there is no fold
   // (no quotient), no gravity, no rope, no carried object to keep in range.
-  const s3want = sphericalWorld() ? s3Want(basis) : null;
+  const motion = worldMotionFor(geomKey());
   // The same arrangement for the fall: a different group, a different
   // integrator, and none of the rest of this loop applies. Two factors that
   // do not interact make it the shortest of the three.
   // Both products take the same horizontal input -- a direction in the floor
   // plan, and nothing else -- so they share `h2rWant`. What differs is what
   // the vertical does with it: one falls down a shaft, one runs and jumps.
-  const prodWant = anyProduct() ? h2rWant(basis) : null;
+  const motionWant = motion ? (motion.input === 'flight' ? s3Want(basis) : h2rWant(basis)) : null;
   for (let i = 0; i < SUB; i++) {
-    if (s3want) { stepS3(h, s3want); continue; }
-    if (prodWant && sphereFloorWorld()) { stepS2R(h, prodWant); continue; }
-    if (prodWant) { stepH2R(h, prodWant); continue; }
+    if (motion) { stepWorldMotion(motion, h, motionWant); continue; }
     const stepFrom = point(player);
     // Two movement models, kept side by side so they can be compared.
     // 'walking' steers the velocity directly; 'rolling' spins a ball up with a

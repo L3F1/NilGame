@@ -12,6 +12,8 @@ prototype has its own stack and does not yet simulate the curved game.
 For the current module map and the path to more geometries and manifolds, see
 [the architecture guide](docs/architecture.md). Playable geometry metadata
 lives in `spaces.js`; the full root regression suite runs with `node tools/test.js`.
+The three non-hyperbolic worlds share a motion adapter contract in
+`world-motion.js`, keeping spawn and simulation independent of the browser.
 
 - `hyp.js` — the geometry. Lorentz matrices, geodesics, exp and log. No graphics.
 - `hyp.test.js` — proves `hyp.js` is right. Run this before trusting anything.

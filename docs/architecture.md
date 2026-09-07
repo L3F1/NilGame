@@ -12,7 +12,7 @@ rendering constraints; `TODO.md` contains the larger gameplay backlog.
 | Geometry math | `geom.js`, `product.js` | Products require their own operations; curvature alone cannot describe every geometry. |
 | Hyperbolic topology | Groups and mutable solid selection in `hyp.js` | Separate identification rules from the local metric before adding more manifolds. |
 | Worlds | `level.js`, `s3.js`, `h2r.js`, `s2r.js` | Scene data, collision, and generated GLSL must agree. |
-| Gameplay | `physics.js`, `modes.js`, world-specific movement | The full grapple/combat kit currently depends on H3. |
+| Gameplay | `physics.js`, `modes.js`, `world-motion.js` | H3 retains its full kit; the other three worlds share an explicit motion adapter contract. |
 | Application | `main.js` | Input, option rules, simulation dispatch, drawing, and HUD are still coupled. |
 | World browser | `menu.js`, `worlds.js` | DOM controls and preset data are extracted; the application supplies actions and effective settings. |
 | Registration | `spaces.js` | Menu choices, shader IDs, program labels, and shader check enumeration share one list. |
@@ -31,10 +31,13 @@ choices, even though the current UI and globals partly conflate them.
 These are proposed interfaces, not capabilities already implemented by the
 registry. Adding a row to `spaces.js` does not implement a new world.
 
-1. **World sessions:** move spawn, reset, simulation step, and HUD into one
-   adapter per playable world. Pass input and session state explicitly. First
-   extract S3's small flythrough, then the two product courses, then H3. Keep
-   option locks and reset behavior covered when extracting them.
+1. **World sessions:** `world-motion.js` now owns spawn, simulation step, point
+   extraction, and course creation for S3 and the two product worlds. The
+   caller passes placement, velocity, desired direction, jump, and elapsed
+   time; adapters return the next placement and velocity without mutating
+   inputs. H3 explicitly retains its existing simulation. Next extract HUD
+   and per-session state, then separate the full H3 kit from application code.
+   Keep option locks and reset behavior covered during those changes.
 2. **Quotients:** extract H3's group data and fold operations behind a topology
    object with point reduction, placement reduction, and nearby-copy queries.
    Reduction must return the identification transform so velocity frames,
@@ -60,6 +63,27 @@ assume that every placement is a Lorentz matrix. Product height is affine;
 generic 4x4 multiplication is not valid for its current packed representation.
 Future Nil or Sol implementations should own their geodesic and transport
 algorithms rather than being forced into `geom.js`'s constant-curvature model.
+
+### Motion adapter contract
+
+`worldMotionFor(key)` returns an immutable adapter for S3, H2 x R, or S2 x R;
+H3 returns `null` to select the existing simulation. Unknown keys throw.
+
+- `spawn()` returns fresh `{ M, vel, yaw, pitch }` state for each player.
+- `input` selects view-relative flight (three components) or horizontal
+  movement (two components), constructed by the application's input layer.
+- `step(M, vel, want, jump, dt)` returns `[M, vel]`. Time is in seconds.
+  Only the lap adapter uses jump; flight and the dropper ignore it.
+- `point(M)` extracts a point using the world's own placement convention.
+- `course()` constructs the product world's course; S3 has `course: null`.
+
+Course timing stays in the application and receives the adapter's before/after
+points in one chart. This is suitable for worlds without identifications;
+quotient worlds must also return the transform that carries points across a
+boundary. Do not use this contract to hide that transform when adding a torus.
+`world-motion.test.js` checks independent spawn state, unchanged input arrays,
+240-step agreement per world with the pre-extraction call sequences, manifold
+constraints, and the difference between lap jumping and dropper steering.
 
 ## Suggested implementation order
 

@@ -18,8 +18,10 @@ Infrastructure review: see [docs/architecture.md](docs/architecture.md) for
 the current boundaries and recommended expansion order. Shared playable-space
 registration, a root regression runner, clickable world browser, and all-world
 browser checks are implemented. Geometry-correct resets and isolation from
-H3-only inputs/transient markers now cover the existing worlds. World session
-and quotient extraction remain the next infrastructure steps, followed by a
+H3-only inputs/transient markers now cover the existing worlds. Motion adapters
+for S3, H2 x R, and S2 x R now own spawn, movement and course creation in
+`world-motion.js`. Remaining session state/HUD and quotient extraction are the
+next infrastructure steps, followed by a
 playable flat 3-torus. Run `node tools/page-check.js --worlds` after changing
 the menu, resets, presets, or geometry dispatch.
 

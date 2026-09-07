@@ -55,4 +55,3 @@ export const PRESETS = {
   },
 };
 export const PRESET_KEYS = Object.keys(PRESETS);
-
