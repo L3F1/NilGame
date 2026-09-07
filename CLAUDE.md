@@ -83,8 +83,8 @@ shader; a scene-graph library would hide the parts that matter.
 - `index.html` — canvas, HUD, and a boot-error panel (see below).
 - `hyp.test.js` (36), `physics.test.js` (160), `modes.test.js` (78),
   `geom.test.js` (69), `s3.test.js` (28), `h2r.test.js` (51),
-  `s2r.test.js` (62) and `port.test.js` (34) — `node hyp.test.js`, etc.
-  518 in all.
+  `s2r.test.js` (62) and `port.test.js` (52) — `node hyp.test.js`, etc.
+  536 in all.
   **Keep the summary line LAST, and `process.exit` after IT.** Tests appended
   after the summary still run and still print, but are not counted, so the
   total silently understates. Worse, an `if (failed) process.exit(1)` left in
@@ -1531,9 +1531,54 @@ thing as how hyperbolic it feels: the same plan at fill 0.30 has a distance
 spread of 1.15x and at fill 0.95 has 3.4x. The default is 0.9 rather than 1
 because in a disc model the last tenth of the radius is most of the space.
 
+**THE FOURTH STRATEGY IS DIFFERENT IN KIND, and for an extended map it is the
+one to reach for.** The three above are all radial, measured from ONE centre,
+which suits a compact blob and crushes a corridor whose distortion is then set
+by how far it happens to be from a centre that has nothing to do with it. The
+alternative is a DEVELOPING MAP: unroll the flat instructions one edge at a
+time, carrying the frame along, and
+
+    KEEP EVERY EDGE LENGTH AND EVERY TURN ANGLE, EXACTLY.
+
+A corridor 8 long is 8 long and a right-hand turn is 90 degrees, everywhere on
+the map. It has exactly one cost and it is not negotiable:
+
+**THE LOOP DOES NOT CLOSE, AND THE GAP IS THE AREA IT ENCLOSES.** Walk a flat
+rectangle -- four edges, four right turns -- and you are back where you
+started; develop the same instructions into H^2 and you are not. That is not
+accumulated error and no care removes it: a geodesic n-gon in H^2 has angle sum
+`(n-2)pi` MINUS its area, so a polygon with the flat angles has nowhere to be.
+Measured, `spin = k * area` in the small-polygon limit -- squares of side 0.4,
+0.2, 0.1, 0.05 give `spin/area` of **-1.052, -1.013, -1.003, -1.001 in H^2**
+and **+0.946, +0.987, +0.997, +0.999 in S^2**, and E^2 gives exactly zero.
+The headline number: **a 1x1 flat square developed into H^2 comes back 0.87
+short and 75.6 degrees rotated.**
+
+**It is the same integral the holonomy dash banks.** `physics.sweptArea`
+integrates `(cosh(r) - 1) dtheta` around the player's path and calls it a
+charge; `port.developClosure` composes isometries around a path and calls it an
+error. One fact, seen twice, with opposite attitudes.
+
+**So develop along a SPANNING TREE and the port is exact.** Any part of a map
+with no loops -- a corridor, a branch, a dead end, a whole tree of rooms --
+ports with every length and every angle intact, in any geometry, measured to
+1e-12. Only the CYCLES cannot be satisfied, and there are exactly
+`edges - nodes + components` of them; cut those, develop the rest, and re-close
+each cut by hand. `port.fundamentalCycles` finds them and `developClosure` says
+what each one is asking a cut to absorb. Under a few degrees, nudge a corridor.
+Over a right angle, the geometry will not take it.
+
+**And the encouraging half: BRANCHING MAPS PORT TO H^2 BETTER THAN TO E^2.** A
+tree of rooms needs room that grows exponentially with depth, which is what
+hyperbolic space has and flat space does not -- in E^2 a deep branching level
+has to fold back on itself and crowd. Cycles are what hyperbolic space is bad
+at; trees are what it is BETTER at. The demo plan's two cycles ask a cut to
+absorb 57.9 degrees; a tree plan of the same size asks for nothing at all.
+
 **`node tools/port-map.js`** closes the loop: a flat floor plan of line
-segments in, the comparison table and clearance check, and a `WALLS` array
-ready to paste. `--embed=`, `--world=`, `--fill=`; with no arguments it runs a
+segments in, the comparison table, the clearance check, the CYCLE REPORT (what
+a developing port would cost, at the same scale) and a `WALLS` array ready to
+paste. `--embed=`, `--world=`, `--fill=`; with no arguments it runs a
 built-in demo plan. It fits to `inradius - thickness` rather than to the
 inradius, because a wall has to fit inside the domain WITH its thickness, and
 getting that the wrong way round is how a wall ends up cut off at a face —

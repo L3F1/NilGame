@@ -26,11 +26,11 @@
 // and `port.js` has the argument for why there cannot be.
 
 import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   EMBED, embedding, fitScale, compare, straightnessError, distanceReport,
-  shapeReport,
+  shapeReport, fundamentalCycles, pathInstructions, developClosure,
 } from '../port.js';
 import { H3, E3 } from '../geom.js';
 
@@ -81,7 +81,9 @@ const opt = (name, def) => {
   return a ? a.slice(name.length + 3) : def;
 };
 
-const plan = file ? JSON.parse(readFileSync(join(ROOT, file), 'utf8')) : DEMO;
+const plan = file
+  ? JSON.parse(readFileSync(isAbsolute(file) ? file : join(ROOT, file), 'utf8'))
+  : DEMO;
 const kind = opt('embed', EMBED.PROJECTIVE);
 const worldName = opt('world', 'octagon');
 const fill = Number(opt('fill', '0.9'));
@@ -167,6 +169,46 @@ if (clear < 0) {
   console.log('  Lower --fill, or use a world with a larger inradius.');
 } else {
   console.log(`  ok, ${clear.toFixed(4)} to spare`);
+}
+
+// --- the other way to port it: DEVELOP, and pay at the cycles -------------
+//
+// Everything above measures a RADIAL embedding: bearings and radii from one
+// centre. The alternative is to keep every corridor length and every turn
+// angle exactly and let the loops fail to close. Which is better is not a
+// matter of taste, and this is the number that decides it -- so it is printed
+// whether or not you asked, because a plan with no cycles should never be
+// ported radially at all.
+//
+// Developed at the SAME SCALE the radial port chose, or the comparison is
+// between a map 3.2 units across and one 1.7 across and says nothing. The
+// defect grows like the area, so scale is most of the answer.
+const cycles = fundamentalCycles(segments).map((loop) =>
+  loop.map(([x, y]) => [x * scale, y * scale]));
+console.log(`
+developing instead: ${cycles.length} independent cycle`
+  + `${cycles.length === 1 ? '' : 's'} in this plan`);
+if (!cycles.length) {
+  console.log('  NONE, so a developing port is EXACT: every corridor length and');
+  console.log('  every turn angle survives, in any geometry, with nothing lost.');
+  console.log('  A plan that is a tree should be ported that way, not radially.');
+} else {
+  let worstGap = 0, worstSpin = 0;
+  for (const loop of cycles) {
+    const d = developClosure(G, pathInstructions(loop, true));
+    worstGap = Math.max(worstGap, d.gap);
+    worstSpin = Math.max(worstSpin, Math.abs(d.spin));
+  }
+  console.log(`  worst cut has to absorb ${worstGap.toFixed(3)} of gap and`
+    + ` ${(worstSpin * 57.2958).toFixed(1)} degrees of turn`);
+  console.log('  (the spin is the AREA the loop encloses, times the curvature --');
+  console.log('   Gauss-Bonnet, not accumulated error, and no care removes it)');
+  if (worstSpin * 57.2958 < 8) {
+    console.log('  Small: cut each cycle, develop the rest, nudge one corridor to close.');
+  } else {
+    console.log('  LARGE: the geometry will not accept a loop of that area. Either');
+    console.log('  port radially with the table above, or re-author the cycle smaller.');
+  }
 }
 
 // --- the array ------------------------------------------------------------

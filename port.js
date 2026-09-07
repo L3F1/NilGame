@@ -407,4 +407,244 @@ export function distToGeodesic(G, p, a, b) {
   return G.asinK(G.sinK(nw) * sin);
 }
 
+
+// --- the fourth strategy: DEVELOPING the map ------------------------------
+//
+// The three embeddings above are all radial: r = g(u) with the bearing carried
+// through, measured from ONE centre. That suits a compact blob and it crushes
+// anything extended, because a corridor's distortion is set by how far it
+// happens to be from a centre that has nothing to do with it.
+//
+// A designer reaching for a different guarantee usually wants this one:
+//
+//   KEEP EVERY EDGE LENGTH AND EVERY TURN ANGLE, EXACTLY.
+//
+// A corridor 8 long is 8 long, a right-hand turn is 90 degrees, and both hold
+// everywhere on the map rather than near a chosen origin. That is a DEVELOPING
+// MAP: unroll the flat instructions into the curved space one edge at a time,
+// carrying the frame along.
+//
+// It has exactly one cost, it is not negotiable, and it is worth more as a
+// thing to understand than the other three put together:
+//
+//   THE LOOP DOES NOT CLOSE, AND THE GAP IS THE AREA IT ENCLOSES.
+//
+// Walk a flat rectangle -- four edges, four right turns -- and you are back
+// where you started. Develop the same instructions into H^2 and you are not.
+// That is not accumulated error and no amount of care removes it; it is
+// Gauss-Bonnet. A geodesic n-gon in H^2 has angle sum (n-2)pi MINUS its area,
+// so a polygon whose angles are the flat ones has nowhere to be.
+//
+// It is also, exactly, the quantity the holonomy dash banks. `sweptArea` in
+// physics.js integrates (cosh(r) - 1) dtheta around the player's path and
+// calls the result a charge; `developClosure` here composes isometries around
+// a path and calls the result an error. Same integral, opposite attitude. A
+// map that cannot be ported and an ability that only exists here are one fact
+// seen twice.
+//
+// So: DEVELOP ALONG A SPANNING TREE AND THE PORT IS EXACT. Any part of a map
+// with no loops in it -- a corridor, a branch, a dead end, a whole tree of
+// rooms -- ports with every length and every angle intact. Only the CYCLES
+// cannot be satisfied, and there are exactly (edges - nodes + 1) of them. Cut
+// them, develop the tree, and re-close each cut by hand; `developClosure` says
+// how much you are asking each cut to absorb.
+//
+// The encouraging half: BRANCHING MAPS PORT TO H^2 BETTER THAN TO E^2. A tree
+// of rooms needs room that grows exponentially with depth, which is what
+// hyperbolic space has and flat space does not -- in E^2 a deep branching
+// level has to fold back on itself and crowd. Cycles are what hyperbolic space
+// is bad at. Trees are what it is BETTER at.
+
+/**
+ * Rotate a placement about its own point, in the floor plane.
+ *
+ * A RIGHT multiplication, because it acts on the frame rather than on the
+ * space: columns 0 and 1 turn into each other, and column 3 -- the point --
+ * is untouched. Left-multiplying would move the whole world instead, which is
+ * a different thing that happens to look the same at the origin.
+ */
+export function turnBy(G, M, theta) {
+  const c = Math.cos(theta), s = Math.sin(theta);
+  const R = G.IDENTITY.slice();
+  R[0] = c; R[1] = s;
+  R[4] = -s; R[5] = c;
+  return G.matMul(M, R);
+}
+
+/**
+ * Turn a flat path into (length, turn) instructions.
+ *
+ * The turn recorded for each edge is the SIGNED EXTERIOR ANGLE at its start --
+ * how far a walker turns to get onto it, positive to the left. That is the
+ * quantity a developing map needs and the quantity Gauss-Bonnet is stated in;
+ * the interior angle is pi minus it, and mixing the two up flips every corner.
+ *
+ * For a closed path the first instruction's turn is the one from the LAST edge
+ * onto the first, so developing the whole list returns the frame to the
+ * heading it started with. A flat convex polygon's turns sum to 2*pi, which is
+ * why E^2 closes exactly and is the control this is checked against.
+ */
+export function pathInstructions(points, closed = false) {
+  const n = points.length;
+  const out = [];
+  const edges = closed ? n : n - 1;
+  for (let i = 0; i < edges; i++) {
+    const a = points[i], b = points[(i + 1) % n];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    let turn = 0;
+    if (i > 0 || closed) {
+      const p = points[(i - 1 + n) % n];
+      const h0 = Math.atan2(a[1] - p[1], a[0] - p[0]);
+      const h1 = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      turn = Math.atan2(Math.sin(h1 - h0), Math.cos(h1 - h0));
+    }
+    out.push([len, turn]);
+  }
+  return out;
+}
+
+/**
+ * Develop instructions into the geometry, keeping every length and turn.
+ *
+ * Returns the placement after each edge. Every instruction is carried out
+ * exactly; what this cannot promise is that a closed path comes back, which is
+ * what `developClosure` measures.
+ */
+export function develop(G, instructions, start = null) {
+  let M = start || G.IDENTITY;
+  const out = [];
+  for (const [len, turn] of instructions) {
+    if (turn) M = turnBy(G, M, turn);
+    M = G.reorthonormalize(G.geodesic(M, [1, 0, 0], len));
+    out.push(M);
+  }
+  return out;
+}
+
+/**
+ * How far a developed CLOSED path fails to close.
+ *
+ * The holonomy of the loop is `inv(start) * end`, which is the identity if and
+ * only if the port succeeded. `gap` is how far short of the start it lands and
+ * `spin` is how far the frame turned, read off that composite's first column.
+ *
+ * In E^2 both are zero to machine precision: the instructions describe a
+ * closed polygon and flat space has no obstruction to satisfying them. In H^2
+ * and S^2 neither is, and for a path small enough to stay linear
+ *
+ *     spin  ~  k * area
+ *
+ * measured over squares of side 0.4, 0.2, 0.1 and 0.05: the ratio runs
+ * -1.052, -1.013, -1.003, -1.001 in H^2 and +0.946, +0.987, +0.997, +0.999 in
+ * S^2. So a hyperbolic port comes back UNDER-turned and a spherical one
+ * OVER-turned, which is the same statement as a triangle's angles summing to
+ * less or more than pi, because it IS that statement.
+ *
+ * How to read it when porting: this is how much geometry each CUT EDGE of your
+ * map has to absorb. Under a few degrees, close the loop by nudging one
+ * corridor and nobody will notice. Over a right angle, the map has a cycle
+ * whose area the geometry will not accept, and it needs re-authoring rather
+ * than re-projecting.
+ */
+export function developClosure(G, instructions, start = null) {
+  const path = develop(G, instructions, start);
+  const M = path[path.length - 1];
+  const S = start || G.IDENTITY;
+  const T = G.matMul(G.inv(S), M);
+  return {
+    gap: G.dist(G.point(M), G.point(S)),
+    spin: Math.atan2(Math.sin(Math.atan2(T[1], T[0])), Math.cos(Math.atan2(T[1], T[0]))),
+    path,
+  };
+}
+
+/**
+ * The closure defect of a regular n-gon of side s, developed.
+ *
+ * Its own function because it is the CLEAN measurement: the flat polygon's
+ * area is known in closed form, so the defect is compared against arithmetic
+ * rather than against another simulation. `port.test.js` uses it to pin
+ * `spin ~ -k * area` in both curvatures and an exact zero in E^2.
+ */
+export function polygonDefect(G, n, s) {
+  const R = s / (2 * Math.sin(Math.PI / n));   // circumradius of side s
+  const pts = Array.from({ length: n }, (_, i) => {
+    const th = 2 * Math.PI * i / n;
+    return [R * Math.cos(th), R * Math.sin(th)];
+  });
+  const area = 0.25 * n * s * s / Math.tan(Math.PI / n);
+  return { area, ...developClosure(G, pathInstructions(pts, true)) };
+}
+
+// --- what the plan's CYCLES cost, if you develop it instead ---------------
+//
+// The embeddings above are radial and measured from one centre. The other way
+// to port a plan is to DEVELOP it: keep every corridor length and every turn
+// angle exactly, and accept that loops do not close. See port.js.
+//
+// Which is better depends entirely on the plan, and this is the number that
+// decides it. A plan with no cycles -- a tree of corridors -- develops
+// PERFECTLY, with nothing lost at all. A plan with cycles has exactly
+// (edges - nodes + components) of them, and each one has to be cut and
+// re-closed by hand; the defect below is how much geometry each cut absorbs.
+//
+// Under a few degrees, nudge one corridor and nobody will notice. Over a right
+// angle, the geometry will not accept that loop and it needs re-authoring.
+
+const KEY = (p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`;
+
+/**
+ * The fundamental cycles of the segment graph.
+ *
+ * A spanning forest, then one cycle per non-tree edge -- which is the standard
+ * construction and gives exactly (E - V + C) of them, the cycle rank. Every
+ * other cycle in the plan is a combination of these, so measuring these
+ * measures all of them.
+ */
+export function fundamentalCycles(segments) {
+  const idx = new Map();
+  const pts = [];
+  const id = (p) => {
+    const k = KEY(p);
+    if (!idx.has(k)) { idx.set(k, pts.length); pts.push(p); }
+    return idx.get(k);
+  };
+  const edges = segments.map(([a, b]) => [id(a), id(b)]);
+  const adj = pts.map(() => []);
+  edges.forEach(([u, v], e) => { adj[u].push([v, e]); adj[v].push([u, e]); });
+
+  const parent = new Array(pts.length).fill(-1);
+  const parentEdge = new Array(pts.length).fill(-1);
+  const seen = new Array(pts.length).fill(false);
+  const inTree = new Array(edges.length).fill(false);
+  for (let s = 0; s < pts.length; s++) {
+    if (seen[s]) continue;
+    seen[s] = true;
+    const stack = [s];
+    while (stack.length) {
+      const u = stack.pop();
+      for (const [v, e] of adj[u]) {
+        if (seen[v]) continue;
+        seen[v] = true; parent[v] = u; parentEdge[v] = e; inTree[e] = true;
+        stack.push(v);
+      }
+    }
+  }
+  // The path from a node up to the root of its tree.
+  const up = (u) => { const p = []; for (let x = u; x !== -1; x = parent[x]) p.push(x); return p; };
+
+  const cycles = [];
+  edges.forEach(([u, v], e) => {
+    if (inTree[e]) return;
+    const pu = up(u), pv = up(v);
+    const set = new Map(pu.map((x, i) => [x, i]));
+    let meet = -1, iv = -1;
+    for (let i = 0; i < pv.length; i++) if (set.has(pv[i])) { meet = pv[i]; iv = i; break; }
+    if (meet === -1) return;                        // different components
+    const loop = [...pu.slice(0, set.get(meet) + 1), ...pv.slice(0, iv).reverse()];
+    if (loop.length >= 3) cycles.push(loop.map((i) => pts[i]));
+  });
+  return cycles;
+}
+
 export { CURV };

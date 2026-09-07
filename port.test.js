@@ -11,6 +11,7 @@ import {
   EMBED, radialProfile, domainRadius, embedding, fitScale, portPoints,
   straightnessError, tissot, shapeReport, cornerAngle, flatAngle,
   distanceReport, compare, distToGeodesic,
+  turnBy, pathInstructions, develop, developClosure, polygonDefect,
 } from './port.js';
 import { E3, H3, S3 } from './geom.js';
 
@@ -311,6 +312,124 @@ section('the profiles themselves');
   const flatAnswer = nw2 * Math.sqrt(Math.max(0, 1 - cos * cos));
   ok('and the flat tangent-space answer would have said 0.299',
      Math.abs(flatAnswer - 0.35) > 0.04, `${flatAnswer.toFixed(6)}`);
+}
+
+// ---------------------------------------------------------------------------
+section('DEVELOPING a map: every length and every turn, and the price');
+
+{
+  // E^2 is the control, and here it is a strong one: the instructions describe
+  // a closed polygon and flat space has no obstruction to satisfying them, so
+  // both defects are EXACTLY zero rather than small.
+  const G = E3();
+  let worstGap = 0, worstSpin = 0;
+  for (const [n, s] of [[3, 0.8], [4, 0.3], [4, 1.0], [6, 0.5], [8, 0.4]]) {
+    const d = polygonDefect(G, n, s);
+    worstGap = Math.max(worstGap, d.gap);
+    worstSpin = Math.max(worstSpin, Math.abs(d.spin));
+  }
+  ok('in E^2 every developed polygon closes exactly',
+     worstGap < 1e-12 && worstSpin < 1e-12,
+     `gap ${worstGap.toExponential(2)}, spin ${worstSpin.toExponential(2)}`);
+}
+
+{
+  // And in the curved ones it does not, at all. This is the headline number
+  // for "you cannot port a grid": a plain unit square, four right turns.
+  const d = polygonDefect(H3(), 4, 1.0);
+  ok('a 1x1 square developed into H^2 comes back 0.87 short',
+     near(d.gap, 0.8745, 1e-3), `gap ${d.gap.toFixed(4)}`);
+  ok('and 75.6 degrees rotated',
+     near(d.spin * 57.2958, -75.60, 0.05), `${(d.spin * 57.2958).toFixed(2)} deg`);
+}
+
+{
+  // spin ~ k * area, checked as a LIMIT rather than at one size, because it is
+  // only exact for a small polygon. Both signs, and the sign IS the curvature:
+  // hyperbolic comes back under-turned, spherical over-turned.
+  for (const [name, G, k] of [['H^2', H3(), -1], ['S^2', S3(), 1]]) {
+    const ratios = [0.4, 0.2, 0.1, 0.05].map((s) => {
+      const d = polygonDefect(G, 4, s);
+      return d.spin / d.area;
+    });
+    const limit = ratios[ratios.length - 1];
+    ok(`${name}: spin/area tends to ${k} as the polygon shrinks`,
+       Math.abs(limit - k) < 0.02, `${ratios.map((r) => r.toFixed(4)).join(' -> ')}`);
+    ok(`${name}: and the sign is the curvature at every size`,
+       ratios.every((r) => Math.sign(r) === k),
+       ratios.map((r) => r.toFixed(3)).join(' '));
+  }
+}
+
+{
+  // The defect GROWS with the area, which is the practical rule: a small cycle
+  // ports fine and a big one does not. Doubling the side of a square
+  // quadruples the area and so should roughly quadruple the spin.
+  const G = H3();
+  const a = polygonDefect(G, 4, 0.15).spin;
+  const b = polygonDefect(G, 4, 0.30).spin;
+  ok('doubling a square\'s side roughly quadruples the defect',
+     Math.abs(b / a - 4) < 0.3, `${(b / a).toFixed(3)}x`);
+}
+
+{
+  // THE OTHER HALF, and it is the useful one: an open path -- a tree, a
+  // corridor, a branch -- develops EXACTLY. Every edge length and every turn
+  // angle is reproduced. Only cycles cannot be satisfied.
+  const pts = [[0, 0], [1.2, 0], [1.2, 0.9], [2.4, 0.9], [2.4, -0.4], [3.1, -0.4]];
+  const inst = pathInstructions(pts, false);
+  for (const [name, G] of [['E^2', E3()], ['H^2', H3()], ['S^2', S3()]]) {
+    const path = develop(G, inst);
+    let worstLen = 0, worstAng = 0;
+    // every edge length, against the flat one it came from
+    for (let i = 1; i < path.length; i++) {
+      worstLen = Math.max(worstLen,
+        Math.abs(G.dist(G.point(path[i - 1]), G.point(path[i])) - inst[i][0]));
+    }
+    // every turn angle, measured at the developed vertex
+    for (let i = 1; i + 1 < path.length; i++) {
+      const at = path[i];
+      const back = G.logTo(at, G.point(path[i - 1]));
+      const fwd = G.logTo(at, G.point(path[i + 1]));
+      const nb = Math.hypot(back[0], back[1], back[2]);
+      const nf = Math.hypot(fwd[0], fwd[1], fwd[2]);
+      const cos = (back[0] * fwd[0] + back[1] * fwd[1] + back[2] * fwd[2]) / (nb * nf);
+      const interior = Math.acos(Math.max(-1, Math.min(1, cos)));
+      worstAng = Math.max(worstAng, Math.abs(interior - (Math.PI - Math.abs(inst[i + 1][1]))));
+    }
+    ok(`${name}: an open path keeps every edge LENGTH exactly`, worstLen < 1e-12,
+       `worst ${worstLen.toExponential(2)}`);
+    ok(`${name}: and every turn ANGLE exactly`, worstAng < 1e-9,
+       `worst ${worstAng.toExponential(2)}`);
+  }
+}
+
+{
+  // pathInstructions must give the exterior angles, not the interior ones --
+  // a flat convex polygon's turns sum to 2*pi, and getting that backwards
+  // flips every corner without changing any length, so nothing else notices.
+  const inst = pathInstructions([[0, 0], [1, 0], [1, 1], [0, 1]], true);
+  const total = inst.reduce((s, [, t]) => s + t, 0);
+  ok('a closed square\'s turns sum to 2 pi', near(total, 2 * Math.PI, 1e-12),
+     `${total.toFixed(9)}`);
+  ok('and its four edges are all length 1',
+     inst.every(([l]) => near(l, 1, 1e-15)));
+}
+
+{
+  // turnBy must rotate the FRAME and leave the point alone. Left-multiplying
+  // would move the whole world instead, which looks identical at the origin
+  // and is wrong everywhere else -- so this is checked away from it.
+  const G = H3();
+  const M = G.translation([0.8, -0.4, 0.3]);
+  const R = turnBy(G, M, 0.7);
+  ok('turnBy leaves the point where it was',
+     G.dist(G.point(M), G.point(R)) < 1e-14,
+     `moved ${G.dist(G.point(M), G.point(R)).toExponential(2)}`);
+  ok('and turns the frame by exactly the angle asked for',
+     near(Math.acos(Math.max(-1, Math.min(1,
+       G.frameVec(M, 0).reduce((s, x, i) => s + x * G.frameVec(R, 0)[i] * (i === 3 ? -1 : 1), 0)))),
+       0.7, 1e-12));
 }
 
 // ---------------------------------------------------------------------------
