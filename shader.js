@@ -16,6 +16,7 @@ import { OCT_SIDE, OCT_PAIR, DOD_SIDE, DOD_PAIR } from './hyp.js';
 import { s3GLSL } from './s3.js';
 import { h2rGLSL } from './h2r.js';
 import { s2rGLSL } from './s2r.js';
+import { spaceFor } from './spaces.js';
 
 export const VERT = `#version 300 es
 in vec2 aPos;
@@ -1290,18 +1291,16 @@ void main() {
  * program at startup and the spherical one lazily, the first time it is asked
  * for, so the default path pays exactly what it paid before.
  */
-const GEOM_IDS = { h3: 0, s3: 1, h2r: 2, s2r: 3 };
 
 /**
- * The fragment shader for one geometry: 'h3', 's3' or 'h2r'.
+ * The fragment shader for one playable geometry registered in spaces.js.
  *
  * A number is still accepted and means the curvature, so older callers reading
  * -1 and +1 keep working.
  */
 export function fragFor(g) {
   const key = typeof g === 'number' ? (g < 0 ? 'h3' : 's3') : g;
-  const id = GEOM_IDS[key];
-  if (id === undefined) throw new Error(`fragFor: unknown geometry ${g}`);
+  const id = spaceFor(key).shaderId;
   return FRAG_SRC.replace('__GEOM_ID__', String(id));
 }
 

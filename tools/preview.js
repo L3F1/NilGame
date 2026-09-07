@@ -9,6 +9,7 @@
 // grapple, marchSteps.
 //
 // Env: CW / CH render size (default 300x200), FRAMES loop iterations (3).
+// Add --viewport=1200x900 to inspect full-page UI at a different window size.
 //
 // No web server: file:// refuses ES modules, and a local server is not
 // reachable from a sandboxed child process. Instead the module graph is
@@ -30,6 +31,9 @@ const inject = process.argv[3] || '';
 const CW = Number(process.env.CW || 300);
 const CH = Number(process.env.CH || 200);
 const FRAMES = Number(process.env.FRAMES || 3);
+const viewport = process.argv.find((arg) => arg.startsWith('--viewport='))?.slice(11)
+  || `${process.env.VW || 560}x${process.env.VH || 360}`;
+if (!/^\d{2,5}x\d{2,5}$/.test(viewport)) throw new Error('Expected --viewport=WIDTHxHEIGHT');
 
 function findBrowser() {
   const c = [
@@ -159,7 +163,7 @@ try {
     '--no-first-run', '--no-default-browser-check',
     '--disable-background-networking', '--disable-sync', '--disable-extensions',
     '--enable-unsafe-swiftshader', '--use-angle=swiftshader',
-    '--window-size=560,360', '--hide-scrollbars',
+    `--window-size=${viewport.replace('x', ',')}`, '--hide-scrollbars',
     '--virtual-time-budget=20000',
     ...(mode === 'dom' ? ['--dump-dom'] : [`--screenshot=${out}`]),
     'file:///' + file.replace(/\\/g, '/'),

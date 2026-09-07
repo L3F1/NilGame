@@ -27,6 +27,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { SPACES } from '../spaces.js';
 
 // Chrome's GPU watchdog is the real limit. Past BUDGET the page is one slow
 // machine away from dying with an empty error; WARN is where to start looking.
@@ -63,14 +64,11 @@ try {
 }
 
 const programs = [
-  ['scene (hyperbolic)', mod.VERT, mod.fragFor('h3')],
   // Every geometry is a SEPARATE program, because which one it is is a
   // #define and not a uniform. Each has to be checked and timed on its own:
   // they are what the Curvature option links, and nothing else here would
   // ever look at them.
-  ['scene (spherical)', mod.VERT, mod.fragFor('s3')],
-  ['scene (H^2 x R)', mod.VERT, mod.fragFor('h2r')],
-  ['scene (S^2 x R)', mod.VERT, mod.fragFor('s2r')],
+  ...SPACES.map((space) => [space.programName, mod.VERT, mod.fragFor(space.key)]),
   ['lines', mod.LINE_VERT, mod.LINE_FRAG],
 ];
 

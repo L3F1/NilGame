@@ -1,10 +1,17 @@
-# Hyperbolic grapple game, in a compact 3-manifold
+# Curved-space grapple game
 
-A game in a **compact hyperbolic 3-manifold** — H^3 of curvature -1, quotiented
-by a genus-2 surface group, so the world closes up on itself in every
-direction. Movement, gravity,
+A game exploring **curved geometries and manifolds**. The H^3 worlds include
+a genus-2 surface quotient that wraps horizontally, and the closed
+Seifert-Weber manifold that wraps in all directions. S^3, H^2 x R, and S^2 x R
+also have playable worlds; E^3 currently provides a tested math control.
+Movement, gravity,
 rendering and a grapple hook, all done honestly in the geometry. No build step,
-no framework, no package manager.
+no framework, no package manager for the root game. The independent `server/`
+prototype has its own stack and does not yet simulate the curved game.
+
+For the current module map and the path to more geometries and manifolds, see
+[the architecture guide](docs/architecture.md). Playable geometry metadata
+lives in `spaces.js`; the full root regression suite runs with `node tools/test.js`.
 
 - `hyp.js` — the geometry. Lorentz matrices, geodesics, exp and log. No graphics.
 - `hyp.test.js` — proves `hyp.js` is right. Run this before trusting anything.
@@ -37,16 +44,27 @@ not an individual file.
 **4. Run the tests.** Open a terminal in VS Code (`Ctrl+` `` ` ``) and type:
 
 ```
-node hyp.test.js
-node physics.test.js
+node tools/test.js
 ```
 
-Every line must say `ok`. If not, stop and fix the math.
+Every suite must say `PASS`. If not, fix the reported failures before playing.
 
 **5. Run the app.** Right-click `index.html` in the sidebar → *Open with Live
 Server*. A browser tab opens. Click the canvas to capture the mouse.
 
 ## Controls
+
+Click **Explore worlds** or press **O** to open the world browser. Pick one of
+seven experiences, then return to the game and click the view to capture the
+mouse. The cards also work with Tab/Enter and the existing 1–7 shortcuts.
+Expand **Customize world & performance** for settings; required settings show
+their reason and cannot be changed until you leave that world.
+
+Offline movement and course timers pause while browsing, and the covered scene
+stops rendering. A connected game continues. Resolution is separate from march
+quality: 50% resolution renders one quarter as many pixels as 100%, with a
+softer image. The first visit to a geometry still needs a driver shader build;
+the menu shows preparation status before that blocking work starts.
 
 | | |
 |---|---|
@@ -68,10 +86,11 @@ Server*. A browser tab opens. Click the canvas to capture the mouse.
 | `1` `2` | place a portal (switch Portals on first) |
 | `3` | clear the portal pair |
 | `N` | multiplayer panel — see below |
-| `O` | options: world, gravity, camera up, roll, light speed, portals, boomerang, build, holonomy, opponent, fog, shading, quality |
-| `[` `]` | render quality, if the frame rate hurts |
-| `R` | reset |
-| `Esc` | release the mouse |
+| `O` | world cards and settings; click controls or use Tab/Enter |
+| `[` `]` | lower / raise resolution: 50%, 70%, 85%, 100% |
+| `R` | reset in the current geometry; restart an active course |
+| `K` | start/restart a course; reset the spherical flythrough |
+| `Esc` | close the world browser, or release the mouse during play |
 
 Flat vision used to be on `V` and is gone; the scroll wheel replaced it. It
 scaled the ray fan by `t/sinh(t)`, which converted the hyperbolic `s/sinh(d)`

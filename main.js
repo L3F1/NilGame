@@ -10,6 +10,9 @@ import {
 } from './hyp.js';
 import { levelSDF, setMode, getMode, MODE } from './level.js';
 import { VERT, fragFor, LINE_VERT, LINE_FRAG } from './shader.js';
+import { SPACES, spaceFor, spaceForOption } from './spaces.js';
+import { PRESETS, PRESET_KEYS } from './worlds.js';
+import { createWorldMenu } from './menu.js';
 import {
   S3G, s3SDF, s3Control, s3Step, s3Collide, s3LapFraction, S3_LAP,
 } from './s3.js';
@@ -114,6 +117,7 @@ let markN = 0;
 
 /** Add one. `p` is an unfolded world point; folding is done here, once. */
 function marker(p, r, mat, shell = 0, tMin = 0) {
+  if (geomKey() !== 'h3') return;
   if (!p || markN >= MARKS) return;
   const q = foldPoint(p);
   markPt.set(q, markN * 4);
@@ -137,6 +141,7 @@ const cutAtAltBuf = new Float32Array(CUTS * 4);
 let cutN = 0;
 
 function markCut(at, N) {
+  if (geomKey() !== 'h3') return;
   if (!at || cutN >= CUTS) return;
   const [q, g] = foldElement(at);
   const n = apply(g, N);
@@ -278,14 +283,10 @@ function link(name, vs, fs) {
 // not milliseconds. So only the world actually being played is built: the
 // hyperbolic one at startup, exactly as before, and each other the first time
 // it is asked for. Nobody who never opens the option pays for it.
-const GEOM_NAMES = {
-  h3: 'scene', s3: 'scene (spherical)',
-  h2r: 'scene (H^2 x R)', s2r: 'scene (S^2 x R)',
-};
 const sceneProgs = new Map();
 function sceneFor(key) {
   if (!sceneProgs.has(key)) {
-    const p = link(GEOM_NAMES[key], VERT, fragFor(key));
+    const p = link(spaceFor(key).programName, VERT, fragFor(key));
     sceneProgs.set(key, { p, U: sceneUniforms(p) });
   }
   return sceneProgs.get(key);
@@ -564,7 +565,7 @@ const opts = {
   // gravity (a sphere admits no unit-gradient height function, so there is no
   // honest "down"), and none of the fighting kit, all of which is built on
   // hyp.js. The locks below take those away rather than leaving dead keys.
-  curv:       { label: 'Curvature',    values: ['hyperbolic', 'spherical', 'H^2 x R', 'S^2 x R'], i: 0 },
+  curv:       { label: 'Geometry',     values: SPACES.map((space) => space.option), i: 0 },
   field:      { label: 'Gravity',      values: ['floor plane', 'beacon', 'none'], i: 0 },
   light:      { label: 'Light speed',  values: ['instant', 'fast', 'slow'],   i: 0 },
   move:       { label: 'Movement',     values: ['walking', 'rolling'],        i: 0 },
@@ -597,9 +598,11 @@ const opts = {
   shading:    { label: 'Shading',      values: ['ambient occlusion', 'flat'],  i: 0 },
   edges:      { label: 'Domain edges', values: ['show', 'hide'],               i: 0 },
   quality:    { label: 'Quality',      values: ['low', 'medium', 'high'],      i: 1 },
+  resolution: { label: 'Resolution',   values: ['50%', '70%', '85%', '100%'], i: 3 },
 };
 const optKeys = Object.keys(opts);
 let optSel = 0, optOpen = false;
+let menuBusy = false;
 
 // Optical zoom, on the scroll wheel. Replaced flat vision, which was bound to
 // V and did something quite different - see rayDir in shader.js. A zoom keeps
@@ -732,6 +735,7 @@ remoteSolid = (p) => {
 
 /** Everything of mine that the other end has to know about, folded. */
 function netSend(t) {
+  if (geomKey() !== 'h3') return;
   if (!netLive() || t < netSendAt) return;
   netSendAt = t + 1 / NET_HZ;
   const cut = activeCut();
@@ -1002,7 +1006,6 @@ function computeForced() {
   const lock = (k, v, reason) => {
     // First lock wins, so the most specific rule should come first.
     if (k in f) return;
-    if (rawVal(k) === v) return;      // already there; nothing is being taken
     f[k] = v; why[k] = reason;
   };
 
@@ -1082,7 +1085,7 @@ function computeForced() {
 
   // A course is a time trial. Everything that exists to fight with is off:
   // there is nothing to fight, and each one is a key that would do nothing.
-  const course = rawVal('course');
+  const course = f.course ?? rawVal('course');
   if (course !== 'off') {
     lock('foe', 'off', 'timed run');
     lock('boomerang', 'off', 'timed run');
@@ -1112,63 +1115,6 @@ function computeForced() {
 //
 // Presets are applied by NAME, not by index, so reordering an option's values
 // cannot silently change what a preset means.
-const PRESETS = {
-  fight: {
-    label: 'Arena fight',
-    note: 'the full kit, an opponent, and a room to use it in',
-    set: {
-      curv: 'hyperbolic', mode: 'floor (2D wrap)', course: 'off',
-      field: 'floor plane', upright: 'pendulum', foe: 'bot',
-      boomerang: 'aimed', build: 'on', portals: 'on', holo: 'sign decides',
-      light: 'instant', edges: 'show',
-    },
-  },
-  hoops: {
-    label: 'Hoop course',
-    note: 'the open world, where the course is a genuine 3D flight',
-    set: {
-      curv: 'hyperbolic', mode: 'open (3D wrap)', course: 'hoops',
-      field: 'none', upright: 'free', light: 'instant', edges: 'hide',
-      fog: 'thick',
-    },
-  },
-  grapple: {
-    label: 'Grapple gates',
-    note: 'gravity, a rope, and gates the holonomy meter opens',
-    set: {
-      curv: 'hyperbolic', mode: 'floor (2D wrap)', course: 'grapple',
-      field: 'floor plane', upright: 'pendulum', holo: 'sign decides',
-      light: 'instant', edges: 'show',
-    },
-  },
-  sphere: {
-    label: 'Spherical flight',
-    note: 'S^3: no quotient, and things grow as they recede',
-    set: { curv: 'spherical', light: 'instant', fog: 'thin', quality: 'medium' },
-  },
-  light: {
-    label: 'Light-speed lab',
-    note: 'slow light, so your own copies lag visibly behind you',
-    set: {
-      curv: 'hyperbolic', mode: 'floor (2D wrap)', course: 'off', light: 'slow',
-      field: 'floor plane', upright: 'gravity', foe: 'off', edges: 'show',
-    },
-  },
-  // Appended rather than slotted in beside the spherical one, so the digits
-  // that were already 1-5 stay where they were.
-  dropper: {
-    label: 'The dropper',
-    note: 'H^2 x R: a Euclidean fall through a hyperbolic floor plan',
-    set: { curv: 'H^2 x R', course: 'dropper', fog: 'thin', quality: 'medium' },
-  },
-  lap: {
-    label: 'Round the world',
-    note: 'S^2 x R: a compact floor, real gravity, and no group anywhere',
-    set: { curv: 'S^2 x R', course: 'lap', fog: 'thin', quality: 'medium' },
-  },
-};
-const PRESET_KEYS = Object.keys(PRESETS);
-
 /**
  * Apply a preset. Unknown values are IGNORED RATHER THAN GUESSED.
  *
@@ -1189,7 +1135,7 @@ function applyPreset(name) {
   applyOptions();
   // A course preset should also START the course, or the player picks
   // "Hoop course" and lands in a world with an unlit course in it.
-  if (optVal('course') !== 'off') { beginRun(); return; }
+  if (optVal('course') !== 'off') { resetForCurvature(); beginRun(); return; }
   // And a preset WITHOUT a course has to stop one that is already running, or
   // the clock from the last preset keeps counting under a mode that has no
   // course at all - measured: switching from "Hoop course" to "Spherical
@@ -1260,32 +1206,43 @@ addEventListener('keydown', (e) => {
   // out of a box you are pasting a connection code into is unusable.
   const tag = e.target && e.target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (menuBusy) { e.preventDefault(); return; }
+  if (e.code === 'KeyO' || (e.code === 'Escape' && optOpen)) {
+    e.preventDefault();
+    if (!e.repeat) setMenuOpen(!optOpen);
+    return;
+  }
+  if (optOpen && (tag === 'SELECT' || tag === 'BUTTON' || tag === 'SUMMARY')
+      && !/^Digit[1-7]$/.test(e.code)) return;
   if (e.code === 'KeyN') { toggleNetPanel(); return; }
   if (netOpen) { if (e.code === 'Escape') toggleNetPanel(); return; }
-  if (e.code === 'KeyR') reset();
   // Zoom back out in one press, because scrolling all the way back is a chore
   // and you want the wide view the instant something goes wrong.
-  if (e.code === 'KeyX') zoom = ZOOM_MIN;
-  if (e.code === 'KeyF') toggleBeacon();
-  if (e.code === 'KeyO') { optOpen = !optOpen; drawMenu(); }
   if (optOpen) {
+    e.preventDefault();
     if (e.code === 'ArrowUp') optSel = (optSel + optKeys.length - 1) % optKeys.length;
     if (e.code === 'ArrowDown') optSel = (optSel + 1) % optKeys.length;
     if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
       const o = opts[optKeys[optSel]];
+      if (optKeys[optSel] in forcedOpts) return;
       o.i = (o.i + (e.code === 'ArrowRight' ? 1 : o.values.length - 1)) % o.values.length;
-      applyOptions();
+      queueMenuChange(() => { lastPreset = null; applyOptions(); });
     }
     // Digits pick a preset. They are portal keys during play, which is exactly
     // why this lives inside the menu-open branch and returns below.
     const digit = e.code.startsWith('Digit') ? Number(e.code.slice(5)) : 0;
     if (digit >= 1 && digit <= PRESET_KEYS.length) {
-      lastPreset = PRESET_KEYS[digit - 1];
-      applyPreset(lastPreset);
+      choosePreset(PRESET_KEYS[digit - 1]);
     }
     drawMenu();
     return;
   }
+  if (e.code === 'KeyR' && !e.repeat) { restartWorld(); return; }
+  if (e.code === 'KeyX') zoom = ZOOM_MIN;
+  if (e.code === 'KeyF' && geomKey() === 'h3') toggleBeacon();
+  // The fighting kit uses H3 operations. Never run it on another placement.
+  if (geomKey() !== 'h3' && ['KeyQ', 'KeyV', 'KeyH', 'KeyT', 'KeyE',
+    'KeyB', 'KeyG', 'Digit1', 'Digit2', 'Digit3'].includes(e.code)) return;
   if (e.code === 'KeyQ') useHolonomy();
   // The five abilities that came after the grapple. Each one is a thing the
   // geometry makes possible rather than a thing bolted on: see physics.js.
@@ -1315,6 +1272,7 @@ addEventListener('keydown', (e) => {
   // was unreachable in the shipped build. A key named on screen must always do
   // something when pressed.
   if (e.code === 'KeyK') {
+    if (sphericalWorld()) { restartWorld(); return; }
     // A key named on screen must always do something. In H^2 x R the course
     // is forced on, so K is a restart; everywhere else it turns the hoop
     // course on if nothing is running, exactly as before.
@@ -1335,9 +1293,13 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyG' && optVal('build') === 'on') {
     placeBlock(player, cameraBasis().fwd, worldSDF);
   }
-  if (e.code === 'BracketLeft') { renderScale = Math.max(0.35, renderScale - 0.15); resize(); }
-  if (e.code === 'BracketRight') { renderScale = Math.min(1.0, renderScale + 0.15); resize(); }
-  if (e.code === 'Space' && grounded) {
+  if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
+    opts.resolution.i = Math.max(0, Math.min(opts.resolution.values.length - 1,
+      opts.resolution.i + (e.code === 'BracketRight' ? 1 : -1)));
+    applyOptions();
+  }
+  if (e.code === 'Space') e.preventDefault();
+  if (e.code === 'Space' && grounded && geomKey() === 'h3') {
     // Jump along up-at-the-player. alignUp has pinned that to E3, but asking
     // for it keeps this honest if the pinning is ever removed.
     const u = upDirection(player);
@@ -1362,8 +1324,12 @@ let lockSettleUntil = 0;
 document.addEventListener('pointerlockchange', () => {
   lockSettleUntil = performance.now() + 250;
   pendingX = 0; pendingY = 0;
+  if (document.pointerLockElement !== canvas) keys.clear();
 });
-addEventListener('blur', () => { lockSettleUntil = performance.now() + 250; });
+addEventListener('blur', () => {
+  lockSettleUntil = performance.now() + 250;
+  keys.clear(); pendingX = 0; pendingY = 0; grapple = null;
+});
 
 // A single event bigger than this is not a hand, it is the browser reporting
 // the jump to the locked position or flushing a stall. Drop it outright rather
@@ -1376,6 +1342,7 @@ const MAX_TURN = 0.6;     // radians per frame
 let pendingX = 0, pendingY = 0;
 
 addEventListener('mousemove', (e) => {
+  if (optOpen || netOpen || menuBusy) return;
   if (document.pointerLockElement !== canvas) return;
   if (performance.now() < lockSettleUntil) return;
   const dx = e.movementX || 0, dy = e.movementY || 0;
@@ -1397,8 +1364,9 @@ function applyLook() {
 }
 
 canvas.addEventListener('mousedown', (e) => {
+  if (optOpen || netOpen || menuBusy) return;
   if (document.pointerLockElement !== canvas) { canvas.requestPointerLock(); return; }
-  if (e.button === 0) fireGrapple();
+  if (e.button === 0 && geomKey() === 'h3') fireGrapple();
 });
 addEventListener('mouseup', (e) => { if (e.button === 0) grapple = null; });
 
@@ -1567,42 +1535,55 @@ function drag(v, dt) {
 
 // --- options overlay ----------------------------------------------------
 
-const menu = document.createElement('div');
-menu.id = 'menu';
-menu.style.cssText = [
-  'position:fixed', 'right:14px', 'top:14px', 'padding:10px 14px',
-  'background:rgba(8,10,16,0.88)', 'border:1px solid #3a4a5e', 'border-radius:6px',
-  'font:13px/1.7 ui-monospace,Menlo,Consolas,monospace', 'color:#9fe',
-  'white-space:pre', 'display:none', 'pointer-events:none', 'z-index:10',
-].join(';');
-document.body.appendChild(menu);
+const worldMenu = createWorldMenu({
+  presets: PRESETS,
+  onPreset: choosePreset,
+  onOption: (key, value) => queueMenuChange(() => {
+    opts[key].i = opts[key].values.indexOf(value);
+    lastPreset = null;
+    applyOptions();
+  }),
+  onClose: () => setMenuOpen(false),
+});
+document.getElementById('worlds-button').addEventListener('click', () => setMenuOpen(true));
+
+function setMenuOpen(open) {
+  if (menuBusy) return;
+  optOpen = open;
+  keys.clear(); pendingX = 0; pendingY = 0; grapple = null;
+  if (open && document.pointerLockElement === canvas) document.exitPointerLock();
+  drawMenu();
+  if (open) worldMenu.focus();
+  else document.getElementById('worlds-button').focus();
+}
+
+function choosePreset(name) {
+  queueMenuChange(() => { lastPreset = name; applyPreset(name); });
+}
+
+function queueMenuChange(change) {
+  if (menuBusy) return;
+  menuBusy = true;
+  drawMenu();
+  // Give the browser a paint before a cold driver link can block JavaScript.
+  // This does not pretend to shorten compilation; cached switches stay cheap.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    try { change(); }
+    catch (error) { showBoot(error.stack || String(error)); }
+    finally { menuBusy = false; drawMenu(); }
+  }));
+}
 
 function drawMenu() {
-  menu.style.display = optOpen ? 'block' : 'none';
-  if (!optOpen) return;
-  const presetRow = PRESET_KEYS.map((k, i) => `${i + 1} ${PRESETS[k].label}`).join('   ');
-  const rows = optKeys.map((k, i) => {
-    const o = opts[k];
-    const mark = i === optSel ? '>' : ' ';
-    // A locked setting shows what the MODE is using and why, with the player's
-    // own choice still visible after it. Hiding the row instead would make the
-    // menu change shape as modes are switched, and silently substituting the
-    // value would be the game lying about its own state.
-    if (k in forcedOpts) {
-      return `${mark} ${o.label.padEnd(13)} ${forcedOpts[k].padEnd(18)}`
-        + `[${forcedWhy[k]}; yours: ${o.values[o.i]}]`;
-    }
-    return `${mark} ${o.label.padEnd(13)} ${o.values[o.i]}`;
+  worldMenu.update({
+    open: optOpen, options: opts,
+    values: Object.fromEntries(optKeys.map((key) => [key, optVal(key)])),
+    reasons: forcedWhy, selected: lastPreset, busy: menuBusy,
+    status: menuBusy ? 'Preparing your world… First visits can take a few seconds.'
+      : `${netLive() ? 'Connected game continues while browsing.' : 'Movement and course timer pause while browsing.'}`
+        + ` Resolution ${optVal('resolution')} · ${optVal('quality')} quality.`
+        + (lastPreset ? ` Ready: ${PRESETS[lastPreset].label}. Return to game, then click the view to look around.` : ''),
   });
-  const locked = Object.keys(forcedOpts).length;
-  menu.textContent = ['OPTIONS   (O closes)', '',
-    'PRESETS   ' + presetRow,
-    '          ' + (lastPreset ? PRESETS[lastPreset].note : 'press a number to set up a mode'),
-    '', ...rows, '',
-    locked ? `${locked} setting${locked > 1 ? 's are' : ' is'} set by the mode `
-      + 'and shown in brackets' : '',
-    'up/down select   left/right change   1-' + PRESET_KEYS.length + ' preset',
-  ].join(String.fromCharCode(10));
 }
 
 // --- the network panel --------------------------------------------------
@@ -1667,6 +1648,8 @@ function netStatusLine() {
 
 function toggleNetPanel() {
   netOpen = !netOpen;
+  keys.clear(); pendingX = 0; pendingY = 0; grapple = null;
+  if (netOpen && optOpen) setMenuOpen(false);
   netPanel.style.display = netOpen ? 'block' : 'none';
   if (netOpen && document.pointerLockElement === canvas) document.exitPointerLock();
   nEl('nstat').textContent = netStatusLine();
@@ -1770,10 +1753,7 @@ function anyProduct() { return productWorld() || sphereFloorWorld(); }
 
 /** Which scene program the options are asking for. */
 function geomKey() {
-  if (sphericalWorld()) return 's3';
-  if (productWorld()) return 'h2r';
-  if (sphereFloorWorld()) return 's2r';
-  return 'h3';
+  return spaceForOption(optVal('curv')).key;
 }
 
 function showBoot(msg) {
@@ -1793,6 +1773,11 @@ function hideBoot() {
  * spherical program leaves every ray off the 3-sphere and draws black.
  */
 function resetForCurvature() {
+  if (geomKey() !== 'h3') {
+    clearBoomerang(); clearBlock(); clearCut(); clearDecoy(); clearPortals();
+    blastFx = null;
+    grounded = false;
+  }
   if (sphereFloorWorld()) {
     // On the floor at the start line, facing along the lap. Level pitch, not
     // the dropper's steep one: here you run rather than fall.
@@ -1828,6 +1813,14 @@ function resetForCurvature() {
   grapple = null;
   banked = 0;
   s3Start = player;
+}
+
+/** Reset using this world's placement and restart its course at the start line. */
+function restartWorld() {
+  keys.clear();
+  grounded = false;
+  resetForCurvature();
+  if (courseOn()) beginRun();
 }
 
 /**
@@ -2096,6 +2089,8 @@ function applyOptions() {
   // the old ones did. tools/march-check.js checks that no ray runs out at
   // any of the three.
   marchSteps = { low: 160, medium: 220, high: 280 }[optVal('quality')];
+  const scale = parseInt(optVal('resolution'), 10) / 100;
+  if (scale !== renderScale) { renderScale = scale; resize(); }
   // Switching worlds changes the group AND the level, so an opponent standing
   // where the other world put it can end up inside the furniture, where it
   // shovels itself into a surface and never moves. Respawn it, but only on an
@@ -2431,6 +2426,13 @@ function drawCrosshair() {
 let last = null;
 
 function frame(now) {
+  // Browsing offline should neither consume a run nor ray-march a covered
+  // canvas. Keep connected simulation live; the peer cannot pause with us.
+  if (menuBusy || ((optOpen || netOpen || document.hidden) && !netLive())) {
+    last = null;
+    requestAnimationFrame(frame);
+    return;
+  }
   // Clamp dt at BOTH ends, and the lower one is not paranoia.
   //
   // requestAnimationFrame hands you the timestamp of the frame it belongs to,
@@ -2664,7 +2666,7 @@ function frame(now) {
   // The throw is the exception and stays singular: its return leg steers at a
   // home position, and each owner would need their own. Only the local player
   // throws so far.
-  const boomAt = boomerangStep(dt, worldSDF, p0, 0);
+  const boomAt = unglued ? null : boomerangStep(dt, worldSDF, p0, 0);
   blockStepAll(dt);
   decoyStepAll(dt);
   cutStepAll(dt);

@@ -3,6 +3,7 @@
 //   node tools/page-check.js          real GPU, cold shader cache
 //   node tools/page-check.js --warm   keep the cache (fast, less thorough)
 //   node tools/page-check.js --sw     SwiftShader instead of the real driver
+//   node tools/page-check.js --worlds all presets, resets, menu and resolution
 //
 // Serves the project over HTTP and loads index.html as a REAL ES module graph,
 // the way Live Server does, then lets the page run twenty frames and report on
@@ -38,6 +39,7 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 
 const warm = process.argv.includes('--warm');
 const sw = process.argv.includes('--sw');
+const worlds = process.argv.includes('--worlds');
 
 function findBrowser() {
   const c = [
@@ -60,6 +62,7 @@ window.__err = '';
 window.addEventListener('error', function (e) { window.__err = e.message || String(e.error); });
 window.addEventListener('unhandledrejection', function (e) { window.__err = 'unhandled rejection: ' + e.reason; });
 window.addEventListener('load', function () {
+  if (${worlds}) return;
   var n = 0;
   function tick() {
     if (++n < ${FRAMES}) { requestAnimationFrame(tick); return; }
@@ -100,7 +103,9 @@ const srv = createServer((req, res) => {
   const f = join(ROOT, decodeURIComponent(url));
   if (!existsSync(f)) { res.writeHead(404); res.end('no'); return; }
   res.writeHead(200, { 'Content-Type': TYPES[extname(f)] || 'application/octet-stream' });
-  res.end(readFileSync(f));
+  if (worlds && url === '/main.js') {
+    res.end(readFileSync(f, 'utf8') + '\n' + readFileSync(join(ROOT, 'tools/world-probe.js'), 'utf8'));
+  } else res.end(readFileSync(f));
 });
 await new Promise((r) => srv.listen(PORT, r));
 
@@ -132,11 +137,12 @@ if (!report) {
 }
 
 const first = (report.hud || '').split('\n')[0].trim();
-console.log(`time to ${FRAMES} frames : ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+console.log(`${worlds ? 'world suite time' : `time to ${FRAMES} frames`} : ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 console.log('page error        :', report.err || '(none)');
 console.log('boot panel        :', report.boot ? report.boot.split('\n').slice(0, 3).join(' / ') : '(hidden - good)');
 console.log('hud first line    :', first || '(EMPTY - the module never ran)');
 console.log('centre pixel      :', report.px);
+if (report.checks) console.log(`world/input checks : ${report.checks.length} passed`);
 
 const problems = [];
 if (report.err) problems.push('the page threw');
@@ -148,5 +154,5 @@ if (/NaN/.test(report.hud || '')) problems.push('the HUD reads NaN - the physics
 
 console.log(problems.length
   ? `\nFAIL ${problems.join('; ')}`
-  : `\nok   the page started, ran ${FRAMES} frames, and its numbers are finite`);
+  : `\nok   ${worlds ? 'all world transitions and input checks passed' : `the page started, ran ${FRAMES} frames, and its numbers are finite`}`);
 process.exit(problems.length ? 1 : 0);
