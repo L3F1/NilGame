@@ -811,6 +811,27 @@ held at once and compared in a single test with nothing to switch.
 time — and it is DOM-free like physics.js so the rules are testable.
 `modes.test.js` has 56.
 
+**A MODE THAT DEFAULTS TO OFF NEEDS ITS KEY TO TURN IT ON.** Both courses
+shipped working and unreachable. `KeyK` was gated behind `courseOn()`, the
+option defaults to `off`, and K was missing from the on-screen key list - so
+the only way in was to already know the mode existed and find it in the menu.
+Pressing K did nothing, and since the hoops are a line-loop OVERLAY the map is
+unchanged by design, so there was no signal at all that anything had happened.
+**A key named on screen must always do something when pressed**; if the feature
+is off, the key turns it on.
+
+**And a run must START you on the course.** `geodesicCourse` has to lay its
+hoops on the axis through the CELL CENTRE, because a geodesic parallel to a
+generator's axis but offset from it does not close up - so the course cannot
+come to the player and `beginRun` moves the player to the course. Altitude
+matters for the same forced reason: every closed geodesic in the bounded world
+lies IN the floor plane, so the hoops are centred at altitude 0 and the
+ordinary spawn at 0.6 is above a gate of radius 0.3 *entirely*. Measured, gate
+1's ring points on screen at the moment the clock started: **0 of 41 before,
+34 of 41 after** (and 0 -> 41 for the grapple ring). `aimAt` inverts
+`cameraBasis` through the same `logTo` that `project` uses, so where the camera
+points and where the hoop draws cannot disagree.
+
 **The hoop course (option `Hoop course`, key K).** Hoops laid along a CLOSED
 GEODESIC, so the course returns to its own start with no turning: fly dead
 straight and you arrive where you began. `modes.test.js` flies it and takes all
@@ -1056,6 +1077,29 @@ round. That corridor is the same corridor in every copy.
   `tools/shader-check.js` CANNOT see any of this: SwiftShader has no HLSL
   back end and links the worst version in a few seconds. Only a real D3D
   driver shows it. `main.js` now times the link and explains an empty log.
+
+  **A SWITCH BETWEEN TWO WORLDS BELONGS IN A `#define`, NOT A UNIFORM.** Same
+  rule, one level up. The marcher carries a curvature so that H^3 and S^3 come
+  out of one set of formulas; written as `uniform float uCurv` the D3D compiler
+  cannot fold away the arm the world does not use, so both arms of
+  `cosK/sinK/asinK` are emitted, and so are BOTH `sphereWorld` and `domainMap`.
+  `mdot` is called from the march inner loop, which is where multiplication by
+  three copies of `sceneMap` happens. Warm, three runs each:
+
+      uniform, one program for both        10.1 s
+      #define uCurv (-1.0), hyperbolic      8.5 s
+      #define uCurv (1.0),  spherical       4.4 s
+
+  So `shader.js` exports `fragFor(k)` and there is a scene program per
+  curvature; `FRAG` stays `fragFor(-1)` so every tool still checks the build
+  that ships. The spherical one links in HALF the time because in S^3 the whole
+  quotient apparatus is dead code. **Parenthesise the value** - without them
+  `-uCurv` expands to `--1.0`, a syntax error a long way from the define.
+
+  **With more than one program, pin attribute slots with `bindAttribLocation`
+  before linking.** A second program is entitled to a different location for
+  the same name, and the full-screen quad's vertex array is set up once. It
+  draws nothing, with no error.
 
   **MEASURE LINK TIME WARM, and repeat it — a cold run reads 25% high.**
   `link-time.js` WARNs above 10 s and fails at 15 s. Measured on one machine in

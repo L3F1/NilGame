@@ -322,6 +322,47 @@ integral.
 by distance. Make *that* the target: chase a perfect record of your own
 movement from ten seconds ago. The better you play, the harder your opponent.
 
+**Dropper.** Fall from a great height through layers of obstacles onto a
+target. The flat version is a stock minigame; the hyperbolic one inverts it,
+and the inversion is measurable rather than flavour.
+
+The bounded world is (genus-2 surface) x R, so it is **already infinite up and
+down**. A dropper needs no shaft, no walls and no level geometry to keep you
+in: fall, and the manifold wraps sideways on its own. Every obstacle you fall
+past is also every one of its copies, so a gap in a layer is a gap in all of
+them at once - you cannot slip round the edge of anything, because there is no
+edge.
+
+**The mechanic is that the fall is SELF-CORRECTING, exponentially.** The
+equidistant surface at altitude h has induced metric exactly `cosh(h)` times
+the floor plane's - measured, to five figures:
+
+        h        0     0.5      1        2        3        4        5
+        stretch  1.0   1.1276   1.5431   3.7622   10.068   27.308   74.206
+        cosh(h)  1.0   1.1276   1.5431   3.7622   10.068   27.308   74.210
+
+So two verticals a proper distance s apart at altitude h are `s / cosh(h)`
+apart when they reach the floor. Being one whole unit off target at altitude 5
+lands you **0.013 off**. In a flat dropper the fall is neutral - drift s up
+high is drift s at the bottom - so all the difficulty is steering. Here
+steering is nearly free and the difficulty moves somewhere else entirely:
+
+**the target is exponentially hard to SEE.** The same `cosh(h)` runs the other
+way for vision. From altitude 5 the whole floor is contracted 74x beneath you,
+so a target one unit wide subtends what a 0.0135 one would from beside it. The
+game becomes *identify* the right target, then let the geometry land you on it
+- which is the exact opposite of the flat game's *see the target easily, fight
+to steer onto it*.
+
+Two exponentials pulling opposite ways, both of them consequences of one
+`cosh`. That is the bar every mode in this section has to clear.
+
+Cheap to build: gravity, altitude, `levelSDF` and the hoop/trigger machinery
+all exist. A layer is a hoop with a big radius; a target is a hoop at altitude
+0. The unknown worth prototyping first is whether the contraction reads as
+*fair* or as *the game playing itself* - which is a question about feel, and
+the only way to answer it is to fall down it.
+
 **Geodesic golf.** Strike a ball down a closed geodesic; par is the number of
 laps to the hole. Only possible because some geodesics close, which is only true
 because the manifold is compact.
@@ -345,8 +386,30 @@ because the manifold is compact.
 9. ~~**The geometry math layer**~~ **done** — `geom.js`, 64 tests, E^3/H^3/S^3
    from one set of formulas, proven identical to hyp.js at k = -1.
 
-   **Next: the quotient groups and the marcher.** The math layer has no
-   fundamental domain and no renderer yet. S^3 needs neither a group (it is
-   already compact) nor the e^{2d} care H^3 needs, so it is the cheaper of the
-   two to draw first. Racing then lands in whichever geometry, and the same
-   track at three curvatures with three lap times is the demo.
+   ~~**Next: the marcher.**~~ **done, renderer half.** The GLSL now carries
+   the curvature: `mdot` takes it as a sign, `cosK/sinK/asinK` replace the
+   hyperbolic trig, and `hDist` needed only `asinh -> asinK` because
+   `<p-q,p-q> = 4 sinK(d/2)^2` holds in both. Curvature is a **#define, not a
+   uniform** - as a uniform it costs 1.6 s of link time in the hyperbolic
+   build, because the D3D compiler cannot fold away the arm the world does not
+   use. Two programs instead: 8.5 s hyperbolic, 4.4 s spherical (S^3 needs no
+   quotient at all, so `domainMap`, `exitDist`, the fold loop and all 39 level
+   primitives are dead code).
+
+   **What is left is the CPU half, and it is the bigger half.** `uPlayer` is a
+   Lorentz matrix and a Lorentz matrix is not an isometry of S^3: the spawn
+   point reads `<p,p> = -1` under the Minkowski form and `+1.81` under the
+   Euclidean one, where a valid S^3 point needs exactly `+1`. The ray starts
+   0.81 off the manifold and the screen comes out 99.3% black. Placement, the
+   integrator and collision all have to move onto geom.js at k = +1 before
+   there is a world to look at. No Curvature option ships until then - a black
+   screen is indistinguishable from a shader that failed to compile.
+
+   Racing then lands in whichever geometry, and the same track at three
+   curvatures with three lap times is the demo.
+
+10. **The dropper** is the cheapest thing in Part 3 by a distance - gravity,
+    altitude and the trigger machinery all exist, and the bounded world is
+    already infinite up and down, so it needs no level built for it. Worth
+    doing before racing if a quick win is wanted, because the one open
+    question is feel and one evening answers it.
