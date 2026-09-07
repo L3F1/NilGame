@@ -39,6 +39,12 @@ shader; a scene-graph library would hide the parts that matter.
 - `net.js` — the packet format and the WebRTC connection. Nothing browser-only
   at module scope, so it imports under Node and `physics.test.js` covers the
   packing. **No DOM**; the panel that drives it lives in main.js.
+- `geom.js` — the same mathematics as `hyp.js` with the CURVATURE left in as a
+  parameter, so E^3 (flat), H^3 and S^3 (spherical) come out of one set of
+  formulas. **Nothing imports it yet** and that is deliberate: it is additive,
+  the running game is untouched, and the first job of `geom.test.js` is to
+  prove it agrees with `hyp.js` to the last digit at k = -1. See "One geometry,
+  three curvatures" below.
 - `modes.js` — game modes: rounds, timers, ordered checkpoints, and the hoop
   course. **No DOM**, like physics.js, because this is the part with rules in
   it and rules are worth testing. Hoops are drawn as LINE LOOPS by main.js, not
@@ -46,8 +52,8 @@ shader; a scene-graph library would hide the parts that matter.
   cost link time, which is the budget that binds.
 - `main.js` — WebGL2 setup, input, frame loop, rope drawing, the options menu.
 - `index.html` — canvas, HUD, and a boot-error panel (see below).
-- `hyp.test.js` (36), `physics.test.js` (160) and `modes.test.js` (78) —
-  `node hyp.test.js`, etc.
+- `hyp.test.js` (36), `physics.test.js` (160), `modes.test.js` (78) and
+  `geom.test.js` (64) — `node hyp.test.js`, etc.
   **Keep the summary line LAST, and `process.exit` after IT.** Tests appended
   after the summary still run and still print, but are not counted, so the
   total silently understates. Worse, an `if (failed) process.exit(1)` left in
@@ -721,6 +727,58 @@ short of the anchor, because the anchor is ON a surface.
 
 **Swing-to-fly.** Above `sqrt(G)` the geometry lifts you faster than gravity
 pulls. The HUD says so.
+
+## One geometry, three curvatures
+
+`geom.js` is `hyp.js` with the curvature left in. Write the ambient space as
+R^4 with the form `<x,y> = x0y0 + x1y1 + x2y2 + k*x3y3` and the model as
+`<x,x> = k`, degenerating at k = 0 to the affine plane `x3 = 1`:
+
+    k = -1   <x,x> = -1, diag(1,1,1,-1)   the hyperboloid; this is hyp.js
+    k =  0   x3 = 1,     diag(1,1,1, 0)   flat, in homogeneous coordinates
+    k = +1   <x,x> = +1, diag(1,1,1,+1)   the unit 3-sphere in R^4
+
+Then the geodesic from the origin is **one formula in all three**:
+
+    gamma(t) = cosK(t)*o + sinK(t)*u        cosK = cosh | 1 | cos
+                                            sinK = sinh | t | sin
+
+with `cosK^2 + k*sinK^2 = 1` holding throughout — `cosh^2 - sinh^2 = 1`,
+`1 + 0 = 1`, `cos^2 + sin^2 = 1` are the same statement. The `k` in front of
+`sinK^2` IS the curvature. Distance still goes through
+`<p-q,p-q> = 4 sinK(d/2)^2` for the same precision reason as before.
+
+**The regression test is the whole point of the file.** At k = -1 it must give
+the same answers as `hyp.js`, and it does: over 200000 samples the worst
+disagreement is `exp` 4.4e-16, `log` 6.7e-16, `dist` 1.9e-15, and
+`translation` **exactly zero, bit for bit**. A geometry layer that quietly
+changes the existing numbers is a regression wearing a new coat.
+
+**Flat space is the control, and it earns its place.** Every bug in the
+abstraction shows up there first, in arithmetic checkable by hand — distance is
+Pythagoras, a circle of radius 2 has circumference 4*pi, and translations
+COMMUTE, which they do in neither other geometry. That last one is not trivia:
+the failure to commute in H^3 is exactly the holonomy the dash banks.
+
+**The range limit is a fact about hyperbolic space, not about the code.**
+Measured, at d = 10: flat coordinates are 10, hyperbolic are 1.1e4 (they grow
+like `cosh`), spherical are under 1 and always will be. In FLOAT32 — which is
+what the shader has — hyperbolic `<p,p>` is off by 1e-3 by **d = 7**, while
+spherical holds all the way to the antipode. **This is the engineering case for
+S^3**, not novelty: the limit that caps the level size simply does not arise
+there.
+
+It also bit a test. A 400-step random walk in H^3 is BALLISTIC, not diffusive:
+it escapes linearly, reaching d = 11.7, where `<p,p>` must come out to -1 from
+terms of size 3.5e9 and float64 leaves 8e-7 of residue. That read as a flaky
+`reorthonormalize` test — 29 failures in 200 trials in H^3, none in E^3 or S^3
+— and was neither flaky nor a drift problem. The walk is now kept near the
+origin, and the range limit is its own test.
+
+**Geometries are objects, not a mode switch.** `level.js` and `physics.js`
+carry a global "which solid am I in", and getting that out of step with the
+renderer is a whole class of bug. `geometry(k)` returns a value, so two can be
+held at once and compared in a single test with nothing to switch.
 
 ## Game modes
 

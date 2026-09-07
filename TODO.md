@@ -237,7 +237,7 @@ Three hooks:
 
 ## Part 2 — other geometries
 
-### Spherical, S^3  **XL** — the big one, and it pays engineering rent
+### Spherical S^3 — **the math layer is DONE**, the renderer is not  **L**
 
 Not just novelty. Three things change and all three matter:
 
@@ -263,7 +263,7 @@ every SDF assume `asinh`/`sinh` and would need the same treatment. This is the
 XL, and it should not start until the mode system exists, or there will be
 nothing to play in the new geometry.
 
-### Euclidean E^3 on a 3-torus  **M** — do this BEFORE spherical
+### ~~Euclidean E^3: the math layer~~ **DONE** (the torus quotient is not)
 
 The boring case, and that is exactly its value:
 
@@ -342,6 +342,11 @@ because the manifold is compact.
 6. **M5 + Mode 4, hide and seek.** The kit is already 80% there.
 7. **M7 + Mode 5, Rocket League 1v1.**
 8. **M6 (Colyseus)** when a mode actually needs three players.
-9. **E^3 torus**, then **S^3**. Geometry work last, because a new geometry with
-   no modes in it is a tech demo, and this stopped being a tech demo at item 8
-   of CLAUDE.md.
+9. ~~**The geometry math layer**~~ **done** — `geom.js`, 64 tests, E^3/H^3/S^3
+   from one set of formulas, proven identical to hyp.js at k = -1.
+
+   **Next: the quotient groups and the marcher.** The math layer has no
+   fundamental domain and no renderer yet. S^3 needs neither a group (it is
+   already compact) nor the e^{2d} care H^3 needs, so it is the cheaper of the
+   two to draw first. Racing then lands in whichever geometry, and the same
+   track at three curvatures with three lap times is the demo.
