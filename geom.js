@@ -164,11 +164,12 @@ export function geometry(k) {
    * where the second line degenerates to u -> u, and the translation becomes
    * the ordinary affine one. Everything orthogonal to that plane is fixed.
    */
-  function translation(v) {
-    const t = Math.hypot(v[0], v[1], v[2]);
-    if (t < 1e-15) return IDENTITY.slice();
-    const u = [v[0] / t, v[1] / t, v[2] / t, 0];
+  function translationBy(unit, t) {
+    if (t === 0) return IDENTITY.slice();
+    const u = [unit[0], unit[1], unit[2], 0];
     const o = [0, 0, 0, 1];
+    // Signed t needs no special case: cosK is even and sinK is odd in all
+    // three geometries, so a negative distance is the inverse isometry.
     const c = cosK(t, k), s = sinK(t, k);
     const M = IDENTITY.slice();
     // M = I + (c-1) u u^T + s u o^T - k s o u^T + (c-1) o o^T, with plain
@@ -182,6 +183,22 @@ export function geometry(k) {
       }
     }
     return M;
+  }
+
+  /**
+   * The same isometry from one vector whose LENGTH is the distance.
+   *
+   * Both spellings exist because callers genuinely have both, and converting
+   * between them is not free: a caller holding a unit direction and a distance
+   * would otherwise multiply them together only for this to divide them apart
+   * again, and the round trip is not the identity in floating point. Measured,
+   * that round trip alone moved hyp.js's matrices by 1.8e-15 -- small, but it
+   * turned a bit-for-bit agreement into an approximate one for no reason.
+   */
+  function translation(v) {
+    const t = Math.hypot(v[0], v[1], v[2]);
+    if (t < 1e-15) return IDENTITY.slice();
+    return translationBy([v[0] / t, v[1] / t, v[2] / t], t);
   }
 
   /** exp at the ORIGIN: the point a distance |v| away along v. */
@@ -343,7 +360,7 @@ export function geometry(k) {
   return {
     k, flat, CURV,
     dot, ORIGIN, IDENTITY, normalize, matMul, apply, point, frameVec,
-    fromFrame, translation, exp, log, dist, geodesic, rayPoint,
+    fromFrame, translation, translationBy, exp, log, dist, geodesic, rayPoint,
     reorthonormalize, logTo, inv: invIsometry, groupError,
     cosK: (t) => cosK(t, k), sinK: (t) => sinK(t, k), asinK: (s) => asinK(s, k),
     tanK: (t) => tanK(t, k),

@@ -4,13 +4,21 @@
 //
 // The summary line goes LAST and process.exit after IT. See CLAUDE.md.
 //
-// The load-bearing test in this file is not any single identity. It is that at
-// k = -1 this module gives the SAME ANSWERS AS hyp.js, to the last digit. A
-// geometry layer that quietly changes the existing numbers is a regression
-// wearing a new coat, and every other test here would still pass.
+// The load-bearing test here is not any single identity. It is that at k = -1
+// this gives the same answers the game USED to get. A geometry layer that
+// quietly changes the existing numbers is a regression wearing a new coat, and
+// every other test in this file would still pass.
+//
+// That comparison is made against legacy-hyp.js, a frozen copy of the old
+// implementations -- NOT against hyp.js, which now delegates to geom.js and
+// would therefore be comparing geom to itself and passing unconditionally.
 
 import { geometry, E3, H3, S3, cosK, sinK, asinK, CURV } from './geom.js';
 import * as hyp from './hyp.js';
+// The PRE-DELEGATION implementations, frozen. hyp.js now delegates to geom.js,
+// so comparing geom against hyp would compare geom against itself and pass
+// whatever either did. See legacy-hyp.js.
+import * as legacy from './legacy-hyp.js';
 
 let passed = 0, failed = 0;
 function check(name, ok, detail = '') {
@@ -100,7 +108,7 @@ for (const [name, G] of NAMES) {
 }
 
 console.log('');
-console.log('THE regression test: at k = -1 this must match hyp.js exactly');
+console.log('THE regression test: k = -1 must match the PRE-DELEGATION code');
 {
   const G = H3();
   hyp.setSolid(hyp.SOLID.OCTAGON);
@@ -110,15 +118,15 @@ console.log('THE regression test: at k = -1 this must match hyp.js exactly');
     const w = [rnd() * 1.2, rnd() * 1.2, rnd() * 1.2];
 
     // exp
-    const pa = G.exp(v), pb = hyp.exp(v);
+    const pa = G.exp(v), pb = legacy.exp(v);
     worstP = Math.max(worstP, Math.max(...pa.map((x, j) => Math.abs(x - pb[j]))));
 
     // distance
-    const qa = G.exp(w), qb = hyp.exp(w);
-    worstD = Math.max(worstD, Math.abs(G.dist(pa, qa) - hyp.dist(pb, qb)));
+    const qa = G.exp(w), qb = legacy.exp(w);
+    worstD = Math.max(worstD, Math.abs(G.dist(pa, qa) - legacy.dist(pb, qb)));
 
     // log
-    const la = G.log(pa), lb = hyp.log(pb);
+    const la = G.log(pa), lb = legacy.log(pb);
     worstL = Math.max(worstL, Math.max(...la.map((x, j) => Math.abs(x - lb[j]))));
 
     // The isometry itself. hyp.translation takes a UNIT direction and a
@@ -126,26 +134,63 @@ console.log('THE regression test: at k = -1 this must match hyp.js exactly');
     // distance. Same map, different spelling.
     const tv = Math.hypot(v[0], v[1], v[2]);
     const Ta = G.translation(v);
-    const Tb = hyp.translation([v[0] / tv, v[1] / tv, v[2] / tv], tv);
+    const Tb = legacy.translation([v[0] / tv, v[1] / tv, v[2] / tv], tv);
     worstT = Math.max(worstT, Math.max(...Ta.map((x, j) => Math.abs(x - Tb[j]))));
   }
   // 1e-14 rather than 1e-15, measured: over 200000 samples the worst
   // disagreement is 4.4e-16, which is under one ULP at these magnitudes.
   // A 1e-15 tolerance is about one ULP and would flake for no reason.
-  check('exp agrees with hyp.js', worstP < 1e-14, `worst ${worstP.toExponential(2)}`);
-  check('log agrees with hyp.js', worstL < 1e-14, `worst ${worstL.toExponential(2)}`);
-  check('dist agrees with hyp.js', worstD < 1e-14, `worst ${worstD.toExponential(2)}`);
-  check('translation agrees with hyp.js', worstT < 1e-15,
+  check('exp agrees with the pre-delegation code', worstP < 1e-14, `worst ${worstP.toExponential(2)}`);
+  check('log agrees with the pre-delegation code', worstL < 1e-14, `worst ${worstL.toExponential(2)}`);
+  check('dist agrees with the pre-delegation code', worstD < 1e-14, `worst ${worstD.toExponential(2)}`);
+  check('translation agrees with the pre-delegation code', worstT < 1e-15,
     `worst ${worstT.toExponential(2)}`);
 
   // And the form itself, which everything above is built on.
   let worstF = 0;
   for (let i = 0; i < 2000; i++) {
     const a = [rnd(), rnd(), rnd(), rnd()], b = [rnd(), rnd(), rnd(), rnd()];
-    worstF = Math.max(worstF, Math.abs(G.dot(a, b) - hyp.dot(a, b)));
+    worstF = Math.max(worstF, Math.abs(G.dot(a, b) - legacy.dot(a, b)));
   }
-  check('the Minkowski form agrees with hyp.js', worstF < 1e-15,
+  check('the Minkowski form agrees with the pre-delegation code', worstF < 1e-15,
     `worst ${worstF.toExponential(2)}`);
+}
+
+console.log('');
+console.log('and hyp.js, which the GAME uses, still gives the old answers');
+{
+  // The test above proves geom.js matches the old code. This one proves hyp.js
+  // still does, which is the statement the running game depends on -- the
+  // delegation could have been wired up wrongly without geom.js being at fault
+  // at all. It also pins the signature adapter: hyp.translation takes a unit
+  // direction and a distance, geom's takes one vector.
+  let wT = 0, wE = 0, wD = 0, wI = 0, wR = 0;
+  for (let i = 0; i < 3000; i++) {
+    const u0 = [rnd(), rnd(), rnd()];
+    const um = Math.hypot(...u0);
+    const u = [u0[0] / um, u0[1] / um, u0[2] / um];
+    const t = rnd() * 2;                       // SIGNED, both directions
+    const Ta = hyp.translation(u, t), Tb = legacy.translation(u, t);
+    wT = Math.max(wT, ...Ta.map((x, j) => Math.abs(x - Tb[j])));
+
+    const v = [rnd() * 1.5, rnd() * 1.5, rnd() * 1.5];
+    wE = Math.max(wE, ...hyp.exp(v).map((x, j) => Math.abs(x - legacy.exp(v)[j])));
+    wD = Math.max(wD, Math.abs(hyp.dist(hyp.exp(v), hyp.exp(u))
+                             - legacy.dist(legacy.exp(v), legacy.exp(u))));
+    const Ia = hyp.inv(Ta), Ib = legacy.inv(Tb);
+    wI = Math.max(wI, ...Ia.map((x, j) => Math.abs(x - Ib[j])));
+    const Ra = hyp.reorthonormalize(Ta), Rb = legacy.reorthonormalize(Tb);
+    wR = Math.max(wR, ...Ra.map((x, j) => Math.abs(x - Rb[j])));
+  }
+  check('hyp.translation is unchanged, bit for bit, in both directions',
+    wT === 0, `worst ${wT.toExponential(2)}`);
+  check('hyp.inv is unchanged, bit for bit', wI === 0, `worst ${wI.toExponential(2)}`);
+  check('hyp.reorthonormalize is unchanged, bit for bit', wR === 0,
+    `worst ${wR.toExponential(2)}`);
+  check('hyp.exp is unchanged to under one ULP', wE < 1e-14,
+    `worst ${wE.toExponential(2)}`);
+  check('hyp.dist is unchanged to under one ULP', wD < 1e-14,
+    `worst ${wD.toExponential(2)}`);
 }
 
 console.log('');

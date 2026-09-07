@@ -41,10 +41,12 @@ shader; a scene-graph library would hide the parts that matter.
   packing. **No DOM**; the panel that drives it lives in main.js.
 - `geom.js` — the same mathematics as `hyp.js` with the CURVATURE left in as a
   parameter, so E^3 (flat), H^3 and S^3 (spherical) come out of one set of
-  formulas. **Nothing imports it yet** and that is deliberate: it is additive,
-  the running game is untouched, and the first job of `geom.test.js` is to
-  prove it agrees with `hyp.js` to the last digit at k = -1. See "One geometry,
-  three curvatures" below.
+  formulas. **`hyp.js` now delegates its primitives to this**, so the
+  arithmetic exists once. See "One geometry, three curvatures" below.
+- `legacy-hyp.js` — the pre-delegation implementations, frozen, **for tests
+  only, never imported by the game**. The moment `hyp.js` started delegating,
+  the test "geom.js agrees with hyp.js" became a tautology that would pass
+  whatever either did. The comparison is made against this instead.
 - `modes.js` — game modes: rounds, timers, ordered checkpoints, and the hoop
   course. **No DOM**, like physics.js, because this is the part with rules in
   it and rules are worth testing. Hoops are drawn as LINE LOOPS by main.js, not
@@ -53,7 +55,7 @@ shader; a scene-graph library would hide the parts that matter.
 - `main.js` — WebGL2 setup, input, frame loop, rope drawing, the options menu.
 - `index.html` — canvas, HUD, and a boot-error panel (see below).
 - `hyp.test.js` (36), `physics.test.js` (160), `modes.test.js` (78) and
-  `geom.test.js` (64) — `node hyp.test.js`, etc.
+  `geom.test.js` (69) — `node hyp.test.js`, etc.
   **Keep the summary line LAST, and `process.exit` after IT.** Tests appended
   after the summary still run and still print, but are not counted, so the
   total silently understates. Worse, an `if (failed) process.exit(1)` left in
@@ -748,11 +750,34 @@ with `cosK^2 + k*sinK^2 = 1` holding throughout — `cosh^2 - sinh^2 = 1`,
 `sinK^2` IS the curvature. Distance still goes through
 `<p-q,p-q> = 4 sinK(d/2)^2` for the same precision reason as before.
 
-**The regression test is the whole point of the file.** At k = -1 it must give
-the same answers as `hyp.js`, and it does: over 200000 samples the worst
-disagreement is `exp` 4.4e-16, `log` 6.7e-16, `dist` 1.9e-15, and
-`translation` **exactly zero, bit for bit**. A geometry layer that quietly
-changes the existing numbers is a regression wearing a new coat.
+**`hyp.js` DELEGATES to this.** `dot`, `matMul`, `apply`, `inv`, `point`,
+`frameVec`, `reorthonormalize`, `translation`, `exp`, `log` and `dist` are all
+one line each now; what stays in `hyp.js` is everything about THIS space — the
+height fields, both groups, the fundamental domain, the level helpers.
+
+**The regression test is the whole point, and it nearly evaporated.** The test
+was "geom.js agrees with hyp.js"; the moment hyp.js delegated, that compared
+geom to itself and would have passed whatever either did. A regression test
+that cannot fail is worse than none, because it still reads as reassurance.
+So the old implementations are frozen in `legacy-hyp.js` and the comparison is
+made against those. Measured against them: `translation`, `inv` and
+`reorthonormalize` are **identical bit for bit**, and `exp` and `dist` agree
+to under one ULP (4.4e-16 and 1.9e-15 over 200000 samples).
+
+**`translationBy(unit, t)` exists alongside `translation(v)` on purpose.**
+Callers genuinely hold both spellings, and converting between them is not free:
+`hyp.translation` takes a unit direction and a distance, and routing that
+through the single-vector form multiplied them together only for geom to divide
+them apart again. That round trip is not the identity in floating point — it
+moved the matrices by 1.8e-15 and turned a bit-for-bit agreement into an
+approximate one for nothing.
+
+**It costs about 11% of the JS geometry hot path**, measured on
+`tools/march-check.js`: 2919 ms before, 3244 ms after, three runs each and the
+spreads do not overlap. That is one extra call indirection per primitive. It is
+the right trade — march-check is a dev tool, the real marcher is on the GPU,
+and the physics does a handful of these per substep — but it is a real cost and
+not noise.
 
 **Flat space is the control, and it earns its place.** Every bug in the
 abstraction shows up there first, in arithmetic checkable by hand — distance is
