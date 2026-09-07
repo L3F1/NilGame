@@ -15,7 +15,8 @@ import { SPACES, spaceFor, spaceForOption } from './spaces.js';
 import { PRESETS, PRESET_KEYS } from './worlds.js';
 import { createWorldMenu } from './menu.js';
 import { worldMotionFor, motionInput } from './world-motion.js';
-import { makeRacer, raceStep, raceCourse, RACE_SPEED, RACE_LAPS } from './racing.js';
+import { makeRacer, raceStep, raceCourse, RACE_SPEED, RACE_LAPS, BOOST_COST,
+  RACE_GATES } from './racing.js';
 import {
   S3G, s3LapFraction, S3_LAP,
 } from './s3.js';
@@ -2438,7 +2439,16 @@ function drawCourse(basis) {
   if (!course || !courseOn()) return;
   const me = anyProduct() ? H2R.point(player) : point(player);
   for (let i = 0; i < course.hoops.length; i++) {
-    if (racing() && Math.floor(i / 12) !== Math.min(RACE_LAPS - 1, Math.floor((run?.next || 0) / 12))) continue;
+    // ON A SPHERE THE FAR GATES ARE THE BIGGEST THINGS ON SCREEN, and an
+    // overlay is where that stops being a curiosity and becomes a bug.
+    // Apparent size goes like r/sin(d): it is smallest a quarter turn away
+    // and grows again after, so a gate near the antipode fills the sky.
+    // Drawing a whole lap of twelve put every ring you had already passed,
+    // and every one half a world away, across the view as huge concentric
+    // circles -- the ones you could not use were the loudest. Three ahead
+    // is what a racing line needs and is the only range where r/sin(d) is
+    // still doing the ordinary thing.
+    if (racing() && (i < (run?.next || 0) || i > (run?.next || 0) + 2)) continue;
     const taken = run && i < run.next;
     const hoop = course.hoops[i];
     const next = run && i === run.next;
@@ -2940,19 +2950,34 @@ function frame(now) {
   // were meaningless rather than merely zero.
   if (racing()) {
     hud.textContent = `ORBITAL SPRINT / S2 x R\n`
-      + `lap ${Math.min(RACE_LAPS, 1 + Math.floor((run?.next || 0) / 12))}/${RACE_LAPS}`
-      + ` · checkpoint ${Math.min(36, (run?.next || 0) + 1)}/36\n`
+      + `lap ${Math.min(RACE_LAPS, 1 + Math.floor((run?.next || 0) / RACE_GATES))}`
+      + `/${RACE_LAPS}`
+      + ` · checkpoint ${Math.min(RACE_GATES * RACE_LAPS, (run?.next || 0) + 1)}`
+      + `/${RACE_GATES * RACE_LAPS}\n`
       + (run?.phase === PHASE.DONE
         ? `FINISHED ${formatTime(run.t)} · best ${formatTime(run.best)}\n`
         : `time ${formatTime(run?.t || 0)}\n`)
       + `speed ${Math.hypot(vel[0], vel[1]).toFixed(2)} / ${RACE_SPEED}\n`
       + `turbo ${bar(racer.charge, 16)} ${(racer.charge * 100).toFixed(0)}%`
-      + `${racer.boost > 0 ? ' BOOST!' : racer.drift > 0 ? ' CHARGING DRIFT' : ''}\n`
-      + (racer.impact > 0 ? 'HURDLE HIT — jump earlier or go around\n' : '')
+      + `${racer.boost > 0 ? ' BOOST!' : racer.drift > 0 ? ' CHARGING DRIFT'
+        : racer.charge >= BOOST_COST ? ' ready — X to boost' : ' need 30%'}\n`
+      // THE OLD LINE HERE SAID "jump earlier or go around", and going around
+      // is a thing the geometry does not permit: a hurdle is 0.23 of arc in a
+      // road half-width of 0.29, so the on-road gap beside one is 0.060 and
+      // the player is 0.10 across. Every driver who read it drove into the
+      // side of the hurdle and stopped there for ever. What is true is that a
+      // hurdle needs TURBO -- measured, cruising gives 0.413 of clear arc
+      // against the 0.66 a hurdle needs, and turbo gives 0.728 -- or a detour
+      // off the tarmac at 40% speed, which costs 9.91s a lap against 6.65.
+      + (racer.impact > 0
+        ? 'HURDLE HIT — you cannot clear one at cruising speed.\n'
+          + '   Drift to charge, X to boost, then Space. Or leave the road.\n'
+        : '')
       + '\nW accelerate · S brake/coast · A/D steer · Shift drift\n'
       + 'X turbo · Space jump · R / K restart · O worlds\n'
       + 'Stay on the gold road. Green gates count in order.\n'
-      + 'Drift through turns to recharge turbo. Jump orange hurdles.';
+      + 'A HURDLE NEEDS TURBO: drift the turns, boost, then jump.\n'
+      + 'Or go round it off the road, at 40% speed.';
     requestAnimationFrame(frame);
     return;
   }
@@ -3069,8 +3094,16 @@ RUN DEAD STRAIGHT AND YOU COME BACK HERE, after ${S2R.S2R_LAP.toFixed(2)}
         : `time ${formatTime(run?.t || 0)} · gate ${(run?.next || 0) + 1}/${course?.hoops.length || 5}\n`)
       + `height ${z.toFixed(1)} · fall ${(-vel[2]).toFixed(1)}\n`
       + (gate ? `opening ${H2R.horizDist(H2R.point(player), gate.at).toFixed(2)} away\n` : '')
-      + '\nPass through the green rings and holes in the solid barriers.\n'
-      + 'Touch a barrier or column: die and restart. Miss a gate: retry.\n'
+      + '\nFly through the green rings, in order.\n'
+      // The columns are SCENERY you bounce off, not hazards. This line used
+      // to say a column kills you, which was true for one commit and made
+      // the course unfinishable at every input: the gate ring stands only
+      // 0.220 clear of one, having been searched on the footing that they
+      // were harmless.
+      + 'Between each pair of gates is a solid BAFFLE with one hole,\n'
+      + 'on the line from this gate to the next: the gates say WHERE,\n'
+      + 'the baffles say you were ON THE WAY. Hit one and you restart.\n'
+      + 'The columns are solid but harmless -- you bounce off them.\n'
       + 'WASD steer · mouse look · R / K retry · O worlds';
     requestAnimationFrame(frame);
     return;

@@ -36,12 +36,18 @@ distance — one thing changes), then SL~(2,R), then Sol. See CLAUDE.md,
 
 ## Current gameplay pass
 
-- In progress: lethal H2 x R dropper baffles, swept impact detection, automatic
-  restart, and a visible attempt count.
-- In progress: S2 x R arcade circuit with steering, drift charge, turbo,
-  jumping, physical hurdles, ordered checkpoints, and a timed finish.
-- Validate both through complete simulated runs and real-browser checks,
-  then measure shader link cost and push the completed work.
+- DONE: lethal H2 x R dropper baffles, swept impact detection, automatic
+  restart, and a visible attempt count. The baffles are now holed on the LINE
+  between consecutive gates rather than over the gate above, and the column
+  field is scenery again -- making it lethal had invalidated the gate search
+  and left the course at 0/5 for every input. Aimed 5/5 in 11.35 s.
+- DONE: S2 x R arcade circuit. The mechanic was already there and undiscoverable:
+  a hurdle cannot be cleared at cruising speed and can be on turbo, so drifting
+  the turns pays for the jumps. 6.81 s a lap boosted against 22.92 s round.
+  Gates resized so they stop overlapping each other and match the road.
+- Both are simulated end to end in `racing.test.js` (44), checked in a real
+  browser by `page-check --worlds`, and the race track is now one of
+  `sdf-check`'s four cases.
 - Done: E^3/Lambda, the flat 3-manifolds. The control the other five are
   measured against, and the only world where a ported map is the map.
 

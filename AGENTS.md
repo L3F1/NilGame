@@ -103,9 +103,10 @@ shader; a scene-graph library would hide the parts that matter.
 - `index.html` — canvas, HUD, and a boot-error panel (see below).
 - `hyp.test.js` (36), `physics.test.js` (160), `modes.test.js` (78),
   `geom.test.js` (69), `s3.test.js` (28), `h2r.test.js` (51),
-  `s2r.test.js` (62), `port.test.js` (52) and `e3t.test.js` (63) —
-  `node hyp.test.js`, etc., or `node tools/test.js` for all of them.
-  599 in all, plus `spaces.test.js` and `world-motion.test.js`.
+  `s2r.test.js` (62), `port.test.js` (52), `e3t.test.js` (63) and
+  `racing.test.js` (44) — `node hyp.test.js`, etc., or `node tools/test.js`
+  for all of them. 643 in all, plus `spaces.test.js` and
+  `world-motion.test.js`.
   **Keep the summary line LAST, and `process.exit` after IT.** Tests appended
   after the summary still run and still print, but are not counted, so the
   total silently understates. Worse, an `if (failed) process.exit(1)` left in
@@ -156,8 +157,11 @@ is black" with no other information costs an hour every time.
   kills the GPU process mid-link and the page dies with an empty error. This is
   the only tool that can see that, and it is the bug that broke the page.
 - `node tools/sdf-check.js` — evaluates the GLSL on a real GPU at a few
-  thousand points per world and compares against the JS. Three cases now: the
-  hyperbolic level, the flat slab and the flat 3-torus. **Run after touching
+  thousand points per world and compares against the JS. FOUR cases: the
+  hyperbolic level, the flat slab, the flat 3-torus, and S^2 x R with the race
+  track on — that last one added because `race-track.js` was the only
+  double-written scene nothing checked, and its two halves had drifted onto
+  different arithmetic for the same distance. **Run after touching
   either half of any of them** — five worlds write their scene out twice from
   shared data with unshared arithmetic, which is the duplication this exists to
   catch and the reason a shared emitter is the next infrastructure job.
@@ -1560,6 +1564,144 @@ HYPERBOLIC fold.
 too.** It is not that there are no self copies -- there are, and they come
 free. It is that `selfHist`, the ring of FOLDED samples plus the group elements
 linking them, is built on the hyperbolic fold.
+
+## Two modes that shipped unplayable, and what it took to notice
+
+`racing.js` (the orbital sprint, S^2 x R) and the dropper's lethal baffles
+(`h2r.js`) both arrived complete-looking, both booted, both drew correctly, and
+**neither could be finished by any input whatsoever.** Neither had a test.
+
+That is the whole lesson, and it is the one this project already knew: the
+opponent spawn, the grapple ring, the dropper's gate layout and the flat
+world's rods were all SEARCHED FOR against criteria simulated on the real
+integrator, precisely because a layout that looks right and cannot be played
+is invisible from a screenshot. These two were written down instead.
+
+Both are now searched and both have `racing.test.js` behind them, 44 tests.
+
+### The dropper: 0/5 at every input from 0.0 to 1.0
+
+Two independent faults, and the second is the more instructive.
+
+**The baffles were holed over the wrong gate.** A baffle is a horizontal slab
+across the shaft with one hole in it, and each sat 0.5 below its own gate with
+the hole concentric with that gate. But the NEXT gate is 2.937 sideways, so the
+hole was nowhere near the path: pass one gate, and the only way onward was
+through solid slab.
+
+The fix is what a baffle is FOR. A gate says "be here at this height". A baffle
+says "and be ON THE WAY between here and the next one" -- which is the
+constraint the mode's own skill argument is about, since an aiming error `e` at
+distance `d` misses by `sinh(d) e` while the gate's apparent size falls like
+`1/sinh(d)`. Without one, nothing checks the line, only the endpoints. So the
+hole goes at the midpoint of the geodesic between consecutive gates, at the
+midpoint height. **SEARCHED** over height fraction and hole radius, 36
+candidates against the four original criteria, 6 passed:
+
+    frac 0.50, hole 0.95   aimed 5/5 in 11.35s   lazy(0.55) 1/5   no input 0/5
+
+picked because its hole rim stands **0.348** clear of the column field, widest
+of the six. Two numbers say it is not decoration:
+
+- **the aimed line uses 94% of a hole and 54% of a gate**, so the baffle is the
+  TIGHTER of the two constraints, which is the only reason to have one;
+- **an 0.85-input run dies ON A BAFFLE** rather than merely missing a gate,
+  which is the difference between a hazard and a checkpoint.
+
+And 11.35 s is exactly what the aimed run cost before baffles existed, so a
+correct line pays nothing for them.
+
+**THE COLUMNS WERE MADE LETHAL, AND THAT INVALIDATED A SEARCH THAT HAD ALREADY
+BEEN RUN.** This is the one to remember. The gate ring was searched with the
+column field as SCENERY -- CLAUDE.md records "Ring clearance from the columns
+0.260", and a gate's RIM comes within **0.220** of a column with the player
+0.10 across. Adding the columns to the lethal set turned a 0.12 margin into
+instant death, and the aimed run died at altitude 42.6, above every baffle,
+having flown out to the 1.70 column ring on its way to a gate at radius 1.5.
+
+The columns are scenery and stay scenery. They are still SOLID -- they are in
+`h2rSDF`, so `h2rCollide` stops you -- which is the honest reading: you bounce
+off the furniture and you die on the course. `dropperObstacleSDF` is the
+baffles and nothing else.
+
+**A lethal surface must be tested SWEPT.** The slab is 0.16 thick against a
+player 0.20 across, so the hit zone is 0.36 and a single fast substep can start
+above it and end below it with neither endpoint inside -- a point test reports
+a clean pass through solid rock. `dropperImpact` sphere-traces the substep;
+`racing.test.js` builds exactly that tunnelling case and checks both that the
+sweep catches it and that a point test at either end would not have.
+
+### The race: stopped dead at arc 1.241, told to do the impossible
+
+**The HUD recommended a detour the road is too narrow for.** A hurdle is 0.23
+of arc in a road of half-width 0.29, so the on-road gap beside one is **0.060
+against a player 0.10 across** -- and the only text on screen said "jump
+earlier or go around". Every driver drove into the side of it and stayed there.
+
+The mode already had the right mechanic and never said so. Measured against the
+jump the racer actually has (apex 0.405, hang 0.600 s, a top at 0.14 to clear
+plus the player's own 0.10):
+
+    arc covered while clear of the top   0.413 at road speed
+                                         0.728 on turbo
+    arc a hurdle of radius r needs       2r + 0.20  =  0.66
+
+**You cannot clear a hurdle at cruising speed. You can on turbo.** So drifting
+the turns pays for the jumps, which is the loop an arcade racer wants, and it
+was all there and undiscoverable. On the real integrator: **6.81 s a lap on the
+boosted line, 22.92 s on the off-road detour, and a run that does neither stops
+dead** -- at arc 1.240 against a hurdle edge computed at 1.241.
+
+The gap beside a hurdle is left impassable rather than widened. A hurdle you
+can thread on the tarmac is one nobody ever jumps.
+
+**The gates overlapped each other and were wider than the road.** Twelve of
+radius 0.40 sat 0.524 apart: a diameter of 0.80 in a gap of 0.52, so the course
+was a tunnel of interpenetrating rings rather than a line of checkpoints. And
+at 0.40 against a road half-width of 0.29 you could be off the tarmac and still
+score, so the two instructions the mode gives -- stay on the road, take the
+gates -- pulled apart. Now **ten of radius 0.30**: they clear each other (0.600
+in 0.628), they match the road, and ten does not divide the lap into quarters,
+so no gate lands on a hurdle at a quarter and three quarters of the way round.
+
+**ON A SPHERE THE FAR GATES ARE THE BIGGEST THINGS ON SCREEN**, and an overlay
+is where that stops being a curiosity and becomes a bug. Apparent size goes
+like `r/sin(d)`: smallest a quarter turn away and growing again after. Drawing
+a whole lap put every ring already passed, and every one half a world away,
+across the view as huge concentric circles -- **the ones you could not use were
+the loudest.** Three ahead is what a racing line needs and is the only range
+where `r/sin(d)` is still doing the ordinary thing.
+
+**And `raceObstacleSDF` used `Math.acos` of the inner product.** Algebraically
+the arc distance, numerically the wrong way to get it: `acos` loses precision
+exactly where its argument is near 1, which is where two points are CLOSE --
+the only regime a collision test ever runs in. Worse, its GLSL half used
+`hHorizDist`, the `4 sin^2(d/2)` form, so **the two sides did different
+arithmetic for the same number** -- precisely the drift `tools/sdf-check.js`
+exists to catch, and could not, because `race-track.js` was not one of its
+cases. It is now, and it agrees to 9.1e-8.
+
+**Two smaller ones worth the note:** `racing.js` carried its own bare `0.29`
+for the road width beside `race-track.js`'s `RACE_WIDTH`, which is two places
+for one number in a file pair that exists to have one; and `race-track.js`
+importing `horizDist` back out of `s2r.js` makes an import CYCLE, since `s2r`
+imports it to emit its GLSL. The cycle happens to work, because nothing calls
+across it at module scope, and that is exactly the kind of thing that stops
+working when someone adds a constant. The identity is three lines; it is
+written out.
+
+### `tools/sdf-check.js` grew a fourth case and a failure mode
+
+It now checks the hyperbolic level, both flat worlds and S^2 x R with the race
+track on. Adding the fourth broke it in a way worth naming, because the symptom
+named nothing: **`browser failed: exit null`, with the page having run
+perfectly.** The page embeds its own sample points and `--dump-dom` hands the
+whole document back, so input and output came home in one buffer -- past
+`execFileSync`'s 1 MB `maxBuffer`, which kills the child with SIGTERM. The
+script node now removes itself before the dump, `maxBuffer` is 64 MB as the
+belt to that brace, and the error message distinguishes the two cases that look
+identical from outside: a kill with output already produced is this side's
+buffer, and one without is the shader or the time budget.
 
 ## Modes take options away, and they do it through `optVal`
 

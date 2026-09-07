@@ -52,6 +52,8 @@ function findBrowser() {
 const { levelGLSL, domainMap } = await import(pathToFileURL(join(ROOT, 'level.js')).href);
 const { fromFloor, domainDepth } = await import(pathToFileURL(join(ROOT, 'hyp.js')).href);
 const E3T = await import(pathToFileURL(join(ROOT, 'e3t.js')).href);
+const S2R = await import(pathToFileURL(join(ROOT, 's2r.js')).href);
+const TRACK = await import(pathToFileURL(join(ROOT, 'race-track.js')).href);
 
 // Deterministic sample points, so a failure repeats.
 const N = 16 * 16, BATCHES = 12;
@@ -122,6 +124,46 @@ const float uOpen = ${open}.0;
 ${E3T.e3tGLSL()}
 vec2 worldMap(vec4 p) { return e3tWorld(p); }`,
     })),
+  {
+    // S^2 x R WITH THE RACE TRACK ON. This case exists because race-track.js
+    // is the fifth place in the project that writes a scene out twice, and it
+    // was the only one nothing checked -- which is how its JS half came to use
+    // Math.acos of the inner product while its GLSL half used the half-angle
+    // form. Same number, different arithmetic, and only near contact does the
+    // difference show, which is the one place a collision test lives.
+    name: 'S^2 x R, race track on',
+    // On and just above the road, where the hurdles are and where a car is.
+    batches: sample(() => {
+      const t = rnd() * 2 * Math.PI, w = (rnd() - 0.5) * 1.4;
+      return [Math.sin(t) * Math.cos(w), Math.sin(w), rnd() * 1.2, Math.cos(t) * Math.cos(w)];
+    }),
+    js: (p) => {
+      const m = S2R.s2rMap(p);
+      const d = TRACK.raceObstacleSDF(p);
+      // s2rGLSL repaints the floor material inside the road before testing the
+      // hurdles, so the JS side has to do the same or every road sample is a
+      // material mismatch rather than a distance one.
+      let mat = m[1];
+      if (mat === 1 && Math.abs(Math.asin(Math.max(-1, Math.min(1, p[1])))) < TRACK.RACE_WIDTH) {
+        mat = 5;
+      }
+      return d < m[0] ? [d, TRACK.RACE_HURDLE_MAT] : [m[0], mat];
+    },
+    // Spherical coordinates are bounded by 1 at every distance, so this holds
+    // the flat build's tolerance rather than the hyperbolic one's.
+    tol: 2e-5,
+    glsl: `
+const float kS = 1.0;
+const float uRace = 1.0;
+float asinS(float x) { return asin(clamp(x, -1.0, 1.0)); }
+float hdot(vec4 a, vec4 b) { return a.x*b.x + a.y*b.y + kS*a.w*b.w; }
+float hHorizDist(vec4 p, vec4 q) {
+  vec4 w = p - q;
+  return 2.0 * asinS(sqrt(max(hdot(w, w), 0.0)) * 0.5);
+}
+${S2R.s2rGLSL()}
+vec2 worldMap(vec4 p) { return s2rWorld(p); }`,
+  },
 ];
 
 const fragFor = (c) => `#version 300 es
@@ -181,6 +223,13 @@ try {
   out.push('DATA ' + JSON.stringify(cases));
 } catch (e) { out.push('FAIL ' + e.message); }
 document.getElementById('o').textContent = 'BEGIN\\n' + out.join('\\n') + '\\nEND';
+// Drop the script node before the DOM is dumped. It carries every sample point
+// of every case, and --dump-dom would hand all of them back as part of the
+// result -- input and output in one buffer, which at four cases went past
+// execFileSync's 1 MB maxBuffer and got the browser killed with SIGTERM. The
+// failure read as 'browser failed: exit null' with no other clue, and the page
+// had run correctly the whole time.
+document.currentScript.remove();
 </script></body>`;
 
 const dir = mkdtempSync(join(tmpdir(), 'sdfcheck-'));
@@ -195,11 +244,23 @@ try {
     '--no-first-run', '--no-default-browser-check',
     '--disable-background-networking', '--disable-sync', '--disable-extensions',
     '--enable-unsafe-swiftshader', '--use-angle=swiftshader',
-    '--virtual-time-budget=8000', '--dump-dom',
+    // Four programs now, and the S^2 x R one carries 26 columns plus the race
+    // track, so SwiftShader needs longer than the 8 s that served one.
+    '--virtual-time-budget=30000', '--dump-dom',
     'file:///' + file.replace(/\\/g, '/'),
-  ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 180000 });
+    // maxBuffer as well as the script removal above, as the belt to that
+    // brace: the results alone grow with every case added here.
+  ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    timeout: 300000, maxBuffer: 64 * 1024 * 1024 });
 } catch (e) {
+  // Name the two failures that look identical from here, because they do not
+  // have the same cause: a timeout is the shader, and a SIGTERM with output
+  // already produced is this process's own maxBuffer.
   console.error('browser failed:', e.killed ? 'timed out' : `exit ${e.status}`);
+  if (e.signal) console.error(`  killed by ${e.signal};`
+    + (e.stdout ? ' it had already produced output, so suspect maxBuffer'
+      : ' no output, so suspect the shader or the budget'));
+  console.error('  page kept at', file);
   process.exit(2);
 }
 

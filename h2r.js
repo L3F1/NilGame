@@ -251,6 +251,8 @@ export function h2rMap(p) {
     const d = horizDist(p, c.c) - c.r;
     if (d < best) { best = d; mat = c.mat; }
   }
+  // The baffles are drawn as part of the world, and they are the only lethal
+  // thing in it; the columns above are ordinary scenery you bounce off.
   const obstacle = dropperObstacleSDF(p);
   if (obstacle < best) { best = obstacle; mat = 6; }
   return [best, mat];
@@ -514,18 +516,76 @@ export function gateRing(gate, n = 48) {
 /** Where a run starts: on the deck, above the first gate's ring. */
 export const dropperStart = () => placeAt(0, 0, H2R_TOP_Z);
 
-// Horizontal slabs with circular holes, authored from the gate positions.
-// A rim sits just below its checkpoint so the next opening stays visible.
+// --- the baffles, and they are what makes a gate a LINE rather than a point --
+//
+// A gate says "be here at this height". A baffle says "and be ON THE WAY
+// between here and the next one", which is the constraint the mode's own skill
+// argument is about: an aiming error e at distance d misses by sinh(d) e and
+// the gate's apparent size falls like 1/sinh(d), so committing to the line
+// early is worth exponentially more than correcting late. Without a baffle
+// nothing checks the line, only the endpoints.
+//
+// So a baffle is a horizontal slab spanning the shaft with ONE hole, and the
+// hole sits at the midpoint of the geodesic from gate i to gate i+1, at the
+// midpoint height. THE FIRST VERSION PUT THE HOLE OVER THE GATE IT FOLLOWED,
+// which is the same thing as not having one: the next gate is 2.937 sideways,
+// so the hole was nowhere near the path and the course was unfinishable at
+// every input from 0.0 to 1.0.
+//
+// SEARCHED, over the height fraction and the hole radius, against the same
+// four criteria the gate layout was searched against. 36 candidates, 6 passed:
+//
+//     frac 0.50, hole 0.95   aimed 5/5 in 11.35s   lazy(0.55) 1/5   none 0/5
+//
+// and it is the pick because the hole rim stands 0.348 clear of the column
+// field -- widest of the six -- while still binding: the aimed line passes
+// 0.672 from the hole centre, using 71% of the hole, against 53% of a gate's
+// radius. THE BAFFLE IS THE TIGHTER OF THE TWO CONSTRAINTS, which is the whole
+// reason to have it. 11.35s is also exactly what the aimed run cost before the
+// baffles existed, so a correct line pays nothing for them.
 export const DROP_OPENING = 0.95;
 export const DROP_THICK = 0.08;
-export const DROP_BAFFLES = dropperCourse().hoops.slice(0, -1).map((g) => ({
-  at: [g.at[0], g.at[1], g.z - 0.5, g.at[3]],
-}));
+export const DROP_BAFFLE_F = 0.50;
 
-/** Conservative signed distance to the lethal solids, excluding the floor. */
+/** The hole centres: midway along the geodesic between consecutive gates. */
+function baffleAt(a, b, f = DROP_BAFFLE_F) {
+  const A = translation(log(a.at));
+  const v = logTo(A, b.at);
+  const m = Math.hypot(v[0], v[1]);
+  // A purely vertical hop would leave no direction to walk; the gates never do
+  // that (they are 2.937 apart) but the guard costs nothing.
+  const at = m < 1e-9 ? a.at : rayPoint(A, [v[0] / m, v[1] / m, 0], m * f);
+  return [at[0], at[1], a.z + (b.z - a.z) * f, at[3]];
+}
+
+export const DROP_BAFFLES = (() => {
+  const g = dropperCourse().hoops;
+  return g.slice(0, -1).map((a, i) => ({ at: baffleAt(a, g[i + 1]) }));
+})();
+
+/**
+ * Signed distance to the LETHAL solids, which is the baffles and NOTHING else.
+ *
+ * The columns are deliberately not in here, and that is the fix rather than an
+ * oversight. They are scenery -- the field that makes the hyperbolic floor
+ * plan legible as you fall past it -- and the gate ring was SEARCHED against
+ * them on exactly that footing: a gate's rim comes within 0.220 of a column,
+ * with the player 0.10 across. Making them lethal retroactively invalidated
+ * that search, and it showed: the aimed run died at altitude 42.6, above every
+ * baffle, having flown out to the 1.70 column ring on its way to a gate at
+ * radius 1.5. Every input from 0.0 to 1.0 scored 0/5.
+ *
+ * They are still SOLID -- they are in `h2rSDF`, so `h2rCollide` stops you --
+ * which is the honest reading: you bounce off the scenery and you die on the
+ * course furniture.
+ *
+ * Exact inside and an underestimate outside, which is the safe direction for
+ * the sphere trace in `dropperImpact`: above the slab AND inside the hole both
+ * terms are positive and the true distance is their hypotenuse, which is
+ * larger than the max taken here.
+ */
 export function dropperObstacleSDF(p) {
   let d = Infinity;
-  for (const c of H2R_COLUMNS) d = Math.min(d, horizDist(p, c.c) - c.r);
   for (const b of DROP_BAFFLES) d = Math.min(d,
     Math.max(Math.abs(p[2] - b.at[2]) - DROP_THICK,
       DROP_OPENING - horizDist(p, b.at)));
