@@ -48,6 +48,7 @@ import {
 // DIFFERENT space, and mixing the two is the class of bug that draws black.
 // H2R.point is unambiguous at every call site; a bare `point` never would be.
 import * as H2R from './h2r.js';
+import * as S2R from './s2r.js';
 import {
   packState, netLive, netState, netNote, netOnPacket, netSendPacket,
   netHost, netJoin, netFinish, netConnectVia,
@@ -277,7 +278,10 @@ function link(name, vs, fs) {
 // not milliseconds. So only the world actually being played is built: the
 // hyperbolic one at startup, exactly as before, and each other the first time
 // it is asked for. Nobody who never opens the option pays for it.
-const GEOM_NAMES = { h3: 'scene', s3: 'scene (spherical)', h2r: 'scene (H^2 x R)' };
+const GEOM_NAMES = {
+  h3: 'scene', s3: 'scene (spherical)',
+  h2r: 'scene (H^2 x R)', s2r: 'scene (S^2 x R)',
+};
 const sceneProgs = new Map();
 function sceneFor(key) {
   if (!sceneProgs.has(key)) {
@@ -560,7 +564,7 @@ const opts = {
   // gravity (a sphere admits no unit-gradient height function, so there is no
   // honest "down"), and none of the fighting kit, all of which is built on
   // hyp.js. The locks below take those away rather than leaving dead keys.
-  curv:       { label: 'Curvature',    values: ['hyperbolic', 'spherical', 'H^2 x R'], i: 0 },
+  curv:       { label: 'Curvature',    values: ['hyperbolic', 'spherical', 'H^2 x R', 'S^2 x R'], i: 0 },
   field:      { label: 'Gravity',      values: ['floor plane', 'beacon', 'none'], i: 0 },
   light:      { label: 'Light speed',  values: ['instant', 'fast', 'slow'],   i: 0 },
   move:       { label: 'Movement',     values: ['walking', 'rolling'],        i: 0 },
@@ -582,7 +586,7 @@ const opts = {
   //            enough holonomy of the right SIGN, so you must swing around
   //            something the right way round to get through. About what you
   //            do. Wants gravity and the rope.
-  course:     { label: 'Course (K)',   values: ['off', 'hoops', 'grapple', 'dropper'], i: 0 },
+  course:     { label: 'Course (K)',   values: ['off', 'hoops', 'grapple', 'dropper', 'lap'], i: 0 },
   // What Q spends the banked holonomy on. 'sign decides' is the interesting
   // one: sweptArea is SIGNED, so going round something one way charges a dash
   // and the other way charges a blast, and there is no third option where you
@@ -1044,11 +1048,36 @@ function computeForced() {
     lock('portals', 'off', 'hyperbolic only');
     lock('light', 'instant', 'no self copies without a quotient');
     lock('course', 'dropper', 'the mode this geometry is for');
-  } else if (rawVal('course') === 'dropper') {
-    // And the other way round: a dropper needs a Euclidean height, so it does
-    // not exist in either constant-curvature world. Saying so in the menu is
-    // better than a course option that silently builds a hoop run.
+  }
+
+  // S^2 x R takes the same family, and for the same reasons -- but NOT
+  // gravity, and not the camera: this is the one world here with a compact
+  // floor AND an honest down, so both are real settings rather than pinned
+  // ones. What it cannot have is the hyperbolic kit and the hyperbolic
+  // courses, which are built on hyp.js and its group top to bottom.
+  if (rawVal('curv') === 'S^2 x R') {
+    lock('field', 'floor plane', 'the floor is z = 0');
+    lock('upright', 'free', 'the frame never tilts');
+    lock('move', 'walking', 'no rolling model here yet');
+    lock('edges', 'hide', 'no fundamental domain');
+    lock('foe', 'off', 'hyperbolic only');
+    lock('boomerang', 'off', 'hyperbolic only');
+    lock('build', 'off', 'hyperbolic only');
+    lock('portals', 'off', 'hyperbolic only');
+    lock('light', 'instant', 'no self copies without a quotient');
+    lock('course', 'lap', 'the mode this geometry is for');
+  }
+
+  // And the other way round: each product's course needs that product's
+  // height, so neither exists in a constant-curvature world nor in the other
+  // product. Saying so in the menu beats a course option that silently builds
+  // something else.
+  const wantCourse = rawVal('course');
+  if (wantCourse === 'dropper' && rawVal('curv') !== 'H^2 x R') {
     lock('course', 'off', 'H^2 x R only');
+  }
+  if (wantCourse === 'lap' && rawVal('curv') !== 'S^2 x R') {
+    lock('course', 'off', 'S^2 x R only');
   }
 
   // A course is a time trial. Everything that exists to fight with is off:
@@ -1131,6 +1160,11 @@ const PRESETS = {
     label: 'The dropper',
     note: 'H^2 x R: a Euclidean fall through a hyperbolic floor plan',
     set: { curv: 'H^2 x R', course: 'dropper', fog: 'thin', quality: 'medium' },
+  },
+  lap: {
+    label: 'Round the world',
+    note: 'S^2 x R: a compact floor, real gravity, and no group anywhere',
+    set: { curv: 'S^2 x R', course: 'lap', fog: 'thin', quality: 'medium' },
   },
 };
 const PRESET_KEYS = Object.keys(PRESETS);
@@ -1705,10 +1739,40 @@ function sphericalWorld() { return optVal('curv') === 'spherical'; }
  */
 function productWorld() { return optVal('curv') === 'H^2 x R'; }
 
+/**
+ * S^2 x R: a SPHERICAL floor plan with the same honest Euclidean height, and
+ * the exact mirror of the bounded world.
+ *
+ * The bounded world's floor wraps because a GROUP glues one octagon to the
+ * next. This one's wraps because it is a sphere -- no group, no fundamental
+ * domain, no fold, no straddle copy. Same shape of world, opposite mechanism
+ * and opposite curvature, and running the hoop course in one and the lap
+ * course in the other back to back is the cleanest way to feel what a
+ * quotient actually is: the experience is identical and only the reason
+ * differs.
+ *
+ * It is also the FIRST world here with a compact floor AND honest gravity.
+ * H^3/Gamma is compact but "down" has to be chosen; S^3 is compact and admits
+ * no gravity at all; H^2 x R has honest gravity over an infinite floor. This
+ * one has both, because z is affine exactly as it is in H^2 x R and the floor
+ * closes up for free.
+ *
+ * And the fact you feel first: ANY TWO GEODESICS ON A SPHERE MEET, TWICE. On
+ * the H^2 floor almost none do -- they diverge like e^d, which is why
+ * flanking is cheap there and a straight chase is a losing move. Here running
+ * straight away from someone running straight is how you meet them on the far
+ * side. You cannot escape by going straight.
+ */
+function sphereFloorWorld() { return optVal('curv') === 'S^2 x R'; }
+
+/** Either product: a curved floor plan with a flat, honest height. */
+function anyProduct() { return productWorld() || sphereFloorWorld(); }
+
 /** Which scene program the options are asking for. */
 function geomKey() {
   if (sphericalWorld()) return 's3';
   if (productWorld()) return 'h2r';
+  if (sphereFloorWorld()) return 's2r';
   return 'h3';
 }
 
@@ -1729,6 +1793,18 @@ function hideBoot() {
  * spherical program leaves every ray off the 3-sphere and draws black.
  */
 function resetForCurvature() {
+  if (sphereFloorWorld()) {
+    // On the floor at the start line, facing along the lap. Level pitch, not
+    // the dropper's steep one: here you run rather than fall.
+    player = S2R.lapStart();
+    vel = [0, 0, 0];
+    yaw = 0; pitch = 0; roll = 0; rollRate = 0;
+    tilt = [0, 0]; tiltVel = [0, 0]; prevVel = [0, 0, 0];
+    camSwing = { axis: [0, 0, 1], angle: 0, vel: 0 };
+    grapple = null;
+    banked = 0;
+    return;
+  }
   if (productWorld()) {
     // On the deck at the top of the shaft, looking down. The pitch matters:
     // the gates are below you and a run timed from a camera aimed at the
@@ -1806,6 +1882,27 @@ function h2rWant(basis) {
 }
 
 /**
+ * One substep of running on the sphere floor, and the run's clock with it.
+ *
+ * The same three calls the other two slices use -- control, step, collide --
+ * plus a jump, which is here because the height is EUCLIDEAN and a jump is the
+ * one place a player notices that: it is the schoolbook parabola, apex
+ * exactly v^2/2g, and it is identical at every running speed because the two
+ * factors of the product do not interact.
+ */
+function stepS2R(h, want) {
+  const p0 = S2R.point(player);
+  const onGround = S2R.grounded(player, S2R.s2rSDF);
+  if (onGround && keys.has('Space')) vel = S2R.jump(vel);
+  vel = S2R.s2rControl(vel, want, onGround, h);
+  [player, vel] = S2R.s2rStep(player, vel, h);
+  [player, vel] = S2R.s2rCollide(player, vel, S2R.s2rSDF);
+  if (run && course) {
+    if (runStep(run, h, p0, S2R.point(player), null) >= 0) hoopFlash = 0.35;
+  }
+}
+
+/**
  * One substep of the fall, and the run's clock with it.
  *
  * The run is advanced HERE rather than in the shared block below because that
@@ -1826,6 +1923,7 @@ function stepH2R(h, want) {
 
 function courseOn() { return optVal('course') !== 'off'; }
 function buildCourse() {
+  if (optVal('course') === 'lap') return S2R.lapCourse();
   if (optVal('course') === 'dropper') return H2R.dropperCourse();
   return optVal('course') === 'grapple' ? grappleCourse() : geodesicCourse(0, 6);
 }
@@ -1852,7 +1950,8 @@ function ensureCourse() {
  * components, so inverting it is one atan2 and one asin.
  */
 function aimAt(q) {
-  const lv = productWorld() ? H2R.logTo(player, q) : logTo(player, q);
+  const lv = sphereFloorWorld() ? S2R.logTo(player, q)
+    : productWorld() ? H2R.logTo(player, q) : logTo(player, q);
   const m = Math.hypot(lv[0], lv[1], lv[2]);
   if (m < 1e-9) return;
   yaw = Math.atan2(lv[1], lv[0]);
@@ -1882,7 +1981,7 @@ function beginRun() {
   // The dropper is its own start: back on the deck at the top of the shaft,
   // stationary, looking down at the first gate. resetForCurvature already
   // does exactly that, so the run and the respawn are the same act.
-  if (productWorld()) {
+  if (anyProduct()) {
     ensureCourse();
     const best0 = run ? run.best : null;
     course = buildCourse();
@@ -2204,7 +2303,8 @@ function project(q, basis) {
   // the screen really is the one the crosshair is on. In H^2 x R that is a
   // different function on a different form; using the hyperbolic one on a
   // product placement draws the course somewhere it is not.
-  const lv = productWorld() ? H2R.logTo(player, q) : logTo(player, q);
+  const lv = sphereFloorWorld() ? S2R.logTo(player, q)
+    : productWorld() ? H2R.logTo(player, q) : logTo(player, q);
   const m = Math.hypot(lv[0], lv[1], lv[2]);
   if (m < 1e-9) return null;
   const u = [lv[0] / m, lv[1] / m, lv[2] / m];
@@ -2282,7 +2382,7 @@ function drawRope(basis) {
  */
 function drawCourse(basis) {
   if (!course || !courseOn()) return;
-  const me = productWorld() ? H2R.point(player) : point(player);
+  const me = anyProduct() ? H2R.point(player) : point(player);
   for (let i = 0; i < course.hoops.length; i++) {
     const taken = run && i < run.next;
     const hoop = course.hoops[i];
@@ -2300,8 +2400,9 @@ function drawCourse(basis) {
     // No group here, so no nearest copy to look for: a point of H^2 x R has
     // exactly one name. hoopNear would be asking the octagon group about a
     // point that does not satisfy its form.
-    const ring = productWorld() ? H2R.gateRing(hoop, 40)
-      : hoopRing(hoopNear(hoop, me), 40);
+    const ring = sphereFloorWorld() ? S2R.gateRing(hoop, 40)
+      : productWorld() ? H2R.gateRing(hoop, 40)
+        : hoopRing(hoopNear(hoop, me), 40);
     for (const q of ring) {
       const ndc = project(q, basis);
       if (ndc) strip.push(ndc);
@@ -2383,10 +2484,14 @@ function frame(now) {
   // The same arrangement for the fall: a different group, a different
   // integrator, and none of the rest of this loop applies. Two factors that
   // do not interact make it the shortest of the three.
-  const h2rwant = productWorld() ? h2rWant(basis) : null;
+  // Both products take the same horizontal input -- a direction in the floor
+  // plan, and nothing else -- so they share `h2rWant`. What differs is what
+  // the vertical does with it: one falls down a shaft, one runs and jumps.
+  const prodWant = anyProduct() ? h2rWant(basis) : null;
   for (let i = 0; i < SUB; i++) {
     if (s3want) { stepS3(h, s3want); continue; }
-    if (h2rwant) { stepH2R(h, h2rwant); continue; }
+    if (prodWant && sphereFloorWorld()) { stepS2R(h, prodWant); continue; }
+    if (prodWant) { stepH2R(h, prodWant); continue; }
     const stepFrom = point(player);
     // Two movement models, kept side by side so they can be compared.
     // 'walking' steers the velocity directly; 'rolling' spins a ball up with a
@@ -2526,9 +2631,9 @@ function frame(now) {
     settleCarried(point(player));
   }
 
-  const unglued = sphericalWorld() || productWorld();
+  const unglued = sphericalWorld() || anyProduct();
   const p0 = sphericalWorld() ? S3G.point(player)
-    : productWorld() ? H2R.point(player) : point(player);
+    : anyProduct() ? H2R.point(player) : point(player);
   // The folded copy and the raw one are the SAME point when there is no group
   // to fold by, which is the whole of what "no quotient" means here.
   pushHistory(unglued ? p0 : foldPoint(p0), p0, dt);
@@ -2667,11 +2772,17 @@ function frame(now) {
   // away; the far gates are small because they are far, not because the
   // geometry ate them.
   const product = productWorld();
-  const base = (product ? 0.030 : openWorld ? 0.45 : 0.20)
+  // S^2 x R needs a range of about one lap and no more: nothing is further
+  // away than pi horizontally, because the floor is a sphere. Past that a ray
+  // is going up, where there is nothing. Cheap, and it makes the far side of
+  // the world genuinely visible, which is the point of standing on a sphere.
+  const sphereFloor = sphereFloorWorld();
+  const base = (product ? 0.030 : sphereFloor ? 0.075 : openWorld ? 0.45 : 0.20)
     * { normal: 1, thin: 0.55, thick: 1.9 }[optVal('fog')];
   gl.uniform1f(U.fog, base / Math.sqrt(zoomed));
   gl.uniform1f(U.ao, optVal('shading') === 'flat' ? 0 : 1);
-  gl.uniform1f(U.maxT, (product ? 60.0 : openWorld ? 10.0 : 14.0) * Math.sqrt(zoomed));
+  gl.uniform1f(U.maxT,
+    (product ? 60.0 : sphereFloor ? 12.0 : openWorld ? 10.0 : 14.0) * Math.sqrt(zoomed));
   // Portals, FOLDED, for the same reason every other world point is: the
   // marcher folds its own samples, so an unfolded placement would be compared
   // against geometry in a different copy - and once it has drifted a few cells
@@ -2731,6 +2842,64 @@ function frame(now) {
   // asinh(p.z), a distance to a floor plane that does not exist here, and
   // `energy` is a potential from the same field: both printed 0.00, and both
   // were meaningless rather than merely zero.
+  if (sphereFloorWorld()) {
+    const p = S2R.point(player);
+    const gate = run && course ? course.hoops[run.next] : null;
+    const round = S2R.horizDist(p, S2R.ORIGIN);
+    const spire = S2R.horizDist(p, S2R.S2R_SPIRE.c);
+    hud.textContent =
+      `S^2 x R   a SPHERICAL floor plan and a Euclidean height
+`
+      + `altitude ${f(p[2])}   speed ${f(Math.hypot(vel[0], vel[1]))} / ${f(S2R.S2R_WALK)}`
+      + `   ${S2R.grounded(player, S2R.s2rSDF) ? 'on ground' : 'airborne'}
+`
+      + `from the start ${f(round)} of ${S2R.S2R_ANTIPODE.toFixed(2)} to the far side`
+      + `   ${bar(Math.min(1, round / S2R.S2R_ANTIPODE), 12)}
+`
+      + (run && run.phase === PHASE.RUNNING
+        ? `lap ${formatTime(run.t)}  ${bar(runProgress(run), 12)}  `
+          + `gate ${run.next + 1}/${course.hoops.length}
+`
+        : run && run.phase === PHASE.DONE
+          ? `LAP DONE ${formatTime(run.t)}${run.best !== null ? `   best ${formatTime(run.best)}` : ''}   K to run again
+`
+          : `K to start a lap
+`)
+      + `
+RUN DEAD STRAIGHT AND YOU COME BACK HERE, after ${S2R.S2R_LAP.toFixed(2)}
+`
+      + `units, with no steering and NO QUOTIENT. The bounded world's hoop
+`
+      + `course does the same thing because a GROUP glues the room to itself;
+`
+      + `this floor closes up because it is a sphere. Same run, opposite reason.
+
+`
+      + `THE SPIRE IS ${f(spire)} AWAY and on the lap it never changes: it is
+`
+      + `the pole of the course circle, exactly a quarter turn from every gate,
+`
+      + `so running straight makes it sweep a full turn around you.
+
+`
+      + `YOU CANNOT ESCAPE BY RUNNING STRAIGHT. Any two great circles meet,
+`
+      + `twice, always -- so two people running dead straight from one place
+`
+      + `meet again on the far side whatever angle they chose. On the H^2
+`
+      + `floor almost no two geodesics meet at all.
+
+`
+      + `THE FAR PILLARS ARE 6x THE DISTANCE AND THE SAME APPARENT SIZE:
+`
+      + `size goes like r/sin(d), and sin(0.45) = sin(pi - 0.45) exactly.
+
+`
+      + `WASD run - space jump - mouse look - K restart the lap - O options`;
+    requestAnimationFrame(frame);
+    return;
+  }
   if (productWorld()) {
     const z = H2R.point(player)[2];
     const gate = run && course ? course.hoops[run.next] : null;

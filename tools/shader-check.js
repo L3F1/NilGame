@@ -57,6 +57,7 @@ const programs = [
   // ever look at them.
   ['scene (spherical)', mod.VERT, mod.fragFor('s3')],
   ['scene (H^2 x R)', mod.VERT, mod.fragFor('h2r')],
+  ['scene (S^2 x R)', mod.VERT, mod.fragFor('s2r')],
   ['lines', mod.LINE_VERT, mod.LINE_FRAG],
 ];
 

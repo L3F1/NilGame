@@ -106,10 +106,28 @@
 //
 // No DOM, so it is testable, and `h2r.test.js` does test it.
 
-import { pointOf, frameVecOf } from './geom.js';
+import { surface } from './product.js';
+
+// --- the geometry, which is `product.js` at kS = -1 -----------------------
+//
+// Every primitive below is one line, because H^2 x R and S^2 x R are the same
+// arithmetic with sinh and cosh swapped for sin and cos -- exactly the
+// relationship `hyp.js` has with `geom.js`, one product level up. What stays
+// in THIS file is everything about this particular space: the column field,
+// the shaft, the fall, and the dropper.
+//
+// The names are re-exported rather than the object being passed around,
+// because `main.js`, `h2r.test.js` and the shader emitter all hold them
+// individually and the whole point of the refactor was that nothing outside
+// had to change. `h2r.test.js` is the regression test for it: 51 tests that
+// were written against the old implementations and pass unchanged against
+// these, including the two that pin the affine-height trap and the wrong
+// answer a linear compose would give.
+
+const P = surface(-1);
 
 /** The metric on TANGENT vectors: diag(1,1,1,-1). Same form H^3 uses. */
-export const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2] - a[3] * b[3];
+export const dot = P.dot;
 
 /**
  * The form on the H^2 factor alone, index 2 (the height) simply ignored.
@@ -118,254 +136,46 @@ export const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2] - a[3] * b[
  * Every distance, every projection and every reorthonormalisation goes through
  * this rather than through `dot`.
  */
-export const hdot = (a, b) => a[0] * b[0] + a[1] * b[1] - a[3] * b[3];
+export const hdot = P.sdot;
 
-export const ORIGIN = [0, 0, 0, 1];
-export const IDENTITY = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+export const ORIGIN = P.ORIGIN;
+export const IDENTITY = P.IDENTITY;
+export const point = P.point;
+export const frameVec = P.frameVec;
 
-export const point = pointOf;
-export const frameVec = frameVecOf;
-
-// --- the group action, which is where this geometry is not like the others --
-//
-// Every placement's HEIGHT ROW is (0, 0, 1, z): columns 0 and 1 are horizontal
-// so their height entry is zero, column 2 is E3 = (0,0,1,0) exactly, and
-// column 3 carries the placement's own height. The three functions below are
-// the linear ones with that row handled separately, and nothing else differs.
-
-/** M applied to a POINT: linear in the H^2 factor, a shift in the height. */
-export function applyPoint(M, p) {
-  return [
-    M[0] * p[0] + M[4] * p[1] + M[12] * p[3],
-    M[1] * p[0] + M[5] * p[1] + M[13] * p[3],
-    M[14] + p[2],
-    M[3] * p[0] + M[7] * p[1] + M[15] * p[3],
-  ];
-}
-
-/**
- * M applied to a TANGENT VECTOR, which a translation does not displace.
- *
- * E3 is fixed by every isometry of a product, so the vertical component of a
- * tangent vector passes through untouched -- which is the same statement as
- * "parallel transport never tilts the frame", one level down.
- */
-export function applyVec(M, v) {
-  return [
-    M[0] * v[0] + M[4] * v[1] + M[12] * v[3],
-    M[1] * v[0] + M[5] * v[1] + M[13] * v[3],
-    v[2],
-    M[3] * v[0] + M[7] * v[1] + M[15] * v[3],
-  ];
-}
-
+/** M applied to a POINT: linear in the H^2 factor, a SHIFT in the height. */
+export const applyPoint = P.applyPoint;
+/** M applied to a TANGENT VECTOR, whose height a translation does not move. */
+export const applyVec = P.applyVec;
 /** A frame-component direction as an ambient tangent vector at point(M). */
-export const fromFrame = (M, v) => applyVec(M, [v[0], v[1], v[2], 0]);
-
-/**
- * A composed with B: columns 0..2 of B are vectors, column 3 is a point.
- *
- * Written out rather than routed through geom.js's matMul for the reason at
- * the top of the file: the height row must be ADDED, and a linear product
- * multiplies it by cosh of the horizontal distance instead.
- */
-export function compose(A, B) {
-  const C = new Array(16).fill(0);
-  for (let c = 0; c < 3; c++) {
-    const v = applyVec(A, frameVecOf(B, c));
-    C[c * 4] = v[0]; C[c * 4 + 1] = v[1]; C[c * 4 + 2] = v[2]; C[c * 4 + 3] = v[3];
-  }
-  const p = applyPoint(A, pointOf(B));
-  C[12] = p[0]; C[13] = p[1]; C[14] = p[2]; C[15] = p[3];
-  return C;
-}
+export const fromFrame = P.fromFrame;
+/** A composed with B. The height row is ADDED; see product.js. */
+export const compose = P.compose;
 
 /** The height of a point, and it is just the coordinate. No function to it. */
-export const height = (p) => p[2];
+export const height = P.height;
+/** Up, in frame components, and it is constant. There is no alignUp here. */
+export const UP = P.UP;
 
-/**
- * The up direction in FRAME components, and it is constant.
- *
- * In H^3 this is `gradHeight`, a genuine computation that varies from point to
- * point and forces `alignUp` to run every substep. Here the frame's E3 is
- * always the vertical, everywhere, so "up" is E3 and that is the end of it.
- * Uniform gravity in the most literal possible sense.
- */
-export const UP = [0, 0, 1];
-
-/**
- * The isometry carrying the origin a distance |v| along v.
- *
- * Split v into a horizontal part (v0, v1) of length b and a vertical part v2.
- * The isometry is the product of an H^2 boost of distance b and a shift of the
- * height by v2, and because it IS a product the two commute and there is no
- * ordering question.
- *
- * Acting on the H^2 factor, with unit spacelike h = (v0,v1)/b and the H^2
- * origin o:
- *
- *     o -> cosh(b) o + sinh(b) h        h -> sinh(b) o + cosh(b) h
- *
- * which is the k = -1 case of geom.js's translationBy, one dimension down.
- * Everything in the 0,1 plane orthogonal to h is fixed, and so is E3.
- *
- * The b -> 0 limit is not a special case that needs guarding for correctness,
- * only for the 0/0 in h: cosh -> 1 and sinh -> 0 collapse the H^2 block to the
- * identity on their own, leaving a pure vertical shift.
- */
-export function translation(v) {
-  const b = Math.hypot(v[0], v[1]);
-  const M = IDENTITY.slice();
-  const ch = Math.cosh(b), sh = Math.sinh(b);
-  const h0 = b > 1e-15 ? v[0] / b : 1, h1 = b > 1e-15 ? v[1] / b : 0;
-  // Column 0 = E1 boosted, column 1 = E2 boosted. Both stay in the H^2 factor,
-  // so their z rows are zero and stay zero.
-  M[0] = 1 + h0 * h0 * (ch - 1); M[1] = h0 * h1 * (ch - 1); M[3] = h0 * sh;
-  M[4] = h0 * h1 * (ch - 1); M[5] = 1 + h1 * h1 * (ch - 1); M[7] = h1 * sh;
-  // Column 2 = E3, untouched: (0,0,1,0). Already what IDENTITY holds.
-  // Column 3 = the point: the boosted H^2 origin, lifted to height v2.
-  M[12] = sh * h0; M[13] = sh * h1; M[14] = v[2]; M[15] = ch;
-  return M;
-}
-
-/** The same, from a unit direction and a signed distance. */
-export const translationBy = (unit, t) =>
-  translation([unit[0] * t, unit[1] * t, unit[2] * t]);
-
-/** The placement M moved a distance t along its own frame direction dir. */
-export const geodesic = (M, dir, t) => compose(M, translationBy(dir, t));
-
-/** The point a distance t from M along frame direction dir. */
-export const rayPoint = (M, dir, t) => point(geodesic(M, dir, t));
-
-/** exp at the ORIGIN: the point a distance |v| away along v. */
-export function exp(v) {
-  const b = Math.hypot(v[0], v[1]);
-  const s = b > 1e-15 ? Math.sinh(b) / b : 1;
-  return [s * v[0], s * v[1], v[2], Math.cosh(b)];
-}
-
-/**
- * log at the ORIGIN: the tangent vector whose exp is p.
- *
- * The horizontal length comes from asinh of the SPATIAL part, never acosh of
- * the timelike one -- the same precision rule as everywhere else in the
- * project. The vertical part needs no inverse function at all; it is read off.
- */
-export function log(p) {
-  const m = Math.hypot(p[0], p[1]);
-  if (m < 1e-15) return [0, 0, p[2]];
-  const b = Math.asinh(m) / m;
-  return [p[0] * b, p[1] * b, p[2]];
-}
+export const translation = P.translation;
+export const translationBy = P.translationBy;
+export const geodesic = P.geodesic;
+export const rayPoint = P.rayPoint;
+export const exp = P.exp;
+export const log = P.log;
 
 /** Distance in the H^2 factor alone: the floor-plan distance. */
-export function horizDist(p, q) {
-  const w = [p[0] - q[0], p[1] - q[1], 0, p[3] - q[3]];
-  // <p-q,p-q> = 4 sinh^2(d/2) in H^2 exactly as in H^3, and for the same
-  // reason it is used: acosh(-hdot(p,q)) cancels terms of size cosh^2 and has
-  // no digits left where the answer is small.
-  return 2 * Math.asinh(Math.sqrt(Math.max(hdot(w, w), 0)) / 2);
-}
+export const horizDist = P.horizDist;
+/** Distance in H^2 x R: PYTHAGORAS in the two factors, exactly. */
+export const dist = P.dist;
 
-/**
- * Distance in H^2 x R, and in a product metric it is PYTHAGORAS in the two
- * factors -- exactly, not approximately.
- *
- * That is what makes SDFs here easier than in either curved space: a ball is
- * sqrt(dh^2 + dz^2) - r, a vertical column is dh - r, a horizontal slab is
- * |dz| - t, and all three are exact rather than the usual underestimate.
- */
-export function dist(p, q) {
-  const dh = horizDist(p, q);
-  const dz = p[2] - q[2];
-  return Math.hypot(dh, dz);
-}
-
-/**
- * The inverse of a placement.
- *
- * Block by block, because the isometry is a product: the H^2 part is the
- * form-adjoint (M^-1 = J M^T J with J = diag(1,1,-1) on indices 0,1,3), and
- * the height part is an affine shift that inverts by negation. No elimination
- * and nothing that can get small.
- */
-export function inv(M) {
-  const out = new Array(16).fill(0);
-  const J = [1, 1, 0, -1];
-  // The H^2 block, on indices 0, 1, 3.
-  for (const i of [0, 1, 3]) {
-    for (const j of [0, 1, 3]) out[j * 4 + i] = M[i * 4 + j] * J[j] / J[i];
-  }
-  // E3 is fixed by every isometry, so it is fixed by every inverse too.
-  out[2 * 4 + 2] = 1;
-  // The height offset lives in column 3 row 2 and simply negates. It is not
-  // carried back through the H^2 block: the factors do not mix.
-  out[14] = -M[14];
-  return out;
-}
-
-/** The tangent vector at M pointing at q, in M's own frame components. */
-export const logTo = (M, q) => log(applyPoint(inv(M), q));
-
-/**
- * Push a placement back into the isometry group.
- *
- * Needed for the same reason it is everywhere else -- every matrix multiply
- * leaves the result a hair outside, and H^2 coordinates grow like cosh of the
- * distance, so the error is amplified. The height coordinate is the exception
- * and needs no maintenance at all: it is an ordinary affine coordinate with
- * nothing to drift off.
- *
- * The three constraints, in order: the point lies on the H^2 hyperboloid; E3
- * is exactly the vertical; and E1, E2 are hdot-orthonormal, hdot-orthogonal to
- * the point, and purely horizontal.
- */
-export function reorthonormalize(M) {
-  const out = M.slice();
-  const p = point(M);
-  const s = Math.sqrt(Math.max(-hdot(p, p), 1e-300));
-  out[12] = p[0] / s; out[13] = p[1] / s; out[14] = p[2]; out[15] = p[3] / s;
-  const P = [out[12], out[13], 0, out[15]];
-  out[8] = 0; out[9] = 0; out[10] = 1; out[11] = 0;
-  for (const i of [0, 1]) {
-    let v = frameVec(out, i);
-    v[2] = 0;                                   // horizontal, by construction
-    // Strip the component along the point: hdot(P,P) = -1, so the coefficient
-    // is -hdot(v,P) and the sign follows the timelike normalisation.
-    const c = hdot(v, P);
-    v = [v[0] + c * P[0], v[1] + c * P[1], 0, v[3] + c * P[3]];
-    if (i === 1) {
-      const w = frameVec(out, 0);
-      const d = hdot(v, w);
-      v = [v[0] - d * w[0], v[1] - d * w[1], 0, v[3] - d * w[3]];
-    }
-    const n = Math.sqrt(Math.max(hdot(v, v), 1e-300));
-    out[i * 4] = v[0] / n; out[i * 4 + 1] = v[1] / n;
-    out[i * 4 + 2] = 0; out[i * 4 + 3] = v[3] / n;
-  }
-  return out;
-}
-
-/** How far a placement has drifted out of the isometry group. Diagnostic. */
-export function groupError(M) {
-  const p = point(M);
-  let worst = Math.abs(hdot(p, p) + 1);
-  const E = [0, 1].map((i) => frameVec(M, i));
-  for (let i = 0; i < 2; i++) {
-    worst = Math.max(worst, Math.abs(hdot(E[i], E[i]) - 1),
-      Math.abs(hdot(E[i], p)), Math.abs(E[i][2]));
-  }
-  const e3 = frameVec(M, 2);
-  worst = Math.max(worst, Math.abs(e3[0]), Math.abs(e3[1]),
-    Math.abs(e3[2] - 1), Math.abs(e3[3]));
-  return worst;
-}
+export const inv = P.inv;
+export const logTo = P.logTo;
+export const reorthonormalize = P.reorthonormalize;
+export const groupError = P.groupError;
 
 /** A placement at horizontal geodesic-polar (a, b) and height z, facing +E1. */
-export function placeAt(a, b, z) {
-  return translation([a, b, z]);
-}
+export const placeAt = P.placeAt;
 
 // --- the world ------------------------------------------------------------
 //

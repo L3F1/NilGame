@@ -273,6 +273,20 @@ The boring case, and that is exactly its value:
 - It is the **control**. Play the same grapple course flat and hyperbolic and
   the difference curvature makes stops being a claim and becomes a measurement.
 
+### The flat 3-torus — the CONTROL, and now the most useful one  **M**
+
+E^3 quotiented by a lattice: the oldest video-game space there is, and here it
+is the baseline the other four are measured against. It matters more now than
+it did before `port.js` existed: a map ported into the torus is the SAME map
+with no distortion at all, so playing it there and then in H^3 turns "what does
+curvature do" from a claim into a comparison you can run back to back.
+
+`geom.js` already gives E^3 its geodesics and its isometries; what is missing
+is the group (three translations), the fundamental domain (a box), and a level.
+Everything the hyperbolic marcher does for the octagon — face scan, exit solve,
+fold loop, straddle copies — has a much simpler flat form, and the exit solve
+is a plain ratio rather than a log.
+
 ### More H^3 manifolds  **S each, once the group interface is clean**
 
 Same machinery, different group. Cheap and each one feels different:
@@ -305,11 +319,20 @@ H^2xR, SL2R~, Nil, Sol.
   stored height by the other factor's cosh; and the float32 range limit lands
   on the HORIZONTAL factor only, with no quotient to fold it back, which drew
   as speckle across the whole far field until the ray cap became per-ray.
-- **S^2 x R** is now nearly free: it is the same product machinery as H^2 x R
-  with `sinh` swapped for `sin` in one factor, which is exactly the swap
-  `geom.js` already makes. The interesting half is that the horizontal factor
-  is COMPACT with no quotient while the vertical one is infinite — the mirror
-  image of the bounded world, whose floor wraps and whose height does not.
+- ~~**S^2 x R**~~ **DONE** — `s2r.js`, `s2r.test.js` (62), its own program,
+  and the LAP COURSE. `product.js` now holds both products with the surface
+  curvature as a parameter, exactly as `geom.js` does for the
+  constant-curvature three, and `h2r.js`'s existing 51 tests were the
+  regression check for the refactor.
+
+  It is the first world here with a compact floor AND honest gravity, and the
+  first where you cannot escape by running straight: any two geodesics on a
+  sphere meet, twice, always. Three things it taught, all in CLAUDE.md: the
+  `-kS` that turns a boost into a rotation; `p.xy/p.w` is a GNOMONIC
+  projection on a sphere and covers only a hemisphere, so the floor checker
+  moired into noise at pi/2 and mirrored itself beyond; and there are no
+  parallel lines, so an avenue at constant offset from your route sits 60
+  degrees off the sightline at every point of it and is never once on screen.
 - **Sol** is the strangest — exponential stretching along one axis and
   contraction along another, so navigation is genuinely disorienting rather than
   merely unfamiliar.

@@ -3,10 +3,11 @@
 ## What this is
 
 A game set in a **hyperbolic 3-manifold**: H^3 of curvature -1, quotiented by
-a discrete group — plus three other spaces that each exist to make one thing
-possible that H^3/Gamma cannot: S^3 (`s3.js`), and the product H^2 x R
-(`h2r.js`), and flat E^3 as a test control inside `geom.js`. **Not every mode
-needs a quotient**, and two of the four deliberately have none. Movement, gravity, rendering and a grapple hook, all done
+a discrete group — plus four other spaces that each exist to make one thing
+possible that H^3/Gamma cannot: S^3 (`s3.js`), the products H^2 x R and
+S^2 x R (`h2r.js`, `s2r.js`, both on `product.js`), and flat E^3 as a test
+control inside `geom.js`. **Not every mode needs a quotient**, and three of the
+five deliberately have none. Movement, gravity, rendering and a grapple hook, all done
 honestly in the geometry. It was a Nil game first; the port to H^3 is complete
 and no Nil code remains.
 
@@ -52,12 +53,19 @@ shader; a scene-graph library would hide the parts that matter.
   FLYTHROUGH, not the full kit: `physics.js` is built on `hyp.js` top to
   bottom, and making that curvature-generic is a rewrite of the load-bearing
   file. The two paths meet only at `player`, which is a 4x4 either way.
-- `h2r.js` — the PRODUCT geometry H^2 x R, and the DROPPER it exists for. A
-  hyperbolic floor plan and a Euclidean height, which do not interact. **No
-  DOM**, so it is testable. Like `s3.js` it is a slice rather than the full
-  kit; unlike `s3.js` it does not go through `geom.js`, because H^2 x R is not
-  a space of constant curvature and its isometry group does not embed in
-  GL(4). See "H^2 x R" below.
+- `product.js` — SURFACE x R with the surface's curvature left in, so H^2 x R
+  and S^2 x R come out of one set of formulas and E^2 x R = E^3 is the
+  degenerate control. This is to `h2r.js` and `s2r.js` what `geom.js` is to
+  `hyp.js`. A product is NOT a space of constant curvature, so `geom.js`
+  cannot make one: it is built on `<x,x> = k` and one trigonometry, and a
+  product has neither. **No DOM, no graphics.**
+- `h2r.js` — H^2 x R and the DROPPER it exists for: a hyperbolic floor plan
+  and a Euclidean height, which do not interact. `product.js` at kS = -1, plus
+  the shaft, the column field and the course. See "H^2 x R" below.
+- `s2r.js` — S^2 x R and the LAP COURSE: a spherical floor plan and the same
+  Euclidean height. `product.js` at kS = +1, plus the world, walking, jumping
+  and the course. The first world here with a compact floor AND honest
+  gravity. See "S^2 x R" below.
 - `port.js` — reading a FLAT map as a map of a curved space. Three classical
   embeddings, each exact in one property and wrong in the others, plus the
   measurements that say which. No graphics, no DOM. See "Porting a flat map"
@@ -74,8 +82,9 @@ shader; a scene-graph library would hide the parts that matter.
 - `main.js` — WebGL2 setup, input, frame loop, rope drawing, the options menu.
 - `index.html` — canvas, HUD, and a boot-error panel (see below).
 - `hyp.test.js` (36), `physics.test.js` (160), `modes.test.js` (78),
-  `geom.test.js` (69), `s3.test.js` (28), `h2r.test.js` (51) and
-  `port.test.js` (34) — `node hyp.test.js`, etc. 456 in all.
+  `geom.test.js` (69), `s3.test.js` (28), `h2r.test.js` (51),
+  `s2r.test.js` (62) and `port.test.js` (34) — `node hyp.test.js`, etc.
+  518 in all.
   **Keep the summary line LAST, and `process.exit` after IT.** Tests appended
   after the summary still run and still print, but are not counted, so the
   total silently understates. Worse, an `if (failed) process.exit(1)` left in
@@ -95,9 +104,8 @@ is black" with no other information costs an hour every time.
 
 ### Tools
 
-- `node tools/shader-check.js` — compiles ALL FOUR programs headless (the
-  three scene builds, one per geometry, plus the line one) and prints the
-  info log. **Run after every shader edit.** It is the only way to tell a GLSL
+- `node tools/shader-check.js` — compiles ALL FIVE programs headless (the four
+  scene builds, one per geometry, plus the line one) and prints the info log. **Run after every shader edit.** It is the only way to tell a GLSL
   error from a JS error. Caveat: it uses SwiftShader, so it proves the ANGLE
   *translator* accepts the shader, not that every driver's back end will — and
   it says NOTHING about how long a real driver takes to compile it, which is
@@ -113,12 +121,12 @@ is black" with no other information costs an hour every time.
   load is where the bugs are — that is how the backwards first frame below was
   found. `--warm` to skip the 5 s shader build, `--sw` for SwiftShader.
 - `node tools/link-time.js` — links every program on the REAL GPU (D3D11, not
-  SwiftShader) and times it. Warm, three runs: hyperbolic **8.5-8.9 s**,
-  spherical **3.6-4.1 s**, H^2 x R **3.8-4.2 s**. The two without a quotient
-  cost half as much for a reason that is not an optimisation: the fundamental
-  domain, the face scan, the exit solve, the fold loop, the portals and all 39
-  level primitives are unreachable in them, and `#if` lets the D3D compiler see
-  that BEFORE it starts inlining. **Run after adding level content or any new call
+  SwiftShader) and times it. Warm, three runs: hyperbolic **8.6-8.7 s**,
+  spherical **3.6-3.8 s**, H^2 x R **3.9 s**, S^2 x R **3.9 s**. The three
+  without a quotient cost less than half as much for a reason that is not an
+  optimisation: the fundamental domain, the face scan, the exit solve, the fold
+  loop, the portals and all 39 level primitives are unreachable in them, and
+  `#if` lets the D3D compiler see that BEFORE it starts inlining. **Run after adding level content or any new call
   to `sceneMap`.** A link over a few seconds means something is being inlined
   or unrolled more than once; it caps at 15 s, because past that the browser
   kills the GPU process mid-link and the page dies with an empty error. This is
@@ -400,7 +408,8 @@ Press `O`. Everything switchable lives in the `opts` object in main.js and the
 overlay is generated from it, so adding a setting is one entry.
 
     World         bounded / open      floor and ceiling, or nothing but scaffold
-    Curvature     hyperbolic / spherical / H^2 x R   a different SPACE, not a level
+    Curvature     hyperbolic / spherical / H^2 x R / S^2 x R
+                                      a different SPACE, not a level
     Gravity       floor plane / beacon / none
     Movement      walking / rolling   steer the velocity, or spin a ball up
     Camera up     gravity / pendulum / free
@@ -409,7 +418,8 @@ overlay is generated from it, so adding a setting is one entry.
     Portals       off / on            keys 1 and 2 place a pair, 3 clears
     Boomerang     aimed / closed geodesic / off   key B
     Build (G)     on / off            a delayed block; see Abilities
-    Course (K)    off / hoops / grapple / dropper   three timed courses. See Game modes
+    Course (K)    off / hoops / grapple / dropper / lap
+                                      four timed courses. See Game modes
     Holonomy (Q)  sign decides / dash only / blast only
     Opponent      bot / network / off a bot that chases, or a real player (N)
     Fog           normal / thin / thick
@@ -417,9 +427,10 @@ overlay is generated from it, so adding a setting is one entry.
     Domain edges  show / hide         the gold octagon outlines
     Quality       low / medium / high march steps (160 / 220 / 280)
 
-Digits **1-6 inside the menu** apply a preset: arena fight, hoop course,
-grapple gates, spherical flight, light-speed lab, the dropper. New presets are
-APPENDED rather than slotted in, so a digit does not change what it means.
+Digits **1-7 inside the menu** apply a preset: arena fight, hoop course,
+grapple gates, spherical flight, light-speed lab, the dropper, round the world.
+New presets are APPENDED rather than slotted in, so a digit does not change
+what it means.
 
 Zoom is on the SCROLL WHEEL, not in the menu — it is a thing you do while
 looking, like aiming. `X` snaps back to 1x.
@@ -1063,6 +1074,171 @@ height is a coordinate, so the fall is a constant subtraction from one velocity
 component and there is no field object to choose; the option is pinned to say
 so rather than left offering three answers to a settled question.
 
+## S^2 x R, and `product.js`
+
+`Curvature: S^2 x R` is the fifth geometry and the fourth scene program. It is
+the exact MIRROR OF THE BOUNDED WORLD:
+
+    floor (2D wrap)   the floor wraps because a GROUP glues one octagon to the
+                      next; the height does not wrap
+    S^2 x R           the floor wraps because IT IS A SPHERE -- no group, no
+                      fundamental domain, no fold, no straddle copy; the
+                      height does not wrap
+
+Same shape of world, opposite mechanism, opposite curvature. Running the hoop
+course in one and the lap course in the other back to back is the cleanest way
+to feel what a quotient actually IS, because the experience is identical and
+only the reason differs.
+
+**`product.js` is to `h2r.js` and `s2r.js` what `geom.js` is to `hyp.js`.**
+Surface x R with the surface's curvature left in, so both come out of one set
+of formulas with sinh/cosh swapped for sin/cos, and E^2 x R = E^3 falls out as
+the degenerate control. `h2r.js` delegates to it and its 51 existing tests are
+the regression check — they were written against the old implementations and
+pass unchanged, including the two that pin the affine-height trap.
+
+Two sign traps in the generalisation, both found by running those tests:
+
+- **`horizDist` takes NO `kS` factor.** `<p-q,p-q> = 4 sinK(d/2)^2` needs the
+  form as it stands: `sinh^2 - (1-cosh)^2 = 4 sinh^2(d/2)` at kS = -1 and
+  `sin^2 + (1-cos)^2 = 4 sin^2(d/2)` at kS = +1, both already positive.
+  Multiplying by kS clamped every hyperbolic distance to zero and the
+  dropper's five gates all landed on top of each other.
+- **The surface translation is a BOOST at kS = -1 and a ROTATION at kS = +1**,
+  and the `-kS` in front of `sinK` is the whole of that difference:
+  `h -> -kS sinK(b) o + cosK(b) h`. It is the one place the sign of the
+  curvature is more than a choice of trig function. `s2r.test.js` pins it by
+  checking that the surface block inverts by plain TRANSPOSITION at kS = +1,
+  which only an orthogonal block does.
+
+### What it is the first to have: a compact floor AND honest gravity
+
+    H^3 / Gamma   compact, but "down" has to be CHOSEN, and in the open world
+                  no consistent down exists at all
+    S^3           compact, and gravity is IMPOSSIBLE -- every unit-gradient
+                  function on a sphere points at a pole, so a whole world
+                  falls to one spot
+    H^2 x R       honest gravity (z is affine, |grad z| = 1 exactly) over an
+                  INFINITE floor
+    S^2 x R       BOTH
+
+So this is the first world you can walk right round and arrive where you
+started, under real gravity, with no group anywhere. `s2r.js` has walking,
+falling, jumping and collision; it is a small honest slice like `s3.js`, not
+`physics.js`, and none of the fighting kit exists there.
+
+**A jump is where a player feels the Euclidean height.** Apex exactly
+`v^2/2g`, hang time exactly `2v/g`, and — measured at 0, 0.7, 1.5 and 2.2 of
+running speed — **identical to the last bit at every speed**, because the two
+factors of a product do not interact. Same claim as the dropper's fall,
+somewhere you meet it every few seconds.
+
+### YOU CANNOT ESCAPE BY RUNNING STRAIGHT
+
+Any two geodesics on a sphere meet, twice, always. On the H^2 floor almost none
+do — they diverge like `e^d`, which is why CLAUDE.md records that flanking is
+cheap, retreating is very cheap and a straight-line chase is a losing move.
+Here, running straight away from someone running straight is how you meet them
+on the far side: measured, two runs from one place at any angle are back
+together, to 1e-16, after half a lap. Every design rule this project has that
+rests on hyperbolic divergence inverts.
+
+### Apparent size is MIXED, and the world is built to show it
+
+    horizontally   r / sin(d): smallest at a quarter turn, growing after, and
+                   at the antipode a single point fills the horizon
+    vertically     r / d, ordinary flat falloff, monotonic for ever
+
+S^3 is non-monotonic in every direction and H^2 x R is monotonic in both, so
+this is the only geometry here where the two disagree.
+
+**The demo is an EQUALITY rather than a trend, because an equality can be
+checked by eye.** A cap of pillars 0.45 from each pole, and `sin(0.45) =
+sin(pi - 0.45)` exactly: standing at spire A, the near cap is 0.45 away and the
+far cap is 2.69 away and **they subtend the same angle, to twelve digits**. In
+either hyperbolic world the far one would be 6.3% of the near one's width and
+0.4% of its solid angle.
+
+### The layout, and the two things it taught
+
+**Scenery cannot go in rings around the SPAWN.** A ring at a fixed arc has
+members at every azimuth and the course leaves at azimuth 0, so something is
+always in the way — measured, an unphased ring of 8 at a quarter turn put a
+column dead ahead and a straight lap stopped against it at arc 1.341. Phasing
+only moves which member blocks: at a quarter turn a column must be 48 degrees
+of azimuth off the line to clear the corridor, and eight evenly spaced columns
+cannot all be. **A POLE of the course circle is a quarter turn from every point
+of it**, so a cap of scenery around one is clear of the whole lap at once, by
+construction rather than by search.
+
+**THERE ARE NO PARALLEL LINES, SO THERE IS NO AVENUE ALONGSIDE YOUR ROUTE.**
+The obvious fix — columns at a constant 1.05 sideways all the way round, a road
+with trees down both sides — puts every one of them 60 degrees or more off the
+direction of travel (computed: 67.9 at a quarter of the way, never below 60.1),
+and the field of view is about 40 degrees to a side. **Not one was ever on
+screen while running**, and the screenshot mid-lap was a flat horizon and
+nothing else. What works is CLOSE and BETWEEN: the drawn gate rings reach 0.70
+sideways but have no extent along the course, so a column halfway between two
+gates only has to clear the running corridor. At 0.42 sideways and half a
+gate-spacing along it is 0.41 clear of the nearest ring point and comes down to
+24 degrees of bearing.
+
+**The two SPIRES stand at the poles of the lap**, so each is exactly a quarter
+turn from every gate: running the whole way round, neither comes closer and
+neither gets further, and the two just sweep a full turn around you staying
+opposite each other on the horizon. Nothing flat or hyperbolic does that —
+there, holding something at constant range means constantly turning.
+
+### The lap course
+
+`Course = lap`, key K, preset 7. Six gates evenly spaced around a great circle,
+so **running dead straight takes every one and returns you to the start** —
+measured, 6/6 with no steering at all, in exactly `S2R_LAP / S2R_WALK` seconds.
+
+That is what the bounded world's hoop course does and the mechanism is the
+opposite one. It is ORDERED for a reason that has nothing to do with wrapping
+this time: a lap in the WRONG DIRECTION would otherwise count every gate too.
+
+**A gate is a VERTICAL PLANE, so the sign test uses `sdot` and ignores the
+height entirely** — that is what makes it a doorway you run through rather than
+a hoop at one altitude. The radius test then uses the FULL distance, so jumping
+clean over the top does not count. **The gate's centre height is its own
+radius**, so the ring stands ON the floor rather than half buried; at 0.35 it
+was buried and the drawn loop dipped 0.20 underground, which only the clearance
+test noticed.
+
+### In the shader
+
+Both products share ONE arm, with `kS` as a `#define` — the same relationship
+`product.js` has with the two files. `cosS/sinS/asinS` follow `kS` and are NOT
+the same as `cosK/sinK/asinK`, which follow `uCurv`, the ambient tangent form:
+the two agree in S^2 x R and disagree in H^2 x R.
+
+**`p.xy / p.w` IS A GNOMONIC PROJECTION ON A SPHERE AND IT DOES NOT REACH.**
+The floor checker is drawn in Klein coordinates in the hyperbolic worlds, which
+is right there and wrong here: `p.w` is `cos(d)`, so the ratio blows up at a
+quarter turn and CHANGES SIGN past it. The checker moired into noise at pi/2
+and then mirrored itself over the far hemisphere — half a world drawn twice.
+The three surface coordinates are bounded by 1 everywhere including the
+antipode, so a 3D checker restricted to the sphere is even, has no singular
+point, and needs no projection at all.
+
+**There is no range cap here and that is the engineering case.** H^2 x R needs
+a per-ray horizontal cut because it is the only geometry in the project that is
+both unbounded and unglued; S^2 x R's surface coordinates are bounded by 1 at
+every distance and its height is affine and exact at any depth, so a ray may
+run the full range in any direction.
+
+**The pixel footprint takes `t`, not `sin(a t)/a`.** The horizontal spread
+COLLAPSES TO ZERO at the antipode — that is the focusing that makes a point
+there fill the sky — and a footprint of zero asks the marcher for infinitely
+fine detail. `t` is the vertical spread and an honest upper bound on both,
+since `sin(a t)/a <= t` always. Surfaces near the antipode come out slightly
+fat, which is what focusing looks like.
+
+Link times, warm, three runs: hyperbolic **8.6-8.7 s**, spherical **3.6-3.8 s**,
+H^2 x R **3.9 s**, S^2 x R **3.9 s**.
+
 ## Modes take options away, and they do it through `optVal`
 
 `rawVal(k)` is what the player picked. `optVal(k)` is what the game uses, and a
@@ -1093,10 +1269,16 @@ What is locked, and why it is not a balance decision:
   run there. Gravity is the one it does NOT take away, because falling is the
   mode; it is pinned to `floor plane` to say that the floor is `z = 0` and
   there is no field object to choose.
-- **the dropper course, outside H^2 x R,** is locked back to `off`. It needs a
-  Euclidean height, so it does not exist in either constant-curvature world,
-  and saying so in the menu beats a course option that silently builds a hoop
-  run instead.
+- **S^2 x R** takes the same family as H^2 x R and pins the course to `lap`.
+  It does NOT take gravity or the camera away as a matter of incoherence the
+  way S^3 does — this is the one world with a compact floor and an honest down
+  — but they are pinned anyway, because the floor is `z = 0` and the frame
+  never tilts, so there is nothing for either option to choose between.
+- **each product's course, outside that product,** is locked back to `off`.
+  A dropper needs a Euclidean height under a hyperbolic plan and a lap needs a
+  spherical one; neither exists in a constant-curvature world nor in the other
+  product. Saying so in the menu beats a course option that silently builds
+  something else.
 - **any course** takes the opponent, the boomerang, build and portals. A timed
   run has nothing to fight, and each one is a key that would do nothing.
 - **the grapple course** additionally pins gravity, camera up and the bounded
@@ -1690,16 +1872,21 @@ round. That corridor is the same corridor in every copy.
 10. ~~Actual game modes~~ — the hoop course, the grapple course and the
     dropper, all in `modes.js` with 78 tests. The dropper needed a fourth
     geometry rather than a fourth set of numbers.
-11. ~~More than one geometry, and not all of them quotiented~~ — four now:
-    H^3/Gamma (two groups), S^3, H^2 x R and E^3 as a control. Two of the four
-    have no quotient at all, on purpose. `shader.js` emits one scene program
-    per geometry via `fragFor(key)`, selected by `#if` rather than a uniform.
-12. **A shared way to author a level across geometries.** The next task. Three
-    worlds now each hold their scene as data and emit it twice by hand
-    (`level.js`, `s3.js`, `h2r.js`), with a copy of the same `num()` helper and
-    the same emit loop in each. That duplication is exactly what
+11. ~~More than one geometry, and not all of them quotiented~~ - FIVE now:
+    H^3/Gamma (two groups), S^3, H^2 x R, S^2 x R, and E^3 as a control.
+    THREE of the five have no quotient at all, on purpose. `shader.js` emits
+    one scene program per geometry via `fragFor(key)`, selected by `#if`
+    rather than a uniform, and `product.js` gives the two products one set of
+    formulas the way `geom.js` does for the constant-curvature three.
+12. ~~Porting a flat map into a curved one~~ - `port.js`, `tools/port-map.js`.
+    Three embeddings, each exact in one property, plus the measurements that
+    say which. See "Porting a flat map" under Level authoring.
+13. **A shared way to EMIT a level across geometries.** The next task. Four
+    worlds now hold their scene as data and emit it twice by hand
+    (`level.js`, `s3.js`, `h2r.js`, `s2r.js`), with a copy of the same `num()`
+    helper and the same emit loop in each. That duplication is exactly what
     `tools/sdf-check.js` exists to catch drifting, so it should stop being
-    hand-written. See "Authoring across geometries" below.
+    hand-written. See TODO.md Part 2b.
 
 **~~The known limit before more weapons go in~~ — FIXED.** `physics.js` used to
 hold ONE boomerang slot, ONE block, ONE decoy and ONE pane as module-level

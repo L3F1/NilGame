@@ -15,6 +15,7 @@ import { levelGLSL } from './level.js';
 import { OCT_SIDE, OCT_PAIR, DOD_SIDE, DOD_PAIR } from './hyp.js';
 import { s3GLSL } from './s3.js';
 import { h2rGLSL } from './h2r.js';
+import { s2rGLSL } from './s2r.js';
 
 export const VERT = `#version 300 es
 in vec2 aPos;
@@ -94,7 +95,23 @@ const HYP_GLSL = `
 #define G_H3  0
 #define G_S3  1
 #define G_H2R 2
+#define G_S2R 3
 #define GEOM (__GEOM_ID__)
+
+// The two PRODUCT geometries share one arm of everything below, with the
+// surface's curvature as a #define -- the same relationship product.js has
+// with h2r.js and s2r.js. Written as a uniform the D3D compiler could not fold
+// away the arm the world does not use; written as a define it emits one.
+#if GEOM == G_H2R
+#define IS_PRODUCT 1
+#define kS (-1.0)
+#elif GEOM == G_S2R
+#define IS_PRODUCT 1
+#define kS (1.0)
+#else
+#define IS_PRODUCT 0
+#define kS (-1.0)
+#endif
 
 // H^3 is the only one of the three with a QUOTIENT. S^3 is compact already and
 // H^2 x R is deliberately unglued, so for both of those the fundamental
@@ -114,7 +131,7 @@ const HYP_GLSL = `
 // exactly where H^3's third spatial coordinate does. So 'mdot', the lighting
 // and the normalisation are shared with the hyperbolic build unchanged, and
 // only distance, the ray and the up vector had to be written twice.
-#if GEOM == G_S3
+#if GEOM == G_S3 || GEOM == G_S2R
 #define uCurv (1.0)
 #else
 #define uCurv (-1.0)
@@ -132,22 +149,34 @@ float cosK(float t) { return uCurv < 0.0 ? cosh(t) : cos(t); }
 float sinK(float t) { return uCurv < 0.0 ? sinh(t) : sin(t); }
 float asinK(float x) { return uCurv < 0.0 ? asinh(x) : asin(clamp(x, -1.0, 1.0)); }
 
-#if GEOM == G_H2R
-// --- H^2 x R -------------------------------------------------------------
+#if IS_PRODUCT
+// --- SURFACE x R, at kS = -1 (H^2 x R) or kS = +1 (S^2 x R) ---------------
 //
-// A point is (x0, x1, z, x3) with x0^2 + x1^2 - x3^2 = -1 and z the Euclidean
-// height, free. Components 0, 1 and 3 are a point of H^2; component 2 is the
-// flat factor. See h2r.js, which emits the world below and owns the CPU half.
+// A point is (x0, x1, z, x3) with x0^2 + x1^2 + kS x3^2 = kS and z the
+// Euclidean height, free. Components 0, 1 and 3 are a point of the surface --
+// the hyperboloid at kS = -1, the round sphere at kS = +1 -- and component 2
+// is the flat factor. See product.js, which owns the CPU half of all of this,
+// and h2r.js / s2r.js, which own a world each.
 
-// The form on the H^2 factor alone. POINTS satisfy hdot(p,p) = -1; the height
-// simply does not appear, which is what "product" means.
-float hdot(vec4 a, vec4 b) { return a.x*b.x + a.y*b.y - a.w*b.w; }
+// The trigonometry of the SURFACE factor, which is not the same as cosK/sinK
+// above: those follow uCurv, the ambient tangent form, and this follows kS.
+// The two agree in S^2 x R and disagree in H^2 x R.
+float cosS(float t) { return kS < 0.0 ? cosh(t) : cos(t); }
+float sinS(float t) { return kS < 0.0 ? sinh(t) : sin(t); }
+float asinS(float x) { return kS < 0.0 ? asinh(x) : asin(clamp(x, -1.0, 1.0)); }
 
-// Distance in the floor plan, ignoring height. Same 4 sinh^2(d/2) identity as
-// H^3, one dimension down, and used for the same precision reason.
+// The form on the surface factor alone. POINTS satisfy hdot(p,p) = kS; the
+// height simply does not appear, which is what "product" means.
+float hdot(vec4 a, vec4 b) { return a.x*b.x + a.y*b.y + kS*a.w*b.w; }
+
+// Distance in the floor plan, ignoring height. Same 4 sinK^2(d/2) identity as
+// H^3 and S^3, one dimension down, and used for the same precision reason.
+// NOTE there is no kS factor on hdot(w,w) here: it is already positive in both
+// curvatures for a difference of two points, and multiplying by kS clamped
+// every hyperbolic distance to zero when product.js first did it.
 float hHorizDist(vec4 p, vec4 q) {
   vec4 w = p - q;
-  return 2.0 * asinh(sqrt(max(hdot(w, w), 0.0)) * 0.5);
+  return 2.0 * asinS(sqrt(max(hdot(w, w), 0.0)) * 0.5);
 }
 
 // Distance in H^2 x R, and in a product metric it is PYTHAGORAS in the two
@@ -171,16 +200,18 @@ float hHeight(vec4 p) { return p.z; }
 // a^2 + dir.z^2 = 1, and the two never mix.
 vec4 rayLocal(vec3 dir, float s) {
   float a = length(dir.xy);
-  float sh = a > 1e-6 ? sinh(a * s) / a : s;
-  return vec4(sh * dir.x, sh * dir.y, dir.z * s, cosh(a * s));
+  float sh = a > 1e-6 ? sinS(a * s) / a : s;
+  return vec4(sh * dir.x, sh * dir.y, dir.z * s, cosS(a * s));
 }
 
 // d/ds of the above, which is the unit tangent to the ray. Used for the
 // headlight term only.
 vec4 rayTangent(vec3 dir, float s) {
   float a = length(dir.xy);
-  float ch = cosh(a * s);
-  return vec4(ch * dir.x, ch * dir.y, dir.z, a * sinh(a * s));
+  float ch = cosS(a * s);
+  // d/ds of the w component is -kS a sinS(a s), the same -kS that turns the
+  // boost below into a rotation.
+  return vec4(ch * dir.x, ch * dir.y, dir.z, -kS * a * sinS(a * s));
 }
 
 // The chart carried to a local point. A plain mat4 multiply is WRONG here and
@@ -195,9 +226,9 @@ vec4 chartMap(mat4 M, vec4 L) {
 
 // One geodesic step from p along a unit tangent n, for ambient occlusion.
 vec4 geoStep(vec4 p, vec4 n, float d) {
-  float a = sqrt(max(n.x*n.x + n.y*n.y - n.w*n.w, 0.0));
-  float ch = cosh(a * d);
-  float sh = a > 1e-6 ? sinh(a * d) / a : d;
+  float a = sqrt(max(n.x*n.x + n.y*n.y + kS*n.w*n.w, 0.0));
+  float ch = cosS(a * d);
+  float sh = a > 1e-6 ? sinS(a * d) / a : d;
   return vec4(ch * p.x + sh * n.x, ch * p.y + sh * n.y, p.z + n.z * d,
               ch * p.w + sh * n.w);
 }
@@ -205,7 +236,9 @@ vec4 geoStep(vec4 p, vec4 n, float d) {
 // Project a gradient onto the tangent space at p. Only the H^2 factor has a
 // constraint to project out; the height direction is already tangent.
 vec4 projT(vec4 G, vec4 p) {
-  return G + hdot(G, p) * vec4(p.x, p.y, 0.0, p.w);
+  // hdot(p,p) = kS, so the coefficient is hdot(G,p)/kS, and 1/kS is kS for
+  // both signs.
+  return G - kS * hdot(G, p) * vec4(p.x, p.y, 0.0, p.w);
 }
 
 // The isometry that flies distance s along the ray, as a chart. The H^2 factor
@@ -215,10 +248,13 @@ mat4 h2rBoost(vec3 dir, float s) {
   float a = length(dir.xy);
   vec2 u = a > 1e-6 ? dir.xy / a : vec2(1.0, 0.0);
   float d = a * s;
-  float ch = cosh(d), sh = sinh(d), c1 = cosh(d) - 1.0;
+  float ch = cosS(d), sh = sinS(d), c1 = ch - 1.0;
   mat4 B;
-  B[0] = vec4(1.0 + c1 * u.x * u.x, c1 * u.x * u.y, 0.0, sh * u.x);
-  B[1] = vec4(c1 * u.x * u.y, 1.0 + c1 * u.y * u.y, 0.0, sh * u.y);
+  // The -kS is what makes this a BOOST at kS = -1 and a ROTATION at kS = +1,
+  // and it is the one place the sign of the curvature is more than a choice of
+  // trig function. See product.js translation().
+  B[0] = vec4(1.0 + c1 * u.x * u.x, c1 * u.x * u.y, 0.0, -kS * sh * u.x);
+  B[1] = vec4(c1 * u.x * u.y, 1.0 + c1 * u.y * u.y, 0.0, -kS * sh * u.y);
   B[2] = vec4(0.0, 0.0, 1.0, 0.0);
   B[3] = vec4(sh * u.x, sh * u.y, dir.z * s, ch);
   return B;
@@ -238,8 +274,8 @@ mat4 chartRebase(mat4 M, vec3 dir, float s) {
   return N;
 }
 
-// Up is the vertical, everywhere, exactly. The hyperbolic build computes a
-// height gradient here; this one is a constant, which is the same fact that
+// Up is the vertical, everywhere, exactly, in BOTH products. The constant-
+// curvature builds compute a height gradient here; this is the same fact that
 // lets the CPU side skip alignUp entirely.
 vec4 upAtG(vec4 p) { return vec4(0.0, 0.0, 1.0, 0.0); }
 
@@ -581,14 +617,18 @@ vec4 selfAt(float t, out vec4 alt) {
 ${s3GLSL()}
 #elif GEOM == G_H2R
 ${h2rGLSL()}
+#elif GEOM == G_S2R
+${s2rGLSL()}
 #endif
 vec2 sceneMap(vec4 p, float t) {
 #if HAS_QUOTIENT
   vec2 m = domainMap(p);
 #elif GEOM == G_S3
   vec2 m = sphereWorld(p);
-#else
+#elif GEOM == G_H2R
   vec2 m = h2rWorld(p);
+#else
+  vec2 m = s2rWorld(p);
 #endif
   // Every round marker: anchor, beacon, boomerangs, blocks, decoys, the
   // opponent, a blast. One body, run once per live marker. See uMark above.
@@ -804,10 +844,27 @@ vec3 materialColor(float m, vec4 p, float up, float t) {
       // Geodesic polar is the obvious choice and is worse: atan pinches
       // every cell to a point at the octagon centre, so standing in the
       // middle fills the screen with a radial fan.
+#if GEOM == G_S2R
+      // ON A SPHERE, p.xy / p.w IS A GNOMONIC PROJECTION AND IT DOES NOT
+      // REACH. p.w is cos(d), so the ratio blows up at a quarter turn and
+      // CHANGES SIGN past it: the checker moires into noise at pi/2 and then
+      // mirrors itself over the far hemisphere. It covers half a world.
+      //
+      // The three surface coordinates are bounded by 1 everywhere including
+      // the antipode, so a 3D checker restricted to the sphere is even, has no
+      // singular point at all, and needs no projection. Geodesic polar would
+      // pinch at the pole -- the same failure the hyperbolic comment below
+      // records for the octagon centre.
+      float c = mod(floor(p.x * 4.0) + floor(p.y * 4.0) + floor(p.w * 4.0), 2.0);
+      vec3 col = mix(vec3(0.15, 0.18, 0.24), vec3(0.21, 0.25, 0.32), c);
+      // A tighter fade than the hyperbolic product's, because the whole world
+      // is pi across rather than 44 deep.
+      col = mix(col, vec3(0.18, 0.215, 0.28), smoothstep(2.0, 9.0, t));
+#else
       vec2 kl = p.xy / p.w;
       float c = mod(floor(kl.x * 7.0) + floor(kl.y * 7.0), 2.0);
       vec3 col = mix(vec3(0.15, 0.18, 0.24), vec3(0.21, 0.25, 0.32), c);
-#if GEOM == G_H2R
+#if IS_PRODUCT
       // FADE THE CHECKER OUT WITH DISTANCE, and it is the pixel-footprint rule
       // again rather than a look. Looking down a 44-unit shaft, one cell of a
       // 7-per-unit checker is far under a pixel wide, and asking for detail
@@ -818,6 +875,7 @@ vec3 materialColor(float m, vec4 p, float up, float t) {
       // hyperbolic worlds never see their floor from further than a cell or
       // two and lose nothing by leaving it alone.
       col = mix(col, vec3(0.18, 0.215, 0.28), smoothstep(6.0, 26.0, t));
+#endif
 #endif
       // Draw the octagon boundary. These lines are where one copy is glued to
       // the next: cross one and you are in the same room again. Eight of them
@@ -979,8 +1037,8 @@ vec3 trace(vec2 uv) {
   // every surface by one un-zoomed pixel and the magnified view would come out
   // blobbier the further you zoomed in, which reads as the zoom being broken.
   float pix = (1.2 / uRes.y) / max(uZoom, 1e-3) * (uSuper > 0.5 ? 0.5 : 1.0);
-#if GEOM == G_H2R
-  // How much of this ray lies in the hyperbolic factor. Fixed for the whole
+#if IS_PRODUCT
+  // How much of this ray lies in the surface factor. Fixed for the whole
   // march, because the split between the two factors is what "product" means.
   float horiz = length(dir.xy);
   // THE RANGE LIMIT APPLIES TO THE HORIZONTAL FACTOR ONLY, and that is the
@@ -999,7 +1057,18 @@ vec3 trace(vec2 uv) {
   // ends in fog, which is what a horizon is. 'horiz' is the fraction of the
   // ray in the hyperbolic factor, so horizontal distance travelled is
   // horiz * t and the bound falls straight out.
+#if GEOM == G_H2R
   float tCap = min(uMaxT, 7.0 / max(horiz, 1e-4));
+#else
+  // S^2 x R HAS NO SUCH LIMIT, and that is the engineering case for it. Its
+  // surface coordinates are bounded by 1 at every distance including the
+  // antipode, and its height is affine and exact at any depth, so there is
+  // nothing to cap: a ray may run the full range in any direction. The
+  // hyperbolic product is the only geometry here where the float32 limit
+  // reaches the renderer, because it is the only one that is both unbounded
+  // and unglued.
+  float tCap = uMaxT;
+#endif
 #else
   float tCap = uMaxT;
 #endif
@@ -1050,7 +1119,7 @@ vec3 trace(vec2 uv) {
 #endif
 
     vec2 m = sceneMap(p, t);
-#if GEOM == G_H2R
+#if IS_PRODUCT
     // Transverse spread here is ANISOTROPIC, and taking the hyperbolic answer
     // for both directions is wrong in the expensive direction. Split the ray
     // into a horizontal part of length a and a vertical part: neighbouring
@@ -1064,7 +1133,18 @@ vec3 trace(vec2 uv) {
     // pixel on the one surface it is looking at. Sphere tracing on a shallow
     // surface approaches without arriving, so those rays died with the floor
     // still just out of reach and the whole floor came out as white speckle.
+    //
+    // At kS = +1 the horizontal spread is sinS = sin, which COLLAPSES TO ZERO
+    // at the antipode -- that is the focusing that makes a point there fill
+    // the sky. A footprint of zero would ask for infinitely fine detail, so
+    // the bound taken there is t, which is the vertical spread and an honest
+    // upper bound on both: sin(a t)/a <= t always. Surfaces near the antipode
+    // come out a little fat, which is exactly what focusing looks like.
+#if GEOM == G_S2R
+    float foot = t;
+#else
     float foot = horiz > 1e-4 ? sinh(horiz * t) / horiz : t;
+#endif
     // The cap is what stops the footprint running away past the fog, so it
     // scales with the range: 60 units here against the hyperbolic 14.
     if (m.x < min(0.22, max(HIT_EPS, pix * foot))) { hit = t; mat = m.y; break; }
@@ -1210,7 +1290,7 @@ void main() {
  * program at startup and the spherical one lazily, the first time it is asked
  * for, so the default path pays exactly what it paid before.
  */
-const GEOM_IDS = { h3: 0, s3: 1, h2r: 2 };
+const GEOM_IDS = { h3: 0, s3: 1, h2r: 2, s2r: 3 };
 
 /**
  * The fragment shader for one geometry: 'h3', 's3' or 'h2r'.
