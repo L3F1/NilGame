@@ -987,8 +987,17 @@ addEventListener('keydown', (e) => {
     placePortal(1, player, cameraBasis().fwd, worldSDF);
   }
   if (e.code === 'Digit3') clearPortals();
-  // Start or restart the hoop course.
-  if (e.code === 'KeyK' && courseOn()) beginRun();
+  // Start or restart the course. K TURNS IT ON if it is off, rather than doing
+  // nothing: the option defaults to 'off', so gating this on courseOn() meant
+  // the key was dead until you had already found the mode in the options menu
+  // - and the menu is the only place it was mentioned, because K was missing
+  // from the key list below too. Two lines, and between them the whole feature
+  // was unreachable in the shipped build. A key named on screen must always do
+  // something when pressed.
+  if (e.code === 'KeyK') {
+    if (!courseOn()) { opts.course.i = 1; applyOptions(); }
+    beginRun();
+  }
   // The boomerang. It flies dead straight and comes back anyway, because some
   // of this manifold's geodesics close up. In the open world the spokes are
   // drawn along exactly those geodesics, so they show you where to aim.
@@ -1369,16 +1378,74 @@ function ensureCourse() {
   run = makeRun(course);
 }
 
-/** Start, or start again. One key does both, which is what a time trial wants. */
+/**
+ * Aim the camera at a point, using the SAME log the projection uses.
+ *
+ * Going through logTo rather than working out yaw and pitch from the axis
+ * directly means this cannot disagree with `project`: if the hoop draws at the
+ * centre of the screen, the camera really is pointing at it. cameraBasis
+ * builds fwd as [cos(yaw)cos(pitch), sin(yaw)cos(pitch), sin(pitch)] in frame
+ * components, so inverting it is one atan2 and one asin.
+ */
+function aimAt(q) {
+  const lv = logTo(player, q);
+  const m = Math.hypot(lv[0], lv[1], lv[2]);
+  if (m < 1e-9) return;
+  yaw = Math.atan2(lv[1], lv[0]);
+  pitch = Math.asin(Math.max(-1, Math.min(1, lv[2] / m)));
+  roll = 0; rollRate = 0;
+  camSwing = { axis: [0, 0, 1], angle: 0, vel: 0 };
+}
+
+/**
+ * Start, or start again. One key does both, which is what a time trial wants.
+ *
+ * It PUTS YOU ON THE START LINE, and that is not a convenience - it is what
+ * makes the mode legible at all. A closed geodesic of the octagon group runs
+ * through the CELL CENTRE, so `geodesicCourse` has to lay its hoops on the
+ * axis through the origin; it cannot lay them on the axis through wherever the
+ * player happens to be standing, because a geodesic parallel to a generator's
+ * axis but offset from it does not close up, and a course that does not close
+ * is the one thing this mode exists to show. So the course cannot come to the
+ * player and the player must go to the course.
+ *
+ * Measured before this: from the ordinary spawn, gate 1 had 0 of 41 ring
+ * points on screen. You pressed K, the clock started, and nothing whatsoever
+ * appeared - which is exactly what "the new modes don't do anything" looks
+ * like from the outside.
+ */
 function beginRun() {
   ensureCourse();
   // Rebuild rather than reuse: the hoops have been carried through every fold
   // the player made, so by now they are in whatever chart the player ended up
-  // in. A fresh course puts them back on the axis through where the player is.
+  // in. A fresh course puts them back on the axis through the cell centre.
   const best = run ? run.best : null;
   course = buildCourse();
   run = makeRun(course);
   run.best = best;
+
+  // The geodesic course runs through the origin, so the origin IS its start
+  // line. Stand there rather than at the ordinary spawn: in the bounded world
+  // every closed geodesic lies IN the floor plane, so the hoops are centred at
+  // altitude 0 and a player spawned at 0.6 is above the whole ring - outside a
+  // gate of radius 0.3, looking down at it. Just clear of the floor puts the
+  // eye INSIDE the line of gates, which is where a slalom is run from.
+  //
+  // The grapple course is a ring at radius 1.30 that the origin is not on, and
+  // it is flown on a rope rather than run in a straight line, so it keeps the
+  // ordinary spawn and only gets the aim.
+  if (optVal('course') !== 'grapple') {
+    player = placeAt(0, 0, optVal('mode') === 'floor (2D wrap)' ? 0.12 : 0.0);
+    seedHistory(foldPoint(point(player)), point(player));
+    vel = [0, 0, 0];
+    spin = [0, 0, 0];
+    grapple = null;
+  }
+  // Face the first gate. Without this the run is timed from a camera pointing
+  // wherever you left it, and in a compact manifold "somewhere behind you" can
+  // be several cells away.
+  if (course.hoops.length) aimAt(hoopNear(course.hoops[0], point(player)).at);
+
   startRun(run);
 }
 
@@ -2185,7 +2252,10 @@ function frame(now) {
     `octagons are where the room is glued to itself, eight at a corner.\n\n` +
     `WASD move \u00b7 space jump \u00b7 LMB grapple \u00b7 shift reel \u00b7 Q holonomy\n` +
     `B boomerang \u00b7 G build \u00b7 V decoy \u00b7 H recall \u00b7 T pane \u00b7 E anchor swap\n` +
-    `F beacon \u00b7 scroll zoom \u00b7 X unzoom \u00b7 N multiplayer \u00b7 O options \u00b7 R reset\n` +
+    `F beacon \u00b7 K course \u00b7 scroll zoom \u00b7 X unzoom \u00b7 N multiplayer \u00b7 O options\n` +
+    `R reset \u00b7 ${courseOn()
+      ? `course: ${optVal('course')} \u00b7 K restarts \u00b7 O to switch mode`
+      : `no course \u00b7 K starts the hoops \u00b7 O for the grapple gates`}\n` +
     (optVal('portals') === 'on'
       ? `1 / 2 place a portal \u00b7 3 clear \u00b7 ${portalsLive() ? 'pair live' : 'place both'}`
       : `portals off \u00b7 O to switch them on`);
