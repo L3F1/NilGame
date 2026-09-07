@@ -9,7 +9,7 @@ import {
   matMul, reorthonormalize, dist, pairings, sides, dot,
 } from './hyp.js';
 import { levelSDF, setMode, getMode, MODE } from './level.js';
-import { VERT, FRAG, LINE_VERT, LINE_FRAG } from './shader.js';
+import { VERT, fragFor, LINE_VERT, LINE_FRAG } from './shader.js';
 import {
   PLAYER_R, WALK_SPEED, JUMP, ROPE_RANGE, FLY_SPEED,
   stepFree, collide, control, cast, grappleAttach, grappleStep, ropePoints,
@@ -218,6 +218,14 @@ function link(name, vs, fs) {
   const p = gl.createProgram();
   gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
   gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  // Pin the attribute slots BEFORE linking, so every program agrees on them.
+  // There is more than one scene program now (one per curvature), and the
+  // full-screen quad's vertex array is set up once against slot 0; a driver is
+  // entitled to hand the second program a different location for the same
+  // name, which would draw nothing at all with no error to say why. Binding a
+  // name the shader does not have is legal and ignored, so both go in here.
+  gl.bindAttribLocation(p, 0, 'aPos');
+  gl.bindAttribLocation(p, 0, 'aNDC');
   const t0 = performance.now();
   gl.linkProgram(p);
   const secs = (performance.now() - t0) / 1000;
@@ -246,7 +254,35 @@ function link(name, vs, fs) {
   return p;
 }
 
-const scene = link('scene', VERT, FRAG);
+// The scene program, one per curvature.
+//
+// Curvature is a #define rather than a uniform, so each world gets its own
+// program with the other world's half of the marcher already dead. That is
+// worth 1.6 s of link time in the hyperbolic build and it halves the spherical
+// one; the note beside the define in shader.js has the measurements.
+//
+// The price is that switching worlds has to link, and a link here is seconds,
+// not milliseconds. So only the world actually being played is built: the
+// hyperbolic one at startup, exactly as before, and the spherical one the
+// first time it is asked for. Nobody who never opens the option pays for it.
+const sceneProgs = new Map();
+function sceneFor(k) {
+  const key = k < 0 ? -1 : 1;
+  if (!sceneProgs.has(key)) {
+    const p = link(key < 0 ? 'scene' : 'scene (spherical)', VERT, fragFor(key));
+    sceneProgs.set(key, { p, U: sceneUniforms(p) });
+  }
+  return sceneProgs.get(key);
+}
+
+let scene = null, U = null;
+/** Point `scene` and `U` at the program for this curvature, building it once. */
+function useCurvature(k) {
+  const s = sceneFor(k);
+  scene = s.p; U = s.U;
+}
+useCurvature(-1);
+
 const lines = link('rope', LINE_VERT, LINE_FRAG);
 
 // Losing the context mid-game draws a frozen or black canvas and reports
@@ -282,47 +318,50 @@ const lineLoc = gl.getAttribLocation(lines, 'aNDC');
 gl.enableVertexAttribArray(lineLoc);
 gl.vertexAttribPointer(lineLoc, 2, gl.FLOAT, false, 0, 0);
 
-const U = {
-  res: gl.getUniformLocation(scene, 'uRes'),
-  player: gl.getUniformLocation(scene, 'uPlayer'),
-  yaw: gl.getUniformLocation(scene, 'uYaw'),
-  pitch: gl.getUniformLocation(scene, 'uPitch'),
-  roll: gl.getUniformLocation(scene, 'uRoll'),
-  markN: gl.getUniformLocation(scene, 'uMarkN'),
-  mark: gl.getUniformLocation(scene, 'uMark'),
-  markAlt: gl.getUniformLocation(scene, 'uMarkAlt'),
-  markInfo: gl.getUniformLocation(scene, 'uMarkInfo'),
-  cutN: gl.getUniformLocation(scene, 'uCutN'),
-  cutNorm: gl.getUniformLocation(scene, 'uCutNorm'),
-  cutAt: gl.getUniformLocation(scene, 'uCutAt'),
-  cutNormAlt: gl.getUniformLocation(scene, 'uCutNormAlt'),
-  cutAtAlt: gl.getUniformLocation(scene, 'uCutAtAlt'),
-  cutR: gl.getUniformLocation(scene, 'uCutR'),
-  cutT: gl.getUniformLocation(scene, 'uCutT'),
-  steps: gl.getUniformLocation(scene, 'uSteps'),
-  open: gl.getUniformLocation(scene, 'uOpen'),
-  zoom: gl.getUniformLocation(scene, 'uZoom'),
-  edges: gl.getUniformLocation(scene, 'uEdges'),
-  solid: gl.getUniformLocation(scene, 'uSolid'),
-  selfHist: gl.getUniformLocation(scene, 'uSelfHist'),
-  selfHistB: gl.getUniformLocation(scene, 'uSelfHistB'),
-  selfLip: gl.getUniformLocation(scene, 'uSelfLip'),
-  histDt: gl.getUniformLocation(scene, 'uHistDt'),
-  lightC: gl.getUniformLocation(scene, 'uLightC'),
-  selfR: gl.getUniformLocation(scene, 'uSelfR'),
-  superSample: gl.getUniformLocation(scene, 'uSuper'),
-  time: gl.getUniformLocation(scene, 'uTime'),
-  ao: gl.getUniformLocation(scene, 'uAO'),
-  foeHurt: gl.getUniformLocation(scene, 'uFoeHurt'),
-  portalOn: gl.getUniformLocation(scene, 'uPortalOn'),
-  portalR: gl.getUniformLocation(scene, 'uPortalR'),
-  portalA: gl.getUniformLocation(scene, 'uPortalA'),
-  portalB: gl.getUniformLocation(scene, 'uPortalB'),
-  portalTA: gl.getUniformLocation(scene, 'uPortalTA'),
-  portalTB: gl.getUniformLocation(scene, 'uPortalTB'),
-  fog: gl.getUniformLocation(scene, 'uFog'),
-  maxT: gl.getUniformLocation(scene, 'uMaxT'),
-};
+/** Uniform locations for one scene program. One table per curvature. */
+function sceneUniforms(prog) {
+  return {
+    res: gl.getUniformLocation(prog, 'uRes'),
+    player: gl.getUniformLocation(prog, 'uPlayer'),
+    yaw: gl.getUniformLocation(prog, 'uYaw'),
+    pitch: gl.getUniformLocation(prog, 'uPitch'),
+    roll: gl.getUniformLocation(prog, 'uRoll'),
+    markN: gl.getUniformLocation(prog, 'uMarkN'),
+    mark: gl.getUniformLocation(prog, 'uMark'),
+    markAlt: gl.getUniformLocation(prog, 'uMarkAlt'),
+    markInfo: gl.getUniformLocation(prog, 'uMarkInfo'),
+    cutN: gl.getUniformLocation(prog, 'uCutN'),
+    cutNorm: gl.getUniformLocation(prog, 'uCutNorm'),
+    cutAt: gl.getUniformLocation(prog, 'uCutAt'),
+    cutNormAlt: gl.getUniformLocation(prog, 'uCutNormAlt'),
+    cutAtAlt: gl.getUniformLocation(prog, 'uCutAtAlt'),
+    cutR: gl.getUniformLocation(prog, 'uCutR'),
+    cutT: gl.getUniformLocation(prog, 'uCutT'),
+    steps: gl.getUniformLocation(prog, 'uSteps'),
+    open: gl.getUniformLocation(prog, 'uOpen'),
+    zoom: gl.getUniformLocation(prog, 'uZoom'),
+    edges: gl.getUniformLocation(prog, 'uEdges'),
+    solid: gl.getUniformLocation(prog, 'uSolid'),
+    selfHist: gl.getUniformLocation(prog, 'uSelfHist'),
+    selfHistB: gl.getUniformLocation(prog, 'uSelfHistB'),
+    selfLip: gl.getUniformLocation(prog, 'uSelfLip'),
+    histDt: gl.getUniformLocation(prog, 'uHistDt'),
+    lightC: gl.getUniformLocation(prog, 'uLightC'),
+    selfR: gl.getUniformLocation(prog, 'uSelfR'),
+    superSample: gl.getUniformLocation(prog, 'uSuper'),
+    time: gl.getUniformLocation(prog, 'uTime'),
+    ao: gl.getUniformLocation(prog, 'uAO'),
+    foeHurt: gl.getUniformLocation(prog, 'uFoeHurt'),
+    portalOn: gl.getUniformLocation(prog, 'uPortalOn'),
+    portalR: gl.getUniformLocation(prog, 'uPortalR'),
+    portalA: gl.getUniformLocation(prog, 'uPortalA'),
+    portalB: gl.getUniformLocation(prog, 'uPortalB'),
+    portalTA: gl.getUniformLocation(prog, 'uPortalTA'),
+    portalTB: gl.getUniformLocation(prog, 'uPortalTB'),
+    fog: gl.getUniformLocation(prog, 'uFog'),
+    maxT: gl.getUniformLocation(prog, 'uMaxT'),
+  };
+}
 const UL = { color: gl.getUniformLocation(lines, 'uColor') };
 
 // Every march step evaluates the whole level, so pixel count decides the
@@ -1365,6 +1404,7 @@ nEl('nrj').onclick = () => netConnectVia(nEl('nurl').value, nEl('nroom').value, 
 // altitude. Same code, different course.
 let course = null, run = null, courseWorld = -1, hoopFlash = 0;
 
+
 function courseOn() { return optVal('course') !== 'off'; }
 function buildCourse() {
   return optVal('course') === 'grapple' ? grappleCourse() : geodesicCourse(0, 6);
@@ -1450,6 +1490,26 @@ function beginRun() {
 }
 
 function applyOptions() {
+  // Curvature is FIXED AT HYPERBOLIC, and there is deliberately no option for
+  // it yet. The renderer can already do S^3 - `useCurvature(1)` builds and
+  // binds a spherical program, and it links in 4.4 s against 9.0 for this one,
+  // because in S^3 the entire quotient apparatus is dead code. What is not
+  // done is the CPU side.
+  //
+  // The blocker is one line of arithmetic. `uPlayer` is a Lorentz matrix, and
+  // a Lorentz matrix is not an isometry of the 3-sphere: the spawn point has
+  // <p,p> = -1 under the Minkowski form, as it must, and +1.81 under the
+  // Euclidean one, where a valid S^3 point needs exactly +1. So the ray starts
+  // 0.81 off the manifold, hDist to everything stays large, nothing is ever
+  // hit, and the screen comes out 99.3% black - measured, not guessed.
+  //
+  // A black screen is indistinguishable from a shader that failed to compile,
+  // which is the one failure mode this codebase has a whole boot panel to
+  // avoid, so the option stays out of the menu until the placement, the
+  // integrator and collision are on geom.js with k = +1 too. The renderer half
+  // is done, tested and free; it is waiting on the physics half.
+  useCurvature(-1);
+
   // The two worlds use DIFFERENT groups, and that is the whole point.
   //
   //   floor  octagon group. Tessellates the floor plane only, so the manifold
@@ -2106,6 +2166,10 @@ function frame(now) {
   const openWorld = optVal('mode') !== 'floor (2D wrap)';
   gl.uniform1f(U.open, openWorld ? 1 : 0);
   gl.uniform1f(U.solid, openWorld ? 1 : 0);
+  // Curvature is NOT uploaded here. It is a #define, so it is baked into which
+  // program is bound, and `useCurvature` in applyOptions is what selects that.
+  // It started life as a uniform and cost 1.6 s of link time in the build that
+  // is always made; see the note beside the define in shader.js.
   gl.uniform1f(U.zoom, zoom);
   gl.uniform1f(U.edges, optVal('edges') === 'show' ? 1 : 0);
   // Zooming in is asking to see further, so the fog has to back off and the

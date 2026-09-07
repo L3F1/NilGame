@@ -58,7 +58,46 @@ const mat4 DOD_PAIR[12] = mat4[12](
 `;
 
 const HYP_GLSL = `
-float mdot(vec4 a, vec4 b) { return a.x*b.x + a.y*b.y + a.z*b.z - a.w*b.w; }
+// Curvature: -1 hyperbolic, +1 spherical. A COMPILE-TIME CONSTANT, patched in
+// by fragFor() below, and it has to be one.
+//
+// The obvious spelling is a uniform, so that one marcher serves both worlds
+// and there is only ever one program to link. Measured, that costs 1.6 s of
+// link time and it costs it in the HYPERBOLIC program, which is the one that
+// is always built:
+//
+//     uniform, one program for both        10.1 s   (trips the WARN at 10)
+//     #define uCurv (-1.0), hyperbolic      8.5 s   (the pre-spherical figure)
+//     #define uCurv (1.0),  spherical       4.4 s
+//
+// Three warm runs each, and the spreads do not overlap. The reason is the
+// inlining rule that governs everything about this shader: with a uniform, the
+// D3D compiler cannot fold away either arm of cosK/sinK/asinK, and it cannot
+// fold away sphereWorld or domainMap, so all of it is emitted -- and mdot is
+// called from inside the march inner loop, which is where multiplication by
+// three copies of sceneMap happens. With a constant, each program keeps only
+// its own half and the other half is dead code before the inliner ever runs.
+//
+// The spherical program links in HALF the time because in S^3 the entire
+// quotient machinery is dead: domainMap, exitDist, domainDepth, the fold loop
+// and all 39 level primitives go, and what is left is sphereWorld.
+//
+// The parentheses are load-bearing. Without them "-uCurv" in boostMat expands
+// to "--1.0", which is a GLSL syntax error and reads as a mysterious compile
+// failure a long way from here.
+#define uCurv (CURV_K)
+
+// The form <x,y> = x.xyz . y.xyz + k * x.w * y.w. At k = -1 this is the
+// Minkowski product it has always been; at k = +1 it is the plain Euclidean
+// one on R^4, whose unit sphere IS S^3.
+float mdot(vec4 a, vec4 b) { return a.x*b.x + a.y*b.y + a.z*b.z + uCurv*a.w*b.w; }
+
+// Generalised trigonometry, exactly as geom.js does it on the CPU:
+// cosh/cos, sinh/sin, asinh/asin, selected by the sign of the curvature.
+// cosK^2 + k sinK^2 = 1 in both, which is why one set of formulas works.
+float cosK(float t) { return uCurv < 0.0 ? cosh(t) : cos(t); }
+float sinK(float t) { return uCurv < 0.0 ? sinh(t) : sin(t); }
+float asinK(float x) { return uCurv < 0.0 ? asinh(x) : asin(clamp(x, -1.0, 1.0)); }
 
 // Altitude: signed distance to the floor plane. |grad| = 1, so it IS a
 // distance, and it is Gamma-invariant, so it means the same in every copy.
@@ -68,13 +107,17 @@ float hHeight(vec4 p) { return asinh(p.z); }
 // well conditioned when they are close; acosh(-mdot(p,q)) does not.
 float hDist(vec4 p, vec4 q) {
   vec4 w = p - q;
-  return 2.0 * asinh(sqrt(max(mdot(w, w), 0.0)) * 0.5);
+  // <p-q,p-q> = 4 sinK(d/2)^2 holds in BOTH curvatures, which is why this
+  // needed only asinh -> asinK. Sphere tracing survives the change: the
+  // distance function is 1-Lipschitz in any metric space, measured at
+  // 0.999921 in S^3 over 4000 samples, with 0 tunnels in 2198 rays.
+  return 2.0 * asinK(sqrt(max(mdot(w, w), 0.0)) * 0.5);
 }
 
 // The isometry translating distance t along the geodesic from the origin
 // toward unit u. Same formula as hyp.js translation().
 mat4 boostMat(vec3 u, float t) {
-  float ch = cosh(t), sh = sinh(t);
+  float ch = cosK(t), sh = sinK(t);
   vec4 U = vec4(u, 0.0);
   mat4 B;
   for (int c = 0; c < 4; c++) {
@@ -83,7 +126,7 @@ mat4 boostMat(vec3 u, float t) {
       float e3c = (c == 3) ? 1.0 : 0.0;
       B[c][r] = ((r == c) ? 1.0 : 0.0)
               + (ch - 1.0) * U[r] * U[c]
-              + sh * (U[r] * e3c + e3r * U[c])
+              + sh * (U[r] * e3c - uCurv * e3r * U[c])
               + (ch - 1.0) * e3r * e3c;
     }
   }
@@ -91,7 +134,7 @@ mat4 boostMat(vec3 u, float t) {
 }
 `;
 
-export const FRAG = `#version 300 es
+const FRAG_SRC = `#version 300 es
 precision highp float;
 
 uniform vec2  uRes;
@@ -365,8 +408,43 @@ vec4 selfAt(float t, out vec4 alt) {
   return q;
 }
 
+// A world for S^3, and it needs NO fundamental domain at all.
+//
+// This is the whole reason spherical was the cheap one to draw first. The
+// hyperbolic marcher spends most of its complexity on the quotient -- the face
+// scan, the exact exit solve, the fold loop, the straddle images -- and every
+// one of those exists to fake compactness. S^3 is already compact: fly far
+// enough in any direction and you come back, because the geodesic closes at
+// 2*pi and not because anything glued it.
+//
+// Six balls on the coordinate axes at a quarter turn, plus a thin shell at the
+// equator of the eye's own starting point so there is a floor to read motion
+// against. Kept SMALL on purpose: this body is inlined into all three copies
+// of sceneMap, and link time is the budget that binds.
+vec2 sphereWorld(vec4 p) {
+  vec2 m = vec2(1e9, 1.0);
+  // rolled(): this body is inlined into all three copies of sceneMap, and an
+  // unrolled six would be eighteen. Exactly the rule in CLAUDE.md - hide the
+  // bound from the compiler on a BIG body, leave it alone on a small hot one.
+  for (int i = 0; i < rolled(6); i++) {
+    // +x,-x,+y,-y,+z,-z at distance pi/2, which in S^3 is the equator of the
+    // origin -- the furthest a circle of directions ever gets before it starts
+    // closing again.
+    vec4 c = vec4(0.0);
+    int ax = i / 2;
+    c[ax] = (i - 2 * ax) == 0 ? 1.0 : -1.0;
+    float d = hDist(p, c) - 0.34;
+    if (d < m.x) m = vec2(d, float(2 + ax));
+  }
+  // A shell: the set of points a fixed distance from the pole. It reads as a
+  // ground plane you are standing inside, and it is one inner product wide.
+  float shell = abs(hDist(p, vec4(0.0, 0.0, 0.0, 1.0)) - 1.15) - 0.035;
+  if (shell < m.x) m = vec2(shell, 1.0);
+  return m;
+}
+
 vec2 sceneMap(vec4 p, float t) {
-  vec2 m = domainMap(p);
+  vec2 m = uCurv > 0.0 ? sphereWorld(p) : domainMap(p);
   // Every round marker: anchor, beacon, boomerangs, blocks, decoys, the
   // opponent, a blast. One body, run once per live marker. See uMark above.
   //
@@ -733,7 +811,7 @@ vec3 trace(vec2 uv) {
   float pix = (1.2 / uRes.y) / max(uZoom, 1e-3) * (uSuper > 0.5 ? 0.5 : 1.0);
 
   for (int i = 0; i < steps; i++) {
-    p = chart * vec4(sinh(s) * dir, cosh(s));
+    p = chart * vec4(sinK(s) * dir, cosK(s));
 
     // Fold until INSIDE, not once per step. Near an edge or a corner the ray
     // can be outside two or three faces at once, and folding across one at a
@@ -744,9 +822,14 @@ vec3 trace(vec2 uv) {
     // pairing. The boost parallel-transports the frame, which is exactly why
     // dir does not have to change - in frame components the velocity along a
     // geodesic is constant.
-    int face;
+    // ALL of this is the quotient, and S^3 has no quotient: it is already
+    // compact, so there is no fundamental domain to leave, nothing to fold by
+    // and no face to stop short of. Guarding it off is not an optimisation,
+    // it is that the questions do not apply -- domainDepth would be scanning
+    // side normals that describe a hyperbolic solid.
+    int face = 0;
     bool rebased = false;
-    float depth = domainDepth(p, face);
+    float depth = uCurv > 0.0 ? 1.0 : domainDepth(p, face);
     for (int fold = 0; fold < 12 && depth < -FOLD_EPS; fold++) {
       chart = pairingOf(face) * (chart * boostMat(dir, s));
       s = 0.0;
@@ -767,11 +850,11 @@ vec3 trace(vec2 uv) {
     // The exit depends only on the chart and the direction, and neither
     // changes between re-bases, so this survives until the next one.
     if (rebased || sExit <= s) {
-      sExit = exitDist(chart, dir, s);
+      sExit = uCurv > 0.0 ? 1e30 : exitDist(chart, dir, s);
     }
 
     vec2 m = sceneMap(p, t);
-    if (m.x < min(0.05, max(HIT_EPS, pix * sinh(t)))) { hit = t; mat = m.y; break; }
+    if (m.x < min(0.05, max(HIT_EPS, pix * abs(sinK(t))))) { hit = t; mat = m.y; break; }
 
     // Step by the SDF, but never past the face - beyond it domainMap is
     // describing the wrong copy. Landing a hair PAST the face rather than on
@@ -822,7 +905,9 @@ vec3 trace(vec2 uv) {
     // so costs nothing and means a normal that has lost its length can only
     // shade the surface wrongly, never blow the pixel out to white.
     float key = clamp(mdot(n, upAt(p)), 0.0, 1.0);
-    vec4 tangent = chart * vec4(cosh(s) * dir, sinh(s));
+    // d/ds of (cosK s) o + (sinK s) u. At k = -1 that is (sinh s) o + (cosh s) u
+    // and at k = +1 it is -(sin s) o + (cos s) u, which the -uCurv gives.
+    vec4 tangent = chart * vec4(cosK(s) * dir, -uCurv * sinK(s));
     float head = clamp(-mdot(n, tangent), 0.0, 1.0);
     float occ = ambient(p, n, hit);
     // Occlusion belongs on the ambient term, not on the whole shade. The key
@@ -892,3 +977,24 @@ void main() {
   col /= float(n);
   fragColor = vec4(pow(col, vec3(1.0 / 2.2)), 1.0);
 }`;
+
+/**
+ * The scene fragment shader, built for one curvature.
+ *
+ * Curvature is a #define rather than a uniform because the D3D compiler can
+ * only drop the half of the marcher a world does not use if it can SEE which
+ * half that is at compile time. See the long note by the define itself for the
+ * measurements; the short version is 10.1 s of link time for one program that
+ * does both, against 8.5 s and 4.4 s for two that each do one.
+ *
+ * The cost is that switching worlds relinks. main.js builds the hyperbolic
+ * program at startup and the spherical one lazily, the first time it is asked
+ * for, so the default path pays exactly what it paid before.
+ */
+export function fragFor(k) {
+  return FRAG_SRC.replace('CURV_K', k < 0 ? '-1.0' : '1.0');
+}
+
+// The default program. Every tool imports this, so what shader-check compiles
+// and link-time times is the hyperbolic build -- the one that is always made.
+export const FRAG = fragFor(-1);
