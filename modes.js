@@ -277,6 +277,14 @@ export function resetRun(run) {
  * a compact manifold that is not a hypothetical, because a straight line
  * eventually reaches everything. Without the ordering the wrap IS the cheat.
  *
+ * The crossing TEST is the course's, not this function's. `hoopCrossed` is the
+ * right one for a hoop in H^3 -- a sign change of <p,N> against a geodesic
+ * plane -- and it is wrong in H^2 x R, where a gate is a horizontal disc and
+ * the test is a sign change of the HEIGHT coordinate. Everything else about a
+ * run is the same in both: a phase, a clock, an ordering and a best time. So a
+ * course may carry `crossed(p0, p1, gate)` and this defers to it; the
+ * hyperbolic courses carry none and get the default.
+ *
  * Returns the index of the hoop just taken, or -1.
  */
 export function runStep(run, dt, p0, p1, banked = null) {
@@ -284,7 +292,8 @@ export function runStep(run, dt, p0, p1, banked = null) {
   run.t += dt;
   const h = run.course.hoops[run.next];
   if (!h || !p0 || !p1) return -1;
-  if (!hoopCrossed(p0, p1, h)) return -1;
+  const crossed = run.course.crossed || hoopCrossed;
+  if (!crossed(p0, p1, h)) return -1;
   // A shut gate is flown THROUGH, not bounced off. Blocking the way would need
   // the gate to be solid, and a solid disc in a corridor you are swinging down
   // at speed is a wall you hit by accident; the honest failure here is that

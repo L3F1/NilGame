@@ -14,6 +14,7 @@
 import { levelGLSL } from './level.js';
 import { OCT_SIDE, OCT_PAIR, DOD_SIDE, DOD_PAIR } from './hyp.js';
 import { s3GLSL } from './s3.js';
+import { h2rGLSL } from './h2r.js';
 
 export const VERT = `#version 300 es
 in vec2 aPos;
@@ -86,7 +87,38 @@ const HYP_GLSL = `
 // The parentheses are load-bearing. Without them "-uCurv" in boostMat expands
 // to "--1.0", which is a GLSL syntax error and reads as a mysterious compile
 // failure a long way from here.
-#define uCurv (CURV_K)
+// WHICH GEOMETRY, as a compile-time constant. The id below is patched in by
+// fragFor() below and the preprocessor does the rest, so each program contains
+// only its own arithmetic -- the other geometries are gone before the inliner
+// ever runs, which is stronger than relying on constant folding.
+#define G_H3  0
+#define G_S3  1
+#define G_H2R 2
+#define GEOM (__GEOM_ID__)
+
+// H^3 is the only one of the three with a QUOTIENT. S^3 is compact already and
+// H^2 x R is deliberately unglued, so for both of those the fundamental
+// domain, the face scan, the exact exit solve, the fold loop, the straddle
+// copies and all 39 level primitives are dead code -- which is exactly why the
+// spherical program links in half the time the hyperbolic one does.
+#if GEOM == G_H3
+#define HAS_QUOTIENT 1
+#else
+#define HAS_QUOTIENT 0
+#endif
+
+// The curvature of the AMBIENT FORM, which is not the same thing as the
+// curvature of the space. H^2 x R is not a space of constant curvature at all,
+// but the metric it induces on tangent vectors is diag(1,1,1,-1) -- the very
+// same Minkowski form H^3 uses, because the extra +z^2 of the flat factor sits
+// exactly where H^3's third spatial coordinate does. So 'mdot', the lighting
+// and the normalisation are shared with the hyperbolic build unchanged, and
+// only distance, the ray and the up vector had to be written twice.
+#if GEOM == G_S3
+#define uCurv (1.0)
+#else
+#define uCurv (-1.0)
+#endif
 
 // The form <x,y> = x.xyz . y.xyz + k * x.w * y.w. At k = -1 this is the
 // Minkowski product it has always been; at k = +1 it is the plain Euclidean
@@ -99,6 +131,120 @@ float mdot(vec4 a, vec4 b) { return a.x*b.x + a.y*b.y + a.z*b.z + uCurv*a.w*b.w;
 float cosK(float t) { return uCurv < 0.0 ? cosh(t) : cos(t); }
 float sinK(float t) { return uCurv < 0.0 ? sinh(t) : sin(t); }
 float asinK(float x) { return uCurv < 0.0 ? asinh(x) : asin(clamp(x, -1.0, 1.0)); }
+
+#if GEOM == G_H2R
+// --- H^2 x R -------------------------------------------------------------
+//
+// A point is (x0, x1, z, x3) with x0^2 + x1^2 - x3^2 = -1 and z the Euclidean
+// height, free. Components 0, 1 and 3 are a point of H^2; component 2 is the
+// flat factor. See h2r.js, which emits the world below and owns the CPU half.
+
+// The form on the H^2 factor alone. POINTS satisfy hdot(p,p) = -1; the height
+// simply does not appear, which is what "product" means.
+float hdot(vec4 a, vec4 b) { return a.x*b.x + a.y*b.y - a.w*b.w; }
+
+// Distance in the floor plan, ignoring height. Same 4 sinh^2(d/2) identity as
+// H^3, one dimension down, and used for the same precision reason.
+float hHorizDist(vec4 p, vec4 q) {
+  vec4 w = p - q;
+  return 2.0 * asinh(sqrt(max(hdot(w, w), 0.0)) * 0.5);
+}
+
+// Distance in H^2 x R, and in a product metric it is PYTHAGORAS in the two
+// factors -- exactly, not as an approximation. That is what makes the world
+// below cheaper than the hyperbolic level: a vertical column is a horizontal
+// distance with the height dropped, and the floor is the height itself.
+float hDist(vec4 p, vec4 q) {
+  float dh = hHorizDist(p, q);
+  float dz = p.z - q.z;
+  return sqrt(dh * dh + dz * dz);
+}
+
+// Altitude, and it is the coordinate. No function, no gradient, no cosh.
+float hHeight(vec4 p) { return p.z; }
+
+// The point s along the ray from the chart origin in unit direction dir.
+//
+// Split dir into a horizontal part of length a and a vertical part dir.z. The
+// horizontal factor runs an H^2 geodesic a distance a*s; the vertical factor
+// runs a straight line a distance dir.z*s. Unit speed falls out of
+// a^2 + dir.z^2 = 1, and the two never mix.
+vec4 rayLocal(vec3 dir, float s) {
+  float a = length(dir.xy);
+  float sh = a > 1e-6 ? sinh(a * s) / a : s;
+  return vec4(sh * dir.x, sh * dir.y, dir.z * s, cosh(a * s));
+}
+
+// d/ds of the above, which is the unit tangent to the ray. Used for the
+// headlight term only.
+vec4 rayTangent(vec3 dir, float s) {
+  float a = length(dir.xy);
+  float ch = cosh(a * s);
+  return vec4(ch * dir.x, ch * dir.y, dir.z, a * sinh(a * s));
+}
+
+// The chart carried to a local point. A plain mat4 multiply is WRONG here and
+// this is the one place it shows in the shader: the height is affine, so the
+// chart's own height must be ADDED, never scaled by the H^2 timelike
+// coordinate. Isom(H^2 x R) does not embed in GL(4); see h2r.js.
+vec4 chartMap(mat4 M, vec4 L) {
+  vec4 q = M * L;
+  q.z = M[3].z + L.z;
+  return q;
+}
+
+// One geodesic step from p along a unit tangent n, for ambient occlusion.
+vec4 geoStep(vec4 p, vec4 n, float d) {
+  float a = sqrt(max(n.x*n.x + n.y*n.y - n.w*n.w, 0.0));
+  float ch = cosh(a * d);
+  float sh = a > 1e-6 ? sinh(a * d) / a : d;
+  return vec4(ch * p.x + sh * n.x, ch * p.y + sh * n.y, p.z + n.z * d,
+              ch * p.w + sh * n.w);
+}
+
+// Project a gradient onto the tangent space at p. Only the H^2 factor has a
+// constraint to project out; the height direction is already tangent.
+vec4 projT(vec4 G, vec4 p) {
+  return G + hdot(G, p) * vec4(p.x, p.y, 0.0, p.w);
+}
+
+// The isometry that flies distance s along the ray, as a chart. The H^2 factor
+// gets a boost through a*s and the flat factor a straight offset of dir.z*s;
+// they never mix, which is the whole content of "product".
+mat4 h2rBoost(vec3 dir, float s) {
+  float a = length(dir.xy);
+  vec2 u = a > 1e-6 ? dir.xy / a : vec2(1.0, 0.0);
+  float d = a * s;
+  float ch = cosh(d), sh = sinh(d), c1 = cosh(d) - 1.0;
+  mat4 B;
+  B[0] = vec4(1.0 + c1 * u.x * u.x, c1 * u.x * u.y, 0.0, sh * u.x);
+  B[1] = vec4(c1 * u.x * u.y, 1.0 + c1 * u.y * u.y, 0.0, sh * u.y);
+  B[2] = vec4(0.0, 0.0, 1.0, 0.0);
+  B[3] = vec4(sh * u.x, sh * u.y, dir.z * s, ch);
+  return B;
+}
+
+// Carry the chart forward by that boost. A PLAIN mat4 multiply is wrong for
+// the same reason chartMap is: composing two affine heights would scale the
+// first by the second's cosh. Every other row composes correctly, because the
+// vertical frame column is (0,0,1,0) and so contributes nothing to them.
+mat4 chartRebase(mat4 M, vec3 dir, float s) {
+  mat4 B = h2rBoost(dir, s);
+  mat4 N = M * B;
+  N[0].z = 0.0;
+  N[1].z = 0.0;
+  N[2].z = 1.0;
+  N[3].z = M[3].z + B[3].z;
+  return N;
+}
+
+// Up is the vertical, everywhere, exactly. The hyperbolic build computes a
+// height gradient here; this one is a constant, which is the same fact that
+// lets the CPU side skip alignUp entirely.
+vec4 upAtG(vec4 p) { return vec4(0.0, 0.0, 1.0, 0.0); }
+
+#else
+// --- H^3 and S^3, which share one trigonometry ---------------------------
 
 // Altitude: signed distance to the floor plane. |grad| = 1, so it IS a
 // distance, and it is Gamma-invariant, so it means the same in every copy.
@@ -133,6 +279,24 @@ mat4 boostMat(vec3 u, float t) {
   }
   return B;
 }
+
+// The same four hooks the H^2 x R arm defines, in the constant-curvature form.
+// One geodesic formula serves both: gamma(s) = cosK(s) o + sinK(s) u.
+vec4 rayLocal(vec3 dir, float s) { return vec4(sinK(s) * dir, cosK(s)); }
+// d/ds of it: at k = -1 that is (sinh s) o + (cosh s) u and at k = +1 it is
+// -(sin s) o + (cos s) u, which the -uCurv supplies.
+vec4 rayTangent(vec3 dir, float s) { return vec4(cosK(s) * dir, -uCurv * sinK(s)); }
+vec4 chartMap(mat4 M, vec4 L) { return M * L; }
+mat4 chartRebase(mat4 M, vec3 dir, float s) { return M * boostMat(dir, s); }
+vec4 geoStep(vec4 p, vec4 n, float d) { return cosh(d) * p + sinh(d) * n; }
+vec4 projT(vec4 G, vec4 p) { return G + mdot(G, p) * p; }
+
+// Unit up-vector at p: the height gradient, an ambient tangent vector.
+vec4 upAtG(vec4 p) {
+  float s = sqrt(1.0 + p.z * p.z);
+  return vec4(p.z * p.x, p.z * p.y, 1.0 + p.z * p.z, p.z * p.w) / s;
+}
+#endif
 `;
 
 const FRAG_SRC = `#version 300 es
@@ -413,9 +577,19 @@ vec4 selfAt(float t, out vec4 alt) {
 // emitted twice, a JS SDF for the physics and this for the renderer, exactly
 // as level.js does it. Dead code in the hyperbolic program, because uCurv is a
 // #define and the compiler can see which branch of the selector is taken.
+#if GEOM == G_S3
 ${s3GLSL()}
+#elif GEOM == G_H2R
+${h2rGLSL()}
+#endif
 vec2 sceneMap(vec4 p, float t) {
-  vec2 m = uCurv > 0.0 ? sphereWorld(p) : domainMap(p);
+#if HAS_QUOTIENT
+  vec2 m = domainMap(p);
+#elif GEOM == G_S3
+  vec2 m = sphereWorld(p);
+#else
+  vec2 m = h2rWorld(p);
+#endif
   // Every round marker: anchor, beacon, boomerangs, blocks, decoys, the
   // opponent, a blast. One body, run once per live marker. See uMark above.
   //
@@ -489,11 +663,8 @@ vec2 sceneMap(vec4 p, float t) {
   return m;
 }
 
-// Unit up-vector at p: the height gradient, an ambient tangent vector.
-vec4 upAt(vec4 p) {
-  float s = sqrt(1.0 + p.z * p.z);
-  return vec4(p.z * p.x, p.z * p.y, 1.0 + p.z * p.z, p.z * p.w) / s;
-}
+// Unit up-vector at p, whichever geometry this program was built for.
+vec4 upAt(vec4 p) { return upAtG(p); }
 
 // Surface normal at p, as a unit ambient TANGENT vector. Not in frame
 // components: the player frame lives at the player, not at p, so perturbing
@@ -516,7 +687,7 @@ vec4 sceneNormal(vec4 p, float t) {
     g[ax] += sgn * sceneMap(p + d, t).x;
   }
   vec4 G = vec4(g.x, g.y, g.z, -g.w);          // raise the index
-  G = G + mdot(G, p) * p;                      // project onto T_p
+  G = projT(G, p);                             // project onto T_p
   // A tangent vector at p is spacelike, so mdot(G,G) > 0 - but at a grazing
   // hit the four differences nearly cancel and it can come back at or below
   // zero. Dividing by sqrt(max(gg, 1e-12)) then scales G by up to a million
@@ -551,9 +722,11 @@ float ambient(vec4 p, vec4 n, float t) {
   float occ = 0.0, w = 1.0;
   for (int i = 1; i <= rolled(4); i++) {
     float d = 0.055 * float(i);
-    vec4 q = cosh(d) * p + sinh(d) * n;
+    vec4 q = geoStep(p, n, d);
+#if HAS_QUOTIENT
     int face;
     if (domainDepth(q, face) < 0.0) continue;
+#endif
     occ += w * max(d - sceneMap(q, t).x, 0.0);
     w *= 0.62;
   }
@@ -616,13 +789,13 @@ float exitDist(mat4 C, vec3 dir, float tMin) {
   return best;
 }
 
-vec3 materialColor(float m, vec4 p, float up) {
+vec3 materialColor(float m, vec4 p, float up, float t) {
   // The floor, the checker and the gold domain outline are all about the
   // QUOTIENT, and a spherical world has none. Guarding on uCurv -- a #define,
   // so this is decided at compile time -- keeps domainDepth out of the
   // spherical program entirely rather than leaving it live to answer a
   // question that does not apply.
-  if (uCurv < 0.0 && m < 1.5) {
+  if (m < 1.5) {
     if (up > 0.5) {
       // Floor checker in KLEIN coordinates, p.xy / p.w: the whole hyperbolic
       // plane squashed into a unit disc. Cells shrink toward the rim, and
@@ -634,12 +807,26 @@ vec3 materialColor(float m, vec4 p, float up) {
       vec2 kl = p.xy / p.w;
       float c = mod(floor(kl.x * 7.0) + floor(kl.y * 7.0), 2.0);
       vec3 col = mix(vec3(0.15, 0.18, 0.24), vec3(0.21, 0.25, 0.32), c);
+#if GEOM == G_H2R
+      // FADE THE CHECKER OUT WITH DISTANCE, and it is the pixel-footprint rule
+      // again rather than a look. Looking down a 44-unit shaft, one cell of a
+      // 7-per-unit checker is far under a pixel wide, and asking for detail
+      // below a pixel gets you the sample noise instead of the pattern -- the
+      // floor came out as a field of white speckle, which reads as a precision
+      // failure and is not one. The right answer below a pixel is the AVERAGE,
+      // so it fades to the mean of the two. Guarded to this build because the
+      // hyperbolic worlds never see their floor from further than a cell or
+      // two and lose nothing by leaving it alone.
+      col = mix(col, vec3(0.18, 0.215, 0.28), smoothstep(6.0, 26.0, t));
+#endif
       // Draw the octagon boundary. These lines are where one copy is glued to
       // the next: cross one and you are in the same room again. Eight of them
       // meet at every corner, which is what a genus-2 surface looks like.
+#if HAS_QUOTIENT
       int face;
       float d = domainDepth(p, face);
       if (uEdges > 0.5 && uSolid < 0.5) col = mix(vec3(0.62, 0.46, 0.14), col, smoothstep(0.0, 0.05, d));
+#endif
       return col;
     }
     if (up < -0.5) return vec3(0.07, 0.08, 0.11);
@@ -762,7 +949,14 @@ vec3 trace(vec2 uv) {
   float mat = 0.0;
   int steps = min(int(uSteps), 512);   // a bound, in case a uniform goes wrong
 
+#if HAS_QUOTIENT
   float sExit = -1e30;      // where the ray leaves this copy; see exitDist
+#else
+  // No faces, so nothing ever clamps the step. It must be +infinity rather
+  // than -infinity: the clamp below is a max against sExit, and a very
+  // NEGATIVE one would pin every step to FACE_EPS and the ray would crawl.
+  float sExit = 1e30;
+#endif
 
   // How wide one pixel is, as an angle. A fixed hit threshold is wrong in two
   // directions at once. Too fine, and a ray grazing the floor never converges:
@@ -785,9 +979,33 @@ vec3 trace(vec2 uv) {
   // every surface by one un-zoomed pixel and the magnified view would come out
   // blobbier the further you zoomed in, which reads as the zoom being broken.
   float pix = (1.2 / uRes.y) / max(uZoom, 1e-3) * (uSuper > 0.5 ? 0.5 : 1.0);
+#if GEOM == G_H2R
+  // How much of this ray lies in the hyperbolic factor. Fixed for the whole
+  // march, because the split between the two factors is what "product" means.
+  float horiz = length(dir.xy);
+  // THE RANGE LIMIT APPLIES TO THE HORIZONTAL FACTOR ONLY, and that is the
+  // engineering fact this geometry exists to exploit.
+  //
+  // A world point's H^2 coordinates grow like cosh of the horizontal distance
+  // from the origin, and there is no quotient here to fold them back -- so
+  // unlike the hyperbolic worlds, a ray really can march out to where float32
+  // has nothing left. Past about d = 7 the distance to a column is a
+  // difference of terms of size e^{2d} and comes back as noise, which draws as
+  // speckle across the whole far field. The height costs nothing at all: it is
+  // an AFFINE coordinate, exact at any depth.
+  //
+  // So the cap is per-ray rather than per-frame. A sightline straight down the
+  // shaft may run the full 60 units; one across the floor plan is cut at 7 and
+  // ends in fog, which is what a horizon is. 'horiz' is the fraction of the
+  // ray in the hyperbolic factor, so horizontal distance travelled is
+  // horiz * t and the bound falls straight out.
+  float tCap = min(uMaxT, 7.0 / max(horiz, 1e-4));
+#else
+  float tCap = uMaxT;
+#endif
 
   for (int i = 0; i < steps; i++) {
-    p = chart * vec4(sinK(s) * dir, cosK(s));
+    p = chartMap(chart, rayLocal(dir, s));
 
     // Fold until INSIDE, not once per step. Near an edge or a corner the ray
     // can be outside two or three faces at once, and folding across one at a
@@ -803,9 +1021,10 @@ vec3 trace(vec2 uv) {
     // and no face to stop short of. Guarding it off is not an optimisation,
     // it is that the questions do not apply -- domainDepth would be scanning
     // side normals that describe a hyperbolic solid.
-    int face = 0;
     bool rebased = false;
-    float depth = uCurv > 0.0 ? 1.0 : domainDepth(p, face);
+#if HAS_QUOTIENT
+    int face = 0;
+    float depth = domainDepth(p, face);
     for (int fold = 0; fold < 12 && depth < -FOLD_EPS; fold++) {
       chart = pairingOf(face) * (chart * boostMat(dir, s));
       s = 0.0;
@@ -813,11 +1032,12 @@ vec3 trace(vec2 uv) {
       depth = domainDepth(p, face);
       rebased = true;
     }
+#endif
 
     // A long unobstructed run inside one copy would grow s the same way, so
     // re-base on distance too. A cell is about three across; two is plenty.
     if (!rebased && s > 2.0) {
-      chart = chart * boostMat(dir, s);
+      chart = chartRebase(chart, dir, s);
       s = 0.0;
       p = chart[3];
       rebased = true;
@@ -825,12 +1045,33 @@ vec3 trace(vec2 uv) {
 
     // The exit depends only on the chart and the direction, and neither
     // changes between re-bases, so this survives until the next one.
-    if (rebased || sExit <= s) {
-      sExit = uCurv > 0.0 ? 1e30 : exitDist(chart, dir, s);
-    }
+#if HAS_QUOTIENT
+    if (rebased || sExit <= s) sExit = exitDist(chart, dir, s);
+#endif
 
     vec2 m = sceneMap(p, t);
-    if (m.x < min(0.05, max(HIT_EPS, pix * abs(sinK(t))))) { hit = t; mat = m.y; break; }
+#if GEOM == G_H2R
+    // Transverse spread here is ANISOTROPIC, and taking the hyperbolic answer
+    // for both directions is wrong in the expensive direction. Split the ray
+    // into a horizontal part of length a and a vertical part: neighbouring
+    // rays separate like sinh(a*t)/a across the floor plan and like t straight
+    // down the shaft, and sinh(a*t)/a degenerates to exactly t as a goes to
+    // zero, so this one expression covers both.
+    //
+    // Using sinh(t) instead -- which is what this said first -- reads a
+    // footprint of 6e18 on a vertical sightline 44 units long, clamps to the
+    // 0.05 cap, and so asks the marcher for detail sixty times FINER than a
+    // pixel on the one surface it is looking at. Sphere tracing on a shallow
+    // surface approaches without arriving, so those rays died with the floor
+    // still just out of reach and the whole floor came out as white speckle.
+    float foot = horiz > 1e-4 ? sinh(horiz * t) / horiz : t;
+    // The cap is what stops the footprint running away past the fog, so it
+    // scales with the range: 60 units here against the hyperbolic 14.
+    if (m.x < min(0.22, max(HIT_EPS, pix * foot))) { hit = t; mat = m.y; break; }
+#else
+    float foot = abs(sinK(t));
+    if (m.x < min(0.05, max(HIT_EPS, pix * foot))) { hit = t; mat = m.y; break; }
+#endif
 
     // Step by the SDF, but never past the face - beyond it domainMap is
     // describing the wrong copy. Landing a hair PAST the face rather than on
@@ -845,6 +1086,7 @@ vec3 trace(vec2 uv) {
     // far portal. Exactly the fold above, with the pairing replaced by the
     // portal's own isometry - which is the whole point, since a face of the
     // fundamental domain is already a portal glued by the group.
+#if HAS_QUOTIENT
     if (uPortalOn > 0.5) {
       float ca = portalCross(chart, dir, s, uPortalA[0]);
       float cb = portalCross(chart, dir, s, uPortalB[0]);
@@ -860,15 +1102,16 @@ vec3 trace(vec2 uv) {
           chart = (useA ? uPortalTA : uPortalTB) * (chart * boostMat(dir, s));
           s = 0.0;
           sExit = -1e30;                 // new chart, so the old exit is stale
-          if (t > uMaxT) break;
+          if (t > tCap) break;
           continue;
         }
       }
     }
+#endif
 
     s += adv;
     t += adv;
-    if (t > uMaxT) break;
+    if (t > tCap) break;
   }
 
 
@@ -883,13 +1126,13 @@ vec3 trace(vec2 uv) {
     float key = clamp(mdot(n, upAt(p)), 0.0, 1.0);
     // d/ds of (cosK s) o + (sinK s) u. At k = -1 that is (sinh s) o + (cosh s) u
     // and at k = +1 it is -(sin s) o + (cos s) u, which the -uCurv gives.
-    vec4 tangent = chart * vec4(cosK(s) * dir, -uCurv * sinK(s));
+    vec4 tangent = chartMap(chart, rayTangent(dir, s));
     float head = clamp(-mdot(n, tangent), 0.0, 1.0);
     float occ = ambient(p, n, hit);
     // Occlusion belongs on the ambient term, not on the whole shade. The key
     // and headlight terms are direct light; a crevice does not stop them, it
     // stops the sky.
-    col = materialColor(mat, p, mdot(n, upAt(p)))
+    col = materialColor(mat, p, mdot(n, upAt(p)), hit)
         * (0.16 * occ + (0.62 * key + 0.30 * head) * (0.35 + 0.65 * occ));
     // Only the transient markers glow. An orb glowed too, which is fine with
     // one of them and ruinous with one in every cell in every direction: they
@@ -912,7 +1155,7 @@ vec3 trace(vec2 uv) {
     // Blue outlives the other two, so at the range limit it has not quite
     // converged and geometry would pop as it crossed. Close the last quarter
     // by hand; it costs one smoothstep and there is nothing to see out there.
-    col = mix(col, FOG_COL, smoothstep(uMaxT * 0.72, uMaxT, hit));
+    col = mix(col, FOG_COL, smoothstep(tCap * 0.72, tCap, hit));
   }
 
   // Grazing hits at long range push the normal estimate into cancellation
@@ -967,8 +1210,19 @@ void main() {
  * program at startup and the spherical one lazily, the first time it is asked
  * for, so the default path pays exactly what it paid before.
  */
-export function fragFor(k) {
-  return FRAG_SRC.replace('CURV_K', k < 0 ? '-1.0' : '1.0');
+const GEOM_IDS = { h3: 0, s3: 1, h2r: 2 };
+
+/**
+ * The fragment shader for one geometry: 'h3', 's3' or 'h2r'.
+ *
+ * A number is still accepted and means the curvature, so older callers reading
+ * -1 and +1 keep working.
+ */
+export function fragFor(g) {
+  const key = typeof g === 'number' ? (g < 0 ? 'h3' : 's3') : g;
+  const id = GEOM_IDS[key];
+  if (id === undefined) throw new Error(`fragFor: unknown geometry ${g}`);
+  return FRAG_SRC.replace('__GEOM_ID__', String(id));
 }
 
 // The default program. Every tool imports this, so what shader-check compiles

@@ -42,6 +42,12 @@ import {
   runStep, runProgress, gateOpen, gateProgress,
   makeRun, startRun, resetRun, formatTime, PHASE,
 } from './modes.js';
+// The product geometry, as a namespace rather than named imports: almost
+// every symbol in it collides with hyp.js by design -- point, log, dist,
+// translation, geodesic all exist in both and mean the same thing in a
+// DIFFERENT space, and mixing the two is the class of bug that draws black.
+// H2R.point is unambiguous at every call site; a bare `point` never would be.
+import * as H2R from './h2r.js';
 import {
   packState, netLive, netState, netNote, netOnPacket, netSendPacket,
   netHost, netJoin, netFinish, netConnectVia,
@@ -257,22 +263,25 @@ function link(name, vs, fs) {
   return p;
 }
 
-// The scene program, one per curvature.
+// The scene program, ONE PER GEOMETRY.
 //
-// Curvature is a #define rather than a uniform, so each world gets its own
-// program with the other world's half of the marcher already dead. That is
-// worth 1.6 s of link time in the hyperbolic build and it halves the spherical
-// one; the note beside the define in shader.js has the measurements.
+// Which geometry it is is a #define rather than a uniform, so each world gets
+// its own program with the other worlds' half of the marcher already dead.
+// Measured, warm, three runs: hyperbolic 8.5 s, spherical 3.7 s, H^2 x R
+// 3.8 s. The two that have no quotient link in under half the time because
+// the fundamental domain, the face scan, the exact exit solve, the fold loop,
+// the portals and all 39 level primitives are unreachable in them, and the
+// preprocessor lets the D3D compiler see that BEFORE it starts inlining.
 //
 // The price is that switching worlds has to link, and a link here is seconds,
 // not milliseconds. So only the world actually being played is built: the
-// hyperbolic one at startup, exactly as before, and the spherical one the
-// first time it is asked for. Nobody who never opens the option pays for it.
+// hyperbolic one at startup, exactly as before, and each other the first time
+// it is asked for. Nobody who never opens the option pays for it.
+const GEOM_NAMES = { h3: 'scene', s3: 'scene (spherical)', h2r: 'scene (H^2 x R)' };
 const sceneProgs = new Map();
-function sceneFor(k) {
-  const key = k < 0 ? -1 : 1;
+function sceneFor(key) {
   if (!sceneProgs.has(key)) {
-    const p = link(key < 0 ? 'scene' : 'scene (spherical)', VERT, fragFor(key));
+    const p = link(GEOM_NAMES[key], VERT, fragFor(key));
     sceneProgs.set(key, { p, U: sceneUniforms(p) });
   }
   return sceneProgs.get(key);
@@ -285,18 +294,18 @@ let scene = null, U = null;
 // module setup and reads it, and a `let` further down the file is still in its
 // temporal dead zone at that point - which throws before the first frame and
 // takes the whole module with it.
-let curvNow = -1;
+let curvNow = 'h3';
 // Which preset was last applied, for the menu's one-line description of it.
 let lastPreset = null;
 // Where this spherical session started, for the lap readout.
 let s3Start = null;
 
-/** Point `scene` and `U` at the program for this curvature, building it once. */
-function useCurvature(k) {
-  const s = sceneFor(k);
+/** Point `scene` and `U` at the program for this geometry, building it once. */
+function useCurvature(key) {
+  const s = sceneFor(key);
   scene = s.p; U = s.U;
 }
-useCurvature(-1);
+useCurvature('h3');
 
 const lines = link('rope', LINE_VERT, LINE_FRAG);
 
@@ -551,7 +560,7 @@ const opts = {
   // gravity (a sphere admits no unit-gradient height function, so there is no
   // honest "down"), and none of the fighting kit, all of which is built on
   // hyp.js. The locks below take those away rather than leaving dead keys.
-  curv:       { label: 'Curvature',    values: ['hyperbolic', 'spherical'],    i: 0 },
+  curv:       { label: 'Curvature',    values: ['hyperbolic', 'spherical', 'H^2 x R'], i: 0 },
   field:      { label: 'Gravity',      values: ['floor plane', 'beacon', 'none'], i: 0 },
   light:      { label: 'Light speed',  values: ['instant', 'fast', 'slow'],   i: 0 },
   move:       { label: 'Movement',     values: ['walking', 'rolling'],        i: 0 },
@@ -573,7 +582,7 @@ const opts = {
   //            enough holonomy of the right SIGN, so you must swing around
   //            something the right way round to get through. About what you
   //            do. Wants gravity and the rope.
-  course:     { label: 'Course (K)',   values: ['off', 'hoops', 'grapple'],    i: 0 },
+  course:     { label: 'Course (K)',   values: ['off', 'hoops', 'grapple', 'dropper'], i: 0 },
   // What Q spends the banked holonomy on. 'sign decides' is the interesting
   // one: sweptArea is SIGNED, so going round something one way charges a dash
   // and the other way charges a blast, and there is no third option where you
@@ -1013,6 +1022,35 @@ function computeForced() {
     lock('course', 'off', 'hyperbolic only');
   }
 
+  // H^2 x R takes the same family away for the same kind of reason, and adds
+  // one of its own: the whole fighting kit and both hyperbolic courses are
+  // built on hyp.js and its group, and a product placement does not satisfy
+  // that form at all.
+  //
+  // Gravity is the interesting exception. It is NOT taken away here -- falling
+  // is the entire mode. It is simply not physics.js's gravity: the height is a
+  // coordinate, so the fall is a constant subtraction from one velocity
+  // component and there is no field object to choose. The option is pinned to
+  // say so rather than left offering three answers to a question the geometry
+  // has already settled.
+  if (rawVal('curv') === 'H^2 x R') {
+    lock('field', 'floor plane', 'the floor is z = 0');
+    lock('upright', 'free', 'the frame never tilts');
+    lock('move', 'walking', 'free fall');
+    lock('edges', 'hide', 'no fundamental domain');
+    lock('foe', 'off', 'hyperbolic only');
+    lock('boomerang', 'off', 'hyperbolic only');
+    lock('build', 'off', 'hyperbolic only');
+    lock('portals', 'off', 'hyperbolic only');
+    lock('light', 'instant', 'no self copies without a quotient');
+    lock('course', 'dropper', 'the mode this geometry is for');
+  } else if (rawVal('course') === 'dropper') {
+    // And the other way round: a dropper needs a Euclidean height, so it does
+    // not exist in either constant-curvature world. Saying so in the menu is
+    // better than a course option that silently builds a hoop run.
+    lock('course', 'off', 'H^2 x R only');
+  }
+
   // A course is a time trial. Everything that exists to fight with is off:
   // there is nothing to fight, and each one is a key that would do nothing.
   const course = rawVal('course');
@@ -1086,6 +1124,13 @@ const PRESETS = {
       curv: 'hyperbolic', mode: 'floor (2D wrap)', course: 'off', light: 'slow',
       field: 'floor plane', upright: 'gravity', foe: 'off', edges: 'show',
     },
+  },
+  // Appended rather than slotted in beside the spherical one, so the digits
+  // that were already 1-5 stay where they were.
+  dropper: {
+    label: 'The dropper',
+    note: 'H^2 x R: a Euclidean fall through a hyperbolic floor plan',
+    set: { curv: 'H^2 x R', course: 'dropper', fog: 'thin', quality: 'medium' },
   },
 };
 const PRESET_KEYS = Object.keys(PRESETS);
@@ -1236,6 +1281,9 @@ addEventListener('keydown', (e) => {
   // was unreachable in the shipped build. A key named on screen must always do
   // something when pressed.
   if (e.code === 'KeyK') {
+    // A key named on screen must always do something. In H^2 x R the course
+    // is forced on, so K is a restart; everywhere else it turns the hoop
+    // course on if nothing is running, exactly as before.
     if (!courseOn()) { opts.course.i = 1; applyOptions(); }
     beginRun();
   }
@@ -1620,7 +1668,7 @@ nEl('nrj').onclick = () => netConnectVia(nEl('nurl').value, nEl('nroom').value, 
 // groups and therefore different closed geodesics: the octagon's are 3.057
 // long and lie IN the floor plane, the dodecahedron's are 1.993 and range over
 // altitude. Same code, different course.
-let course = null, run = null, courseWorld = -1, hoopFlash = 0;
+let course = null, run = null, courseWorld = '', hoopFlash = 0;
 
 
 // --- the spherical world -------------------------------------------------
@@ -1633,6 +1681,36 @@ let course = null, run = null, courseWorld = -1, hoopFlash = 0;
 // SO(4), s3.js adds a scene and free flight, and the two paths meet only at
 // `player`, which is a 4x4 either way and goes to the same uniform.
 function sphericalWorld() { return optVal('curv') === 'spherical'; }
+
+/**
+ * H^2 x R: the PRODUCT geometry, and the third scene program.
+ *
+ * Not a space of constant curvature at all, and that is the point of it. The
+ * floor plan is a hyperbolic plane and the height is Euclidean, and the two
+ * factors do not interact: parallel transport is componentwise, so the frame
+ * never tilts, and a horizontal geodesic stays at its height for ever.
+ *
+ * That last fact is why the DROPPER lives here. CLAUDE.md recorded a dropper
+ * as impossible, with a measurement behind it, and the measurement was right
+ * about H^3 rather than about droppers: there the level sets of the height are
+ * equidistant surfaces that curve away from the floor plane, so horizontal
+ * motion is motion that climbs and above a critical speed the fall stops
+ * outright. Here z = const is TOTALLY GEODESIC and the fall time is exactly
+ * independent of how hard you steer -- h2r.test.js measures it at every
+ * horizontal speed from 0 to 3, to every printed digit.
+ *
+ * Like the spherical world this is a small honest slice rather than the full
+ * kit: no rope, no fighting kit, no quotient. The two paths meet at `player`,
+ * which is a 4x4 either way.
+ */
+function productWorld() { return optVal('curv') === 'H^2 x R'; }
+
+/** Which scene program the options are asking for. */
+function geomKey() {
+  if (sphericalWorld()) return 's3';
+  if (productWorld()) return 'h2r';
+  return 'h3';
+}
 
 function showBoot(msg) {
   const b = document.getElementById('boot');
@@ -1651,6 +1729,20 @@ function hideBoot() {
  * spherical program leaves every ray off the 3-sphere and draws black.
  */
 function resetForCurvature() {
+  if (productWorld()) {
+    // On the deck at the top of the shaft, looking down. The pitch matters:
+    // the gates are below you and a run timed from a camera aimed at the
+    // horizon starts with nothing on screen, which is exactly the failure
+    // beginRun exists to prevent in the hyperbolic courses.
+    player = H2R.dropperStart();
+    vel = [0, 0, 0];
+    yaw = 0; pitch = -1.15; roll = 0; rollRate = 0;
+    tilt = [0, 0]; tiltVel = [0, 0]; prevVel = [0, 0, 0];
+    camSwing = { axis: [0, 0, 1], angle: 0, vel: 0 };
+    grapple = null;
+    banked = 0;
+    return;
+  }
   if (!sphericalWorld()) { reset(); return; }
   player = S3G.IDENTITY;
   vel = [0, 0, 0];
@@ -1690,13 +1782,60 @@ function stepS3(h, want) {
   [player, vel] = s3Collide(player, vel, s3SDF);
 }
 
+/**
+ * What the keys ask for while falling: a HORIZONTAL direction, and nothing
+ * else. You cannot steer the fall, only the drift, which is what a dropper is.
+ *
+ * Taken off the view's forward projected into the floor plan rather than off
+ * the frame directly, so W is "further into the shaft the way I am looking"
+ * even when the camera is pointed almost straight down.
+ */
+function h2rWant(basis) {
+  let wx = 0, wy = 0;
+  const fx = basis.fwd[0], fy = basis.fwd[1];
+  const m = Math.hypot(fx, fy);
+  // Looking straight down leaves no horizontal forward at all; fall back to
+  // yaw, which is where the head is pointing whatever the pitch is.
+  const [cx, cy] = m > 1e-3 ? [fx / m, fy / m] : [Math.cos(yaw), Math.sin(yaw)];
+  if (keys.has('KeyW')) { wx += cx; wy += cy; }
+  if (keys.has('KeyS')) { wx -= cx; wy -= cy; }
+  if (keys.has('KeyD')) { wx += cy; wy -= cx; }
+  if (keys.has('KeyA')) { wx -= cy; wy += cx; }
+  const wl = Math.hypot(wx, wy);
+  return wl > 1e-9 ? [wx / wl, wy / wl] : [0, 0];
+}
+
+/**
+ * One substep of the fall, and the run's clock with it.
+ *
+ * The run is advanced HERE rather than in the shared block below because that
+ * block is about the quotient: it hands runStep `bankFrom`, the substep's
+ * start point carried through whatever fold happened during it. There is no
+ * fold here, so the raw start point is already in the same chart as the end
+ * one and the segment is honest as it stands.
+ */
+function stepH2R(h, want) {
+  const p0 = H2R.point(player);
+  vel = H2R.h2rFall(vel, want, h);
+  [player, vel] = H2R.stepFall(player, vel, h);
+  [player, vel] = H2R.h2rCollide(player, vel, H2R.h2rSDF);
+  if (run && course) {
+    if (runStep(run, h, p0, H2R.point(player), null) >= 0) hoopFlash = 0.35;
+  }
+}
+
 function courseOn() { return optVal('course') !== 'off'; }
 function buildCourse() {
+  if (optVal('course') === 'dropper') return H2R.dropperCourse();
   return optVal('course') === 'grapple' ? grappleCourse() : geodesicCourse(0, 6);
 }
 
 function ensureCourse() {
-  const w = getMode();
+  // Keyed by GEOMETRY as well as by group. A dropper built in H^2 x R is
+  // nonsense in H^3 -- its gate centres satisfy a different form -- and
+  // getMode() alone cannot tell those apart, because the curvature option is
+  // not the world option.
+  const w = `${geomKey()}:${getMode()}:${optVal('course')}`;
   if (course && courseWorld === w) return;
   courseWorld = w;
   course = buildCourse();
@@ -1713,7 +1852,7 @@ function ensureCourse() {
  * components, so inverting it is one atan2 and one asin.
  */
 function aimAt(q) {
-  const lv = logTo(player, q);
+  const lv = productWorld() ? H2R.logTo(player, q) : logTo(player, q);
   const m = Math.hypot(lv[0], lv[1], lv[2]);
   if (m < 1e-9) return;
   yaw = Math.atan2(lv[1], lv[0]);
@@ -1740,6 +1879,20 @@ function aimAt(q) {
  * like from the outside.
  */
 function beginRun() {
+  // The dropper is its own start: back on the deck at the top of the shaft,
+  // stationary, looking down at the first gate. resetForCurvature already
+  // does exactly that, so the run and the respawn are the same act.
+  if (productWorld()) {
+    ensureCourse();
+    const best0 = run ? run.best : null;
+    course = buildCourse();
+    run = makeRun(course);
+    run.best = best0;
+    resetForCurvature();
+    if (course.hoops.length) aimAt(course.hoops[0].at);
+    startRun(run);
+    return;
+  }
   ensureCourse();
   // Rebuild rather than reuse: the hoops have been carried through every fold
   // the player made, so by now they are in whatever chart the player ended up
@@ -1791,10 +1944,10 @@ function applyOptions() {
   // hyperbolic placement starts every ray 0.81 off the manifold, hits nothing,
   // and draws a 99.3% black screen. That was measured, and it is why `reset`
   // is not optional here.
-  const k = sphericalWorld() ? 1 : -1;
+  const k = geomKey();
   if (curvNow !== k) {
     const fresh = !sceneProgs.has(k);
-    if (fresh) showBoot('Building the spherical shader.'
+    if (fresh) showBoot(`Building the ${optVal('curv')} shader.`
       + String.fromCharCode(10)
       + 'A few seconds, once - after that, switching is instant.');
     useCurvature(k);
@@ -2047,7 +2200,11 @@ function doSwap() {
  * bend — it is where the rope actually is.
  */
 function project(q, basis) {
-  const lv = logTo(player, q);
+  // The SAME log the camera is aimed with, so a gate drawn at the centre of
+  // the screen really is the one the crosshair is on. In H^2 x R that is a
+  // different function on a different form; using the hyperbolic one on a
+  // product placement draws the course somewhere it is not.
+  const lv = productWorld() ? H2R.logTo(player, q) : logTo(player, q);
   const m = Math.hypot(lv[0], lv[1], lv[2]);
   if (m < 1e-9) return null;
   const u = [lv[0] / m, lv[1] / m, lv[2] / m];
@@ -2125,7 +2282,7 @@ function drawRope(basis) {
  */
 function drawCourse(basis) {
   if (!course || !courseOn()) return;
-  const me = point(player);
+  const me = productWorld() ? H2R.point(player) : point(player);
   for (let i = 0; i < course.hoops.length; i++) {
     const taken = run && i < run.next;
     const hoop = course.hoops[i];
@@ -2140,7 +2297,12 @@ function drawCourse(basis) {
           : shut ? [0.95, 0.35, 0.30] : [0.35, 0.95, 0.65])
         : [0.30, 0.55, 0.48];
     const strip = [];
-    for (const q of hoopRing(hoopNear(hoop, me), 40)) {
+    // No group here, so no nearest copy to look for: a point of H^2 x R has
+    // exactly one name. hoopNear would be asking the octagon group about a
+    // point that does not satisfy its form.
+    const ring = productWorld() ? H2R.gateRing(hoop, 40)
+      : hoopRing(hoopNear(hoop, me), 40);
+    for (const q of ring) {
       const ndc = project(q, basis);
       if (ndc) strip.push(ndc);
     }
@@ -2218,8 +2380,13 @@ function frame(now) {
   // takes the substep and nothing else in this loop applies: there is no fold
   // (no quotient), no gravity, no rope, no carried object to keep in range.
   const s3want = sphericalWorld() ? s3Want(basis) : null;
+  // The same arrangement for the fall: a different group, a different
+  // integrator, and none of the rest of this loop applies. Two factors that
+  // do not interact make it the shortest of the three.
+  const h2rwant = productWorld() ? h2rWant(basis) : null;
   for (let i = 0; i < SUB; i++) {
     if (s3want) { stepS3(h, s3want); continue; }
+    if (h2rwant) { stepH2R(h, h2rwant); continue; }
     const stepFrom = point(player);
     // Two movement models, kept side by side so they can be compared.
     // 'walking' steers the velocity directly; 'rolling' spins a ball up with a
@@ -2359,10 +2526,12 @@ function frame(now) {
     settleCarried(point(player));
   }
 
-  const p0 = sphericalWorld() ? S3G.point(player) : point(player);
+  const unglued = sphericalWorld() || productWorld();
+  const p0 = sphericalWorld() ? S3G.point(player)
+    : productWorld() ? H2R.point(player) : point(player);
   // The folded copy and the raw one are the SAME point when there is no group
   // to fold by, which is the whole of what "no quotient" means here.
-  pushHistory(sphericalWorld() ? p0 : foldPoint(p0), p0, dt);
+  pushHistory(unglued ? p0 : foldPoint(p0), p0, dt);
   // BIND THE PROGRAM FIRST. gl.uniform* writes to whatever program is current,
   // and at the top of a frame that is still the LINE program, left bound by
   // last frame's rope and crosshair. Uniforms set here before this call went
@@ -2486,11 +2655,23 @@ function frame(now) {
   // Fog is a tactical setting here, not only a look: it is what decides how
   // many copies of the room you can see, and so how far you can see someone
   // coming. Thin makes the repetition legible; thick makes it a knife fight.
-  const base = (openWorld ? 0.45 : 0.20)
+  // H^2 x R needs a FAR longer range and much less fog than either compact
+  // world, and the reason is the flat factor. In H^3 and S^3 everything is a
+  // cell or two away because the manifold comes back round to itself; here the
+  // shaft is 44 units deep and the whole point of standing on the deck is
+  // seeing down it. Range is affordable because the world is cheap - thirty
+  // vertical cylinders, each one inner product, no folding and no straddle
+  // copy - so the marcher's cost per step is a fraction of the hyperbolic
+  // level's. Note also that looking DOWN the shaft is looking along the flat
+  // factor, where distance is Euclidean and there is no sinh to shrink things
+  // away; the far gates are small because they are far, not because the
+  // geometry ate them.
+  const product = productWorld();
+  const base = (product ? 0.030 : openWorld ? 0.45 : 0.20)
     * { normal: 1, thin: 0.55, thick: 1.9 }[optVal('fog')];
   gl.uniform1f(U.fog, base / Math.sqrt(zoomed));
   gl.uniform1f(U.ao, optVal('shading') === 'flat' ? 0 : 1);
-  gl.uniform1f(U.maxT, (openWorld ? 10.0 : 14.0) * Math.sqrt(zoomed));
+  gl.uniform1f(U.maxT, (product ? 60.0 : openWorld ? 10.0 : 14.0) * Math.sqrt(zoomed));
   // Portals, FOLDED, for the same reason every other world point is: the
   // marcher folds its own samples, so an unfolded placement would be compared
   // against geometry in a different copy - and once it has drifted a few cells
@@ -2550,6 +2731,60 @@ function frame(now) {
   // asinh(p.z), a distance to a floor plane that does not exist here, and
   // `energy` is a potential from the same field: both printed 0.00, and both
   // were meaningless rather than merely zero.
+  if (productWorld()) {
+    const z = H2R.point(player)[2];
+    const gate = run && course ? course.hoops[run.next] : null;
+    // How far off the line you are, in the FLOOR PLAN. This is the number the
+    // mode is about: sinh(d) is what the miss looks like on screen and 1/sinh(d)
+    // is what the gate's apparent size does, so the two compound.
+    const off = gate ? H2R.horizDist(H2R.point(player), gate.at) : 0;
+    hud.textContent =
+      `H^2 x R   a hyperbolic FLOOR PLAN and a Euclidean height
+`
+      + `altitude ${z.toFixed(2)} / ${H2R.H2R_TOP_Z}   `
+      + `fall ${f(-vel[2])} / ${f(H2R.H2R_TERM_V)}   `
+      + `drift ${f(Math.hypot(vel[0], vel[1]))} / ${f(H2R.H2R_TERM_H)}
+`
+      + (run && run.phase === PHASE.RUNNING
+        ? `run ${formatTime(run.t)}  ${bar(runProgress(run), 12)}  `
+          + `gate ${run.next + 1}/${course.hoops.length}   `
+          + `off line ${off.toFixed(2)} of ${gate ? gate.r.toFixed(2) : '--'}`
+          + `${gate && off < gate.r ? '  ON LINE' : ''}
+`
+        : run && run.phase === PHASE.DONE
+          ? `FINISHED ${formatTime(run.t)}${run.best !== null ? `   best ${formatTime(run.best)}` : ''}   K to run again
+`
+          : `K to drop
+`)
+      + `
+THE FALL DOES NOT CARE HOW HARD YOU STEER. z = const is totally
+`
+      + `geodesic here, so a horizontal geodesic stays at its height and the
+`
+      + `two factors of the product never interact - the drop takes the same
+`
+      + `12.35 s at a standstill and at full drift. In H^3 that is false:
+`
+      + `there the level sets curve away from the floor, horizontal motion is
+`
+      + `motion that CLIMBS, and at walking speed above altitude 2 the fall
+`
+      + `stops outright. That is why the dropper is here and not there.
+
+`
+      + `THE PLAN IS STILL HYPERBOLIC, and that is the whole difficulty. A
+`
+      + `gate 2.9 away spreads like sinh(2.9) = 9.1, so an aiming error is
+`
+      + `magnified by nine while the gate itself shrinks by nine. Commit to
+`
+      + `the line early; correcting late costs exponentially more.
+
+`
+      + `WASD drift - mouse look - K restart the drop - O options`;
+    requestAnimationFrame(frame);
+    return;
+  }
   if (sphericalWorld()) {
     const lap = s3LapFraction(player, s3Start || player);
     hud.textContent =

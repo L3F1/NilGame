@@ -55,6 +55,40 @@
 
 export const CURV = { FLAT: 0, HYPERBOLIC: -1, SPHERICAL: 1 };
 
+// --- linear algebra, which belongs to no geometry -------------------------
+//
+// A matrix product and a matrix-times-vector do not know what the form is, so
+// they are the same code at every curvature -- and, more to the point, they
+// are the same code in h2r.js, which is NOT a constant-curvature space and so
+// cannot use anything else here. Hoisted to module scope for that one reason.
+
+/** Column-major, M[col*4 + row], so it goes straight to uniformMatrix4fv. */
+export function matMul(A, B) {
+  const C = new Array(16).fill(0);
+  for (let c = 0; c < 4; c++) {
+    for (let r = 0; r < 4; r++) {
+      let s = 0;
+      for (let i = 0; i < 4; i++) s += A[i * 4 + r] * B[c * 4 + i];
+      C[c * 4 + r] = s;
+    }
+  }
+  return C;
+}
+
+/** M times a 4-vector, column-major. */
+export const apply = (M, v) => [
+  M[0] * v[0] + M[4] * v[1] + M[8] * v[2] + M[12] * v[3],
+  M[1] * v[0] + M[5] * v[1] + M[9] * v[2] + M[13] * v[3],
+  M[2] * v[0] + M[6] * v[1] + M[10] * v[2] + M[14] * v[3],
+  M[3] * v[0] + M[7] * v[1] + M[11] * v[2] + M[15] * v[3],
+];
+
+/** Where a placement is: its column 3. */
+export const pointOf = (M) => [M[12], M[13], M[14], M[15]];
+
+/** Frame vector i of a placement, as an ambient vector. */
+export const frameVecOf = (M, i) => [M[i * 4], M[i * 4 + 1], M[i * 4 + 2], M[i * 4 + 3]];
+
 // --- generalised trigonometry -------------------------------------------
 
 /** cosh / 1 / cos. */
@@ -123,31 +157,8 @@ export function geometry(k) {
     return [p[0] / s, p[1] / s, p[2] / s, p[3] / s];
   }
 
-  /** Column-major, M[col*4 + row], so it goes straight to uniformMatrix4fv. */
-  function matMul(A, B) {
-    const C = new Array(16).fill(0);
-    for (let c = 0; c < 4; c++) {
-      for (let r = 0; r < 4; r++) {
-        let s = 0;
-        for (let i = 0; i < 4; i++) s += A[i * 4 + r] * B[c * 4 + i];
-        C[c * 4 + r] = s;
-      }
-    }
-    return C;
-  }
-
-  const apply = (M, v) => [
-    M[0] * v[0] + M[4] * v[1] + M[8] * v[2] + M[12] * v[3],
-    M[1] * v[0] + M[5] * v[1] + M[9] * v[2] + M[13] * v[3],
-    M[2] * v[0] + M[6] * v[1] + M[10] * v[2] + M[14] * v[3],
-    M[3] * v[0] + M[7] * v[1] + M[11] * v[2] + M[15] * v[3],
-  ];
-
-  /** Where a placement is: its column 3. */
-  const point = (M) => [M[12], M[13], M[14], M[15]];
-
-  /** Frame vector i of a placement, as an ambient vector. */
-  const frameVec = (M, i) => [M[i * 4], M[i * 4 + 1], M[i * 4 + 2], M[i * 4 + 3]];
+  const point = pointOf;
+  const frameVec = frameVecOf;
 
   /** A frame-component direction as an ambient tangent vector at point(M). */
   const fromFrame = (M, v) => apply(M, [v[0], v[1], v[2], 0]);

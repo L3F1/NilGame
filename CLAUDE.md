@@ -3,7 +3,10 @@
 ## What this is
 
 A game set in a **hyperbolic 3-manifold**: H^3 of curvature -1, quotiented by
-a discrete group. Movement, gravity, rendering and a grapple hook, all done
+a discrete group — plus three other spaces that each exist to make one thing
+possible that H^3/Gamma cannot: S^3 (`s3.js`), and the product H^2 x R
+(`h2r.js`), and flat E^3 as a test control inside `geom.js`. **Not every mode
+needs a quotient**, and two of the four deliberately have none. Movement, gravity, rendering and a grapple hook, all done
 honestly in the geometry. It was a Nil game first; the port to H^3 is complete
 and no Nil code remains.
 
@@ -49,6 +52,12 @@ shader; a scene-graph library would hide the parts that matter.
   FLYTHROUGH, not the full kit: `physics.js` is built on `hyp.js` top to
   bottom, and making that curvature-generic is a rewrite of the load-bearing
   file. The two paths meet only at `player`, which is a 4x4 either way.
+- `h2r.js` — the PRODUCT geometry H^2 x R, and the DROPPER it exists for. A
+  hyperbolic floor plan and a Euclidean height, which do not interact. **No
+  DOM**, so it is testable. Like `s3.js` it is a slice rather than the full
+  kit; unlike `s3.js` it does not go through `geom.js`, because H^2 x R is not
+  a space of constant curvature and its isometry group does not embed in
+  GL(4). See "H^2 x R" below.
 - `legacy-hyp.js` — the pre-delegation implementations, frozen, **for tests
   only, never imported by the game**. The moment `hyp.js` started delegating,
   the test "geom.js agrees with hyp.js" became a tautology that would pass
@@ -61,7 +70,8 @@ shader; a scene-graph library would hide the parts that matter.
 - `main.js` — WebGL2 setup, input, frame loop, rope drawing, the options menu.
 - `index.html` — canvas, HUD, and a boot-error panel (see below).
 - `hyp.test.js` (36), `physics.test.js` (160), `modes.test.js` (78),
-  `geom.test.js` (69) and `s3.test.js` (28) — `node hyp.test.js`, etc.
+  `geom.test.js` (69), `s3.test.js` (28) and `h2r.test.js` (51) —
+  `node hyp.test.js`, etc. 422 in all.
   **Keep the summary line LAST, and `process.exit` after IT.** Tests appended
   after the summary still run and still print, but are not counted, so the
   total silently understates. Worse, an `if (failed) process.exit(1)` left in
@@ -81,7 +91,8 @@ is black" with no other information costs an hour every time.
 
 ### Tools
 
-- `node tools/shader-check.js` — compiles both programs headless and prints the
+- `node tools/shader-check.js` — compiles ALL FOUR programs headless (the
+  three scene builds, one per geometry, plus the line one) and prints the
   info log. **Run after every shader edit.** It is the only way to tell a GLSL
   error from a JS error. Caveat: it uses SwiftShader, so it proves the ANGLE
   *translator* accepts the shader, not that every driver's back end will — and
@@ -97,8 +108,13 @@ is black" with no other information costs an hour every time.
   **Cold by default**, because Chrome caches a linked program and the first
   load is where the bugs are — that is how the backwards first frame below was
   found. `--warm` to skip the 5 s shader build, `--sw` for SwiftShader.
-- `node tools/link-time.js` — links both programs on the REAL GPU (D3D11, not
-  SwiftShader) and times it. **Run after adding level content or any new call
+- `node tools/link-time.js` — links every program on the REAL GPU (D3D11, not
+  SwiftShader) and times it. Warm, three runs: hyperbolic **8.5-8.9 s**,
+  spherical **3.6-4.1 s**, H^2 x R **3.8-4.2 s**. The two without a quotient
+  cost half as much for a reason that is not an optimisation: the fundamental
+  domain, the face scan, the exit solve, the fold loop, the portals and all 39
+  level primitives are unreachable in them, and `#if` lets the D3D compiler see
+  that BEFORE it starts inlining. **Run after adding level content or any new call
   to `sceneMap`.** A link over a few seconds means something is being inlined
   or unrolled more than once; it caps at 15 s, because past that the browser
   kills the GPU process mid-link and the page dies with an empty error. This is
@@ -139,9 +155,12 @@ is black" with no other information costs an hour every time.
   PAST the guard rather than trip it, because the line HAD been rewritten, just
   into `const { a as b }`, which is not valid JavaScript: the page died with
   `Unexpected identifier 'as'` pointing at a line preview.js itself wrote.
-  Namespace imports (`import * as ns`) still break it — the browser is fine
-  with them, so this bites only here. It therefore **throws and names
-  the offending line** rather than emitting a bundle with a live `import` in
+  **Namespace imports now work too** — `import * as ns from './x.js'` becomes
+  `const ns = __m['x.js']`, which is the natural shape of this bundle since
+  every module is already an object of its exports. main.js imports `h2r.js`
+  that way, because almost every name in it collides with `hyp.js` by design.
+  Any THIRD form (a default import, a side-effect import, a re-export) still
+  **throws and names the offending line** rather than emitting a bundle with a live `import` in
   it; the third bite was `export async function` in net.js, which came out as
   `Uncaught SyntaxError: Unexpected token 'export'` and looks exactly like a
   syntax error in the game.
@@ -372,7 +391,7 @@ Press `O`. Everything switchable lives in the `opts` object in main.js and the
 overlay is generated from it, so adding a setting is one entry.
 
     World         bounded / open      floor and ceiling, or nothing but scaffold
-    Curvature     hyperbolic / spherical   a different SPACE, not a level
+    Curvature     hyperbolic / spherical / H^2 x R   a different SPACE, not a level
     Gravity       floor plane / beacon / none
     Movement      walking / rolling   steer the velocity, or spin a ball up
     Camera up     gravity / pendulum / free
@@ -381,7 +400,7 @@ overlay is generated from it, so adding a setting is one entry.
     Portals       off / on            keys 1 and 2 place a pair, 3 clears
     Boomerang     aimed / closed geodesic / off   key B
     Build (G)     on / off            a delayed block; see Abilities
-    Course (K)    off / hoops / grapple   two timed courses. See Game modes
+    Course (K)    off / hoops / grapple / dropper   three timed courses. See Game modes
     Holonomy (Q)  sign decides / dash only / blast only
     Opponent      bot / network / off a bot that chases, or a real player (N)
     Fog           normal / thin / thick
@@ -389,8 +408,9 @@ overlay is generated from it, so adding a setting is one entry.
     Domain edges  show / hide         the gold octagon outlines
     Quality       low / medium / high march steps (160 / 220 / 280)
 
-Digits **1-5 inside the menu** apply a preset: arena fight, hoop course,
-grapple gates, spherical flight, light-speed lab.
+Digits **1-6 inside the menu** apply a preset: arena fight, hoop course,
+grapple gates, spherical flight, light-speed lab, the dropper. New presets are
+APPENDED rather than slotted in, so a digit does not change what it means.
 
 Zoom is on the SCROLL WHEEL, not in the menu — it is a thing you do while
 looking, like aiming. `X` snaps back to 1x.
@@ -871,6 +891,169 @@ way round, so you would see yourself down every sightline with no quotient at
 all — but `selfHist` is a ring of FOLDED positions plus the elements linking
 them, machinery that only makes sense when the marcher cannot leave a domain.
 
+## H^2 x R, the product geometry
+
+`Curvature: H^2 x R` is the fourth geometry and the third scene program. It is
+the first one here that is **not of constant curvature**: it is a PRODUCT, a
+hyperbolic plane crossed with a Euclidean line, and the two factors do not
+interact at all.
+
+    a point   (x0, x1, z, x3)   with x0^2 + x1^2 - x3^2 = -1, z free
+    the H^2 factor   components 0, 1, 3
+    the flat factor  component 2, which is the height, an ordinary number
+
+**The tangent form is diag(1,1,1,-1), the SAME one H^3 uses**, because the
+extra `+z^2` of the flat factor sits exactly where H^3's third spatial
+coordinate does. That is why `mdot`, the lighting and every normalisation in
+the shader are shared with the hyperbolic build unchanged, and only distance,
+the ray, the chart composition and the up vector had to be written twice.
+
+**Distance is PYTHAGORAS in the two factors, exactly:**
+
+    dist(p, q) = hypot(horizDist(p, q), p.z - q.z)
+
+Not an approximation and not an underestimate, which is why every SDF here is
+exact rather than the usual safe underestimate. A vertical column is a
+horizontal distance with the height dropped entirely; the floor is the height
+coordinate itself, which is the cheapest exact surface anywhere in this
+project.
+
+### THE TRAP: the height is AFFINE, so a mat4 multiply is wrong
+
+`Isom(H^2 x R) = Isom(H^2) x Isom(R)`, and that **does not embed in GL(4)** on
+this model. The H^2 part is a 3x3 Lorentz block on components 0, 1, 3; the
+height part is an ordinary translation, which must be ADDED and never scaled.
+
+A plain matrix multiply scales the stored height by the other factor's timelike
+coordinate. Measured: a step of 1.3 along a direction 60% horizontal, from a
+placement 2.1 up, landed at **3.812 instead of 3.140** — the 2.1 had been
+multiplied by `cosh(0.78) = 1.3199` — and `M o inv(M)` was off the identity by
+1.62. So `h2r.js` has its own `applyPoint`, `applyVec` and `compose`, and the
+shader has its own `chartMap` and `chartRebase`. `h2r.test.js` pins both the
+right answer and the wrong one, so the test cannot pass by restating the
+implementation.
+
+`applyPoint` and `applyVec` differ in exactly one component and keeping them
+straight is the whole discipline: a POINT's height translates, a TANGENT
+VECTOR's does not.
+
+### What the geometry buys, and it is three things
+
+**1. The fall time does not depend on the input.** `z = const` is totally
+geodesic, so a horizontal geodesic stays at its height. Measured on the real
+integrator, dropping from 24 at horizontal speeds 0, 0.4, 0.8, 1.6 and 3.0:
+**the same time to every printed digit**. In H^3, with H^3's own integrator,
+the same drop from altitude 3 takes 1.4146 s at a standstill and **never lands
+at all** at walking speed 0.9. That contrast is the headline test.
+
+**2. The frame never tilts, so there is no `alignUp`.** Parallel transport in a
+product is componentwise: E3 stays exactly vertical and E1, E2 stay exactly
+horizontal, measured to 1e-16 over a 400-step wandering walk. In H^3 that is
+false and `physics.alignUp` exists precisely to re-pin it — 111 degrees in one
+substep when it was left out of the open world.
+
+**3. The range limit applies to the HORIZONTAL factor only.** The height is an
+affine coordinate, so it is exact at any depth: 1e6 units up is stored exactly.
+That is why a 44-unit shaft is free here and impossible in H^3, where
+coordinates grow like `cosh` and run out of float64 near d = 16.
+
+But the horizontal factor has the ordinary hyperbolic limit, and here there is
+**no quotient to fold it back** — so unlike the compact worlds, a ray really
+can march out to where float32 has nothing left. **That drew as speckle across
+the entire far field and looked exactly like a precision bug in the normal.**
+It was not: it is the documented d = 7 limit, arriving somewhere new because
+nothing was folding. The fix is a PER-RAY cap:
+
+    horiz = length(dir.xy)                 // the ray's share of the H^2 factor
+    tCap  = min(uMaxT, 7.0 / max(horiz, 1e-4))
+
+so a sightline straight down the shaft runs the full 60 units and one across
+the floor plan is cut at 7 and ends in fog — which is what a horizon is. Note
+that this is the only place in the project where the range limit is a
+*rendering* parameter rather than a level-design one.
+
+**The pixel footprint is ANISOTROPIC here and taking the hyperbolic answer for
+both directions is wrong in the expensive direction.** Neighbouring rays
+separate like `sinh(a t)/a` across the floor plan and like `t` straight down
+the shaft, where `a` is the horizontal share; `sinh(a t)/a` degenerates to
+exactly `t` as `a` goes to zero, so one expression covers both. Using `sinh(t)`
+reads a footprint of 6e18 on a 44-unit vertical sightline, clamps to the cap,
+and asks the marcher for detail sixty times finer than a pixel on the one
+surface it is looking at.
+
+**The floor checker must fade with distance**, for the same pixel-footprint
+reason: one cell of a 7-per-unit checker is far under a pixel wide when the
+floor is 40 units away, and below a pixel the right answer is the average.
+Guarded to this build, because the hyperbolic worlds never see their floor from
+further than a cell or two.
+
+### No quotient, on purpose
+
+There is no group, no fundamental domain, no fold, no straddle copy. A point
+has exactly one name, so `hoopNear`, `foldPoint` and `carryCourse` have nothing
+to do and are not called. A dropper wants none of it: you fall down a shaft
+ONCE, and there is nothing to come back to.
+
+What replaces the wrap as a sense of place is the **column field** — 30
+vertical cylinders in three rings at horizontal radius 1.70, 3.10 and 4.40. The
+counts (6, 10, 14) are chosen so the ANGULAR spacing is even rather than the
+count, because circumference is `2 pi sinh(R)` and an outer ring needs more
+columns to look equally dense. Falling past them, the near ring sweeps by and
+the far one crowds at the horizon, and that difference is the hyperbolic plan
+being legible at a glance.
+
+### The dropper
+
+`Course = dropper`, key K, preset 6. Five gates down a 44-unit shaft.
+
+**The layout was SEARCHED for, not written down** — the same discipline as the
+opponent spawn and the grapple ring. 1080 layouts over ring radius, turn per
+gate, drop per gate, gate radius and wobble, against four criteria all measured
+on the real integrator:
+
+1. every gate ring is clear of the column field
+2. a NO-INPUT drop takes zero gates, or the course is decoration
+3. a greedy "aim at the next gate, full input" policy takes every one
+4. a LAZY policy — same aim, 55% input — fails
+
+85 passed all four. The winner: ring radius 1.5, 150 degrees of turn and 8
+units of drop per gate, gate radius 0.60, five gates. Ring clearance from the
+columns 0.260; gate-to-gate offsets 1.50 then 2.94 four times, with a mean
+`sinh(d)/d` of **2.85** — so the hyperbolic plan is doing real work rather than
+being a flat course with a curved metric written on it. At the 0.70 offsets the
+first search returned, `sinh(d)/d` is 1.08 and the geometry does nothing.
+The aimed run takes 11.35 s and uses 53% of the tightest gate's radius.
+
+**The skill of the mode is a compounding, and it is the reason the plan stays
+hyperbolic while the fall goes flat.** An aiming error `e` at distance `d`
+misses by `sinh(d) e`, and the gate's apparent size falls like `1/sinh(d)`. The
+two multiply: committing to the line early is worth exponentially more than
+correcting late. Criterion 4 above is what pins that — a run that merely drifts
+toward each gate does not get there.
+
+**A gate is a HORIZONTAL DISC, so the crossing test is a sign change of the
+height coordinate**, not of an inner product against a geodesic plane. That is
+why `modes.js runStep` now takes the test off `run.course.crossed` when the
+course supplies one, and falls back to `hoopCrossed` when it does not — the
+phase, the clock, the ordering and the best time are the same in both, and only
+the geometry of a gate differs. Downward only: in a dropper there is no
+climbing back.
+
+**Gates are drawn as LINE LOOPS**, like the hyperbolic hoops and for the same
+reason — a curve in `sceneMap` is inlined three times and paid for at link
+time, which is the budget that binds.
+
+### What it is NOT
+
+The fighting kit, both hyperbolic courses, the self body and the quotient are
+all built on `hyp.js` and its group, and a product placement does not satisfy
+that form at all. The option locks take them away rather than leaving dead
+keys. **Gravity is the one interesting exception: it is NOT locked off, because
+falling is the entire mode** — it is simply not `physics.js`'s gravity. The
+height is a coordinate, so the fall is a constant subtraction from one velocity
+component and there is no field object to choose; the option is pinned to say
+so rather than left offering three answers to a settled question.
+
 ## Modes take options away, and they do it through `optVal`
 
 `rawVal(k)` is what the player picked. `optVal(k)` is what the game uses, and a
@@ -895,6 +1078,16 @@ What is locked, and why it is not a balance decision:
   the boomerang, build, portals and the courses. Plane gravity in S^3 is not a
   worse choice, it is an incoherent one; "Domain edges" outlines a fundamental
   domain that does not exist; the rest is hyperbolic-only code.
+- **H^2 x R** takes the same family, plus light speed (self copies need a
+  quotient), and it PINS the course to `dropper` rather than taking it — that
+  mode is the geometry's whole reason to exist and there is nothing else to
+  run there. Gravity is the one it does NOT take away, because falling is the
+  mode; it is pinned to `floor plane` to say that the floor is `z = 0` and
+  there is no field object to choose.
+- **the dropper course, outside H^2 x R,** is locked back to `off`. It needs a
+  Euclidean height, so it does not exist in either constant-curvature world,
+  and saying so in the menu beats a course option that silently builds a hoop
+  run instead.
 - **any course** takes the opponent, the boomerang, build and portals. A timed
   run has nothing to fight, and each one is a key that would do nothing.
 - **the grapple course** additionally pins gravity, camera up and the bounded
@@ -928,6 +1121,15 @@ Two rules they follow:
 `modes.js` holds the round system — phase, clock, ordered checkpoints, best
 time — and it is DOM-free like physics.js so the rules are testable.
 `modes.test.js` has 56.
+
+**The crossing TEST belongs to the COURSE, not to `runStep`.** `hoopCrossed`
+is the right one for a hoop in H^3 — a sign change of `<p,N>` against a
+geodesic plane — and it is wrong for a dropper gate, which is a horizontal disc
+in a space where the height is a coordinate. So a course may carry
+`crossed(p0, p1, gate)` and `runStep` defers to it; the hyperbolic courses
+carry none and get the default. Everything else about a run — the phase, the
+clock, the ordering, the best time — is the same in every geometry, which is
+what made `modes.js` reusable across three of them without a rewrite.
 
 **A MODE THAT DEFAULTS TO OFF NEEDS ITS KEY TO TURN IT ON.** Both courses
 shipped working and unreachable. `KeyK` was gated behind `courseOn()`, the
@@ -1017,7 +1219,7 @@ stands every gate **0.336** clear and keeps them all within 1.412 of the centre.
 `modes.test.js` asserts both that the chosen ring is clear and that the naive
 one is not.
 
-### Three that were considered and do not work here
+### Three that were considered, and what became of them
 
 **Rescaling the curvature radius ("flatten") is impossible in the quotient.**
 The octagon's 45 degree angles depend on its size, so a smaller octagon stops
@@ -1027,8 +1229,11 @@ though a weaker one: it magnifies uniformly rather than converting the falloff.
 **Tethering to an ideal point is impossible.** A compact manifold has no
 boundary at infinity. Holonomy dash is the substitute.
 
-**A DROPPER is impossible, and the reason is worth knowing for its own sake:
-in H^3 steering and descending are ANTAGONISTIC.** A geodesic tangent to an
+**A DROPPER is impossible IN H^3 — and that turned out to be a fact about
+H^3 rather than about droppers. It is now a mode, in `h2r.js`.** Keep the
+measurement below: it is what says which geometry the mode needed, and it is
+the reason H^2 x R was built. The finding is that in H^3 steering and
+descending are ANTAGONISTIC. A geodesic tangent to an
 equidistant surface of the floor plane has its lowest point there and rises
 away on both sides, so horizontal motion is motion that climbs. Above a
 critical horizontal speed the geometry beats gravity outright and you stop
@@ -1049,6 +1254,14 @@ there is no setting where a straight drop fails and a steered run succeeds.
 **Lowering gravity makes it worse** — the critical speed scales down with
 gravity, so a gentler fall is one that any input stops completely.
 
+**What fixes it is changing the SPACE, not the numbers.** The whole failure is
+that the level sets of the height in H^3 are EQUIDISTANT SURFACES of a geodesic
+plane: they curve away from it, so a horizontal geodesic climbs. In H^2 x R the
+level sets `z = const` are TOTALLY GEODESIC copies of H^2, a horizontal
+geodesic stays at its height for ever, and the fall time is exactly independent
+of the input — measured at every horizontal speed from 0 to 3, identical to
+every printed digit. See "H^2 x R" below.
+
 ## Level authoring
 
 The floor is an H^2, so it has no Euclidean grid. `(a, b)` are **geodesic
@@ -1066,6 +1279,18 @@ point d from the centre is at least (inradius - d) from every face. So centre
 distance plus thickness must stay under the inradius — 1.5286 for the octagon,
 **0.996 for the dodecahedron**. Toward a corner there is far more room: the
 dodecahedron reaches 1.854 that way.
+
+**Four worlds now hold their scene as data and emit it twice, and three of
+them do it BY HAND** — `level.js`, `s3.js` and `h2r.js` each carry their own
+number formatter and their own emit loop, which is exactly the duplication
+`tools/sdf-check.js` exists to catch drifting. TODO.md Part 2b has the plan for
+one shared emitter, and the thing worth knowing before starting it: **a map
+cannot be translated between geometries coordinate for coordinate.** The
+octagon's 45 degree angles hold at one size only, neither solid exists in E^3
+or S^3, and a ring of radius 1.5 holds 13.4 of arc in H^2, 9.4 in E^2 and 6.3
+in S^2. What ports is the LAYOUT -- "a ring of n", "a pinwheel of four chords",
+"a spiral turning 150 degrees and dropping 8" -- stated in geodesic polar, with
+each geometry answering in its own metric.
 
 **Three content sets.** `PILLARS`, `BARS`, `PLATFORMS`, `ORBS` fit both domains.
 `WALLS` and `TOWERS` are OCTAGON-only — a wall long enough to take cover behind
@@ -1369,9 +1594,19 @@ round. That corridor is the same corridor in every copy.
    beacon, grapple. 160 tests.
 9. ~~Multiplayer~~ — two players over WebRTC, `net.js`. See below: the netcode
    is ordinary, the STATE is not.
-10. **Actual game modes.** The next task. There is now a kit; what is missing
-    is a reason to use it — win conditions, rounds, a map built for a fight
-    rather than for looking at.
+10. ~~Actual game modes~~ — the hoop course, the grapple course and the
+    dropper, all in `modes.js` with 78 tests. The dropper needed a fourth
+    geometry rather than a fourth set of numbers.
+11. ~~More than one geometry, and not all of them quotiented~~ — four now:
+    H^3/Gamma (two groups), S^3, H^2 x R and E^3 as a control. Two of the four
+    have no quotient at all, on purpose. `shader.js` emits one scene program
+    per geometry via `fragFor(key)`, selected by `#if` rather than a uniform.
+12. **A shared way to author a level across geometries.** The next task. Three
+    worlds now each hold their scene as data and emit it twice by hand
+    (`level.js`, `s3.js`, `h2r.js`), with a copy of the same `num()` helper and
+    the same emit loop in each. That duplication is exactly what
+    `tools/sdf-check.js` exists to catch drifting, so it should stop being
+    hand-written. See "Authoring across geometries" below.
 
 **~~The known limit before more weapons go in~~ — FIXED.** `physics.js` used to
 hold ONE boomerang slot, ONE block, ONE decoy and ONE pane as module-level

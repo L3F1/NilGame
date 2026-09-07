@@ -423,16 +423,25 @@ check('dodecahedron normals are unit and each pairing inverts its generator', ok
     }
     return null;
   };
+  // 2000 samples and a threshold of ZERO, and both halves of that matter.
+  //
+  // A single orbit that reduces two ways DISPROVES the gluing, so "bad > 0" is
+  // the mathematically correct threshold; the earlier "bad > 5 out of 400" was
+  // both too weak a claim and, measured, a real flake. Only about 3% of random
+  // orbits expose the inconsistency -- the greedy walk is a contraction and
+  // most starting points wash it out -- so 400 samples gave a mean of 12.3
+  // with a minimum of 4 over 200 runs, and tripped "> 5" in about 1% of them.
+  // At 2000 the mean is near 60 and seeing zero is not something that happens.
   let bad = 0;
-  for (let i = 0; i < 400; i++) {
+  for (let i = 0; i < 2000; i++) {
     const p = point(geodesicFromIdentity(unit3(), Math.random() * 3));
     const k = Math.floor(Math.random() * 12);
     const a = reduceWith(wrongPair, p);
     const b = reduceWith(wrongPair, apply(wrongGen[k], p));
     if (!a || !b || dist(a, b) > 1e-6) bad++;
   }
-  check('a 1/10 turn instead of 3/10 does NOT glue up', bad > 5,
-    `${bad}/400 orbits disagree, as they must — 1/10 is the Poincare sphere`);
+  check('a 1/10 turn instead of 3/10 does NOT glue up', bad > 0,
+    `${bad}/2000 orbits disagree, as they must — 1/10 is the Poincare sphere`);
 
   setSolid(SOLID.OCTAGON);
 }

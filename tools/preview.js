@@ -87,6 +87,15 @@ function wrap(file, code) {
     // into something broken. A rewrite that cannot be done must fail loudly;
     // one that can be done should just be done.
     (_, list, from) => `const {${list.replace(/\s+as\s+/g, ': ')}} = __m['${from}'];`);
+  // A NAMESPACE import is the natural shape of this bundle rather than a
+  // problem for it: every module is already an object of its exports, so
+  // `import * as ns from './x.js'` is exactly `const ns = __m['x.js']`.
+  // It used to be refused, which was right when nothing used one; main.js now
+  // imports h2r.js this way, because almost every name in it collides with
+  // hyp.js by design.
+  code = code.replace(
+    /^import\s*\*\s*as\s+([A-Za-z_$][\w$]*)\s*from\s*'\.\/([^']+)';?/gm,
+    (_, id, from) => `const ${id} = __m['${from}'];`);
   // SAY SO when the source uses an import form this cannot rewrite, instead of
   // emitting a bundle with a live `import` in it and letting the browser
   // produce an error that points at the wrong thing. Renamed and namespace
@@ -99,9 +108,10 @@ function wrap(file, code) {
       + 'It understands only:  import { a, b } from \'./x.js\';  and\n'
       + 'export function / export async function / export const / let / class.\n'
       + 'Renamed imports (import { a as b }) and namespace imports\n'
-      + '(import * as ns) are NOT supported - the browser is fine with both,\n'
-      + 'so this is the only place they break. Rewrite the import, or teach\n'
-      + 'this function the form.');
+      + '(import * as ns) are both rewritten above, so this is some THIRD\n'
+      + 'form - a default import, a side-effect import, or a re-export.\n'
+      + 'The browser is fine with all of them, so this is the only place they\n'
+      + 'break. Rewrite the import, or teach this function the form.');
   }
   // The injected snippet goes inside main.js so it can see its locals.
   if (file === 'main.js' && inject) code += `\n${inject}\n`;

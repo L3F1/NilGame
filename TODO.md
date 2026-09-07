@@ -237,7 +237,7 @@ Three hooks:
 
 ## Part 2 — other geometries
 
-### Spherical S^3 — **the math layer is DONE**, the renderer is not  **L**
+### ~~Spherical S^3~~ **DONE** — `s3.js`, `s3.test.js` (28), its own program
 
 Not just novelty. Three things change and all three matter:
 
@@ -292,13 +292,137 @@ This project started in **Nil**. The reference already used for the renderer
 (Coulon, Matsumoto, Segerman, Trettel) covers all eight: E^3, S^3, H^3, S^2xR,
 H^2xR, SL2R~, Nil, Sol.
 
-- **H^2 x R** is the interesting one, and it is nearly what this game already
-  pretends to be: a hyperbolic floor with a genuinely flat vertical direction.
-  Plane gravity here is an approximation of it. Doing it properly would make
-  "up" honest instead of chosen.
+- ~~**H^2 x R**~~ **DONE** — `h2r.js`, `h2r.test.js` (51), its own program,
+  and the DROPPER, which is the mode CLAUDE.md had recorded as impossible.
+  It was impossible in H^3 and that was a fact about H^3: there the level sets
+  of the height are equidistant surfaces that curve away from the floor plane,
+  so horizontal motion CLIMBS. Here `z = const` is totally geodesic and the
+  fall time is exactly independent of the input, measured at every horizontal
+  speed from 0 to 3. "Up" is now honest rather than chosen, in one of the four.
+
+  The traps it turned on, both recorded in CLAUDE.md: the height is AFFINE, so
+  `Isom(H^2 x R)` does not embed in GL(4) and a plain mat4 multiply scales the
+  stored height by the other factor's cosh; and the float32 range limit lands
+  on the HORIZONTAL factor only, with no quotient to fold it back, which drew
+  as speckle across the whole far field until the ray cap became per-ray.
+- **S^2 x R** is now nearly free: it is the same product machinery as H^2 x R
+  with `sinh` swapped for `sin` in one factor, which is exactly the swap
+  `geom.js` already makes. The interesting half is that the horizontal factor
+  is COMPACT with no quotient while the vertical one is infinite — the mirror
+  image of the bounded world, whose floor wraps and whose height does not.
 - **Sol** is the strangest — exponential stretching along one axis and
   contraction along another, so navigation is genuinely disorienting rather than
   merely unfamiliar.
+
+---
+
+## Part 2b — authoring a map once, in more than one geometry
+
+Four geometries now, and **three of them hold their scene as data and emit it
+twice by hand**: `level.js`, `s3.js` and `h2r.js` each carry their own `num()`
+number formatter, their own array emitter and their own copy of the
+"JS SDF here, GLSL SDF there" loop. That duplication is precisely what
+`tools/sdf-check.js` exists to catch drifting apart, which is the sign it
+should stop being written by hand.
+
+### First, the thing that is NOT possible, because it saves a lot of wasted work
+
+**A map cannot be translated between geometries coordinate for coordinate, and
+no amount of engineering changes that.** The constraints are different:
+
+- The octagon has 45 degree interior angles **only at one size**. Scale it and
+  it stops being a genus-2 fundamental domain. Same for the dodecahedron's
+  2*pi/5 dihedral angle. Neither solid exists at all in E^3 or S^3.
+- A wall long enough to hide behind fits the octagon (inradius 1.5286) and
+  straddles a dodecahedral face (0.996) — CLAUDE.md already records that
+  `WALLS` and `TOWERS` are octagon-only for exactly this reason.
+- Distances themselves do not carry over. A ring at radius 1.5 holds
+  `2*pi*sinh(1.5) = 13.4` of arc in H^2, `2*pi*1.5 = 9.4` in E^2 and
+  `2*pi*sin(1.5) = 6.3` in S^2. Placing "eight things evenly" is a different
+  answer in each.
+
+So "import this map into the other geometry" is the wrong goal. What DOES carry
+over is the **layout**: "a ring of n, a pinwheel of four chords at floor radius
+1.0, a spiral of gates turning 150 degrees and dropping 8 each time". Every one
+of those is a parametric description in geodesic polar coordinates, and each
+geometry answers it with its own metric. `s3.js` and `h2r.js` already both have
+a private `ring(n, R, r, mat)` that does this, written twice.
+
+### The proposal, in three pieces, each independently useful
+
+**1. `emit.js` — one emitter, so the JS and GLSL halves cannot drift.  S**
+
+A primitive is `{ kind, args, mat }`. Each geometry registers a backend: a JS
+distance function and a GLSL body for each `kind` it supports. `emit.js` walks
+the list once and produces both the JS `sceneSDF` and the GLSL text, with the
+constant arrays laid out the way `level.js` already does (unrolled, because
+that is what lets the D3D compiler fold the array reads — CLAUDE.md is explicit
+that rolling them cost 74% of the frame time).
+
+The payoff is not tidiness. It is that **adding a primitive type becomes one
+edit instead of two that must agree**, and `sdf-check` then verifies a
+generated pair rather than a hand-written one.
+
+Immediate small win inside this: `num()` is currently byte-identical in `s3.js`
+and `h2r.js`.
+
+**2. `layout.js` — the parametric vocabulary, geometry-free.  S**
+
+`ring(n, R)`, `arc(n, R, from, to)`, `spiral(n, R, turn, rise)`,
+`pinwheel(n, R, chord)`, `stack(n, rise)` — each returning geodesic-polar
+coordinates and nothing else. A geometry turns those into points with its own
+`translation`. This is the honest form of "the same map in another geometry":
+you port the layout, and the metric does what it does.
+
+It is also what makes the searched-not-written-down discipline cheap. Every
+layout this project has needed — the opponent spawn, the grapple gate ring, the
+dropper — was found by sweeping two or three parameters and testing the result.
+A vocabulary of parameterised layouts is a vocabulary of things to sweep.
+
+**3. `tools/layout-check.js` — one validator for any scene, any geometry.  S**
+
+Fold `sdf-check` together with the clearance sweeps that are currently written
+fresh each time, and have it report, for a scene in any geometry:
+
+- clearance of every primitive from every face of the fundamental domain, if
+  there is one (the 1-Lipschitz rule: centre distance + thickness < inradius)
+- clearance at the spawn — "nothing at either spawn" has bitten twice
+- every material below 10, or it glows in every copy
+- the JS and GLSL SDFs agreeing on the GPU
+- the primitive count against the link-time budget, which is the one that
+  actually binds
+
+Anything that fails is a picture that is quietly wrong, which is the worst kind
+here: both SDFs agree, the physics collides correctly, and only the render is
+off.
+
+### What about importing a map from outside?
+
+**A triangle mesh is the wrong input** and it is worth being clear why: the
+marcher steps by exact distance, and a mesh has no closed-form distance
+function. Every primitive in this project is an intersection of slabs whose
+distance is one `asinh` of one inner product. An OBJ importer would have to
+either produce a BVH the shader walks (a different renderer) or convert to
+primitives anyway.
+
+**A 2D floor plan is the right input**, and it is nearly free. A `WALL` is
+already three slabs — distance to its vertical plane, distance along it,
+altitude — and `verticalPlaneNormal` builds one from two floor points. So an
+importer that reads line segments (an SVG path, a Tiled map, an array of
+coordinate pairs) and emits `WALLS` is a small function, and it works unchanged
+in the octagon world and in H^2 x R, which are the two with a floor. Interpret
+the input coordinates as **geodesic polar**, not as a Euclidean grid, and say
+so loudly: the floor is an H^2 and two positions are *not* `|da, db|` apart.
+
+The realistic authoring loop, then, is: draw a floor plan in any vector editor,
+export the paths, run the importer, run `layout-check`, and fix what it names.
+
+### Order
+
+`emit.js` first — it is the one that removes real duplication that is already
+in the tree, and everything else is easier once the JS and GLSL halves come
+from one place. Then `layout.js`, then the validator, then the floor-plan
+importer if it still looks worth it.
 
 ---
 
