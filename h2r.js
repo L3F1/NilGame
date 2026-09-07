@@ -251,6 +251,8 @@ export function h2rMap(p) {
     const d = horizDist(p, c.c) - c.r;
     if (d < best) { best = d; mat = c.mat; }
   }
+  const obstacle = dropperObstacleSDF(p);
+  if (obstacle < best) { best = obstacle; mat = 6; }
   return [best, mat];
 }
 
@@ -276,6 +278,8 @@ const num = (n) => {
 export function h2rGLSL() {
   const n = H2R_COLUMNS.length;
   return `
+const vec4 DROP_B[${DROP_BAFFLES.length}] = vec4[${DROP_BAFFLES.length}](
+  ${DROP_BAFFLES.map((b) => `vec4(${b.at.map(num).join(', ')})`).join(',\n  ')});
 const vec4 H2R_C[${n}] = vec4[${n}](
     ${H2R_COLUMNS.map((c) => `vec4(${c.c.map(num).join(', ')})`).join(',\n    ')});
 // x = radius, y = material.
@@ -292,6 +296,11 @@ vec2 h2rWorld(vec4 p) {
     // in the H^2 factor alone and it is exact at every altitude.
     float d = hHorizDist(p, H2R_C[i]) - H2R_RM[i].x;
     if (d < m.x) m = vec2(d, H2R_RM[i].y);
+  }
+  for (int i = 0; i < ${DROP_BAFFLES.length}; i++) {
+    float d = max(abs(p.z - DROP_B[i].z) - ${num(DROP_THICK)},
+      ${num(DROP_OPENING)} - hHorizDist(p, DROP_B[i]));
+    if (d < m.x) m = vec2(d, 6.0);
   }
   return m;
 }
@@ -504,3 +513,36 @@ export function gateRing(gate, n = 48) {
 
 /** Where a run starts: on the deck, above the first gate's ring. */
 export const dropperStart = () => placeAt(0, 0, H2R_TOP_Z);
+
+// Horizontal slabs with circular holes, authored from the gate positions.
+// A rim sits just below its checkpoint so the next opening stays visible.
+export const DROP_OPENING = 0.95;
+export const DROP_THICK = 0.08;
+export const DROP_BAFFLES = dropperCourse().hoops.slice(0, -1).map((g) => ({
+  at: [g.at[0], g.at[1], g.z - 0.5, g.at[3]],
+}));
+
+/** Conservative signed distance to the lethal solids, excluding the floor. */
+export function dropperObstacleSDF(p) {
+  let d = Infinity;
+  for (const c of H2R_COLUMNS) d = Math.min(d, horizDist(p, c.c) - c.r);
+  for (const b of DROP_BAFFLES) d = Math.min(d,
+    Math.max(Math.abs(p[2] - b.at[2]) - DROP_THICK,
+      DROP_OPENING - horizDist(p, b.at)));
+  return d;
+}
+
+/** Sweep the player sphere along its actual product geodesic; no tunneling. */
+export function dropperImpact(M, v, dt) {
+  const speed = Math.hypot(...v), length = speed * dt;
+  if (!speed) return dropperObstacleSDF(point(M)) <= H2R_PLAYER_R;
+  const dir = v.map((x) => x / speed);
+  let t = 0;
+  for (let i = 0; i < 128; i++) {
+    const clearance = dropperObstacleSDF(rayPoint(M, dir, t)) - H2R_PLAYER_R;
+    if (clearance <= 1e-6) return true;
+    if (t + clearance > length) return false;
+    t += clearance;
+  }
+  return true; // an unresolved grazing contact is a collision, not a bypass
+}

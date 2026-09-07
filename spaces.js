@@ -11,6 +11,12 @@ export const SPACES = Object.freeze([
     programName: 'scene (H^2 x R)', family: 'surface-product' }),
   Object.freeze({ key: 's2r', option: 'S^2 x R', shaderId: 3,
     programName: 'scene (S^2 x R)', family: 'surface-product' }),
+  // E^3/Lambda is a family of its own: flat, and the only one here whose
+  // quotient the renderer handles inside the distance function rather than
+  // with a fundamental domain. Two worlds share the one program, chosen by
+  // uOpen -- the slab (x, y glued) and the 3-torus (all three).
+  Object.freeze({ key: 'e3t', option: 'flat torus', shaderId: 4,
+    programName: 'scene (E^3 / lattice)', family: 'flat-quotient' }),
 ]);
 
 export function spaceFor(key) {

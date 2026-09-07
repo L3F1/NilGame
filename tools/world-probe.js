@@ -18,10 +18,19 @@
     check([...player, ...vel].every(Number.isFinite), `${label}: finite state`);
     const k = geomKey();
     const p = k === 'h2r' ? H2R.point(player) : k === 's2r' ? S2R.point(player) : player.slice(12, 16);
+    // Each model has its own defining equation, and mixing them up is the
+    // whole reason resetForCurvature exists. E^3/Lambda's is the degenerate
+    // one: the model is the affine plane x3 = 1, not a quadric at all.
     const form = k === 'h3' ? dot(p, p) : k === 's3' ? p.reduce((s, x) => s + x * x, 0)
-      : k === 'h2r' ? H2R.hdot(p, p) : S2R.sdot(p, p);
+      : k === 'h2r' ? H2R.hdot(p, p) : k === 'e3t' ? p[3] : S2R.sdot(p, p);
     check(Math.abs(form - (k === 'h3' || k === 'h2r' ? -1 : 1)) < 1e-6,
       `${label}: placement lies in ${k}`);
+    // And the flat one must also stay inside the cell -- nothing else folds
+    // the player there, so an unfolded run is the float32 failure waiting.
+    if (k === 'e3t') {
+      check(p.slice(0, 3).every((x) => Math.abs(x) <= 1.5 + 1e-6),
+        `${label}: flat placement is folded into the cell`);
+    }
     check(!/NaN|Infinity/.test(hud.textContent), `${label}: finite HUD`);
     check(gl.getError() === gl.NO_ERROR, `${label}: WebGL clean`);
   }
@@ -84,7 +93,12 @@
     openMenu();
     document.querySelector('[data-preset="fight"]').click();
     await settle();
-    check(sceneProgs.size === programs && programs === 4, 'revisits reuse four cached scene programs');
+    // Every registered geometry has been visited by the preset sweep above, so
+    // the cache holds one program each and revisiting builds nothing. Derived
+    // from SPACES rather than written out, so adding a geometry does not need
+    // this line edited -- it needed it once, at four.
+    check(sceneProgs.size === programs && programs === SPACES.length,
+      `revisits reuse all ${SPACES.length} cached scene programs`);
     const fullPixels = canvas.width * canvas.height;
     const select = document.getElementById('option-resolution');
     select.value = '50%'; select.dispatchEvent(new Event('change'));

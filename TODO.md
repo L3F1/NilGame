@@ -21,9 +21,29 @@ browser checks are implemented. Geometry-correct resets and isolation from
 H3-only inputs/transient markers now cover the existing worlds. Motion adapters
 for S3, H2 x R, and S2 x R now own spawn, movement and course creation in
 `world-motion.js`. Remaining session state/HUD and quotient extraction are the
-next infrastructure steps, followed by a
-playable flat 3-torus. Run `node tools/page-check.js --worlds` after changing
-the menu, resets, presets, or geometry dispatch.
+next infrastructure steps. **The playable flat 3-torus is DONE** — `e3t.js`,
+two worlds (slab and 3-torus), the torus course, 63 tests, and the cheapest
+scene program in the project at 3.1 s. Run `node tools/page-check.js --worlds`
+after changing the menu, resets, presets, or geometry dispatch.
+
+The remaining Thurston geometries are **Nil, Sol and SL~(2,R)**, and they are
+blocked on the same thing rather than on three different things: none of them
+has a closed-form distance, so sphere tracing needs a distance UNDERESTIMATOR
+and numerically integrated geodesic flow. That changes the marcher's step rule,
+which is the load-bearing loop. Order: Nil first (exact geodesics, inexact
+distance — one thing changes), then SL~(2,R), then Sol. See CLAUDE.md,
+"The three that are left".
+
+## Current gameplay pass
+
+- In progress: lethal H2 x R dropper baffles, swept impact detection, automatic
+  restart, and a visible attempt count.
+- In progress: S2 x R arcade circuit with steering, drift charge, turbo,
+  jumping, physical hurdles, ordered checkpoints, and a timed finish.
+- Validate both through complete simulated runs and real-browser checks,
+  then measure shader link cost and push the completed work.
+- Done: E^3/Lambda, the flat 3-manifolds. The control the other five are
+  measured against, and the only world where a ported map is the map.
 
 ## Part 0 — the machinery every mode needs
 

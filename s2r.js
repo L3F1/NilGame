@@ -62,6 +62,7 @@
 // cosh swapped for sin and cos. No DOM, so it is testable.
 
 import { surface } from './product.js';
+import { RACE_WIDTH, raceTrackGLSL } from './race-track.js';
 
 // --- the geometry, which is product.js at kS = +1 -------------------------
 
@@ -315,6 +316,11 @@ vec2 s2rWorld(vec4 p) {
     // entirely, so this is exact at every altitude, capped by a height slab.
     float d = max(hHorizDist(p, S2R_C[i]) - S2R_RM[i].x, p.z - S2R_RM[i].z);
     if (d < m.x) m = vec2(d, S2R_RM[i].y);
+  }
+  if (uRace > 0.5) {
+    float latitude = abs(asin(clamp(p.y, -1.0, 1.0)));
+    if (m.y == 1.0 && latitude < ${RACE_WIDTH}) m.y = 5.0;
+    ${raceTrackGLSL()}
   }
   return m;
 }

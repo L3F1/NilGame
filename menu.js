@@ -22,7 +22,7 @@ export function createWorldMenu({ presets, onPreset, onOption, onClose }) {
         <div class="settings-grid"></div>
       </details>
       <footer class="menu-footer"><span>WASD move · mouse look · R reset · K restart course</span>
-        <span>1–7 choose a world · O / Esc close</span></footer>
+        <span>1–8 choose a world · O / Esc close</span></footer>
     </div>`;
   document.body.appendChild(panel);
   const grid = panel.querySelector('.world-grid');

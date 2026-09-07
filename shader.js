@@ -16,6 +16,7 @@ import { OCT_SIDE, OCT_PAIR, DOD_SIDE, DOD_PAIR } from './hyp.js';
 import { s3GLSL } from './s3.js';
 import { h2rGLSL } from './h2r.js';
 import { s2rGLSL } from './s2r.js';
+import { e3tGLSL } from './e3t.js';
 import { spaceFor } from './spaces.js';
 
 export const VERT = `#version 300 es
@@ -97,6 +98,7 @@ const HYP_GLSL = `
 #define G_S3  1
 #define G_H2R 2
 #define G_S2R 3
+#define G_E3T 4
 #define GEOM (__GEOM_ID__)
 
 // The two PRODUCT geometries share one arm of everything below, with the
@@ -112,6 +114,17 @@ const HYP_GLSL = `
 #else
 #define IS_PRODUCT 0
 #define kS (-1.0)
+#endif
+
+// E^3 / Lambda, the flat 3-manifolds. Its own arm rather than a third value of
+// kS, because a product is a SURFACE crossed with a line and this is not one:
+// all three of its directions are the same kind of direction, and the height
+// is not privileged. E^2 x R would be a product spelling of the same space and
+// it would keep a distinction that is not there.
+#if GEOM == G_E3T
+#define IS_FLAT 1
+#else
+#define IS_FLAT 0
 #endif
 
 // H^3 is the only one of the three with a QUOTIENT. S^3 is compact already and
@@ -134,6 +147,12 @@ const HYP_GLSL = `
 // only distance, the ray and the up vector had to be written twice.
 #if GEOM == G_S3 || GEOM == G_S2R
 #define uCurv (1.0)
+#elif GEOM == G_E3T
+// Zero, and the form degenerates with it: mdot loses its w term entirely and
+// becomes the plain Euclidean dot on the spatial part, which is exactly right
+// for tangent vectors in flat space. See geom.js, where k = 0 is the model
+// x3 = 1 rather than a quadric.
+#define uCurv (0.0)
 #else
 #define uCurv (-1.0)
 #endif
@@ -146,9 +165,19 @@ float mdot(vec4 a, vec4 b) { return a.x*b.x + a.y*b.y + a.z*b.z + uCurv*a.w*b.w;
 // Generalised trigonometry, exactly as geom.js does it on the CPU:
 // cosh/cos, sinh/sin, asinh/asin, selected by the sign of the curvature.
 // cosK^2 + k sinK^2 = 1 in both, which is why one set of formulas works.
+// The k = 0 arm is the DEGENERATE one and it has to be written out: the
+// selector above tests uCurv < 0.0, so a zero curvature would fall through to
+// cos and sin, which are not the flat limits of anything. cosK -> 1 and
+// sinK -> t is the limit that makes cosK^2 + k sinK^2 = 1 hold at k = 0.
+#if IS_FLAT
+float cosK(float t) { return 1.0; }
+float sinK(float t) { return t; }
+float asinK(float x) { return x; }
+#else
 float cosK(float t) { return uCurv < 0.0 ? cosh(t) : cos(t); }
 float sinK(float t) { return uCurv < 0.0 ? sinh(t) : sin(t); }
 float asinK(float x) { return uCurv < 0.0 ? asinh(x) : asin(clamp(x, -1.0, 1.0)); }
+#endif
 
 #if IS_PRODUCT
 // --- SURFACE x R, at kS = -1 (H^2 x R) or kS = +1 (S^2 x R) ---------------
@@ -280,6 +309,73 @@ mat4 chartRebase(mat4 M, vec3 dir, float s) {
 // lets the CPU side skip alignUp entirely.
 vec4 upAtG(vec4 p) { return vec4(0.0, 0.0, 1.0, 0.0); }
 
+#elif IS_FLAT
+// --- E^3 / LAMBDA, the flat 3-manifolds ----------------------------------
+//
+// A point is (x, y, z, 1) -- the affine plane the k = 0 model degenerates to,
+// so a placement is an ordinary affine matrix and chartMap is a plain mat4
+// multiply that is exactly right rather than nearly right. Contrast the
+// product arm above, where a plain multiply scales the stored height by the
+// other factor's cosh and is the single biggest trap in this file.
+//
+// THE QUOTIENT LIVES IN hDist AND NOWHERE ELSE, and that is the design
+// decision this build turns on. The hyperbolic build needs a fundamental
+// domain, a face scan, an exact exit solve, a fold loop and a straddle copy
+// because reducing a point there costs seven iterations of eight inner
+// products, and at 220 steps a pixel that is not affordable. Reducing a point
+// HERE is three roundings. So the strategy that was out of reach in H^3 --
+// fold every sample -- is the obvious one, done on the DISPLACEMENT inside the
+// distance function so it stays exact, and then no other line of this shader
+// has to know that a group exists.
+//
+// HAS_QUOTIENT is 0 for this build, and that is not a lie about the manifold.
+// It says the fundamental-domain APPARATUS is absent, which it is.
+const vec3 E3T_L = vec3(3.0, 3.0, 3.0);   // must match CELL in e3t.js
+
+// The MINIMUM IMAGE of a displacement: the shortest of all the ways round.
+//
+// x and y are always glued; z only in the 3-torus. uOpen is the very same
+// uniform the hyperbolic build uses to mean 'floor and ceiling removed', and
+// here removing them IS the gluing -- the roof at z = 3 is the floor at z = 0,
+// so there is no surface there to draw.
+vec3 wrapDisp(vec3 d) {
+  vec3 m = vec3(1.0, 1.0, uOpen > 0.5 ? 1.0 : 0.0);
+  return d - E3T_L * m * round(d / E3T_L);
+}
+
+// Altitude, and it is the coordinate, exactly as in both products. In the
+// 3-torus it is not a function ON the manifold at all -- z is not periodic --
+// which is why gravity there has a force and no potential. See e3t.js.
+float hHeight(vec4 p) { return p.z; }
+
+// Distance in the QUOTIENT. One line, and it is the whole group: every marker,
+// every self copy and every level primitive is folded by using it.
+float hDist(vec4 p, vec4 q) { return length(wrapDisp(p.xyz - q.xyz)); }
+
+// The affine translation, which is what the boost degenerates to at k = 0:
+// cosK is 1 and sinK is t, so the whole outer-product construction collapses
+// to the identity with the offset in column 3.
+mat4 boostMat(vec3 u, float t) {
+  mat4 B = mat4(1.0);
+  B[3] = vec4(u * t, 1.0);
+  return B;
+}
+
+// The same hooks the other two arms define. A geodesic is a straight line, so
+// every one of these is the formula it looks like.
+vec4 rayLocal(vec3 dir, float s) { return vec4(dir * s, 1.0); }
+vec4 rayTangent(vec3 dir, float s) { return vec4(dir, 0.0); }
+vec4 chartMap(mat4 M, vec4 L) { return M * L; }
+mat4 chartRebase(mat4 M, vec3 dir, float s) { return M * boostMat(dir, s); }
+vec4 geoStep(vec4 p, vec4 n, float d) { return p + vec4(n.xyz * d, 0.0); }
+// The tangent space at a flat point is all of R^3 and the form is degenerate,
+// so there is no constraint to project out -- only the affine row to clear.
+vec4 projT(vec4 G, vec4 p) { return vec4(G.xyz, 0.0); }
+// Up is the vertical everywhere and exactly, the same as in both products, and
+// for the same reason: parallel transport in a flat space is componentwise, so
+// the frame never tilts and there is nothing for alignUp to re-pin.
+vec4 upAtG(vec4 p) { return vec4(0.0, 0.0, 1.0, 0.0); }
+
 #else
 // --- H^3 and S^3, which share one trigonometry ---------------------------
 
@@ -325,7 +421,11 @@ vec4 rayLocal(vec3 dir, float s) { return vec4(sinK(s) * dir, cosK(s)); }
 vec4 rayTangent(vec3 dir, float s) { return vec4(cosK(s) * dir, -uCurv * sinK(s)); }
 vec4 chartMap(mat4 M, vec4 L) { return M * L; }
 mat4 chartRebase(mat4 M, vec3 dir, float s) { return M * boostMat(dir, s); }
-vec4 geoStep(vec4 p, vec4 n, float d) { return cosh(d) * p + sinh(d) * n; }
+// cosK/sinK, not cosh/sinh. This said cosh and sinh unconditionally, which is
+// the right answer in H^3 and the wrong one in S^3 -- the error is O(d^3) and
+// the ambient-occlusion steps are short enough that it never showed, but the
+// spherical build was stepping off the sphere by a little at every AO tap.
+vec4 geoStep(vec4 p, vec4 n, float d) { return cosK(d) * p + sinK(d) * n; }
 vec4 projT(vec4 G, vec4 p) { return G + mdot(G, p) * p; }
 
 // Unit up-vector at p: the height gradient, an ambient tangent vector.
@@ -346,6 +446,7 @@ uniform float uPitch;
 uniform float uRoll;   // about the view axis; see cameraBasis in main.js
 uniform float uSteps;
 uniform float uTime;
+uniform float uRace;
 uniform float uFog;      // Farsight lifts this
 uniform float uMaxT;
 uniform float uOpen;   // 1 = floor and ceiling removed
@@ -620,6 +721,8 @@ ${s3GLSL()}
 ${h2rGLSL()}
 #elif GEOM == G_S2R
 ${s2rGLSL()}
+#elif GEOM == G_E3T
+${e3tGLSL()}
 #endif
 vec2 sceneMap(vec4 p, float t) {
 #if HAS_QUOTIENT
@@ -628,6 +731,8 @@ vec2 sceneMap(vec4 p, float t) {
   vec2 m = sphereWorld(p);
 #elif GEOM == G_H2R
   vec2 m = h2rWorld(p);
+#elif GEOM == G_E3T
+  vec2 m = e3tWorld(p);
 #else
   vec2 m = s2rWorld(p);
 #endif
@@ -885,6 +990,17 @@ vec3 materialColor(float m, vec4 p, float up, float t) {
       int face;
       float d = domainDepth(p, face);
       if (uEdges > 0.5 && uSolid < 0.5) col = mix(vec3(0.62, 0.46, 0.14), col, smoothstep(0.0, 0.05, d));
+#endif
+#if IS_FLAT
+      // The same gold line, around a SQUARE. It matters more here than it does
+      // in the octagon world: there, the rooms visibly crowd together and the
+      // corners give the quotient away on their own, and here nothing on
+      // screen distinguishes a 3-metre cell that wraps from an endless plain.
+      // The line is the only evidence, so it is drawn thinner and it is drawn
+      // on both glued axes.
+      vec3 w = abs(p.xyz - E3T_L * round(p.xyz / E3T_L));
+      float d = min(E3T_L.x * 0.5 - w.x, E3T_L.y * 0.5 - w.y);
+      if (uEdges > 0.5 && uSolid < 0.5) col = mix(vec3(0.62, 0.46, 0.14), col, smoothstep(0.0, 0.03, d));
 #endif
       return col;
     }

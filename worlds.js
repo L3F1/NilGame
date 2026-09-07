@@ -53,5 +53,30 @@ export const PRESETS = {
     note: 'S^2 x R: a compact floor, real gravity, and no group anywhere',
     set: { curv: 'S^2 x R', course: 'lap', fog: 'thin', quality: 'medium' },
   },
+  race: {
+    label: 'Orbital sprint',
+    note: 'Three laps around a spherical floor. Drift for turbo and jump the hurdles.',
+    set: { curv: 'S^2 x R', course: 'race', fog: 'thin', quality: 'medium' },
+  },
+  // The two flat ones, and they are the CONTROL rather than a novelty: the
+  // same room and the same course as the hyperbolic pair, one option apart,
+  // with the curvature switched off. Every claim the other worlds make is only
+  // checkable against a world where the geometry does nothing.
+  street: {
+    label: 'The flat street',
+    note: 'E^3 / lattice: the same wrap as the octagon world, with no curvature',
+    set: {
+      curv: 'flat torus', mode: 'floor (2D wrap)', course: 'off',
+      edges: 'show', fog: 'thin', quality: 'medium',
+    },
+  },
+  torus: {
+    label: 'Three-torus',
+    note: 'Fly the cell diagonal and come back. Every rational direction closes.',
+    set: {
+      curv: 'flat torus', mode: 'open (3D wrap)', course: 'torus',
+      edges: 'hide', fog: 'thin', quality: 'medium',
+    },
+  },
 };
 export const PRESET_KEYS = Object.keys(PRESETS);

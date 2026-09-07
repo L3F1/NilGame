@@ -2,17 +2,43 @@
 
 A game exploring **curved geometries and manifolds**. The H^3 worlds include
 a genus-2 surface quotient that wraps horizontally, and the closed
-Seifert-Weber manifold that wraps in all directions. S^3, H^2 x R, and S^2 x R
-also have playable worlds; E^3 currently provides a tested math control.
-Movement, gravity,
-rendering and a grapple hook, all done honestly in the geometry. No build step,
-no framework, no package manager for the root game. The independent `server/`
-prototype has its own stack and does not yet simulate the curved game.
+Seifert-Weber manifold that wraps in all directions. S^3, H^2 x R and S^2 x R
+have playable worlds too, and so now do the flat 3-manifolds **E^3/Lambda** —
+a slab that wraps in x and y, and the 3-torus that wraps in all three.
+Movement, gravity, rendering and a grapple hook, all done honestly in the
+geometry. No build step, no framework, no package manager for the root game.
+The independent `server/` prototype has its own stack and does not yet simulate
+the curved game.
+
+**The flat pair are the CONTROL, and that is what they are for.** They mirror
+the two hyperbolic worlds exactly — the same World option, the same two
+meanings, a square cell of inradius 1.50 against the octagon's 1.5286 — so the
+same room and the same course can be run in both, one switch apart, with
+nothing differing but the curvature. Two things fall straight out of that:
+
+- **Look down the flat street.** The copies of the room recede like 1/d, so a
+  dozen of them stand in a line all the same size. In the octagon world
+  e^{2r} makes the second copy a speck. Same quotient, same size of room; the
+  falloff is the whole difference.
+- **A ported map is the map.** There is no isometric embedding between
+  surfaces of different curvature, so every strategy in `port.js` trades one
+  exact property for two wrong ones. Port a flat plan into flat space and
+  there is nothing to trade — which is what makes "what does curvature do to a
+  level" a comparison you can play rather than an argument.
+
+And the 3-torus does one thing nothing else here can: **gravity with a force
+and no potential.** `d/dz` survives every lattice translation, `z` survives
+none, so you fall through the floor, arrive through the roof, and arrive
+faster than you left. For ever.
+
+Three of the eight Thurston geometries are still missing — Nil, Sol and
+SL~(2,R) — and all three are blocked on the same thing: none has a closed-form
+distance, and this renderer is a sphere tracer.
 
 For the current module map and the path to more geometries and manifolds, see
 [the architecture guide](docs/architecture.md). Playable geometry metadata
 lives in `spaces.js`; the full root regression suite runs with `node tools/test.js`.
-The three non-hyperbolic worlds share a motion adapter contract in
+The non-hyperbolic worlds share a motion adapter contract in
 `world-motion.js`, keeping spawn and simulation independent of the browser.
 
 - `hyp.js` — the geometry. Lorentz matrices, geodesics, exp and log. No graphics.

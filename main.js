@@ -10,10 +10,12 @@ import {
 } from './hyp.js';
 import { levelSDF, setMode, getMode, MODE } from './level.js';
 import { VERT, fragFor, LINE_VERT, LINE_FRAG } from './shader.js';
+import * as E3T from './e3t.js';
 import { SPACES, spaceFor, spaceForOption } from './spaces.js';
 import { PRESETS, PRESET_KEYS } from './worlds.js';
 import { createWorldMenu } from './menu.js';
-import { worldMotionFor } from './world-motion.js';
+import { worldMotionFor, motionInput } from './world-motion.js';
+import { makeRacer, raceStep, raceCourse, RACE_SPEED, RACE_LAPS } from './racing.js';
 import {
   S3G, s3LapFraction, S3_LAP,
 } from './s3.js';
@@ -355,6 +357,7 @@ function sceneUniforms(prog) {
     player: gl.getUniformLocation(prog, 'uPlayer'),
     yaw: gl.getUniformLocation(prog, 'uYaw'),
     pitch: gl.getUniformLocation(prog, 'uPitch'),
+    race: gl.getUniformLocation(prog, 'uRace'),
     roll: gl.getUniformLocation(prog, 'uRoll'),
     markN: gl.getUniformLocation(prog, 'uMarkN'),
     mark: gl.getUniformLocation(prog, 'uMark'),
@@ -588,7 +591,7 @@ const opts = {
   //            enough holonomy of the right SIGN, so you must swing around
   //            something the right way round to get through. About what you
   //            do. Wants gravity and the rope.
-  course:     { label: 'Course (K)',   values: ['off', 'hoops', 'grapple', 'dropper', 'lap'], i: 0 },
+  course:     { label: 'Course (K)',   values: ['off', 'hoops', 'grapple', 'dropper', 'lap', 'race', 'torus'], i: 0 },
   // What Q spends the banked holonomy on. 'sign decides' is the interesting
   // one: sweptArea is SIGNED, so going round something one way charges a dash
   // and the other way charges a blast, and there is no third option where you
@@ -603,6 +606,7 @@ const opts = {
 };
 const optKeys = Object.keys(opts);
 let optSel = 0, optOpen = false;
+let racer = makeRacer(), dropDeaths = 0, dropFlash = 0;
 let menuBusy = false;
 
 // Optical zoom, on the scroll wheel. Replaced flat vision, which was bound to
@@ -1069,7 +1073,53 @@ function computeForced() {
     lock('build', 'off', 'hyperbolic only');
     lock('portals', 'off', 'hyperbolic only');
     lock('light', 'instant', 'no self copies without a quotient');
-    lock('course', 'lap', 'the mode this geometry is for');
+    lock('course', rawVal('course') === 'race' ? 'race' : 'lap', 'spherical floor course');
+  }
+
+  // E^3 / Lambda takes the same hyperbolic-only family, and then two things
+  // are pinned rather than taken, which is a distinction worth keeping:
+  //
+  // GRAVITY IS REAL HERE and it is not physics.js's. In the slab the height is
+  // an affine coordinate exactly as it is in both products, so the fall is one
+  // subtraction and there is no field object to choose. In the 3-TORUS it is
+  // stranger than any of them: d/dz is invariant under every lattice
+  // translation so the FORCE descends perfectly well, but z is not periodic so
+  // there is no height function on T^3 at all -- and there cannot be, since a
+  // continuous function on a compact manifold has a maximum and a maximum has
+  // no gradient. Force without a potential. Played, that is falling through
+  // the floor, arriving through the roof, and arriving faster than you left.
+  // 'none' therefore stays available and means exactly what it says.
+  //
+  // THE CAMERA IS PINNED for the reason both products' is: parallel transport
+  // in a flat space is componentwise, so the frame never tilts and alignUp has
+  // nothing to re-pin.
+  //
+  // DOMAIN EDGES ARE **NOT** LOCKED OFF, and this is the one place this world
+  // differs from every other non-hyperbolic one. There IS a fundamental domain
+  // here, it is a square, and the gold line around it is the only thing on
+  // screen that gives the quotient away -- in the octagon world the rooms
+  // visibly crowd and the corners tell you; here nothing distinguishes a cell
+  // that wraps from an endless plain.
+  if (rawVal('curv') === 'flat torus') {
+    lock('upright', 'free', 'the frame never tilts');
+    lock('move', 'walking', 'no rolling model here yet');
+    lock('foe', 'off', 'hyperbolic only');
+    lock('boomerang', 'off', 'hyperbolic only');
+    lock('build', 'off', 'hyperbolic only');
+    lock('portals', 'off', 'hyperbolic only');
+    // NOT because there are no self copies -- there are, and they come free:
+    // hDist folds every displacement, so the player's body is drawn in every
+    // cell down every sightline with no machinery at all. What finite light
+    // speed needs is `selfHist`, the ring of FOLDED samples plus the group
+    // elements linking them, and that is built on the hyperbolic fold.
+    lock('light', 'instant', 'the light-speed trail is built on the hyperbolic fold');
+    lock('course', rawVal('course') === 'torus' ? 'torus' : 'off',
+      'the flat course is the torus one');
+    // The (1,1,1) course rises, and in the slab world z is not glued, so a
+    // geodesic with any rise never comes back. The course IS the 3-torus.
+    if (rawVal('course') === 'torus') {
+      lock('mode', 'open (3D wrap)', 'the course closes only when z is glued');
+    }
   }
 
   // And the other way round: each product's course needs that product's
@@ -1080,8 +1130,11 @@ function computeForced() {
   if (wantCourse === 'dropper' && rawVal('curv') !== 'H^2 x R') {
     lock('course', 'off', 'H^2 x R only');
   }
-  if (wantCourse === 'lap' && rawVal('curv') !== 'S^2 x R') {
+  if ((wantCourse === 'lap' || wantCourse === 'race') && rawVal('curv') !== 'S^2 x R') {
     lock('course', 'off', 'S^2 x R only');
+  }
+  if (wantCourse === 'torus' && rawVal('curv') !== 'flat torus') {
+    lock('course', 'off', 'flat torus only');
   }
 
   // A course is a time trial. Everything that exists to fight with is off:
@@ -1214,7 +1267,7 @@ addEventListener('keydown', (e) => {
     return;
   }
   if (optOpen && (tag === 'SELECT' || tag === 'BUTTON' || tag === 'SUMMARY')
-      && !/^Digit[1-7]$/.test(e.code)) return;
+      && !/^Digit[1-8]$/.test(e.code)) return;
   if (e.code === 'KeyN') { toggleNetPanel(); return; }
   if (netOpen) { if (e.code === 'Escape') toggleNetPanel(); return; }
   // Zoom back out in one press, because scrolling all the way back is a chore
@@ -1239,6 +1292,7 @@ addEventListener('keydown', (e) => {
     return;
   }
   if (e.code === 'KeyR' && !e.repeat) { restartWorld(); return; }
+  if (racing() && e.code === 'KeyX') { keys.add(e.code); return; }
   if (e.code === 'KeyX') zoom = ZOOM_MIN;
   if (e.code === 'KeyF' && geomKey() === 'h3') toggleBeacon();
   // The fighting kit uses H3 operations. Never run it on another placement.
@@ -1752,6 +1806,44 @@ function sphereFloorWorld() { return optVal('curv') === 'S^2 x R'; }
 /** Either product: a curved floor plan with a flat, honest height. */
 function anyProduct() { return productWorld() || sphereFloorWorld(); }
 
+/**
+ * E^3 / Lambda: the flat 3-manifolds, and the CONTROL the other four are
+ * measured against.
+ *
+ * It is the exact structural mirror of the two hyperbolic worlds -- same
+ * `mode` option, same two meanings, a square cell of inradius 1.50 against the
+ * octagon's 1.5286 -- so the same level and the same course can be run in
+ * both, one switch apart, with nothing differing but the curvature. That is
+ * what makes it worth a whole geometry: every claim this project makes about
+ * what curvature does is only checkable against a world where it does nothing.
+ *
+ * It is also the only world here where a PORTED MAP IS THE MAP. port.js exists
+ * because there is no isometric embedding between surfaces of different
+ * curvature and every strategy trades one exact property for two wrong ones;
+ * port a flat floor plan into flat space and there is nothing to trade.
+ */
+function flatWorld() { return geomKey() === 'e3t'; }
+
+/**
+ * Anything that is not H^3: the worlds that run on a motion adapter rather
+ * than on physics.js and its group.
+ */
+function adapterWorld() { return geomKey() !== 'h3'; }
+
+/**
+ * What the options have selected INSIDE the current geometry.
+ *
+ * Only the flat one reads it, and it is the first geometry here whose single
+ * shader program serves two manifolds: `mode` picks the slab from the 3-torus
+ * exactly as it picks the octagon world from the dodecahedral one.
+ */
+function motionEnv() {
+  return {
+    open: optVal('mode') !== 'floor (2D wrap)',
+    gravity: optVal('field') !== 'none',
+  };
+}
+
 /** Which scene program the options are asking for. */
 function geomKey() {
   return spaceForOption(optVal('curv')).key;
@@ -1774,12 +1866,13 @@ function hideBoot() {
  * spherical program leaves every ray off the 3-sphere and draws black.
  */
 function resetForCurvature() {
+  racer = makeRacer();
   const motion = worldMotionFor(geomKey());
   if (!motion) { reset(); return; }
   clearBoomerang(); clearBlock(); clearCut(); clearDecoy(); clearPortals();
   blastFx = null;
   grounded = false;
-  const spawn = motion.spawn();
+  const spawn = motion.spawn(motionEnv());
   player = spawn.M; vel = spawn.vel; yaw = spawn.yaw; pitch = spawn.pitch;
   roll = 0; rollRate = 0;
   tilt = [0, 0]; tiltVel = [0, 0]; prevVel = [0, 0, 0];
@@ -1843,13 +1936,36 @@ function h2rWant(basis) {
 /** Advance motion and its course in the same chart (these worlds do not fold). */
 function stepWorldMotion(motion, h, want) {
   const p0 = motion.point(player);
-  [player, vel] = motion.step(player, vel, want, keys.has('Space'), h);
+  dropFlash = Math.max(0, dropFlash - h);
+  if (productWorld() && run && run.phase === PHASE.RUNNING &&
+      H2R.dropperImpact(player, H2R.h2rFall(vel, want, h), h)) {
+    dropDeaths++; dropFlash = 1; beginRun(); return;
+  }
+  if (racing()) {
+    if (run && run.phase === PHASE.DONE) { vel = [0, 0, 0]; return; }
+    [player, vel, racer] = raceStep(player, vel, racer, {
+      throttle: keys.has('KeyW') ? 1 : 0,
+      steer: (keys.has('KeyA') ? 1 : 0) - (keys.has('KeyD') ? 1 : 0),
+      drift: keys.has('ShiftLeft') || keys.has('ShiftRight'),
+      jump: keys.has('Space'), boost: keys.has('KeyX'),
+    }, h);
+    yaw = racer.heading;
+  } else {
+    [player, vel] = motion.step(player, vel, want, keys.has('Space'), h, motionEnv());
+  }
   if (motion.course && run && course) {
     if (runStep(run, h, p0, motion.point(player), null) >= 0) hoopFlash = 0.35;
+    if (productWorld() && run.phase === PHASE.RUNNING &&
+        motion.point(player)[2] < course.hoops[run.next].z - 1) {
+      dropDeaths++; dropFlash = 1; beginRun();
+    }
   }
 }
+
+function racing() { return sphereFloorWorld() && optVal('course') === 'race'; }
 function courseOn() { return optVal('course') !== 'off'; }
 function buildCourse() {
+  if (racing()) return raceCourse();
   const motion = worldMotionFor(geomKey());
   if (motion && motion.course) return motion.course();
   return optVal('course') === 'grapple' ? grappleCourse() : geodesicCourse(0, 6);
@@ -1878,7 +1994,8 @@ function ensureCourse() {
  */
 function aimAt(q) {
   const lv = sphereFloorWorld() ? S2R.logTo(player, q)
-    : productWorld() ? H2R.logTo(player, q) : logTo(player, q);
+    : productWorld() ? H2R.logTo(player, q)
+      : flatWorld() ? E3T.logTo(player, q) : logTo(player, q);
   const m = Math.hypot(lv[0], lv[1], lv[2]);
   if (m < 1e-9) return;
   yaw = Math.atan2(lv[1], lv[0]);
@@ -1908,14 +2025,21 @@ function beginRun() {
   // The dropper is its own start: back on the deck at the top of the shaft,
   // stationary, looking down at the first gate. resetForCurvature already
   // does exactly that, so the run and the respawn are the same act.
-  if (anyProduct()) {
+  if (adapterWorld()) {
     ensureCourse();
     const best0 = run ? run.best : null;
     course = buildCourse();
     run = makeRun(course);
     run.best = best0;
     resetForCurvature();
-    if (course.hoops.length) aimAt(course.hoops[0].at);
+    // The flat course needs no aiming: `hoopStart` puts the player ON the
+    // closed geodesic already looking down it, because the frame there is the
+    // identity and the camera angles come straight off the direction. The
+    // hyperbolic course cannot do that -- its hoops must lie on the axis
+    // through the CELL CENTRE, since a geodesic parallel to a generator's axis
+    // but offset from it does not close up.
+    if (!flatWorld() && course.hoops.length) aimAt(course.hoops[0].at);
+    if (racing()) { racer.heading = yaw; pitch = -0.08; }
     startRun(run);
     return;
   }
@@ -2233,7 +2357,8 @@ function project(q, basis) {
   // different function on a different form; using the hyperbolic one on a
   // product placement draws the course somewhere it is not.
   const lv = sphereFloorWorld() ? S2R.logTo(player, q)
-    : productWorld() ? H2R.logTo(player, q) : logTo(player, q);
+    : productWorld() ? H2R.logTo(player, q)
+      : flatWorld() ? E3T.logTo(player, q) : logTo(player, q);
   const m = Math.hypot(lv[0], lv[1], lv[2]);
   if (m < 1e-9) return null;
   const u = [lv[0] / m, lv[1] / m, lv[2] / m];
@@ -2313,6 +2438,7 @@ function drawCourse(basis) {
   if (!course || !courseOn()) return;
   const me = anyProduct() ? H2R.point(player) : point(player);
   for (let i = 0; i < course.hoops.length; i++) {
+    if (racing() && Math.floor(i / 12) !== Math.min(RACE_LAPS - 1, Math.floor((run?.next || 0) / 12))) continue;
     const taken = run && i < run.next;
     const hoop = course.hoops[i];
     const next = run && i === run.next;
@@ -2329,9 +2455,16 @@ function drawCourse(basis) {
     // No group here, so no nearest copy to look for: a point of H^2 x R has
     // exactly one name. hoopNear would be asking the octagon group about a
     // point that does not satisfy its form.
+    // The nearest copy, in EVERY world that has a group -- and the flat one
+    // has one, so it needs this too. The reason arrives from the opposite
+    // direction there: the hyperbolic marcher teleports at every face and this
+    // overlay does not, while the flat marcher never teleports but folds every
+    // displacement inside hDist, so what it draws at a coordinate is that
+    // coordinate's nearest image. Two mechanisms, one symptom.
     const ring = sphereFloorWorld() ? S2R.gateRing(hoop, 40)
       : productWorld() ? H2R.gateRing(hoop, 40)
-        : hoopRing(hoopNear(hoop, me), 40);
+        : flatWorld() ? E3T.gateRing(hoop, 40, me)
+          : hoopRing(hoopNear(hoop, me), 40);
     for (const q of ring) {
       const ndc = project(q, basis);
       if (ndc) strip.push(ndc);
@@ -2423,7 +2556,12 @@ function frame(now) {
   // Both products take the same horizontal input -- a direction in the floor
   // plan, and nothing else -- so they share `h2rWant`. What differs is what
   // the vertical does with it: one falls down a shaft, one runs and jumps.
-  const motionWant = motion ? (motion.input === 'flight' ? s3Want(basis) : h2rWant(basis)) : null;
+  // The flat world is the first whose input model is not fixed by the
+  // geometry: you WALK in the slab and FLY in the 3-torus, because the 3-torus
+  // has no floor left to stand on once the roof is glued to it.
+  const motionWant = motion
+    ? (motionInput(motion, motionEnv()) === 'flight' ? s3Want(basis) : h2rWant(basis))
+    : null;
   for (let i = 0; i < SUB; i++) {
     if (motion) { stepWorldMotion(motion, h, motionWant); continue; }
     const stepFrom = point(player);
@@ -2565,7 +2703,20 @@ function frame(now) {
     settleCarried(point(player));
   }
 
-  const unglued = sphericalWorld() || anyProduct();
+  // 'unglued' is really 'has no HYPERBOLIC fold', and the flat world made that
+  // distinction matter: E^3/Lambda emphatically HAS a group, and it is still
+  // wrong to send its points through `foldPoint`, which reduces against the
+  // octagon or dodecahedral generators. A flat point put through those comes
+  // back as nonsense -- the same class of mistake as handing the spherical
+  // marcher a Lorentz matrix, and it showed up the same way: the self body
+  // drew at a plausible-looking wrong place, and only at the spawn was it
+  // right, because the flat origin and the hyperbolic origin happen to have
+  // identical coordinates.
+  //
+  // The flat build needs no folding here at all: its shader wraps every
+  // displacement inside hDist, so an unfolded centre draws in the right place,
+  // and `foldPlacement` in the step keeps the coordinates bounded anyway.
+  const unglued = adapterWorld();
   const p0 = sphericalWorld() ? S3G.point(player)
     : anyProduct() ? H2R.point(player) : point(player);
   // The folded copy and the raw one are the SAME point when there is no group
@@ -2579,6 +2730,7 @@ function frame(now) {
   // program, so it sat at its default of zero and the marcher never drew it.
   // Nothing warns about this. The uniform simply does nothing.
   gl.useProgram(scene);
+  gl.uniform1f(U.race, racing() ? 1 : 0);
 
   // --- age everything, then say what to draw ----------------------------
   //
@@ -2711,12 +2863,22 @@ function frame(now) {
   // is going up, where there is nothing. Cheap, and it makes the far side of
   // the world genuinely visible, which is the point of standing on a sphere.
   const sphereFloor = sphereFloorWorld();
-  const base = (product ? 0.030 : sphereFloor ? 0.075 : openWorld ? 0.45 : 0.20)
+  // THE FLAT WORLD WANTS THE LEAST FOG AND THE LONGEST RANGE OF ANY OF THEM,
+  // and that is the whole visual argument for building it. Down the clear
+  // street the copies of the room recede like 1/d rather than like e^{-2r}, so
+  // where the octagon world's second copy is already a speck this one shows
+  // ten of them in a straight line, all the same size, all lit the same. It is
+  // the cheapest and clearest picture of what a quotient is that this project
+  // has, and it costs one uncluttered corridor and a range of 30.
+  const flat = flatWorld();
+  const base = (product ? 0.030 : sphereFloor ? 0.075 : flat ? 0.055
+    : openWorld ? 0.45 : 0.20)
     * { normal: 1, thin: 0.55, thick: 1.9 }[optVal('fog')];
   gl.uniform1f(U.fog, base / Math.sqrt(zoomed));
   gl.uniform1f(U.ao, optVal('shading') === 'flat' ? 0 : 1);
   gl.uniform1f(U.maxT,
-    (product ? 60.0 : sphereFloor ? 12.0 : openWorld ? 10.0 : 14.0) * Math.sqrt(zoomed));
+    (product ? 60.0 : sphereFloor ? 12.0 : flat ? 30.0 : openWorld ? 10.0 : 14.0)
+    * Math.sqrt(zoomed));
   // Portals, FOLDED, for the same reason every other world point is: the
   // marcher folds its own samples, so an unfolded placement would be compared
   // against geometry in a different copy - and once it has drifted a few cells
@@ -2776,6 +2938,24 @@ function frame(now) {
   // asinh(p.z), a distance to a floor plane that does not exist here, and
   // `energy` is a potential from the same field: both printed 0.00, and both
   // were meaningless rather than merely zero.
+  if (racing()) {
+    hud.textContent = `ORBITAL SPRINT / S2 x R\n`
+      + `lap ${Math.min(RACE_LAPS, 1 + Math.floor((run?.next || 0) / 12))}/${RACE_LAPS}`
+      + ` · checkpoint ${Math.min(36, (run?.next || 0) + 1)}/36\n`
+      + (run?.phase === PHASE.DONE
+        ? `FINISHED ${formatTime(run.t)} · best ${formatTime(run.best)}\n`
+        : `time ${formatTime(run?.t || 0)}\n`)
+      + `speed ${Math.hypot(vel[0], vel[1]).toFixed(2)} / ${RACE_SPEED}\n`
+      + `turbo ${bar(racer.charge, 16)} ${(racer.charge * 100).toFixed(0)}%`
+      + `${racer.boost > 0 ? ' BOOST!' : racer.drift > 0 ? ' CHARGING DRIFT' : ''}\n`
+      + (racer.impact > 0 ? 'HURDLE HIT — jump earlier or go around\n' : '')
+      + '\nW accelerate · S brake/coast · A/D steer · Shift drift\n'
+      + 'X turbo · Space jump · R / K restart · O worlds\n'
+      + 'Stay on the gold road. Green gates count in order.\n'
+      + 'Drift through turns to recharge turbo. Jump orange hurdles.';
+    requestAnimationFrame(frame);
+    return;
+  }
   if (sphereFloorWorld()) {
     const p = S2R.point(player);
     const gate = run && course ? course.hoops[run.next] : null;
@@ -2834,57 +3014,64 @@ RUN DEAD STRAIGHT AND YOU COME BACK HERE, after ${S2R.S2R_LAP.toFixed(2)}
     requestAnimationFrame(frame);
     return;
   }
+  if (flatWorld()) {
+    const p = point(player);
+    const cell = E3T.foldPoint(p, motionEnv().open ? E3T.MODE.CUBE : E3T.MODE.SLAB);
+    const open = motionEnv().open;
+    hud.textContent =
+      `E^3 / LATTICE   ${open ? 'the 3-TORUS: all three axes glued'
+        : 'the SLAB: x and y glued, the height a real line'}\n`
+      + `cell ${f(cell[0])} ${f(cell[1])} ${f(cell[2])}   of ${E3T.CELL[0]} across`
+      + `   speed ${f(Math.hypot(vel[0], vel[1], vel[2]))}\n`
+      + (run && run.phase === PHASE.RUNNING
+        ? `run ${formatTime(run.t)}  ${bar(runProgress(run), 12)}  `
+          + `gate ${run.next + 1}/${course.hoops.length}\n`
+        : run && run.phase === PHASE.DONE
+          ? `DONE ${formatTime(run.t)}`
+            + `${run.best !== null ? `   best ${formatTime(run.best)}` : ''}   K to run again\n`
+          : open ? `K to fly the (1,1,1) course\n` : `O to switch worlds\n`)
+      + `\nTHIS IS THE CONTROL, and it is the only world here where a PORTED\n`
+      + `MAP IS THE MAP. port.js needs three embeddings and a developing map\n`
+      + `because there is no isometric embedding between curvatures; port a\n`
+      + `flat plan into flat space and every length and angle survives.\n\n`
+      + (open
+        ? `EVERY RATIONAL DIRECTION COMES BACK. The closed geodesics here are\n`
+          + `DENSE -- aim anywhere and you are close to one -- and they come in\n`
+          + `continuous families, every parallel translate closing at the same\n`
+          + `length. The octagon world has exactly EIGHT, all rigid, all of\n`
+          + `length 3.06, and every other direction never returns. That is\n`
+          + `Mostow rigidity showing up as a fact about level design.\n\n`
+          + `The rods run along the three axes and each meets its own image\n`
+          + `across the faces, so one rod is an infinite straight rod.\n\n`
+          + `GRAVITY HERE HAS A FORCE AND NO POTENTIAL: d/dz survives every\n`
+          + `lattice translation, z does not survive any. Switch gravity on and\n`
+          + `you fall through the floor, arrive through the roof, and arrive\n`
+          + `FASTER -- ${f(E3T.fallLap(0))} after one lap, ${f(E3T.fallLap(E3T.fallLap(0)))} after two, for ever.\n\n`
+        : `LOOK DOWN THE STREET. The copies recede like 1/d, so a dozen of\n`
+          + `them stand in a straight line all the same size. In the octagon\n`
+          + `world e^{2r} makes the second copy a speck. Same quotient, same\n`
+          + `sized room; the falloff is the whole difference.\n\n`
+          + `The gold square is the fundamental domain. Cross it and you are\n`
+          + `in the same room -- and nothing else on screen would tell you.\n\n`)
+      + `WASD ${open ? 'fly' : 'walk'} - ${open ? 'space/shift up and down' : 'space jump'}`
+      + ` - mouse look - K course - O worlds`;
+    requestAnimationFrame(frame);
+    return;
+  }
   if (productWorld()) {
     const z = H2R.point(player)[2];
     const gate = run && course ? course.hoops[run.next] : null;
-    // How far off the line you are, in the FLOOR PLAN. This is the number the
-    // mode is about: sinh(d) is what the miss looks like on screen and 1/sinh(d)
-    // is what the gate's apparent size does, so the two compound.
-    const off = gate ? H2R.horizDist(H2R.point(player), gate.at) : 0;
-    hud.textContent =
-      `H^2 x R   a hyperbolic FLOOR PLAN and a Euclidean height
-`
-      + `altitude ${z.toFixed(2)} / ${H2R.H2R_TOP_Z}   `
-      + `fall ${f(-vel[2])} / ${f(H2R.H2R_TERM_V)}   `
-      + `drift ${f(Math.hypot(vel[0], vel[1]))} / ${f(H2R.H2R_TERM_H)}
-`
-      + (run && run.phase === PHASE.RUNNING
-        ? `run ${formatTime(run.t)}  ${bar(runProgress(run), 12)}  `
-          + `gate ${run.next + 1}/${course.hoops.length}   `
-          + `off line ${off.toFixed(2)} of ${gate ? gate.r.toFixed(2) : '--'}`
-          + `${gate && off < gate.r ? '  ON LINE' : ''}
-`
-        : run && run.phase === PHASE.DONE
-          ? `FINISHED ${formatTime(run.t)}${run.best !== null ? `   best ${formatTime(run.best)}` : ''}   K to run again
-`
-          : `K to drop
-`)
-      + `
-THE FALL DOES NOT CARE HOW HARD YOU STEER. z = const is totally
-`
-      + `geodesic here, so a horizontal geodesic stays at its height and the
-`
-      + `two factors of the product never interact - the drop takes the same
-`
-      + `12.35 s at a standstill and at full drift. In H^3 that is false:
-`
-      + `there the level sets curve away from the floor, horizontal motion is
-`
-      + `motion that CLIMBS, and at walking speed above altitude 2 the fall
-`
-      + `stops outright. That is why the dropper is here and not there.
-
-`
-      + `THE PLAN IS STILL HYPERBOLIC, and that is the whole difficulty. A
-`
-      + `gate 2.9 away spreads like sinh(2.9) = 9.1, so an aiming error is
-`
-      + `magnified by nine while the gate itself shrinks by nine. Commit to
-`
-      + `the line early; correcting late costs exponentially more.
-
-`
-      + `WASD drift - mouse look - K restart the drop - O options`;
+    hud.textContent = `THE DROPPER / H2 x R\n`
+      + `attempt ${dropDeaths + 1} · deaths ${dropDeaths}\n`
+      + (dropFlash > 0 ? 'CRASH — back to the top!\n' : '')
+      + (run?.phase === PHASE.DONE
+        ? `FINISHED ${formatTime(run.t)} · best ${formatTime(run.best)}\n`
+        : `time ${formatTime(run?.t || 0)} · gate ${(run?.next || 0) + 1}/${course?.hoops.length || 5}\n`)
+      + `height ${z.toFixed(1)} · fall ${(-vel[2]).toFixed(1)}\n`
+      + (gate ? `opening ${H2R.horizDist(H2R.point(player), gate.at).toFixed(2)} away\n` : '')
+      + '\nPass through the green rings and holes in the solid barriers.\n'
+      + 'Touch a barrier or column: die and restart. Miss a gate: retry.\n'
+      + 'WASD steer · mouse look · R / K retry · O worlds';
     requestAnimationFrame(frame);
     return;
   }

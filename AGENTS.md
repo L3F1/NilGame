@@ -1177,7 +1177,7 @@ somewhere you meet it every few seconds.
 ### YOU CANNOT ESCAPE BY RUNNING STRAIGHT
 
 Any two geodesics on a sphere meet, twice, always. On the H^2 floor almost none
-do — they diverge like `e^d`, which is why CLAUDE.md records that flanking is
+do — they diverge like `e^d`, which is why AGENTS.md records that flanking is
 cheap, retreating is very cheap and a straight-line chase is a losing move.
 Here, running straight away from someone running straight is how you meet them
 on the far side: measured, two runs from one place at any angle are back
