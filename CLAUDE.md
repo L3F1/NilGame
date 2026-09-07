@@ -46,7 +46,7 @@ shader; a scene-graph library would hide the parts that matter.
   cost link time, which is the budget that binds.
 - `main.js` — WebGL2 setup, input, frame loop, rope drawing, the options menu.
 - `index.html` — canvas, HUD, and a boot-error panel (see below).
-- `hyp.test.js` (36), `physics.test.js` (160) and `modes.test.js` (56) —
+- `hyp.test.js` (36), `physics.test.js` (160) and `modes.test.js` (78) —
   `node hyp.test.js`, etc.
   **Keep the summary line LAST, and `process.exit` after IT.** Tests appended
   after the summary still run and still print, but are not counted, so the
@@ -362,7 +362,7 @@ overlay is generated from it, so adding a setting is one entry.
     Portals       off / on            keys 1 and 2 place a pair, 3 clears
     Boomerang     aimed / closed geodesic / off   key B
     Build (G)     on / off            a delayed block; see Abilities
-    Hoop course   off / on            a timed course; K starts it. See Modes
+    Course (K)    off / hoops / grapple   two timed courses. See Game modes
     Holonomy (Q)  sign decides / dash only / blast only
     Opponent      bot / network / off a bot that chases, or a real player (N)
     Fog           normal / thin / thick
@@ -766,6 +766,34 @@ slalom. In the OPEN world the same code gives altitudes 0.243 to 1.558, a range
 of **1.315** — a genuine 3D flight course. **This mode is at its best in the
 open world**, where the SPOKES are drawn along exactly those axes and the
 scenery shows you the line before you know there is a race.
+
+**The grapple course (`Course = grapple`) is the opposite mode, and it is what
+the SIGNED holonomy meter was waiting for.** A ring of CHARGE GATES: a gate
+will not count until `banked` reads past its threshold **with the right sign**.
+`sweptArea` integrates `(cosh(r) - 1) dtheta` and `dtheta` has a sign, so
+circling one way fills the meter and the other way empties it — until now that
+sign only ever chose between a dash and a blast. The gates alternate, so
+getting from a `+0.8` gate to a `-0.8` one means unwinding what you banked and
+then banking as much again the other way round. And because the integrand is
+`cosh(r) - 1`, a wide arc is worth exponentially more than a tight one: the
+cheap charge is a long swing around a tower, not a spin on the spot. **In a
+flat world the mechanic does not exist — the same integral is identically
+zero.**
+
+**A shut gate is flown THROUGH, not bounced off.** Making it solid would put a
+disc across a corridor you are swinging down at speed, which is a wall you hit
+by accident. The honest failure is that the pass does not count; `run.refused`
+records it so the HUD can say why, and the ring draws RED until the meter
+crosses.
+
+**The gate ring is SEARCHED for, not written down** — the same lesson as the
+opponent spawn. The obvious choice, floor radius 1.0 with no rotation, puts a
+gate INSIDE a wall: the walls are a pinwheel at exactly that radius, and
+`levelSDF` at the first gate reads **-0.034**. Swept over radius, altitude and
+rotation, the best clear ring is r = 1.30, h = 0.45, rotated 9 degrees, which
+stands every gate **0.336** clear and keeps them all within 1.412 of the centre.
+`modes.test.js` asserts both that the chosen ring is clear and that the naive
+one is not.
 
 ### Two that were considered and do not work here
 

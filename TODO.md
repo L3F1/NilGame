@@ -163,7 +163,7 @@ geodesics are the SPOKES, which are already drawn, so the level literally shows
 you the racing line. `closedGeodesicDirs` and `closedGeodesicLength` already
 expose them; the boomerang already flies them.
 
-### 2. Grapple course, timed  **S/M** — mostly level authoring
+### ~~2. Grapple course, timed~~ **DONE** — `Course = grapple`, key K
 
 Everything mechanical exists: rope, swing, reel, `anchorSwap`, swing-to-fly
 above `sqrt(G)`. Needs M1, M3, M4 and a reset-to-start.
@@ -334,10 +334,11 @@ because the manifold is compact.
 2. ~~**M1 + M3 + M4**~~ (round system, triggers, HUD) — **done**, built
    against mode 1 exactly as planned.
 3. ~~**Mode 1, drone hoops.**~~ **done** — 56 tests.
-4. **Mode 2, grapple course.** Gives the holonomy meter a non-combat use.
-   **This is the next step**, and it is mostly level authoring now that the
-   round system, the ordered triggers and the clock all exist.
+4. ~~**Mode 2, grapple course.**~~ **done** — charge gates, 78 tests. The
+   signed holonomy meter now has a non-combat use.
 5. **M9 + Mode 3, racing.** The hyperbolic racing line is worth the weekend.
+   **This is the next step.** M9 (ghosts) is nearly free from the existing
+   trail; the checkpoint machinery is already built and tested.
 6. **M5 + Mode 4, hide and seek.** The kit is already 80% there.
 7. **M7 + Mode 5, Rocket League 1v1.**
 8. **M6 (Colyseus)** when a mode actually needs three players.

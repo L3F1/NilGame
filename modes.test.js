@@ -13,9 +13,10 @@ import {
 } from './hyp.js';
 import {
   HOOP_R, hoopAt, geodesicCourse, hoopCrossed, carryCourse, hoopRing,
-  hoopNear, hoopFolded,
+  hoopNear, hoopFolded, grappleCourse, gateOpen, gateProgress,
   PHASE, makeRun, startRun, resetRun, runStep, runProgress, formatTime,
 } from './modes.js';
+import { levelSDF, setMode, MODE } from './level.js';
 
 let passed = 0, failed = 0;
 function check(name, ok, detail = '') {
@@ -261,6 +262,84 @@ console.log('it works in the 3D world too');
   check('  which also keeps centre and normal together',
     near.every((h) => close(dot(h.at, h.N), 0, 1e-9)));
   setSolid(SOLID.OCTAGON);
+}
+
+console.log('');
+console.log('the grapple course, and its charge gates');
+{
+  setSolid(SOLID.OCTAGON);
+  setMode(MODE.BOUNDED);
+  const c = grappleCourse();
+  check('it is a ring of gates', c.hoops.length === 5 && c.closed === false);
+  check('  every gate is a proper disc of plane',
+    c.hoops.every((g) => close(dot(g.at, g.N), 0, 1e-9)
+                      && close(dot(g.N, g.N), 1, 1e-9)));
+
+  // The ring is SEARCHED for, not written down. The obvious choice - floor
+  // radius 1.0 - puts a gate inside a wall, because the walls are a pinwheel
+  // at exactly that radius. A gate you cannot fly through reads as a broken
+  // course rather than a hard one, which is the same failure the opponent
+  // spawn had when it was hand-picked.
+  const clear = c.hoops.map((g) => levelSDF(g.at));
+  check('  and stands clear of the level, which the obvious ring does NOT',
+    Math.min(...clear) > 0.3, `min clearance ${Math.min(...clear).toFixed(3)}`);
+  const naive = grappleCourse(5, 1.0, 0.55, 0.8, 0);
+  check('  (the naive ring really does put a gate inside a wall)',
+    Math.min(...naive.hoops.map((g) => levelSDF(g.at))) < 0,
+    `${Math.min(...naive.hoops.map((g) => levelSDF(g.at))).toFixed(3)}`);
+  check('  and every gate stays inside the cell',
+    c.hoops.every((g) => dist(g.at, point(IDENTITY)) < 1.5286));
+
+  // The signs alternate, which is the mechanic: to go from +0.8 to -0.8 you
+  // must unwind the 0.8 you banked and then bank 0.8 the other way round.
+  check('the first gate is free, so a run can start', !c.hoops[0].needs);
+  check('  and after that the required sign alternates',
+    c.hoops[1].needs > 0 && c.hoops[2].needs < 0
+    && c.hoops[3].needs > 0 && c.hoops[4].needs < 0);
+}
+
+{
+  const c = grappleCourse();
+  const g1 = c.hoops[1], g2 = c.hoops[2];      // wants +0.8, wants -0.8
+  check('an uncharged gate is shut', !gateOpen(g1, 0));
+  check('  and enough charge opens it', gateOpen(g1, 0.9));
+  // THE point of the whole mechanic. A big bank of the WRONG sign is not
+  // "nearly enough" - it is as far from open as you can get. Circling the
+  // other way does not charge this gate, it discharges it.
+  check('  but a large bank of the WRONG sign does not', !gateOpen(g1, -5.0));
+  check('a negative gate wants the other direction round', gateOpen(g2, -0.9));
+  check('  and is not opened by a positive bank', !gateOpen(g2, 5.0));
+  check('a free gate opens with nothing banked', gateOpen(c.hoops[0], 0));
+  check('and a gate with no reading at all stays shut', !gateOpen(g1, null));
+  check('gateProgress reads part way', close(gateProgress(g1, 0.4), 0.5, 1e-12));
+  check('  and clamps at both ends',
+    gateProgress(g1, -3) === 0 && gateProgress(g1, 99) === 1);
+}
+
+{
+  // In the run: flying through a shut gate does not count, and it does not
+  // silently advance the course either.
+  const c = grappleCourse();
+  const run = startRun(makeRun(c));
+  run.next = 1;                                 // standing at the charged gate
+  const g = c.hoops[1];
+  // A segment straight through its middle, along its own normal.
+  const back = point(geodesic(placeAt(0, 0, 0), [0, 0, 1], 0));
+  const thru = (s) => {
+    const q = [0, 1, 2, 3].map((k) => g.at[k] + s * g.N[k]);
+    const n = Math.sqrt(Math.max(-dot(q, q), 1e-18));
+    return q.map((x) => x / n);
+  };
+  const p0 = thru(-0.05), p1 = thru(0.05);
+  check('the segment does pass through the gate', hoopCrossed(p0, p1, g));
+  check('  but uncharged it counts for nothing',
+    runStep(run, 0.01, p0, p1, 0.0) === -1 && run.next === 1);
+  check('  and the refusal is recorded, so a HUD can say why', run.refused === 1);
+  check('  charged the wrong way round, still nothing',
+    runStep(run, 0.01, p0, p1, -9.0) === -1 && run.next === 1);
+  check('  charged the right way, it opens', runStep(run, 0.01, p0, p1, 0.9) === 1);
+  check('  and the course moves on', run.next === 2);
+  void back;
 }
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

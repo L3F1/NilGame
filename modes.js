@@ -13,6 +13,7 @@
 
 import {
   dot, dist, point, geodesic, apply, matMul, exp, foldElement, pairings,
+  placeAt, logTo,
   closedGeodesicDirs, closedGeodesicLength, IDENTITY,
 } from './hyp.js';
 
@@ -69,6 +70,92 @@ export function geodesicCourse(axis = 0, n = 6, r = HOOP_R) {
   // substep, before the player has flown anywhere.
   for (let k = 1; k <= n; k++) hoops.push(hoopAt(IDENTITY, u, (k * L) / (n + 1), r));
   return { hoops, axis, length: L, closed: true };
+}
+
+/**
+ * A CHARGE GATE: a hoop that will not open until you have banked enough
+ * holonomy, of the right sign.
+ *
+ * This is the whole reason a grapple course is worth building rather than
+ * being a hoop course with a rope. `sweptArea` integrates (cosh(r) - 1)
+ * dtheta, and dtheta HAS A SIGN, so the meter fills positive going round
+ * something one way and negative going the other -- and going back round
+ * empties what you had. Until now that sign only ever chose between a dash and
+ * a blast.
+ *
+ * A gate that wants +0.8 can only be opened by circling something
+ * counter-clockwise, and one that wants -0.8 by circling clockwise, so a
+ * course that alternates makes you reverse your orbit between gates. And
+ * because the integrand is cosh(r) - 1, a wide arc is worth exponentially more
+ * than a tight one: the cheap way to charge is to swing out around a tower,
+ * not to spin on the spot.
+ *
+ * In a flat world this mechanic does not exist at all. The same integral is
+ * identically zero.
+ */
+export function gateOpen(hoop, banked) {
+  if (!hoop.needs) return true;
+  if (typeof banked !== 'number' || !Number.isFinite(banked)) return false;
+  // Signed: a positive requirement is not met by a large negative bank.
+  return hoop.needs > 0 ? banked >= hoop.needs : banked <= hoop.needs;
+}
+
+/** How far toward this gate's requirement the bank is, 0..1. For the HUD. */
+export function gateProgress(hoop, banked) {
+  if (!hoop.needs) return 1;
+  if (typeof banked !== 'number' || !Number.isFinite(banked)) return 0;
+  return Math.max(0, Math.min(1, banked / hoop.needs));
+}
+
+/**
+ * A course you fly with the rope: a ring of gates around the arena, each
+ * facing the next, alternating which way round you must have gone.
+ *
+ * Deliberately NOT on a closed geodesic. The hoop course already shows what
+ * the manifold does when you fly straight; this one is about what YOU do, and
+ * it wants the level's towers and pillars nearby to swing around. It sits at
+ * floor radius `r`, inside the octagon's inradius of 1.5286 with room to
+ * spare, and at an altitude a rope can reach.
+ *
+ * Each gate faces the NEXT one rather than along some frame axis, which needs
+ * no assumption about how placeAt orients itself: the log map from one
+ * placement to the next point IS the direction of travel there.
+ */
+export function grappleCourse(n = 5, r = 1.30, h = 0.45, charge = 0.8,
+                              phase = 9 * Math.PI / 180) {
+  // The ring is SEARCHED for, not written down, exactly as the opponent spawn
+  // is and for the same reason. The obvious choice - floor radius 1.0, no
+  // offset - puts a gate INSIDE a wall: the walls are a pinwheel at floor
+  // radius 1.0, and levelSDF at that first gate reads -0.034. A gate you
+  // cannot fly through reads as a broken course, not as a hard one.
+  //
+  // Swept over radius, altitude and rotation against levelSDF, the best clear
+  // ring is r = 1.30, h = 0.45, rotated 9 degrees, which stands every gate
+  // 0.336 clear of the nearest surface and keeps them all within 1.412 of the
+  // centre - inside the octagon's inradius of 1.5286.
+  const spots = [];
+  for (let k = 0; k < n; k++) {
+    const a = phase + (k / n) * Math.PI * 2;
+    spots.push(placeAt(r * Math.cos(a), r * Math.sin(a), h));
+  }
+  const hoops = [];
+  for (let k = 0; k < n; k++) {
+    const M = spots[k];
+    const nextP = point(spots[(k + 1) % n]);
+    const lv = logTo(M, nextP);
+    const d = Math.hypot(lv[0], lv[1], lv[2]) || 1;
+    const dir = [lv[0] / d, lv[1] / d, lv[2] / d];
+    // t = 0, so the hoop sits exactly at the placement and its normal is a
+    // frame vector there -- unit spacelike and orthogonal to the point by
+    // definition, which is precisely the invariant the crossing test needs.
+    const hoop = hoopAt(M, dir, 0, HOOP_R * 1.3);
+    // The first gate is free, so a run can start. After that they alternate,
+    // which forces a reversal: to go from +0.8 to -0.8 you must unwind the
+    // 0.8 you had and then bank 0.8 the other way.
+    hoop.needs = k === 0 ? 0 : (k % 2 === 1 ? charge : -charge);
+    hoops.push(hoop);
+  }
+  return { hoops, axis: -1, length: 0, closed: false };
 }
 
 /**
@@ -158,6 +245,7 @@ export function makeRun(course) {
     t: 0,            // seconds since the start
     next: 0,         // index of the hoop that counts next
     splits: [],      // time at each hoop taken, in order
+    refused: 0,      // passes through a gate that was not charged yet
     best: null,      // best full run this session
   };
 }
@@ -168,6 +256,7 @@ export function startRun(run) {
   run.t = 0;
   run.next = 0;
   run.splits = [];
+  run.refused = 0;
   return run;
 }
 
@@ -176,6 +265,7 @@ export function resetRun(run) {
   run.t = 0;
   run.next = 0;
   run.splits = [];
+  run.refused = 0;
   return run;
 }
 
@@ -189,12 +279,17 @@ export function resetRun(run) {
  *
  * Returns the index of the hoop just taken, or -1.
  */
-export function runStep(run, dt, p0, p1) {
+export function runStep(run, dt, p0, p1, banked = null) {
   if (run.phase !== PHASE.RUNNING) return -1;
   run.t += dt;
   const h = run.course.hoops[run.next];
   if (!h || !p0 || !p1) return -1;
   if (!hoopCrossed(p0, p1, h)) return -1;
+  // A shut gate is flown THROUGH, not bounced off. Blocking the way would need
+  // the gate to be solid, and a solid disc in a corridor you are swinging down
+  // at speed is a wall you hit by accident; the honest failure here is that
+  // the pass simply does not count and you go round again.
+  if (!gateOpen(h, banked)) { run.refused++; return -1; }
 
   const taken = run.next;
   run.splits.push(run.t);

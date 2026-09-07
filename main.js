@@ -35,7 +35,8 @@ import {
 // Plain named imports, no namespace and no renaming: tools/preview.js
 // bundles the module graph by hand and understands only this one form.
 import {
-  geodesicCourse, carryCourse, hoopNear, hoopRing, runStep, runProgress,
+  geodesicCourse, grappleCourse, carryCourse, hoopNear, hoopRing,
+  runStep, runProgress, gateOpen, gateProgress,
   makeRun, startRun, formatTime, PHASE,
 } from './modes.js';
 import {
@@ -496,7 +497,16 @@ const opts = {
   // level someone authored: the hoops sit on a CLOSED GEODESIC, so flying the
   // course dead straight returns you to its own start. In the open world those
   // axes are the spokes the level already draws.
-  course:     { label: 'Hoop course (K)', values: ['off', 'on'],               i: 0 },
+  // Two courses, and they are opposites on purpose.
+  //
+  //   hoops    laid on a CLOSED GEODESIC, so flying dead straight returns you
+  //            to the start. About what the manifold does. Wants no gravity
+  //            and a free camera.
+  //   grapple  a ring of CHARGE GATES that only open once you have banked
+  //            enough holonomy of the right SIGN, so you must swing around
+  //            something the right way round to get through. About what you
+  //            do. Wants gravity and the rope.
+  course:     { label: 'Course (K)',   values: ['off', 'hoops', 'grapple'],    i: 0 },
   // What Q spends the banked holonomy on. 'sign decides' is the interesting
   // one: sweptArea is SIGNED, so going round something one way charges a dash
   // and the other way charges a blast, and there is no third option where you
@@ -1346,13 +1356,16 @@ nEl('nrj').onclick = () => netConnectVia(nEl('nurl').value, nEl('nroom').value, 
 // altitude. Same code, different course.
 let course = null, run = null, courseWorld = -1, hoopFlash = 0;
 
-function courseOn() { return optVal('course') === 'on'; }
+function courseOn() { return optVal('course') !== 'off'; }
+function buildCourse() {
+  return optVal('course') === 'grapple' ? grappleCourse() : geodesicCourse(0, 6);
+}
 
 function ensureCourse() {
   const w = getMode();
   if (course && courseWorld === w) return;
   courseWorld = w;
-  course = geodesicCourse(0, 6);
+  course = buildCourse();
   run = makeRun(course);
 }
 
@@ -1363,7 +1376,7 @@ function beginRun() {
   // the player made, so by now they are in whatever chart the player ended up
   // in. A fresh course puts them back on the axis through where the player is.
   const best = run ? run.best : null;
-  course = geodesicCourse(0, 6);
+  course = buildCourse();
   run = makeRun(course);
   run.best = best;
   startRun(run);
@@ -1695,13 +1708,19 @@ function drawCourse(basis) {
   const me = point(player);
   for (let i = 0; i < course.hoops.length; i++) {
     const taken = run && i < run.next;
-    // The one you are flying at is bright; the ones behind you fade out.
+    const hoop = course.hoops[i];
+    const next = run && i === run.next;
+    // A gate you cannot open yet is RED, and that is the whole readout: it
+    // says "you have not gone round anything the right way yet" without a word
+    // of text. It turns green the moment the meter crosses its threshold.
+    const shut = next && !gateOpen(hoop, banked);
     const col = taken ? [0.22, 0.30, 0.26]
-      : (run && i === run.next)
-        ? (hoopFlash > 0 ? [0.95, 1.0, 0.75] : [0.35, 0.95, 0.65])
+      : next
+        ? (hoopFlash > 0 ? [0.95, 1.0, 0.75]
+          : shut ? [0.95, 0.35, 0.30] : [0.35, 0.95, 0.65])
         : [0.30, 0.55, 0.48];
     const strip = [];
-    for (const q of hoopRing(hoopNear(course.hoops[i], me), 40)) {
+    for (const q of hoopRing(hoopNear(hoop, me), 40)) {
       const ndc = project(q, basis);
       if (ndc) strip.push(ndc);
     }
@@ -1903,7 +1922,12 @@ function frame(now) {
     // right across the room every time the player crossed a face, and every
     // hoop in between would count at once.
     if (run && run.phase === PHASE.RUNNING) {
-      if (runStep(run, h, bankFrom, point(player)) >= 0) hoopFlash = 0.35;
+      // banked is passed in because a charge gate is shut until the holonomy
+      // meter reads far enough, WITH THE RIGHT SIGN. Flying through a shut
+      // gate is not blocked - a solid disc across a corridor you are swinging
+      // down at speed is a wall you hit by accident - the pass simply does not
+      // count, and you go round again the other way.
+      if (runStep(run, h, bankFrom, point(player), banked) >= 0) hoopFlash = 0.35;
     }
     // Keep the carried objects in range. Without this they drift with the
     // player and their coordinates run away; see settleCarried.
@@ -2107,11 +2131,22 @@ function frame(now) {
     (courseOn() && run
       ? `course    ${run.phase === PHASE.RUNNING
             ? `${formatTime(run.t)}  ${bar(runProgress(run), 10)}  `
-              + `hoop ${run.next + 1}/${course.hoops.length}`
+              + `gate ${run.next + 1}/${course.hoops.length}`
             : run.phase === PHASE.DONE
               ? `FINISHED ${formatTime(run.t)}`
               : 'ready \u00b7 press K'}`
           + `${run.best !== null ? `   best ${formatTime(run.best)}` : ''}\n`
+        // A shut gate has to say what would open it, or a red ring is just a
+        // red ring. The sign is the instruction: circle one way or the other.
+        + ((run.phase === PHASE.RUNNING && course.hoops[run.next]
+            && course.hoops[run.next].needs)
+          ? `          gate needs ${course.hoops[run.next].needs > 0
+                ? 'COUNTER-CLOCKWISE' : 'CLOCKWISE'} `
+            + `${Math.abs(course.hoops[run.next].needs).toFixed(1)}  `
+            + `${bar(gateProgress(course.hoops[run.next], banked), 10)}  `
+            + `${gateOpen(course.hoops[run.next], banked) ? 'OPEN' : 'SHUT'}`
+            + `${run.refused ? `  (${run.refused} refused)` : ''}\n`
+          : '')
       : '') +
     (optVal('build') === 'on'
       ? `build     ${activeBlock()
