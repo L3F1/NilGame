@@ -322,46 +322,54 @@ integral.
 by distance. Make *that* the target: chase a perfect record of your own
 movement from ten seconds ago. The better you play, the harder your opponent.
 
-**Dropper.** Fall from a great height through layers of obstacles onto a
-target. The flat version is a stock minigame; the hyperbolic one inverts it,
-and the inversion is measurable rather than flavour.
+**Dropper — TRIED, MEASURED, AND IT DOES NOT WORK HERE.** Kept because the
+reason is a genuine fact about the geometry and the next person will have the
+same idea.
 
-The bounded world is (genus-2 surface) x R, so it is **already infinite up and
-down**. A dropper needs no shaft, no walls and no level geometry to keep you
-in: fall, and the manifold wraps sideways on its own. Every obstacle you fall
-past is also every one of its copies, so a gap in a layer is a gap in all of
-them at once - you cannot slip round the edge of anything, because there is no
-edge.
+The pitch was good: the bounded world is (genus-2 surface) x R and so is
+already infinite up and down, needing no shaft, no walls and no level built for
+it. What kills it is that **in H^3 steering and descending are antagonistic,
+and nothing separates them.**
 
-**The mechanic is that the fall is SELF-CORRECTING, exponentially.** The
-equidistant surface at altitude h has induced metric exactly `cosh(h)` times
-the floor plane's - measured, to five figures:
+A geodesic tangent to an equidistant surface of the floor plane has its LOWEST
+point there and rises away on both sides, so horizontal motion is motion that
+climbs. Gravity pulls down, the geometry pushes up, and above a critical
+horizontal speed the geometry wins outright. That speed collapses with
+altitude — measured, by bisecting on the real integrator:
 
-        h        0     0.5      1        2        3        4        5
-        stretch  1.0   1.1276   1.5431   3.7622   10.068   27.308   74.206
-        cosh(h)  1.0   1.1276   1.5431   3.7622   10.068   27.308   74.210
+        altitude          1       2       3       4       5
+        critical speed  1.854   0.924   0.417   0.178   0.073
 
-So two verticals a proper distance s apart at altitude h are `s / cosh(h)`
-apart when they reach the floor. Being one whole unit off target at altitude 5
-lands you **0.013 off**. In a flat dropper the fall is neutral - drift s up
-high is drift s at the bottom - so all the difficulty is steering. Here
-steering is nearly free and the difficulty moves somewhere else entirely:
+roughly halving per unit. `WALK_SPEED` is 0.9, so **a player at full walking
+speed stops descending above altitude 2.034**. Ordinary play never notices,
+because the floor is at 0 and the player walks at 0.07 — but a dropper lives
+exactly where it bites.
 
-**the target is exponentially hard to SEE.** The same `cosh(h)` runs the other
-way for vision. From altitude 5 the whole floor is contracted 74x beneath you,
-so a target one unit wide subtends what a 0.0135 one would from beside it. The
-game becomes *identify* the right target, then let the geometry land you on it
-- which is the exact opposite of the flat game's *see the target easily, fight
-to steer onto it*.
+Holding a steady sideways input while falling from 2.4 is therefore not a dial
+but a **cliff**:
 
-Two exponentials pulling opposite ways, both of them consequences of one
-`cosh`. That is the bar every mode in this section has to clear.
+        input      0%     20%    40%    60%    80%   100%
+        time down  1.29s  never  never  never  never  never
 
-Cheap to build: gravity, altitude, `levelSDF` and the hoop/trigger machinery
-all exist. A layer is a hoop with a big radius; a target is a hoop at altitude
-0. The unknown worth prototyping first is whether the contraction reads as
-*fair* or as *the game playing itself* - which is a question about feel, and
-the only way to answer it is to fall down it.
+("never" is 60 s of simulation without reaching the floor.)
+
+And below the cliff there is no room to play either. A straight drop from 2.4
+reaches the floor in **1.29 s** with the gates only **0.13 s apart**, while
+`WALK_SPEED` buys about **0.12** of lateral movement in that time — against a
+gate radius that has to be 0.42 for the course to be completable at all. So the
+radius does all the work and no-input completes the course; shrink the radius
+and nothing completes it. Swept over gate radius and offset, there is no
+setting where a straight drop fails and a steered one succeeds.
+
+**Lowering gravity makes it worse, not better**, which is the part worth
+remembering: the critical speed scales down with gravity too, so a gentler fall
+is a fall that any sideways input stops completely. Measured at gravity scale
+0.12: still nothing completes.
+
+What the geometry WOULD support is a mode about descent *rate* rather than
+lateral precision — hovering is free and falling is fast, so "arrive at the
+bottom at a chosen moment" is a real skill. That is a different game from a
+dropper and is not obviously a good one; it is not on this list yet.
 
 **Geodesic golf.** Strike a ball down a closed geodesic; par is the number of
 laps to the hole. Only possible because some geodesics close, which is only true
@@ -408,8 +416,10 @@ because the manifold is compact.
    Racing then lands in whichever geometry, and the same track at three
    curvatures with three lap times is the demo.
 
-10. **The dropper** is the cheapest thing in Part 3 by a distance - gravity,
-    altitude and the trigger machinery all exist, and the bounded world is
-    already infinite up and down, so it needs no level built for it. Worth
-    doing before racing if a quick win is wanted, because the one open
-    question is feel and one evening answers it.
+10. ~~**The dropper.**~~ **Tried and rejected**, with the measurements in
+    Part 3. It looked like the cheapest thing on the list and it turns out the
+    geometry forbids it: steering and descending are antagonistic in H^3, a
+    player at walking speed stops falling above altitude 2.034, and below that
+    the fall is over in 1.29 s with 0.13 s between gates. No gate radius, gate
+    offset or gravity scale gives a course a straight drop fails and a steered
+    run completes.

@@ -389,6 +389,9 @@ overlay is generated from it, so adding a setting is one entry.
     Domain edges  show / hide         the gold octagon outlines
     Quality       low / medium / high march steps (160 / 220 / 280)
 
+Digits **1-5 inside the menu** apply a preset: arena fight, hoop course,
+grapple gates, spherical flight, light-speed lab.
+
 Zoom is on the SCROLL WHEEL, not in the menu — it is a thing you do while
 looking, like aiming. `X` snaps back to 1x.
 
@@ -900,6 +903,26 @@ What is locked, and why it is not a balance decision:
 
 The first lock wins, so a different SPACE outranks a mode inside one.
 
+**Presets are the other half, and they are the OPPOSITE of a lock.** `PRESETS`
+in main.js sets up a mode and then gets out of the way: anything it does not
+mention is left as the player had it, and anything it does set can be changed
+straight back. Forcing is for settings a mode cannot coexist with; a preset is
+for settings it merely plays better with. Digits 1-5 apply them while the
+options menu is open — inside that branch only, because the digits are portal
+keys during play.
+
+Two rules they follow:
+
+- **Applied by NAME, not by index**, so reordering an option's values cannot
+  silently change what a preset means. A value an option does not have is a
+  typo: it warns and leaves the option alone, rather than falling back to
+  index 0 and applying a plausible wrong setting nobody would trace back.
+- **A preset owns the run.** One with a course STARTS it, or the player picks
+  "Hoop course" and arrives in a world with an unlit course in it; one without
+  a course RESETS it, or the clock from the last preset keeps counting under a
+  mode that has no course — measured, switching from "Hoop course" to
+  "Spherical flight" left the run in `PHASE.RUNNING` with a live timer.
+
 ## Game modes
 
 `modes.js` holds the round system — phase, clock, ordered checkpoints, best
@@ -994,7 +1017,7 @@ stands every gate **0.336** clear and keeps them all within 1.412 of the centre.
 `modes.test.js` asserts both that the chosen ring is clear and that the naive
 one is not.
 
-### Two that were considered and do not work here
+### Three that were considered and do not work here
 
 **Rescaling the curvature radius ("flatten") is impossible in the quotient.**
 The octagon's 45 degree angles depend on its size, so a smaller octagon stops
@@ -1003,6 +1026,28 @@ though a weaker one: it magnifies uniformly rather than converting the falloff.
 
 **Tethering to an ideal point is impossible.** A compact manifold has no
 boundary at infinity. Holonomy dash is the substitute.
+
+**A DROPPER is impossible, and the reason is worth knowing for its own sake:
+in H^3 steering and descending are ANTAGONISTIC.** A geodesic tangent to an
+equidistant surface of the floor plane has its lowest point there and rises
+away on both sides, so horizontal motion is motion that climbs. Above a
+critical horizontal speed the geometry beats gravity outright and you stop
+descending, and that speed collapses with altitude — measured by bisecting on
+the real integrator: 1.854 at altitude 1, 0.924 at 2, 0.417 at 3, 0.178 at 4,
+0.073 at 5, roughly halving per unit.
+
+`WALK_SPEED` is 0.9, so **a player at full walking speed stops descending above
+altitude 2.034**. Ordinary play never meets this, because the floor is at 0 and
+the player walks at 0.07 — but anything played high does. Holding a steady
+sideways input while falling from 2.4 is a cliff and not a dial: 0% input
+reaches the floor in 1.29 s, and 20% or more never arrives at all in 60 s.
+
+Below the cliff there is no room either: that 1.29 s fall puts gates 0.13 s
+apart while `WALK_SPEED` buys 0.12 of lateral movement in the same time, so the
+gate radius does all the work. Swept over radius, offset and gravity scale,
+there is no setting where a straight drop fails and a steered run succeeds.
+**Lowering gravity makes it worse** — the critical speed scales down with
+gravity, so a gentler fall is one that any input stops completely.
 
 ## Level authoring
 

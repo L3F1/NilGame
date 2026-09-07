@@ -40,7 +40,7 @@ import {
 import {
   geodesicCourse, grappleCourse, carryCourse, hoopNear, hoopRing,
   runStep, runProgress, gateOpen, gateProgress,
-  makeRun, startRun, formatTime, PHASE,
+  makeRun, startRun, resetRun, formatTime, PHASE,
 } from './modes.js';
 import {
   packState, netLive, netState, netNote, netOnPacket, netSendPacket,
@@ -286,6 +286,8 @@ let scene = null, U = null;
 // temporal dead zone at that point - which throws before the first frame and
 // takes the whole module with it.
 let curvNow = -1;
+// Which preset was last applied, for the menu's one-line description of it.
+let lastPreset = null;
 // Where this spherical session started, for the lap readout.
 let s3Start = null;
 
@@ -1032,6 +1034,91 @@ function computeForced() {
   return [f, why];
 }
 
+// --- presets --------------------------------------------------------------
+//
+// A preset is a STARTING POINT, not a lock: it sets the options the mode wants
+// and then gets out of the way, so anything not mentioned is left as the
+// player had it and anything mentioned can be changed back. That is the
+// difference between this and `computeForced` above, and both are needed --
+// forcing is for settings a mode cannot coexist with, a preset is for settings
+// it merely plays better with.
+//
+// Presets are applied by NAME, not by index, so reordering an option's values
+// cannot silently change what a preset means.
+const PRESETS = {
+  fight: {
+    label: 'Arena fight',
+    note: 'the full kit, an opponent, and a room to use it in',
+    set: {
+      curv: 'hyperbolic', mode: 'floor (2D wrap)', course: 'off',
+      field: 'floor plane', upright: 'pendulum', foe: 'bot',
+      boomerang: 'aimed', build: 'on', portals: 'on', holo: 'sign decides',
+      light: 'instant', edges: 'show',
+    },
+  },
+  hoops: {
+    label: 'Hoop course',
+    note: 'the open world, where the course is a genuine 3D flight',
+    set: {
+      curv: 'hyperbolic', mode: 'open (3D wrap)', course: 'hoops',
+      field: 'none', upright: 'free', light: 'instant', edges: 'hide',
+      fog: 'thick',
+    },
+  },
+  grapple: {
+    label: 'Grapple gates',
+    note: 'gravity, a rope, and gates the holonomy meter opens',
+    set: {
+      curv: 'hyperbolic', mode: 'floor (2D wrap)', course: 'grapple',
+      field: 'floor plane', upright: 'pendulum', holo: 'sign decides',
+      light: 'instant', edges: 'show',
+    },
+  },
+  sphere: {
+    label: 'Spherical flight',
+    note: 'S^3: no quotient, and things grow as they recede',
+    set: { curv: 'spherical', light: 'instant', fog: 'thin', quality: 'medium' },
+  },
+  light: {
+    label: 'Light-speed lab',
+    note: 'slow light, so your own copies lag visibly behind you',
+    set: {
+      curv: 'hyperbolic', mode: 'floor (2D wrap)', course: 'off', light: 'slow',
+      field: 'floor plane', upright: 'gravity', foe: 'off', edges: 'show',
+    },
+  },
+};
+const PRESET_KEYS = Object.keys(PRESETS);
+
+/**
+ * Apply a preset. Unknown values are IGNORED RATHER THAN GUESSED.
+ *
+ * A preset naming a value an option does not have is a typo, and silently
+ * picking index 0 would apply a plausible-looking wrong setting that nobody
+ * would ever trace back to here. Say so in the console and leave it alone.
+ */
+function applyPreset(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+  for (const [k, v] of Object.entries(p.set)) {
+    const o = opts[k];
+    if (!o) { console.warn(`[preset ${name}] no option "${k}"`); continue; }
+    const i = o.values.indexOf(v);
+    if (i < 0) { console.warn(`[preset ${name}] "${k}" has no value "${v}"`); continue; }
+    o.i = i;
+  }
+  applyOptions();
+  // A course preset should also START the course, or the player picks
+  // "Hoop course" and lands in a world with an unlit course in it.
+  if (optVal('course') !== 'off') { beginRun(); return; }
+  // And a preset WITHOUT a course has to stop one that is already running, or
+  // the clock from the last preset keeps counting under a mode that has no
+  // course at all - measured: switching from "Hoop course" to "Spherical
+  // flight" left the run in PHASE.RUNNING with a live timer.
+  if (run) resetRun(run);
+  resetForCurvature();
+}
+
 /** The setting the game uses: the mode's, if it has taken this one over. */
 const optVal = (k) => (k in forcedOpts ? forcedOpts[k] : rawVal(k));
 
@@ -1109,6 +1196,13 @@ addEventListener('keydown', (e) => {
       const o = opts[optKeys[optSel]];
       o.i = (o.i + (e.code === 'ArrowRight' ? 1 : o.values.length - 1)) % o.values.length;
       applyOptions();
+    }
+    // Digits pick a preset. They are portal keys during play, which is exactly
+    // why this lives inside the menu-open branch and returns below.
+    const digit = e.code.startsWith('Digit') ? Number(e.code.slice(5)) : 0;
+    if (digit >= 1 && digit <= PRESET_KEYS.length) {
+      lastPreset = PRESET_KEYS[digit - 1];
+      applyPreset(lastPreset);
     }
     drawMenu();
     return;
@@ -1404,6 +1498,7 @@ document.body.appendChild(menu);
 function drawMenu() {
   menu.style.display = optOpen ? 'block' : 'none';
   if (!optOpen) return;
+  const presetRow = PRESET_KEYS.map((k, i) => `${i + 1} ${PRESETS[k].label}`).join('   ');
   const rows = optKeys.map((k, i) => {
     const o = opts[k];
     const mark = i === optSel ? '>' : ' ';
@@ -1418,10 +1513,14 @@ function drawMenu() {
     return `${mark} ${o.label.padEnd(13)} ${o.values[o.i]}`;
   });
   const locked = Object.keys(forcedOpts).length;
-  menu.textContent = ['OPTIONS   (O closes)', '', ...rows, '',
+  menu.textContent = ['OPTIONS   (O closes)', '',
+    'PRESETS   ' + presetRow,
+    '          ' + (lastPreset ? PRESETS[lastPreset].note : 'press a number to set up a mode'),
+    '', ...rows, '',
     locked ? `${locked} setting${locked > 1 ? 's are' : ' is'} set by the mode `
       + 'and shown in brackets' : '',
-    'up/down select   left/right change'].join(String.fromCharCode(10));
+    'up/down select   left/right change   1-' + PRESET_KEYS.length + ' preset',
+  ].join(String.fromCharCode(10));
 }
 
 // --- the network panel --------------------------------------------------
