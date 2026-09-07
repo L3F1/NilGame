@@ -43,6 +43,12 @@ shader; a scene-graph library would hide the parts that matter.
   parameter, so E^3 (flat), H^3 and S^3 (spherical) come out of one set of
   formulas. **`hyp.js` now delegates its primitives to this**, so the
   arithmetic exists once. See "One geometry, three curvatures" below.
+- `s3.js` — the SPHERICAL world and free flight in it, built on `geom.js` at
+  k = +1. The scene is written once as data and emitted twice (a JS SDF and a
+  GLSL one), exactly as `level.js` does. **No DOM**, so it is testable. It is a
+  FLYTHROUGH, not the full kit: `physics.js` is built on `hyp.js` top to
+  bottom, and making that curvature-generic is a rewrite of the load-bearing
+  file. The two paths meet only at `player`, which is a 4x4 either way.
 - `legacy-hyp.js` — the pre-delegation implementations, frozen, **for tests
   only, never imported by the game**. The moment `hyp.js` started delegating,
   the test "geom.js agrees with hyp.js" became a tautology that would pass
@@ -54,8 +60,8 @@ shader; a scene-graph library would hide the parts that matter.
   cost link time, which is the budget that binds.
 - `main.js` — WebGL2 setup, input, frame loop, rope drawing, the options menu.
 - `index.html` — canvas, HUD, and a boot-error panel (see below).
-- `hyp.test.js` (36), `physics.test.js` (160), `modes.test.js` (78) and
-  `geom.test.js` (69) — `node hyp.test.js`, etc.
+- `hyp.test.js` (36), `physics.test.js` (160), `modes.test.js` (78),
+  `geom.test.js` (69) and `s3.test.js` (28) — `node hyp.test.js`, etc.
   **Keep the summary line LAST, and `process.exit` after IT.** Tests appended
   after the summary still run and still print, but are not counted, so the
   total silently understates. Worse, an `if (failed) process.exit(1)` left in
@@ -128,9 +134,13 @@ is black" with no other information costs an hour every time.
   **It bundles the module graph, so it does NOT test module loading.** It
   understands only this project's import style: `import { a, b } from './x.js'`,
   and `export function` / `export async function` / `export const|let|class`.
-  Renamed imports (`import { a as b }`) and namespace imports
-  (`import * as ns`) break it — the browser is fine with both, so this bites
-  only here, and it has now bitten three times. It therefore **throws and names
+  **Renamed imports now work** — `import { a as b }` is rewritten to the
+  `const { a: b }` destructuring that means the same thing. They used to slip
+  PAST the guard rather than trip it, because the line HAD been rewritten, just
+  into `const { a as b }`, which is not valid JavaScript: the page died with
+  `Unexpected identifier 'as'` pointing at a line preview.js itself wrote.
+  Namespace imports (`import * as ns`) still break it — the browser is fine
+  with them, so this bites only here. It therefore **throws and names
   the offending line** rather than emitting a bundle with a live `import` in
   it; the third bite was `export async function` in net.js, which came out as
   `Uncaught SyntaxError: Unexpected token 'export'` and looks exactly like a
@@ -362,6 +372,7 @@ Press `O`. Everything switchable lives in the `opts` object in main.js and the
 overlay is generated from it, so adding a setting is one entry.
 
     World         bounded / open      floor and ceiling, or nothing but scaffold
+    Curvature     hyperbolic / spherical   a different SPACE, not a level
     Gravity       floor plane / beacon / none
     Movement      walking / rolling   steer the velocity, or spin a ball up
     Camera up     gravity / pendulum / free
@@ -804,6 +815,90 @@ origin, and the range limit is its own test.
 carry a global "which solid am I in", and getting that out of step with the
 renderer is a whole class of bug. `geometry(k)` returns a value, so two can be
 held at once and compared in a single test with nothing to switch.
+
+## The spherical world
+
+`Curvature: spherical` is a DIFFERENT SPACE, not a different level, and it is
+the smallest of the three to make into a place.
+
+**S^3 needs no quotient.** It is already compact, so there is no fundamental
+domain, no face scan, no pairing, no fold and no straddle copy — every one of
+which exists on the hyperbolic side to fake compactness. Fly far enough in any
+direction and you come back after 2*pi, because that is what a geodesic on a
+sphere does. That is why the spherical program links in **4.7 s against the
+hyperbolic 8.8**: `domainMap`, `exitDist`, `domainDepth`, the fold loop and all
+39 level primitives are dead code there, and a `#define` lets the compiler see
+it (see the inlining rule).
+
+**APPARENT SIZE IS NOT MONOTONIC IN DISTANCE, and the scene is built to show
+it.** An object of proper radius r at distance t subtends about `r / sin(t)`,
+and `sin` peaks at pi/2 — so things look SMALLEST a quarter of the way round
+the world and get bigger again as they recede, until at the antipode a single
+point fills the sky. The scene is a ring of six at pi/2 (r 0.30, apparent
+0.300) and a ring of eight at 2.80 (r 0.15, apparent 0.448): **1.78x the
+distance and 1.49x the apparent size**. It is the exact inverse of the
+hyperbolic worlds, where `e^{2r}` shrinks everything away almost at once.
+
+**A LORENTZ MATRIX IS NOT AN ISOMETRY OF THE 3-SPHERE**, and this is the trap
+the whole thing turns on. The hyperbolic spawn point has `<p,p> = -1` under the
+Minkowski form, as it must, and `+1.81` under the Euclidean one where a valid
+S^3 point needs exactly `+1`. Hand the spherical marcher a hyperbolic placement
+and every ray starts 0.81 off the manifold, `hDist` never closes, nothing is
+ever hit, and the screen comes out **99.3% black** — which is indistinguishable
+from a shader that failed to compile. So switching curvature MUST re-place the
+player (`resetForCurvature`), and `s3.test.js` checks `<p,p> = +1` on every
+scene point for exactly this reason.
+
+**There is no gravity and there cannot be.** "Down" has to be a function with
+`|grad| = 1`, and on a sphere the only candidates point at a pole, so a whole
+world would fall to one spot. Free flight is the honest model, which is the
+other reason this was the cheap one: no floor, no walking, no rope.
+
+**The range limit does not exist here, and that is the engineering case.**
+Coordinates are bounded by 1 at every distance including the antipode —
+measured, float32 holds `<p,p>` to 2.5e-8 at 0.999 of the way round, where the
+hyperbolic side is already off by 1e-3 by d = 7. A level ten times bigger is
+free in S^3 and impossible in H^3.
+
+**What it is NOT:** the fighting kit. The boomerang, the block, the pane,
+portals, the opponent, the courses and the self body are all built on `hyp.js`
+and its group. The option locks below take them away rather than leaving dead
+keys. The self body is the one worth coming back for: in S^3 light goes all the
+way round, so you would see yourself down every sightline with no quotient at
+all — but `selfHist` is a ring of FOLDED positions plus the elements linking
+them, machinery that only makes sense when the marcher cannot leave a domain.
+
+## Modes take options away, and they do it through `optVal`
+
+`rawVal(k)` is what the player picked. `optVal(k)` is what the game uses, and a
+mode can make them differ; `computeForced()` returns the table and
+`applyOptions` recomputes it FIRST, before anything reads it.
+
+**Forcing through `optVal` rather than at each call site is the whole point.**
+Every `optVal` in main.js already asks the same question, so a lock applies
+everywhere at once and cannot be forgotten in one branch — which is exactly how
+"gravity is off but the FIELD object is still the plane one" survived long
+enough to jerk the camera 111 degrees at every face in the open world.
+
+**Forced, not hidden, and not silently substituted.** The menu still shows the
+row, with the value the mode is using and a short reason, and the player's own
+choice after it in brackets. Hiding the row makes the menu change shape as
+modes are switched; substituting the value silently is the game lying about its
+own state.
+
+What is locked, and why it is not a balance decision:
+
+- **spherical** takes gravity, camera up, movement, domain edges, the opponent,
+  the boomerang, build, portals and the courses. Plane gravity in S^3 is not a
+  worse choice, it is an incoherent one; "Domain edges" outlines a fundamental
+  domain that does not exist; the rest is hyperbolic-only code.
+- **any course** takes the opponent, the boomerang, build and portals. A timed
+  run has nothing to fight, and each one is a key that would do nothing.
+- **the grapple course** additionally pins gravity, camera up and the bounded
+  world, because a charge gate is opened by SWINGING and with gravity off there
+  is nothing to swing from — every gate would stay shut for ever.
+
+The first lock wins, so a different SPACE outranks a mode inside one.
 
 ## Game modes
 

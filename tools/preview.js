@@ -76,7 +76,17 @@ function wrap(file, code) {
     (_, kw, id) => { names.push(id); return `${kw} ${id}`; });
   code = code.replace(
     /^import\s*\{([^}]*)\}\s*from\s*'\.\/([^']+)';?/gm,
-    (_, list, from) => `const {${list}} = __m['${from}'];`);
+    // A RENAMED import is translated rather than refused. `import { a as b }`
+    // becomes `const { a: b }`, which is the same thing in destructuring - the
+    // two syntaxes differ only in the keyword.
+    //
+    // This used to slip past the guard below and produce a bundle containing
+    // `const { G as S3G } = ...`, which is not valid JavaScript, so the page
+    // died with "Unexpected identifier 'as'" pointing at a line this file
+    // wrote. The guard never fired because the line HAD been rewritten - just
+    // into something broken. A rewrite that cannot be done must fail loudly;
+    // one that can be done should just be done.
+    (_, list, from) => `const {${list.replace(/\s+as\s+/g, ': ')}} = __m['${from}'];`);
   // SAY SO when the source uses an import form this cannot rewrite, instead of
   // emitting a bundle with a live `import` in it and letting the browser
   // produce an error that points at the wrong thing. Renamed and namespace

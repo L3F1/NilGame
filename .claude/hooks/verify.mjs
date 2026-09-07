@@ -30,7 +30,8 @@ const CHECKS = {
   'net.js':     [['physics.test.js']],
   'level.js':   [['tools/sdf-check.js'], ['physics.test.js']],
   'modes.js':   [['modes.test.js']],
-  'geom.js':    [['geom.test.js']],
+  'geom.js':    [['geom.test.js'], ['s3.test.js']],
+  's3.js':      [['s3.test.js'], ['tools/shader-check.js']],
 };
 
 const readStdin = () => new Promise((res) => {

@@ -51,6 +51,11 @@ try {
 
 const programs = [
   ['scene', mod.VERT, mod.FRAG],
+  // The spherical build is a SECOND program, because curvature is a
+  // #define and not a uniform. It has to be timed and checked on its own:
+  // it is what the Curvature option links, and nothing else here would
+  // ever look at it.
+  ['scene (spherical)', mod.VERT, mod.fragFor(1)],
   ['lines', mod.LINE_VERT, mod.LINE_FRAG],
 ];
 

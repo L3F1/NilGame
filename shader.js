@@ -13,6 +13,7 @@
 
 import { levelGLSL } from './level.js';
 import { OCT_SIDE, OCT_PAIR, DOD_SIDE, DOD_PAIR } from './hyp.js';
+import { s3GLSL } from './s3.js';
 
 export const VERT = `#version 300 es
 in vec2 aPos;
@@ -408,41 +409,11 @@ vec4 selfAt(float t, out vec4 alt) {
   return q;
 }
 
-// A world for S^3, and it needs NO fundamental domain at all.
-//
-// This is the whole reason spherical was the cheap one to draw first. The
-// hyperbolic marcher spends most of its complexity on the quotient -- the face
-// scan, the exact exit solve, the fold loop, the straddle images -- and every
-// one of those exists to fake compactness. S^3 is already compact: fly far
-// enough in any direction and you come back, because the geodesic closes at
-// 2*pi and not because anything glued it.
-//
-// Six balls on the coordinate axes at a quarter turn, plus a thin shell at the
-// equator of the eye's own starting point so there is a floor to read motion
-// against. Kept SMALL on purpose: this body is inlined into all three copies
-// of sceneMap, and link time is the budget that binds.
-vec2 sphereWorld(vec4 p) {
-  vec2 m = vec2(1e9, 1.0);
-  // rolled(): this body is inlined into all three copies of sceneMap, and an
-  // unrolled six would be eighteen. Exactly the rule in CLAUDE.md - hide the
-  // bound from the compiler on a BIG body, leave it alone on a small hot one.
-  for (int i = 0; i < rolled(6); i++) {
-    // +x,-x,+y,-y,+z,-z at distance pi/2, which in S^3 is the equator of the
-    // origin -- the furthest a circle of directions ever gets before it starts
-    // closing again.
-    vec4 c = vec4(0.0);
-    int ax = i / 2;
-    c[ax] = (i - 2 * ax) == 0 ? 1.0 : -1.0;
-    float d = hDist(p, c) - 0.34;
-    if (d < m.x) m = vec2(d, float(2 + ax));
-  }
-  // A shell: the set of points a fixed distance from the pole. It reads as a
-  // ground plane you are standing inside, and it is one inner product wide.
-  float shell = abs(hDist(p, vec4(0.0, 0.0, 0.0, 1.0)) - 1.15) - 0.035;
-  if (shell < m.x) m = vec2(shell, 1.0);
-  return m;
-}
-
+// The spherical world, emitted by s3.js -- written once as data there and
+// emitted twice, a JS SDF for the physics and this for the renderer, exactly
+// as level.js does it. Dead code in the hyperbolic program, because uCurv is a
+// #define and the compiler can see which branch of the selector is taken.
+${s3GLSL()}
 vec2 sceneMap(vec4 p, float t) {
   vec2 m = uCurv > 0.0 ? sphereWorld(p) : domainMap(p);
   // Every round marker: anchor, beacon, boomerangs, blocks, decoys, the
@@ -646,7 +617,12 @@ float exitDist(mat4 C, vec3 dir, float tMin) {
 }
 
 vec3 materialColor(float m, vec4 p, float up) {
-  if (m < 1.5) {
+  // The floor, the checker and the gold domain outline are all about the
+  // QUOTIENT, and a spherical world has none. Guarding on uCurv -- a #define,
+  // so this is decided at compile time -- keeps domainDepth out of the
+  // spherical program entirely rather than leaving it live to answer a
+  // question that does not apply.
+  if (uCurv < 0.0 && m < 1.5) {
     if (up > 0.5) {
       // Floor checker in KLEIN coordinates, p.xy / p.w: the whole hyperbolic
       // plane squashed into a unit disc. Cells shrink toward the rim, and

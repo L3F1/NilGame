@@ -11,6 +11,9 @@ import {
 import { levelSDF, setMode, getMode, MODE } from './level.js';
 import { VERT, fragFor, LINE_VERT, LINE_FRAG } from './shader.js';
 import {
+  S3G, s3SDF, s3Control, s3Step, s3Collide, s3LapFraction, S3_LAP,
+} from './s3.js';
+import {
   PLAYER_R, WALK_SPEED, JUMP, ROPE_RANGE, FLY_SPEED,
   stepFree, collide, control, cast, grappleAttach, grappleStep, ropePoints,
   energy, alignUp, upDirection, upness, sweptArea,
@@ -276,6 +279,16 @@ function sceneFor(k) {
 }
 
 let scene = null, U = null;
+// Which curvature the bound program is for, compared against the option so
+// that switching space happens ONCE rather than every frame. Declared HERE and
+// not beside the spherical helpers further down: applyOptions runs during
+// module setup and reads it, and a `let` further down the file is still in its
+// temporal dead zone at that point - which throws before the first frame and
+// takes the whole module with it.
+let curvNow = -1;
+// Where this spherical session started, for the lap readout.
+let s3Start = null;
+
 /** Point `scene` and `U` at the program for this curvature, building it once. */
 function useCurvature(k) {
   const s = sceneFor(k);
@@ -524,6 +537,19 @@ function linkHistory() {
 // it, so adding a setting is one entry rather than three edits.
 const opts = {
   mode:       { label: 'World',        values: ['floor (2D wrap)', 'open (3D wrap)'], i: 0 },
+  // Curvature. 'spherical' is a DIFFERENT SPACE, not a different level.
+  //
+  // S^3 needs no quotient: it is already compact, so the marcher's entire
+  // fundamental-domain apparatus - the face scan, the exit solve, the fold
+  // loop, the straddle copies - has nothing to do and is compiled out. Fly far
+  // enough in any direction and you come back after 2*pi, not because anything
+  // was glued but because that is what a geodesic on a sphere does.
+  //
+  // It is a FLYTHROUGH, not the full kit: free flight and collision, no
+  // gravity (a sphere admits no unit-gradient height function, so there is no
+  // honest "down"), and none of the fighting kit, all of which is built on
+  // hyp.js. The locks below take those away rather than leaving dead keys.
+  curv:       { label: 'Curvature',    values: ['hyperbolic', 'spherical'],    i: 0 },
   field:      { label: 'Gravity',      values: ['floor plane', 'beacon', 'none'], i: 0 },
   light:      { label: 'Light speed',  values: ['instant', 'fast', 'slow'],   i: 0 },
   move:       { label: 'Movement',     values: ['walking', 'rolling'],        i: 0 },
@@ -925,7 +951,89 @@ const BLAST_FX = 0.34;        // seconds the shell takes to reach full radius
 let blastFx = null;           // { at, R, age }
 const ROLL_SPEED = 1.4;       // radians per second, held
 const ROLL_IMPULSE = 1.1;     // radians per second per press, momentum mode
-const optVal = (k) => opts[k].values[opts[k].i];
+// --- what the player chose, and what the mode allows ---------------------
+//
+// `rawVal` is the setting as it sits in the menu. `optVal` is the setting the
+// GAME actually uses, which is not always the same: a mode can take an option
+// away.
+//
+// This exists because a mode is not just a scoring rule, it is a set of things
+// that make no sense inside it. A boomerang in a timed flying course is not a
+// balance question - the course has no target to throw at, the throw drops you
+// out of the racing line, and it is one more key doing nothing. The spherical
+// world is the harder case: it has no floor plane, so "gravity: floor plane"
+// is not a worse choice there, it is an INCOHERENT one that would pin the
+// camera to a function the geometry does not have.
+//
+// Forcing rather than hiding, and forcing through `optVal` rather than at each
+// call site, is the part worth keeping. Every `optVal` in this file already
+// asks the same question, so a lock applies everywhere at once and cannot be
+// forgotten in one branch - which is exactly how "gravity is off but the FIELD
+// is still the plane one" survived long enough to jerk the camera at every
+// face. The menu still shows what the player picked, greyed, with the value
+// the mode is using, so nothing is silently overridden.
+const rawVal = (k) => opts[k].values[opts[k].i];
+
+let forcedOpts = {}, forcedWhy = {};
+
+/**
+ * Which settings the current mode takes away, and what to.
+ *
+ * Reads `rawVal` only, never `optVal`, or it would be defined in terms of
+ * itself.
+ */
+function computeForced() {
+  const f = {}, why = {};
+  const lock = (k, v, reason) => {
+    // First lock wins, so the most specific rule should come first.
+    if (k in f) return;
+    if (rawVal(k) === v) return;      // already there; nothing is being taken
+    f[k] = v; why[k] = reason;
+  };
+
+  // A DIFFERENT SPACE outranks a mode inside one, so these are first.
+  //
+  // Nothing here is a balance decision. S^3 has no floor plane, so plane
+  // gravity is not a worse choice there but an incoherent one; it has no
+  // quotient, so "Domain edges" outlines a fundamental domain that does not
+  // exist; and the whole fighting kit - the boomerang, the block, the pane,
+  // portals, the opponent - is built on hyp.js and its group, none of which
+  // has a spherical counterpart yet.
+  if (rawVal('curv') === 'spherical') {
+    lock('field', 'none', 'no down on a sphere');
+    lock('upright', 'free', 'no down on a sphere');
+    lock('move', 'walking', 'free flight');
+    lock('edges', 'hide', 'no fundamental domain');
+    lock('foe', 'off', 'hyperbolic only');
+    lock('boomerang', 'off', 'hyperbolic only');
+    lock('build', 'off', 'hyperbolic only');
+    lock('portals', 'off', 'hyperbolic only');
+    lock('course', 'off', 'hyperbolic only');
+  }
+
+  // A course is a time trial. Everything that exists to fight with is off:
+  // there is nothing to fight, and each one is a key that would do nothing.
+  const course = rawVal('course');
+  if (course !== 'off') {
+    lock('foe', 'off', 'timed run');
+    lock('boomerang', 'off', 'timed run');
+    lock('build', 'off', 'timed run');
+    lock('portals', 'off', 'timed run');
+  }
+  // The grapple course is charge gates, so it needs the two things that make
+  // a charge: gravity to swing under, and a rope to swing on. With gravity off
+  // there is nothing to swing from and every gate stays shut for ever.
+  if (course === 'grapple') {
+    lock('field', 'floor plane', 'gates need a swing');
+    lock('upright', 'gravity', 'gates need a swing');
+    lock('mode', 'floor (2D wrap)', 'gates need a floor');
+  }
+
+  return [f, why];
+}
+
+/** The setting the game uses: the mode's, if it has taken this one over. */
+const optVal = (k) => (k in forcedOpts ? forcedOpts[k] : rawVal(k));
 
 /**
  * Should the frame be re-pinned to gravity this step?
@@ -1299,9 +1407,20 @@ function drawMenu() {
   const rows = optKeys.map((k, i) => {
     const o = opts[k];
     const mark = i === optSel ? '>' : ' ';
+    // A locked setting shows what the MODE is using and why, with the player's
+    // own choice still visible after it. Hiding the row instead would make the
+    // menu change shape as modes are switched, and silently substituting the
+    // value would be the game lying about its own state.
+    if (k in forcedOpts) {
+      return `${mark} ${o.label.padEnd(13)} ${forcedOpts[k].padEnd(18)}`
+        + `[${forcedWhy[k]}; yours: ${o.values[o.i]}]`;
+    }
     return `${mark} ${o.label.padEnd(13)} ${o.values[o.i]}`;
   });
+  const locked = Object.keys(forcedOpts).length;
   menu.textContent = ['OPTIONS   (O closes)', '', ...rows, '',
+    locked ? `${locked} setting${locked > 1 ? 's are' : ' is'} set by the mode `
+      + 'and shown in brackets' : '',
     'up/down select   left/right change'].join(String.fromCharCode(10));
 }
 
@@ -1405,6 +1524,73 @@ nEl('nrj').onclick = () => netConnectVia(nEl('nurl').value, nEl('nroom').value, 
 let course = null, run = null, courseWorld = -1, hoopFlash = 0;
 
 
+// --- the spherical world -------------------------------------------------
+//
+// A flythrough, deliberately, and separate from the hyperbolic path rather
+// than woven into it. physics.js is built on hyp.js from top to bottom -
+// gravity, the rope, collision, every ability - and making all of that
+// curvature-generic is a rewrite of the load-bearing file. This is the small
+// honest slice instead: geom.js already gives S^3 its geodesics and its
+// SO(4), s3.js adds a scene and free flight, and the two paths meet only at
+// `player`, which is a 4x4 either way and goes to the same uniform.
+function sphericalWorld() { return optVal('curv') === 'spherical'; }
+
+function showBoot(msg) {
+  const b = document.getElementById('boot');
+  if (b) { b.style.display = 'block'; b.textContent = msg; }
+}
+function hideBoot() {
+  const b = document.getElementById('boot');
+  if (b) { b.style.display = 'none'; b.textContent = ''; }
+}
+
+/**
+ * Put the player somewhere legal for the space they are now in.
+ *
+ * Not optional, and not a convenience. A placement is a matrix preserving the
+ * form, and the two forms are different: carrying a Lorentz matrix into the
+ * spherical program leaves every ray off the 3-sphere and draws black.
+ */
+function resetForCurvature() {
+  if (!sphericalWorld()) { reset(); return; }
+  player = S3G.IDENTITY;
+  vel = [0, 0, 0];
+  yaw = 0; pitch = 0; roll = 0; rollRate = 0;
+  tilt = [0, 0]; tiltVel = [0, 0]; prevVel = [0, 0, 0];
+  camSwing = { axis: [0, 0, 1], angle: 0, vel: 0 };
+  grapple = null;
+  banked = 0;
+  s3Start = player;
+}
+
+/**
+ * What the keys are asking for, in FRAME components, for free flight.
+ *
+ * Unlike the walking control this drives all three axes and it drives them
+ * along the VIEW rather than along the floor, because there is no floor. W is
+ * where you are looking, including pitch, and space/shift are the view's own
+ * up - which is what flying is.
+ */
+function s3Want(basis) {
+  const w = [0, 0, 0];
+  const add = (v, k) => { for (let i = 0; i < 3; i++) w[i] += v[i] * k; };
+  if (keys.has('KeyW')) add(basis.fwd, 1);
+  if (keys.has('KeyS')) add(basis.fwd, -1);
+  if (keys.has('KeyD')) add(basis.right, 1);
+  if (keys.has('KeyA')) add(basis.right, -1);
+  if (keys.has('Space')) add(basis.up, 1);
+  if (keys.has('ShiftLeft') || keys.has('ShiftRight')) add(basis.up, -1);
+  const m = Math.hypot(w[0], w[1], w[2]);
+  return m > 1e-9 ? [w[0] / m, w[1] / m, w[2] / m] : [0, 0, 0];
+}
+
+/** One substep of spherical flight. Three calls, and that is the whole model. */
+function stepS3(h, want) {
+  vel = s3Control(vel, want, h);
+  [player, vel] = s3Step(player, vel, h);
+  [player, vel] = s3Collide(player, vel, s3SDF);
+}
+
 function courseOn() { return optVal('course') !== 'off'; }
 function buildCourse() {
   return optVal('course') === 'grapple' ? grappleCourse() : geodesicCourse(0, 6);
@@ -1490,25 +1676,33 @@ function beginRun() {
 }
 
 function applyOptions() {
-  // Curvature is FIXED AT HYPERBOLIC, and there is deliberately no option for
-  // it yet. The renderer can already do S^3 - `useCurvature(1)` builds and
-  // binds a spherical program, and it links in 4.4 s against 9.0 for this one,
-  // because in S^3 the entire quotient apparatus is dead code. What is not
-  // done is the CPU side.
+  // FIRST, because everything below this line reads optVal and optVal asks
+  // what the mode has taken over.
+  [forcedOpts, forcedWhy] = computeForced();
+
+  // Curvature picks which SCENE PROGRAM is bound, because it is a #define and
+  // not a uniform. Switching to spherical the first time has to LINK, which
+  // takes about 4.4 s and blocks the thread while it happens, so say so rather
+  // than looking like a hang. After that it is cached and switching is free.
   //
-  // The blocker is one line of arithmetic. `uPlayer` is a Lorentz matrix, and
-  // a Lorentz matrix is not an isometry of the 3-sphere: the spawn point has
-  // <p,p> = -1 under the Minkowski form, as it must, and +1.81 under the
-  // Euclidean one, where a valid S^3 point needs exactly +1. So the ray starts
-  // 0.81 off the manifold, hDist to everything stays large, nothing is ever
-  // hit, and the screen comes out 99.3% black - measured, not guessed.
-  //
-  // A black screen is indistinguishable from a shader that failed to compile,
-  // which is the one failure mode this codebase has a whole boot panel to
-  // avoid, so the option stays out of the menu until the placement, the
-  // integrator and collision are on geom.js with k = +1 too. The renderer half
-  // is done, tested and free; it is waiting on the physics half.
-  useCurvature(-1);
+  // Switching space also has to re-place the player: a Lorentz matrix is not
+  // an isometry of the 3-sphere. The spawn point has <p,p> = -1 under the
+  // Minkowski form, as it must, and +1.81 under the Euclidean one where a
+  // valid S^3 point needs exactly +1 - so handing the spherical marcher a
+  // hyperbolic placement starts every ray 0.81 off the manifold, hits nothing,
+  // and draws a 99.3% black screen. That was measured, and it is why `reset`
+  // is not optional here.
+  const k = sphericalWorld() ? 1 : -1;
+  if (curvNow !== k) {
+    const fresh = !sceneProgs.has(k);
+    if (fresh) showBoot('Building the spherical shader.'
+      + String.fromCharCode(10)
+      + 'A few seconds, once - after that, switching is instant.');
+    useCurvature(k);
+    if (fresh) hideBoot();
+    curvNow = k;
+    resetForCurvature();
+  }
 
   // The two worlds use DIFFERENT groups, and that is the whole point.
   //
@@ -1921,7 +2115,12 @@ function frame(now) {
   const SUB = 4;
   const h = dt / SUB;
   let ropeInfo = null;
+  // Free flight in S^3 is a different integrator on a different group, so it
+  // takes the substep and nothing else in this loop applies: there is no fold
+  // (no quotient), no gravity, no rope, no carried object to keep in range.
+  const s3want = sphericalWorld() ? s3Want(basis) : null;
   for (let i = 0; i < SUB; i++) {
+    if (s3want) { stepS3(h, s3want); continue; }
     const stepFrom = point(player);
     // Two movement models, kept side by side so they can be compared.
     // 'walking' steers the velocity directly; 'rolling' spins a ball up with a
@@ -2061,8 +2260,10 @@ function frame(now) {
     settleCarried(point(player));
   }
 
-  const p0 = point(player);
-  pushHistory(foldPoint(p0), p0, dt);
+  const p0 = sphericalWorld() ? S3G.point(player) : point(player);
+  // The folded copy and the raw one are the SAME point when there is no group
+  // to fold by, which is the whole of what "no quotient" means here.
+  pushHistory(sphericalWorld() ? p0 : foldPoint(p0), p0, dt);
   // BIND THE PROGRAM FIRST. gl.uniform* writes to whatever program is current,
   // and at the top of a frame that is still the LINE program, left bound by
   // last frame's rope and crosshair. Uniforms set here before this call went
@@ -2219,7 +2420,15 @@ function frame(now) {
   // and a sphere the size of the hitbox is a speck at one cell's distance.
   // Both are smaller than they were - PLAYER_R went 0.10 -> 0.07 and this
   // multiplier 1.5 -> 1.25, so the drawn ball is 0.088 against 0.15.
-  gl.uniform1f(U.selfR, PLAYER_R * 1.25);
+  // Hidden in the spherical world for now. The body is drawn from selfHist,
+  // which is a ring of FOLDED positions and a set of fold elements linking
+  // them - machinery that exists because the hyperbolic marcher never leaves
+  // its fundamental domain. S^3 has no domain to leave, so the history needs a
+  // different (simpler) shape, and until it has one an unfolded history would
+  // draw the body somewhere it is not. Worth doing: in S^3 light goes all the
+  // way round, so you would see yourself down every sightline without needing
+  // a quotient at all.
+  gl.uniform1f(U.selfR, sphericalWorld() ? 0 : PLAYER_R * 1.25);
   // Supersampling is four marches a pixel, so only at high quality.
   gl.uniform1f(U.superSample, optVal('quality') === 'high' ? 1 : 0);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -2237,6 +2446,31 @@ function frame(now) {
   };
   const speed = Math.hypot(vel[0], vel[1], vel[2]);
   const p = p0;
+  // The spherical world gets its own readout rather than a hyperbolic one
+  // computed on a placement that does not describe it. `altitude` is
+  // asinh(p.z), a distance to a floor plane that does not exist here, and
+  // `energy` is a potential from the same field: both printed 0.00, and both
+  // were meaningless rather than merely zero.
+  if (sphericalWorld()) {
+    const lap = s3LapFraction(player, s3Start || player);
+    hud.textContent =
+      `SPHERICAL   S^3, curvature +1\n`
+      + `speed ${f(speed)}   a lap is ${S3_LAP.toFixed(2)}, so straight ahead brings\n`
+      + `you back here in ${(S3_LAP / Math.max(speed, 1e-6)).toFixed(1)} s\n`
+      + `from the start ${f(lap * Math.PI)}  ${bar(Math.min(1, lap), 12)}  `
+      + `${lap > 0.98 ? 'AT THE ANTIPODE: every direction leads home'
+        : `${(lap * 100).toFixed(0)}% of the way to the antipode`}\n`
+      + `\nNO QUOTIENT. The hyperbolic worlds are compact because a group\n`
+      + `glues one cell to itself; this one is compact on its own, so there\n`
+      + `is no domain, no folding, and no gold seam anywhere in it.\n\n`
+      + `THINGS GET BIGGER AS THEY RECEDE past a quarter turn - apparent\n`
+      + `size goes like r / sin(t), and sin peaks at pi/2. The small ring\n`
+      + `of six is NEARER than the big ring of eight.\n\n`
+      + `WASD fly - space up - shift down - mouse look\n`
+      + `O options - R reset - Curvature back to hyperbolic for the game`;
+    requestAnimationFrame(frame);
+    return;
+  }
   hud.textContent =
     `altitude ${f(altitude(p))}   speed ${f(speed)}   energy ${f(energy(player, vel))}\n` +
     `horizontal ${f(Math.hypot(vel[0], vel[1]))} / ${f(FLY_SPEED)} ${Math.hypot(vel[0], vel[1]) > FLY_SPEED ? '<< FLYING: geometry is lifting you' : ''}\n` +
