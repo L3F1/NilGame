@@ -945,6 +945,38 @@ round. That corridor is the same corridor in every copy.
   `tools/shader-check.js` CANNOT see any of this: SwiftShader has no HLSL
   back end and links the worst version in a few seconds. Only a real D3D
   driver shows it. `main.js` now times the link and explains an empty log.
+
+  **MEASURE LINK TIME WARM, and repeat it — a cold run reads 25% high.**
+  `link-time.js` WARNs above 10 s and fails at 15 s. Measured on one machine in
+  one sitting, the first runs gave 11.2, 10.5 and 9.9 s and then settled at
+  **8.5, 8.5, 8.7** and stayed there. The early readings trip the WARN and look
+  exactly like a regression; they are the driver and the GPU clocks warming up.
+  A single cold number is not evidence of anything. Take three.
+
+  **The 5.0 s above is the figure for a SMALLER shader, and the gap is fully
+  accounted for.** Measured by stubbing each piece out and re-linking:
+
+      level content (39 primitives)     3.3 s
+      selfAt, the light-speed body      3.1 s
+      everything else                   2.2 s
+      total, warm                       8.6 s
+
+  and `5.0 (documented) + 0.3 (markers, documented) + 3.1 (selfAt) = 8.4`,
+  against 8.6 measured. **Nothing regressed** — the shader grew by exactly the
+  features that were added to it. Note what that says about the budget, though:
+  the self body costs nearly as much to compile as all 39 level primitives.
+
+  **Two fixes were tried and REJECTED, so do not try them again:**
+
+  - Rolling `domainDepth`'s and `exitDist`'s face scans with `rolled()`. No
+    effect (8.6 vs 8.6), which confirms the original finding above rather than
+    contradicting it. An early 10.5 -> 8.5 reading that suggested a 2 s win was
+    the cold-start artifact, not the change.
+  - Hoisting `selfAt` out of `sceneNormal`'s eight taps and `ambient`'s four.
+    It looks like an obvious win — `selfAt` depends only on `t`, which does not
+    vary across the taps, so it is evaluated twelve times for one answer — and
+    it made link time WORSE (9.0-10.3 vs 8.5-8.7). The compiler already does
+    that CSE; passing two extra `vec4`s costs more than it saves.
 - **`gl.uniform*` writes to the CURRENTLY BOUND PROGRAM, and nothing warns you
   when that is the wrong one.** At the top of a frame the bound program is
   still the LINE one, left over from last frame's rope and crosshair. Uniforms
