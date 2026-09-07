@@ -29,24 +29,29 @@ with main.js delegating to whichever is selected. **No DOM**, like physics.js,
 so it is testable — that rule is what makes physics.js testable and it should
 not be broken for game logic.
 
-### M2. Projectiles become lists  **S**
+### ~~M2. Projectiles become lists~~ **DONE**
 
-`physics.js` holds exactly one of each:
+Was four module-level singletons — `boomerang`, `block`, `decoy`, `cut` — so
+two fighters could not each have one out and a bot that threw a boomerang took
+the player's. All four are now `Map`s keyed by owner id.
 
-    let boomerang = null;   // line 673
-    let block     = null;   // line 1154
-    let decoy     = null;   // line 1291
-    let cut       = null;   // line 1409
+Every function grew a trailing `id = 0`, so the local player is owner 0 and
+every existing call site reads as it did; `physics.test.js` went 140 → 160 with
+no change to the original 140. The parts that needed real care were the
+functions acting on all owners at once: `blockSDF` and `cutSDF` now take a
+minimum over every one, the four `carry*` functions move every one through a
+fold, and `boomerangHits` skips each throw's own `b.owner` instead of a `skip`
+argument the caller had to remember. Both of those were confirmed to fail
+against a deliberately single-owner mutation.
 
-Module-level singletons. Two fighters cannot each have a boomerang out locally;
-a bot that throws one steals the player's slot. CLAUDE.md already flags this and
-says to fix it before adding a fourth projectile. **A ball is a fourth
-projectile.** Do this first: arrays keyed by owner id, and `activeBoomerang()`
-becomes `boomerangsOf(id)`.
+**What it cost the shader: nothing.** Markers already go through `uMark[10]` +
+`uMarkN`, built exactly so more objects cost no link time.
 
-Watch the shader side: markers already go through `uMark[10]` + `uMarkN`, which
-was built exactly so more objects cost no link time. Lists on the CPU need no
-shader edit at all — that is the win the marker refactor already bought.
+**But `MARKS = 10` is now the binding limit**, and it fails silently —
+`marker()` just returns once `markN >= MARKS`, so the eleventh object is not
+drawn and nothing errors. The anchor, beacon, opponent and blast already take
+slots. Raise it in main.js *and* shader.js together and re-run
+`tools/link-time.js` before any mode puts many objects in the world at once.
 
 ### M3. Trigger volumes  **S**
 
@@ -308,8 +313,9 @@ because the manifold is compact.
 
 ## Suggested order
 
-1. **M2** (lists) — unblocks everything, and CLAUDE.md already says do it first.
+1. ~~**M2** (lists)~~ — **done**, 160 tests.
 2. **M1 + M3 + M4** (round system, triggers, HUD) — built against mode 1.
+   **This is the next step.**
 3. **Mode 1, drone hoops.** Proves the machinery. Nearly free otherwise.
 4. **Mode 2, grapple course.** Gives the holonomy meter a non-combat use.
 5. **M9 + Mode 3, racing.** The hyperbolic racing line is worth the weekend.

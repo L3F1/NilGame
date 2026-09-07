@@ -21,6 +21,9 @@ import {
   placePortal, clearPortals, portalsLive, portalCrossing, portalMap,
   PORTAL_R, settleCarried, activeBeacon,
   launchBoomerang, boomerangStep, activeBoomerang, clearBoomerang,
+  boomerangPoint, carryBoomerang, allBoomerangs, clearAllBoomerangs,
+  activeBlock, carryBlock, allBlocks, clearAllBlocks, blockStepAll,
+  allDecoys, clearAllDecoys, allCuts, clearAllCuts, CUT_THICK,
   rollControl, rollSpeed, carryFrameVec, ROLL_TOP,
   makeCharacter, damage, stepCharacter, boomerangHits, orbitDist,
   MAX_HEALTH, BOOM_DAMAGE, HIT_COOLDOWN,
@@ -1598,6 +1601,141 @@ console.log('what goes on the wire');
     if (dist(point(mine), point(theirs)) > 1e-9) agree = false;
   }
   check('two peers naming the same place send the same coordinates', agree);
+}
+
+console.log('');
+console.log('one of each PER OWNER, not one in the world');
+
+{
+  // physics.js used to hold a single module-level slot for the boomerang, the
+  // block, the decoy and the pane. That is why two fighters could not each
+  // have a throw out at once, and why a bot that threw one silently took the
+  // player's. They are keyed by owner id now.
+  //
+  // The interesting half is not that each owner gets a slot - it is that the
+  // things which act on ALL of them at once still do: the SDFs have to take a
+  // minimum, and a fold has to carry every one of them.
+
+  clearAllBoomerangs(); clearAllBlocks(); clearAllDecoys(); clearAllCuts();
+
+  const A = placeAt(0.2, 0.1, 0.5), B = placeAt(-0.3, 0.25, 0.5);
+  launchAimed(A, [1, 0, 0], 0);
+  launchAimed(B, [0, 1, 0], 7);
+  check('two owners can each have a throw in the air',
+    allBoomerangs().length === 2 && !!activeBoomerang(0) && !!activeBoomerang(7));
+  check('  and each throw knows who threw it',
+    activeBoomerang(0).owner === 0 && activeBoomerang(7).owner === 7);
+
+  const before7 = boomerangPoint(7).slice();
+  boomerangStep(0.2, null, null, 0);
+  check('stepping one owner leaves the other exactly where it was',
+    dist(boomerangPoint(7), before7) < 1e-12);
+  check('  while its own has moved', dist(boomerangPoint(0), point(A)) > 0.1);
+
+  clearBoomerang(0);
+  check('clearing one owner leaves the other still flying',
+    activeBoomerang(0) === null && !!activeBoomerang(7));
+  clearAllBoomerangs();
+  check('  and clearing all clears all', allBoomerangs().length === 0);
+}
+
+{
+  // A throw must miss its own thrower and catch everyone else, with several in
+  // the air. With one slot this was a `skip` argument the caller had to
+  // remember; now each throw carries its own owner, so it is right by
+  // construction. Both characters stand in the SAME place, so an overlap is
+  // certain and only the ownership rule can decide the outcome.
+  clearAllBoomerangs();
+  const spot = placeAt(0.4, 0, 0.4);
+  const me = makeCharacter(spot, 0);
+  const you = makeCharacter(spot, 1);
+  launchAimed(spot, [1, 0, 0], 0);
+  const hit = boomerangHits([me, you]);
+  check('a throw does not hit its own thrower', me.health === MAX_HEALTH);
+  check('  but does hit the other player',
+    hit === you && you.health < MAX_HEALTH);
+  clearAllBoomerangs();
+}
+
+{
+  // blockSDF must be the MINIMUM over every solid block. Anything else and one
+  // player's wall is scenery the other walks through - which is not a wall,
+  // it is a disagreement.
+  clearAllBlocks();
+  const P = placeAt(0, 0, 0.5);
+  const far = () => 1e9;                       // nothing to hit: arm's length
+  placeBlock(P, [1, 0, 0], far, 0);
+  placeBlock(P, [0, 1, 0], far, 3);
+  check('two owners can each have a block', allBlocks().length === 2);
+  check('  and neither is solid while it is still forming',
+    blockSDF(point(P)) > 1e8);
+
+  blockStepAll(BLOCK_DELAY + 0.01);
+  const q = activeBlock(0).at;
+  const alone3 = dist(q, activeBlock(3).at) - BLOCK_R;
+  check('blockSDF takes the minimum over both once they are solid',
+    close(blockSDF(q), -BLOCK_R, 1e-9) && alone3 > -BLOCK_R);
+  clearBlock(0);
+  check('  and after one owner clears, only the other counts',
+    close(blockSDF(q), alone3, 1e-9));
+  clearAllBlocks();
+  check('  and with none left it is empty space again', blockSDF(q) > 1e8);
+}
+
+{
+  // Same rule for the pane, which is the other thing that makes space solid.
+  clearAllCuts();
+  const P = placeAt(0, 0, 0.6);
+  const far = () => 1e9;
+  placeCut(P, [1, 0, 0], far, 0);
+  placeCut(P, [0, 1, 0], far, 5);
+  check('two owners can each have a pane', allCuts().length === 2);
+  const one = (c, p) => Math.max(Math.abs(Math.asinh(dot(p, c.N))) - CUT_THICK,
+                                 dist(p, c.at) - CUT_R);
+  const q = activeCut(0).at;
+  check('cutSDF takes the minimum over both panes',
+    close(cutSDF(q), Math.min(one(activeCut(0), q), one(activeCut(5), q)), 1e-12));
+  clearAllCuts();
+  check('  and with none left it is empty space again', cutSDF(q) > 1e8);
+}
+
+{
+  clearAllDecoys();
+  const path = (b) => [point(placeAt(0, b, 0.5)), point(placeAt(0.3, b, 0.5)),
+                       point(placeAt(0.6, b, 0.5))];
+  plantDecoy(path(0), 0.2, 0);
+  plantDecoy(path(0.7), 0.2, 4);
+  check('two owners can each have a decoy walking', allDecoys().length === 2);
+  const b4 = decoyPoint(4).slice();
+  decoyStep(0.1, 0);
+  check('stepping one decoy leaves the other mid-stride',
+    dist(decoyPoint(4), b4) < 1e-12);
+  clearAllDecoys();
+}
+
+{
+  // THE rule these all have to obey: a carried object moves by the SAME group
+  // element as the player, and now that has to be true of every owner's, not
+  // just the local player's. Missing one would leave it a whole cell behind
+  // after a crossing, where its coordinates grow like cosh of the gap.
+  clearAllBoomerangs(); clearAllBlocks();
+  const P = placeAt(0.3, 0.2, 0.5);
+  const far = () => 1e9;
+  launchAimed(P, [1, 0, 0], 0);
+  launchAimed(P, [0, 1, 0], 2);
+  placeBlock(P, [1, 0, 0], far, 0);
+  placeBlock(P, [0, 1, 0], far, 2);
+  const g = OCT_GEN[0];
+  const b0 = boomerangPoint(0).slice(), b2 = boomerangPoint(2).slice();
+  const k0 = activeBlock(0).at.slice(), k2 = activeBlock(2).at.slice();
+  carryBoomerang(g); carryBlock(g);
+  check('a fold carries EVERY owner\'s throw, not only the local one',
+    dist(boomerangPoint(0), apply(g, b0)) < 1e-9
+    && dist(boomerangPoint(2), apply(g, b2)) < 1e-9);
+  check('  and every owner\'s block',
+    dist(activeBlock(0).at, apply(g, k0)) < 1e-9
+    && dist(activeBlock(2).at, apply(g, k2)) < 1e-9);
+  clearAllBoomerangs(); clearAllBlocks();
 }
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

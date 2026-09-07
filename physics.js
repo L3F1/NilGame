@@ -670,14 +670,29 @@ export const BOOM_TURN = 3.4;
 // is what keeps the numbers honest.
 export const BOOM_LIFE = 9.0;
 
-let boomerang = null;
-export function activeBoomerang() { return boomerang; }
-export function clearBoomerang() { boomerang = null; }
+// One throw PER OWNER, keyed by character id, rather than one in the world.
+//
+// This was a single module-level slot, and that slot was the reason two
+// fighters could not each have a throw out at once: a bot that threw one
+// silently took the player's. Everything below still defaults to owner 0 - the
+// local player - so single-thrower calls read exactly as they did before.
+const booms = new Map();
 
-/** Where it is right now, or null. */
-export function boomerangPoint() {
-  if (!boomerang) return null;
-  return point(geodesic(boomerang.M, boomerang.dir, boomerang.s));
+/** The throw belonging to one owner, or null. */
+export function activeBoomerang(id = 0) { return booms.get(id) || null; }
+export function clearBoomerang(id = 0) { booms.delete(id); }
+
+/** Every throw in flight, whoever owns it. For drawing, and for the hit test. */
+export function allBoomerangs() { return [...booms.values()]; }
+export function clearAllBoomerangs() { booms.clear(); }
+
+/** Where one owner's throw is right now, or null. */
+export function boomerangPoint(id = 0) { return boomPoint(booms.get(id)); }
+
+/** Where a GIVEN throw is. The form every list-walking caller wants. */
+function boomPoint(b) {
+  if (!b) return null;
+  return point(geodesic(b.M, b.dir, b.s));
 }
 
 /**
@@ -703,17 +718,19 @@ export function boomerangPoint() {
  * BOOM_RANGE, then back along the same geodesic to your hand. It does not need
  * the manifold to bring it home, so it works at any aim.
  */
-export function launchAimed(M, aim) {
-  boomerang = {
+export function launchAimed(M, aim, id = 0) {
+  const b = {
+    owner: id,
     M: reorthonormalize(M), dir: [aim[0], aim[1], aim[2]],
     s: 0, out: true, closed: false,
     length: BOOM_RANGE, laps: 0,
     gone: 0, bounces: 0, age: 0,
   };
-  return boomerang;
+  booms.set(id, b);
+  return b;
 }
 
-export function launchBoomerang(M, aim) {
+export function launchBoomerang(M, aim, id = 0) {
   const p = point(M);
   const aimAmb = fromFrame(M, aim);
   const dirs = closedGeodesicDirs();
@@ -730,10 +747,11 @@ export function launchBoomerang(M, aim) {
       if (score > best) { best = score; pick = { at, dir: u }; }
     }
   }
-  boomerang = { M: pick.at, dir: pick.dir, s: 0, out: true, closed: true,
-                length: closedGeodesicLength(), laps: 0,
-                gone: 0, bounces: 0, age: 0 };
-  return boomerang;
+  const b = { owner: id, M: pick.at, dir: pick.dir, s: 0, out: true,
+              closed: true, length: closedGeodesicLength(), laps: 0,
+              gone: 0, bounces: 0, age: 0 };
+  booms.set(id, b);
+  return b;
 }
 
 function distToAxisPoint(p, at) { return dist(p, point(at)); }
@@ -751,15 +769,18 @@ function distToAxisPoint(p, at) { return dist(p, point(at)); }
  * Keeping the launch placement and holding s in [0, L) instead means the
  * numbers never grow at all: cosh(2R) is under four, whatever lap it is on.
  */
-export function boomerangStep(dt, sdf = null, home = null) {
-  if (!boomerang || dt <= 0) return boomerangPoint();
+export function boomerangStep(dt, sdf = null, home = null, id = 0) {
+  const b = booms.get(id);
+  if (!b || dt <= 0) return boomPoint(b);
   // Substep finely enough that it cannot pass through its own body's width in
   // one go. Bouncing is a test of "is the tip inside something", and a test
   // like that only works if nothing thinner than the step can be jumped over.
   const n = Math.max(1, Math.ceil((BOOM_SPEED * dt) / (BOOM_R * 0.5)));
   const h = dt / n;
-  for (let i = 0; i < n && boomerang; i++) boomSub(h, sdf, home);
-  return boomerangPoint();
+  // Re-check the map each substep: a catch or a timeout deletes the entry, and
+  // stepping a throw that is already back in a hand would fly it again.
+  for (let i = 0; i < n && booms.has(id); i++) boomSub(b, h, sdf, home);
+  return boomPoint(booms.get(id));
 }
 
 /**
@@ -771,8 +792,7 @@ export function boomerangStep(dt, sdf = null, home = null) {
  * homing simple, because "which way am I going" is readable at any moment
  * without a coordinate change.
  */
-function boomRebase() {
-  const b = boomerang;
+function boomRebase(b) {
   if (b.s === 0) return;
   b.M = reorthonormalize(geodesic(b.M, b.dir, b.s));
   b.s = 0;
@@ -782,10 +802,9 @@ function boomRebase() {
  * One substep. Three things can happen: it flies, it rebounds off a surface,
  * or it steers toward your hand.
  */
-function boomSub(h, sdf, home) {
-  const b = boomerang;
+function boomSub(b, h, sdf, home) {
   b.age += h;
-  if (b.age > BOOM_LIFE) { boomerang = null; return; }
+  if (b.age > BOOM_LIFE) { booms.delete(b.owner); return; }
   const adv = BOOM_SPEED * h;
 
   // --- rebound ----------------------------------------------------------
@@ -852,7 +871,7 @@ function boomSub(h, sdf, home) {
       // rotation with no preferred plane.
       // Re-base FIRST: boomRebase flies the placement forward along the
       // current dir, so reversing before it would fly it backwards instead.
-      boomRebase();
+      boomRebase(b);
       b.dir = [-b.dir[0], -b.dir[1], -b.dir[2]];
     }
     // NOT re-based here, and that is deliberate. Turning round costs nothing
@@ -880,12 +899,12 @@ function boomSub(h, sdf, home) {
     return;
   }
 
-  boomRebase();
+  boomRebase(b);
   const here = point(b.M);
   const target = nearestLift(here, home);
   const lv = logTo(b.M, target);
   const d = Math.hypot(lv[0], lv[1], lv[2]);
-  if (d < BOOM_CATCH) { boomerang = null; return; }   // back in your hand
+  if (d < BOOM_CATCH) { booms.delete(b.owner); return; }  // back in your hand
   const u = [lv[0] / d, lv[1] / d, lv[2] / d];
   b.dir = turnToward(b.dir, u, BOOM_TURN * h);
   b.s += adv;
@@ -929,7 +948,8 @@ function turnToward(d, u, maxAng) {
 }
 
 /** How far round its lap the boomerang is, 0..1. For the HUD. */
-export function boomerangProgress() {
+export function boomerangProgress(id = 0) {
+  const boomerang = booms.get(id);
   if (!boomerang) return 0;
   // The outward leg fills the first half of the meter; the return, which is a
   // chase of unknown length, drains the second half against the hard lifetime.
@@ -1122,12 +1142,17 @@ export function damage(c, amount) {
  * back to your hand rather than into your face.
  */
 export function boomerangHits(chars, skip = null) {
-  if (!boomerang) return null;
-  const bp = boomerangPoint();
-  for (const c of chars) {
-    if (c.id === skip || c.health <= 0) continue;
-    if (orbitDist(bp, point(c.M)) < BOOM_R + PLAYER_R) {
-      if (damage(c, BOOM_DAMAGE)) return c;
+  for (const b of booms.values()) {
+    const bp = boomPoint(b);
+    for (const c of chars) {
+      // Your own throw comes back to your hand, not into your face. With one
+      // slot that was a `skip` the caller had to remember to pass; now every
+      // throw carries its own thrower, so it is right by construction even
+      // with several in the air at once. `skip` is still honoured on top.
+      if (c.id === b.owner || c.id === skip || c.health <= 0) continue;
+      if (orbitDist(bp, point(c.M)) < BOOM_R + PLAYER_R) {
+        if (damage(c, BOOM_DAMAGE)) return c;
+      }
     }
   }
   return null;
@@ -1151,46 +1176,71 @@ export const BLOCK_DELAY = 0.75;   // seconds before it turns solid
 export const BLOCK_LIFE = 9.0;     // seconds it lasts once solid
 export const BLOCK_RANGE = 3.0;
 
-let block = null;
-export function activeBlock() { return block; }
-export function clearBlock() { block = null; }
+// One block per owner, same reason as the boomerang above.
+const blocks = new Map();
+
+export function activeBlock(id = 0) { return blocks.get(id) || null; }
+export function clearBlock(id = 0) { blocks.delete(id); }
+
+/** Every block that exists, forming or solid. */
+export function allBlocks() { return [...blocks.values()]; }
+export function clearAllBlocks() { blocks.clear(); }
 
 /** Place one where the aim hits, or at arm's length if it hits nothing. */
-export function placeBlock(M, dir, sdf) {
+export function placeBlock(M, dir, sdf, id = 0) {
   const c = cast(M, dir, sdf, BLOCK_RANGE);
   // Back off by its own radius so it sits ON the surface rather than in it,
   // and never closer than the player's own body or it would spawn inside you.
   const t = c.hit ? Math.max(PLAYER_R + BLOCK_R + 0.05, c.t - BLOCK_R)
                   : BLOCK_RANGE * 0.7;
-  block = { at: point(geodesic(M, dir, t)), age: 0 };
-  return block;
+  const b = { owner: id, at: point(geodesic(M, dir, t)), age: 0 };
+  blocks.set(id, b);
+  return b;
 }
 
 /** Age it. Returns the block, or null once it has expired. */
-export function blockStep(dt) {
-  if (!block) return null;
-  block.age += dt;
-  if (block.age > BLOCK_DELAY + BLOCK_LIFE) { block = null; return null; }
-  return block;
+export function blockStep(dt, id = 0) {
+  const b = blocks.get(id);
+  if (!b) return null;
+  b.age += dt;
+  if (b.age > BLOCK_DELAY + BLOCK_LIFE) { blocks.delete(id); return null; }
+  return b;
 }
 
-export function blockSolid() { return !!block && block.age >= BLOCK_DELAY; }
+/** Age every block at once, whoever owns it. */
+export function blockStepAll(dt) {
+  for (const id of [...blocks.keys()]) blockStep(dt, id);
+}
+
+export function blockSolid(id = 0) {
+  const b = blocks.get(id);
+  return !!b && b.age >= BLOCK_DELAY;
+}
 
 /** How far it has formed, 0..1. For drawing it as a ghost while it builds. */
-export function blockForming() {
-  if (!block) return 0;
-  return Math.min(1, block.age / BLOCK_DELAY);
+export function blockForming(id = 0) {
+  const b = blocks.get(id);
+  if (!b) return 0;
+  return Math.min(1, b.age / BLOCK_DELAY);
 }
 
 /** Distance to the block, or a large number when it is not solid yet. */
 export function blockSDF(p) {
-  if (!blockSolid()) return 1e9;
-  return dist(p, block.at) - BLOCK_R;
+  // The MINIMUM over every solid block. Anything less and a second player's
+  // wall would be scenery you walk through - a wall that is solid on one
+  // screen and not the other is not a wall, it is a disagreement.
+  let d = 1e9;
+  for (const b of blocks.values()) {
+    if (b.age < BLOCK_DELAY) continue;              // still forming, not solid
+    const c = dist(p, b.at) - BLOCK_R;
+    if (c < d) d = c;
+  }
+  return d;
 }
 
 /** Carry the block through a fold, like every other point of the cover. */
 export function carryBlock(g) {
-  if (block) block.at = apply(g, block.at);
+  for (const b of blocks.values()) b.at = apply(g, b.at);
 }
 
 // --- characters bumping into each other ---------------------------------
@@ -1261,7 +1311,7 @@ export function bump(Ma, va, Mb, vb, r = PLAYER_R) {
  * like cosh of that gap.
  */
 export function carryBoomerang(g) {
-  if (boomerang) boomerang.M = reorthonormalize(matMul(g, boomerang.M));
+  for (const b of booms.values()) b.M = reorthonormalize(matMul(g, b.M));
 }
 
 // ========================================================================
@@ -1288,37 +1338,49 @@ export function carryBoomerang(g) {
 export const DECOY_LIFE = 7.0;
 export const DECOY_COOLDOWN = 7.0;
 
-let decoy = null;
+const decoys = new Map();
 
-export function activeDecoy() { return decoy; }
-export function clearDecoy() { decoy = null; }
+export function activeDecoy(id = 0) { return decoys.get(id) || null; }
+export function clearDecoy(id = 0) { decoys.delete(id); }
+
+/** Every decoy walking its loop. */
+export function allDecoys() { return [...decoys.values()]; }
+export function clearAllDecoys() { decoys.clear(); }
 
 /**
  * Plant one. `pts` is a path, oldest first, `dtPer` seconds apart; they are
  * points of the UNIVERSAL COVER in the player's current chart, so a fold has
  * to carry them (carryDecoy) exactly like the anchor and the beacon.
  */
-export function plantDecoy(pts, dtPer) {
+export function plantDecoy(pts, dtPer, id = 0) {
   if (!pts || pts.length < 2) return null;
-  decoy = { pts: pts.map((p) => p.slice()), dtPer, t: 0, age: 0 };
-  return decoy;
+  const d = { owner: id, pts: pts.map((p) => p.slice()), dtPer, t: 0, age: 0 };
+  decoys.set(id, d);
+  return d;
 }
 
 /** Advance the playback. Returns where it is now, or null once it expires. */
-export function decoyStep(dt) {
+export function decoyStep(dt, id = 0) {
+  const decoy = decoys.get(id);
   if (!decoy) return null;
   decoy.age += dt;
-  if (decoy.age > DECOY_LIFE) { decoy = null; return null; }
+  if (decoy.age > DECOY_LIFE) { decoys.delete(id); return null; }
   const span = (decoy.pts.length - 1) * decoy.dtPer;
   decoy.t += dt;
   // It LOOPS. The recording is only a few seconds and the decoy has to outlast
   // that, and something walking the same short beat over and over reads as a
   // figure going about its business rather than as a corpse.
   while (decoy.t >= span) decoy.t -= span;
-  return decoyPoint();
+  return decoyPoint(id);
 }
 
-export function decoyPoint() {
+/** Advance every decoy at once, whoever planted it. */
+export function decoyStepAll(dt) {
+  for (const id of [...decoys.keys()]) decoyStep(dt, id);
+}
+
+export function decoyPoint(id = 0) {
+  const decoy = decoys.get(id);
   if (!decoy) return null;
   const u = decoy.t / decoy.dtPer;
   const i = Math.min(decoy.pts.length - 2, Math.max(0, Math.floor(u)));
@@ -1332,7 +1394,7 @@ export function decoyPoint() {
 }
 
 export function carryDecoy(g) {
-  if (decoy) decoy.pts = decoy.pts.map((p) => apply(g, p));
+  for (const d of decoys.values()) d.pts = d.pts.map((p) => apply(g, p));
 }
 
 // --- 2. Recall: go back to where you were --------------------------------
@@ -1406,12 +1468,16 @@ export const CUT_LIFE = 5.0;
 export const CUT_RANGE = 3.2;
 export const CUT_COOLDOWN = 6.0;
 
-let cut = null;
+const cuts = new Map();
 
-export function activeCut() { return cut; }
-export function clearCut() { cut = null; }
+export function activeCut(id = 0) { return cuts.get(id) || null; }
+export function clearCut(id = 0) { cuts.delete(id); }
 
-export function placeCut(M, dir, sdf) {
+/** Every pane standing. */
+export function allCuts() { return [...cuts.values()]; }
+export function clearAllCuts() { cuts.clear(); }
+
+export function placeCut(M, dir, sdf, id = 0) {
   const c = cast(M, dir, sdf, CUT_RANGE);
   // Stand it just short of whatever it hit, so it is a pane across the lane
   // rather than a decal buried in the far wall. Never inside the player.
@@ -1424,15 +1490,22 @@ export function placeCut(M, dir, sdf) {
   const N = apply(M, [Math.cosh(t) * dir[0], Math.cosh(t) * dir[1],
                       Math.cosh(t) * dir[2], Math.sinh(t)]);
   const nl = Math.sqrt(Math.max(dot(N, N), 1e-12));
-  cut = { N: N.map((x) => x / nl), at, age: 0 };
-  return cut;
+  const c2 = { owner: id, N: N.map((x) => x / nl), at, age: 0 };
+  cuts.set(id, c2);
+  return c2;
 }
 
-export function cutStep(dt) {
-  if (!cut) return null;
-  cut.age += dt;
-  if (cut.age > CUT_LIFE) { cut = null; return null; }
-  return cut;
+export function cutStep(dt, id = 0) {
+  const c = cuts.get(id);
+  if (!c) return null;
+  c.age += dt;
+  if (c.age > CUT_LIFE) { cuts.delete(id); return null; }
+  return c;
+}
+
+/** Age every pane at once, whoever placed it. */
+export function cutStepAll(dt) {
+  for (const id of [...cuts.keys()]) cutStep(dt, id);
 }
 
 /**
@@ -1442,18 +1515,26 @@ export function cutStep(dt) {
  * same convention every primitive in level.js uses.
  */
 export function cutSDF(p) {
-  if (!cut) return 1e9;
-  const slab = Math.abs(Math.asinh(dot(p, cut.N))) - CUT_THICK;
-  const disc = dist(p, cut.at) - CUT_R;
-  return Math.max(slab, disc);
+  // The minimum over every pane, for the same reason blockSDF takes a minimum.
+  let d = 1e9;
+  for (const c of cuts.values()) {
+    const slab = Math.abs(Math.asinh(dot(p, c.N))) - CUT_THICK;
+    const disc = dist(p, c.at) - CUT_R;
+    const v = Math.max(slab, disc);
+    if (v < d) d = v;
+  }
+  return d;
 }
 
 export function carryCut(g) {
-  if (!cut) return;
-  cut.at = apply(g, cut.at);
-  // The normal is a 4-vector at a point, so it is carried by the same matrix.
-  // It stays spacelike and unit because g is a Lorentz transformation.
-  cut.N = apply(g, cut.N);
+  for (const c of cuts.values()) {
+    c.at = apply(g, c.at);
+    // The normal is a 4-vector at a point, so it is carried by the SAME matrix
+    // as the centre. Fold them apart and the plane no longer passes through
+    // its own centre. It stays spacelike and unit because g is a Lorentz
+    // transformation.
+    c.N = apply(g, c.N);
+  }
 }
 
 // --- 4. Holonomy, spent as a dash OR as a blast --------------------------

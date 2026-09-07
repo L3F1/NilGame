@@ -21,13 +21,13 @@ import {
   rollControl, rollSpeed, carryFrameVec, ROLL_TOP,
   makeCharacter, stepCharacter, boomerangHits, orbitDist,
   MAX_HEALTH, BOOM_DAMAGE, boomerangProgress, launchAimed,
-  placeBlock, blockStep, blockSDF, blockSolid, blockForming, activeBlock,
+  placeBlock, blockStepAll, blockSDF, blockSolid, blockForming, activeBlock,
   clearBlock, carryBlock, bump, BLOCK_R, BLOCK_DELAY, BLOCK_LIFE,
   boomerangPoint, carryBoomerang, BOOM_R,
-  plantDecoy, decoyStep, decoyPoint, carryDecoy, clearDecoy,
+  plantDecoy, decoyStepAll, decoyPoint, carryDecoy, clearDecoy,
   DECOY_COOLDOWN,
   recallTarget, warpTo, RECALL_COOLDOWN,
-  placeCut, cutStep, cutSDF, carryCut, clearCut, activeCut,
+  placeCut, cutStepAll, cutSDF, carryCut, clearCut, activeCut,
   CUT_R, CUT_THICK, CUT_LIFE, CUT_COOLDOWN,
   holoBlast, blastRadius, BLAST_COOLDOWN, BLAST_MIN_CHARGE,
   anchorSwap, SWAP_COOLDOWN,
@@ -1834,10 +1834,24 @@ function frame(now) {
   // rebounds off whatever the sdf says it hit, and on the return leg it steers
   // at the nearest lift of the point handed in here. Neither needs gravity and
   // neither has ever had any.
-  const boomAt = boomerangStep(dt, worldSDF, p0);
-  const blk = blockStep(dt);
-  const decoyAt = decoyStep(dt);
-  const cut = cutStep(dt);
+  // These are keyed by OWNER now, and the two halves are different jobs.
+  //
+  // AGE everyone's: a block a second character placed has to form and expire
+  // on its own clock, and nothing else advances it. Then READ owner 0's - the
+  // local player's - because that is the one this HUD and these markers are
+  // about. Ageing owner 0 twice is the bug to avoid here, so the singular
+  // step calls are gone entirely.
+  //
+  // The throw is the exception and stays singular: its return leg steers at a
+  // home position, and each owner would need their own. Only the local player
+  // throws so far.
+  const boomAt = boomerangStep(dt, worldSDF, p0, 0);
+  blockStepAll(dt);
+  decoyStepAll(dt);
+  cutStepAll(dt);
+  const blk = activeBlock(0);
+  const decoyAt = decoyPoint(0);
+  const cut = activeCut(0);
   if (blastFx) {
     blastFx.age += dt;
     if (blastFx.age > BLAST_FX) blastFx = null;

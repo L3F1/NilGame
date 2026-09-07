@@ -41,7 +41,7 @@ shader; a scene-graph library would hide the parts that matter.
   packing. **No DOM**; the panel that drives it lives in main.js.
 - `main.js` — WebGL2 setup, input, frame loop, rope drawing, the options menu.
 - `index.html` — canvas, HUD, and a boot-error panel (see below).
-- `hyp.test.js` (36) and `physics.test.js` (140) — `node hyp.test.js`, etc.
+- `hyp.test.js` (36) and `physics.test.js` (160) — `node hyp.test.js`, etc.
   **Keep the summary line LAST, and `process.exit` after IT.** Tests appended
   after the summary still run and still print, but are not counted, so the
   total silently understates. Worse, an `if (failed) process.exit(1)` left in
@@ -987,18 +987,46 @@ round. That corridor is the same corridor in every copy.
    chasing opponent and both healths.
 8. ~~A kit worth fighting with~~ — boomerang (bouncing, homing), build,
    decoy, recall, sightline cutter, holonomy dash/blast, anchor swap, portals,
-   beacon, grapple. 140 tests.
+   beacon, grapple. 160 tests.
 9. ~~Multiplayer~~ — two players over WebRTC, `net.js`. See below: the netcode
    is ordinary, the STATE is not.
 10. **Actual game modes.** The next task. There is now a kit; what is missing
     is a reason to use it — win conditions, rounds, a map built for a fight
     rather than for looking at.
 
-**The known limit before more weapons go in:** `physics.js` holds ONE boomerang
-slot, ONE block and ONE pane, so two fighters cannot each have one out locally.
-Multiplayer dodges this — the remote peer simulates its own and sends the
-result as a point — but a bot with a boomerang, or three players, needs these
-to become lists. Do that before adding a fourth projectile, not after.
+**~~The known limit before more weapons go in~~ — FIXED.** `physics.js` used to
+hold ONE boomerang slot, ONE block, ONE decoy and ONE pane as module-level
+singletons, so two fighters could not each have one out locally and a bot that
+threw a boomerang silently took the player's. All four are now `Map`s keyed by
+OWNER id.
+
+Every function takes a trailing `id = 0`, so the local player is owner 0 and
+every existing call reads as it did. What actually needed care was the handful
+of functions that act on ALL of them at once, and they are the ones to check
+when adding a fifth:
+
+- `blockSDF` and `cutSDF` take the **minimum over every** solid block or pane.
+  Anything less and one player's wall is scenery the other walks through.
+- `carryBoomerang`, `carryBlock`, `carryDecoy`, `carryCut` carry **every**
+  owner's through a fold, by the same group element. Missing one leaves it a
+  cell behind, where coordinates grow like `cosh` of the gap.
+- `boomerangHits` skips each throw's **own** `b.owner` rather than a single
+  `skip` the caller had to remember to pass.
+- `blockStepAll` / `decoyStepAll` / `cutStepAll` age everyone; main.js calls
+  those and then reads owner 0 for the HUD. **Do not also call the singular
+  step** — that ages owner 0 twice.
+
+`physics.test.js` pins all of it; the fold-carries-every-owner test and the
+SDF-minimum test were both confirmed to fail against a deliberately
+single-owner mutation.
+
+**The remaining bound is the MARKER ARRAY, not physics.** `MARKS = 10` in
+main.js and shader.js, and `marker()` silently `return`s once `markN >= MARKS`.
+The anchor, beacon, opponent and a blast already claim slots, so three owners
+with a throw, a block, a decoy and a pane each will quietly stop drawing. It
+fails invisibly — nothing errors, the object is simply not there. Raise MARKS
+in BOTH files together, and re-run `tools/link-time.js`, because the marker
+loop is inside `sceneMap`.
 
 ## Characters, health and hits
 
