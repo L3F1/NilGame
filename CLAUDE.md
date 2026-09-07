@@ -58,6 +58,10 @@ shader; a scene-graph library would hide the parts that matter.
   kit; unlike `s3.js` it does not go through `geom.js`, because H^2 x R is not
   a space of constant curvature and its isometry group does not embed in
   GL(4). See "H^2 x R" below.
+- `port.js` — reading a FLAT map as a map of a curved space. Three classical
+  embeddings, each exact in one property and wrong in the others, plus the
+  measurements that say which. No graphics, no DOM. See "Porting a flat map"
+  under Level authoring.
 - `legacy-hyp.js` — the pre-delegation implementations, frozen, **for tests
   only, never imported by the game**. The moment `hyp.js` started delegating,
   the test "geom.js agrees with hyp.js" became a tautology that would pass
@@ -70,8 +74,8 @@ shader; a scene-graph library would hide the parts that matter.
 - `main.js` — WebGL2 setup, input, frame loop, rope drawing, the options menu.
 - `index.html` — canvas, HUD, and a boot-error panel (see below).
 - `hyp.test.js` (36), `physics.test.js` (160), `modes.test.js` (78),
-  `geom.test.js` (69), `s3.test.js` (28) and `h2r.test.js` (51) —
-  `node hyp.test.js`, etc. 422 in all.
+  `geom.test.js` (69), `s3.test.js` (28), `h2r.test.js` (51) and
+  `port.test.js` (34) — `node hyp.test.js`, etc. 456 in all.
   **Keep the summary line LAST, and `process.exit` after IT.** Tests appended
   after the summary still run and still print, but are not counted, so the
   total silently understates. Worse, an `if (failed) process.exit(1)` left in
@@ -140,6 +144,11 @@ is black" with no other information costs an hour every time.
   `DataChannel`. **Run after touching net.js or relay.js.** It caught a stale
   internal call left by a rename that nothing else would have seen until two
   people tried to play.
+- `node tools/port-map.js [plan.json] [--embed=] [--world=] [--fill=]` — takes
+  a FLAT floor plan of line segments and prints the comparison table, the
+  clearance check and a `WALLS` array ready to paste. With no arguments it runs
+  a built-in demo plan, which is the fastest way to see what each embedding
+  costs. Exits non-zero if the ported plan straddles a face.
 - `node tools/relay.js [port]` — serves the project AND relays the two
   handshake blobs. Not a test; it is how a LAN game is hosted. No dependencies:
   the RFC 6455 handshake and frame codec are written out, because Node has an
@@ -1280,17 +1289,101 @@ distance plus thickness must stay under the inradius — 1.5286 for the octagon,
 **0.996 for the dodecahedron**. Toward a corner there is far more room: the
 dodecahedron reaches 1.854 that way.
 
-**Four worlds now hold their scene as data and emit it twice, and three of
-them do it BY HAND** — `level.js`, `s3.js` and `h2r.js` each carry their own
-number formatter and their own emit loop, which is exactly the duplication
-`tools/sdf-check.js` exists to catch drifting. TODO.md Part 2b has the plan for
-one shared emitter, and the thing worth knowing before starting it: **a map
-cannot be translated between geometries coordinate for coordinate.** The
-octagon's 45 degree angles hold at one size only, neither solid exists in E^3
-or S^3, and a ring of radius 1.5 holds 13.4 of arc in H^2, 9.4 in E^2 and 6.3
-in S^2. What ports is the LAYOUT -- "a ring of n", "a pinwheel of four chords",
-"a spiral turning 150 degrees and dropping 8" -- stated in geodesic polar, with
-each geometry answering in its own metric.
+### Porting a flat map into a curved one — `port.js`
+
+**There is no isometric embedding, and Gauss says so in one line.** Curvature is
+intrinsic (*Theorema Egregium*), so a distance-preserving map between surfaces
+of different curvature does not exist. Same fact as an orange peel not lying
+flat. The question is therefore never "which projection is right" but **WHICH
+PROPERTY DO YOU WANT KEPT**, and there are exactly three classical answers,
+each exact in one thing and wrong in the others:
+
+    embedding     exact                             cost
+    ---------------------------------------------------------------------
+    polar         distance and bearing FROM THE      everything transverse,
+                  CENTRE. It is the exponential      stretched by sinh(u)/u
+                  map, so `translation([a,b,0])`
+                  already IS this one
+    conformal     ANGLES, everywhere. A small        scale, by 2/(1-u^2):
+    (Poincare)    circle stays a circle at every     rooms shrink toward
+                  radius                             the rim
+    projective    STRAIGHTNESS. A Euclidean chord    angles and distances
+    (Klein)       of the disc IS a geodesic, so
+                  every wall stays a wall
+
+**Usually you want the projective one, and that is not taste.** A map made of
+straight walls is a map whose entire meaning is which straight lines exist: the
+rooms, the corners, the sightlines. Klein keeps all of that exactly — measured
+at **1e-16** over every interior point of every segment, at every scale — and
+changes only the metric, which is what you asked for by porting into a curved
+space at all. Take the conformal one when the map is about SHAPES (a curve, a
+spiral, a logo) and the polar one when it is about RANGES from one place.
+
+**In E^2 all three are the same map**, and that is the control rather than a
+footnote: the difference between them IS the curvature. `port.test.js` asserts
+it, along with the three defining properties and the two that fail.
+
+The radial profiles are the whole file, and they are the usual sinh/sin swap:
+
+                    hyperbolic      flat     spherical
+      polar         u               u        u
+      conformal     2 atanh(u)      u        2 atan(u)
+      projective    atanh(u)        u        atan(u)
+
+**The hyperbolic disc models end at u = 1, and that edge is infinitely far away
+in the metric.** A point outside it THROWS rather than clamping — a clamp would
+hand back a finite answer for a point that is not in the model, and the level
+would build and be silently wrong, which is the worst failure available here.
+
+**And what NO embedding can do, which is the useful half.** A hyperbolic
+quadrilateral has angle sum strictly less than 2*pi, so **a square room with
+four right angles does not exist in H^2 at all**. Any map that keeps the walls
+straight must lose the right angles; any map that keeps the right angles must
+bend the walls. Measured: a right-angled corner comes out at 55 degrees under
+all three, and WIDE in S^2 for the mirror reason. A ported level that needs
+both needs re-authoring, not re-projecting.
+
+**`fitScale`'s `fill` is the real design lever**, and a large one. It says how
+much of the model disc the map may use, which in the curved cases is the same
+thing as how hyperbolic it feels: the same plan at fill 0.30 has a distance
+spread of 1.15x and at fill 0.95 has 3.4x. The default is 0.9 rather than 1
+because in a disc model the last tenth of the radius is most of the space.
+
+**`node tools/port-map.js`** closes the loop: a flat floor plan of line
+segments in, the comparison table and clearance check, and a `WALLS` array
+ready to paste. `--embed=`, `--world=`, `--fill=`; with no arguments it runs a
+built-in demo plan. It fits to `inradius - thickness` rather than to the
+inradius, because a wall has to fit inside the domain WITH its thickness, and
+getting that the wrong way round is how a wall ends up cut off at a face —
+which nothing else notices, since both SDFs still agree and the physics still
+collides correctly.
+
+**A triangle mesh is the wrong input and a floor plan is the right one.** The
+marcher steps by exact distance and a mesh has none; every primitive here is an
+intersection of slabs whose distance is one `asinh` of one inner product. A
+`WALL` is already three of those built from two floor points, so segments in
+and walls out is the natural pipeline, and it works in both worlds that have a
+floor. Read the input coordinates as geodesic polar, never as a Euclidean grid.
+
+**`distToGeodesic`: the perpendicular part of the log is NOT the distance**, and
+it looks exactly like it should be. Splitting `log_a(p)` into components along
+and across the axis and taking the norm of the second is the FLAT answer done
+in the tangent space; it underestimates, by 0.299 against a true 0.35 in the
+test that caught it. The right relation is the right-triangle one, a single
+line in all three curvatures:
+
+    sinK(d) = sinK(rho) * sin(theta)
+
+and it degenerates to `d = rho sin(theta)` at k = 0, which is why the flat
+answer looks correct until it is measured. **Take `sin(theta)` from the CROSS
+PRODUCT, never from `sqrt(1 - cos^2)`** — the angle asked about is usually near
+zero, since "the point is on the line" is exactly theta = 0, and there the
+square root reads 3.55e-8 for an exact zero.
+
+**Three worlds hold their scene as data and emit it twice BY HAND** —
+`level.js`, `s3.js` and `h2r.js` each carry their own number formatter and
+their own emit loop, which is exactly the duplication `tools/sdf-check.js`
+exists to catch drifting. TODO.md Part 2b has the plan for one shared emitter.
 
 **Three content sets.** `PILLARS`, `BARS`, `PLATFORMS`, `ORBS` fit both domains.
 `WALLS` and `TOWERS` are OCTAGON-only — a wall long enough to take cover behind
