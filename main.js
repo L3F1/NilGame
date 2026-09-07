@@ -8,7 +8,7 @@ import {
   reduceToDomain, setSolid, SOLID, foldPoint, foldElement,
   matMul, reorthonormalize, dist, pairings, sides, dot,
 } from './hyp.js';
-import { levelSDF, setMode, MODE } from './level.js';
+import { levelSDF, setMode, getMode, MODE } from './level.js';
 import { VERT, FRAG, LINE_VERT, LINE_FRAG } from './shader.js';
 import {
   PLAYER_R, WALK_SPEED, JUMP, ROPE_RANGE, FLY_SPEED,
@@ -34,6 +34,10 @@ import {
 } from './physics.js';
 // Plain named imports, no namespace and no renaming: tools/preview.js
 // bundles the module graph by hand and understands only this one form.
+import {
+  geodesicCourse, carryCourse, hoopNear, hoopRing, runStep, runProgress,
+  makeRun, startRun, formatTime, PHASE,
+} from './modes.js';
 import {
   packState, netLive, netState, netNote, netOnPacket, netSendPacket,
   netHost, netJoin, netFinish, netConnectVia,
@@ -488,6 +492,11 @@ const opts = {
   portals:    { label: 'Portals',      values: ['off', 'on'],                  i: 0 },
   boomerang:  { label: 'Boomerang',    values: ['aimed', 'closed geodesic', 'off'], i: 0 },
   build:      { label: 'Build (G)',    values: ['on', 'off'],                  i: 0 },
+  // The hoop course. Its shape is a fact about the manifold rather than a
+  // level someone authored: the hoops sit on a CLOSED GEODESIC, so flying the
+  // course dead straight returns you to its own start. In the open world those
+  // axes are the spokes the level already draws.
+  course:     { label: 'Hoop course (K)', values: ['off', 'on'],               i: 0 },
   // What Q spends the banked holonomy on. 'sign decides' is the interesting
   // one: sweptArea is SIGNED, so going round something one way charges a dash
   // and the other way charges a blast, and there is no third option where you
@@ -968,6 +977,8 @@ addEventListener('keydown', (e) => {
     placePortal(1, player, cameraBasis().fwd, worldSDF);
   }
   if (e.code === 'Digit3') clearPortals();
+  // Start or restart the hoop course.
+  if (e.code === 'KeyK' && courseOn()) beginRun();
   // The boomerang. It flies dead straight and comes back anyway, because some
   // of this manifold's geodesics close up. In the open world the spokes are
   // drawn along exactly those geodesics, so they show you where to aim.
@@ -1327,6 +1338,37 @@ nEl('nrj').onclick = () => netConnectVia(nEl('nurl').value, nEl('nroom').value, 
   .then(() => { nEl('nstat').textContent = 'connecting...'; }).catch(netFail);
 
 /** Push the current option values into the world. */
+// --- the hoop course -----------------------------------------------------
+//
+// Rebuilt whenever the world changes, because the two worlds have different
+// groups and therefore different closed geodesics: the octagon's are 3.057
+// long and lie IN the floor plane, the dodecahedron's are 1.993 and range over
+// altitude. Same code, different course.
+let course = null, run = null, courseWorld = -1, hoopFlash = 0;
+
+function courseOn() { return optVal('course') === 'on'; }
+
+function ensureCourse() {
+  const w = getMode();
+  if (course && courseWorld === w) return;
+  courseWorld = w;
+  course = geodesicCourse(0, 6);
+  run = makeRun(course);
+}
+
+/** Start, or start again. One key does both, which is what a time trial wants. */
+function beginRun() {
+  ensureCourse();
+  // Rebuild rather than reuse: the hoops have been carried through every fold
+  // the player made, so by now they are in whatever chart the player ended up
+  // in. A fresh course puts them back on the axis through where the player is.
+  const best = run ? run.best : null;
+  course = geodesicCourse(0, 6);
+  run = makeRun(course);
+  run.best = best;
+  startRun(run);
+}
+
 function applyOptions() {
   // The two worlds use DIFFERENT groups, and that is the whole point.
   //
@@ -1633,6 +1675,44 @@ function drawRope(basis) {
   }
 }
 
+/**
+ * The hoops, as line loops.
+ *
+ * NOT a shader primitive, on purpose. Anything in sceneMap is inlined into the
+ * marcher three times and paid for at LINK time, which is the budget that
+ * binds here - the one that once took the scene program to 212 seconds. A hoop
+ * is a curve, this file already draws curves for the rope, and a line loop
+ * costs the compiler nothing at all.
+ *
+ * Each hoop is drawn at the copy NEAREST the player. A course laid along a
+ * closed geodesic wraps the manifold, so most of its hoops are several cells
+ * away in coordinates; drawn there they would project to the wrong part of the
+ * screen, because the marcher's view teleports at every face and this overlay
+ * does not.
+ */
+function drawCourse(basis) {
+  if (!course || !courseOn()) return;
+  const me = point(player);
+  for (let i = 0; i < course.hoops.length; i++) {
+    const taken = run && i < run.next;
+    // The one you are flying at is bright; the ones behind you fade out.
+    const col = taken ? [0.22, 0.30, 0.26]
+      : (run && i === run.next)
+        ? (hoopFlash > 0 ? [0.95, 1.0, 0.75] : [0.35, 0.95, 0.65])
+        : [0.30, 0.55, 0.48];
+    const strip = [];
+    for (const q of hoopRing(hoopNear(course.hoops[i], me), 40)) {
+      const ndc = project(q, basis);
+      if (ndc) strip.push(ndc);
+    }
+    if (strip.length < 2) continue;
+    const dx = 1.6 / canvas.width, dy = 1.6 / canvas.height;
+    for (const [ox, oy] of [[0, 0], [dx, 0], [0, dy]]) {
+      drawLineStrip(strip.map(([x, y]) => [x + ox, y + oy]), col, gl.LINE_STRIP);
+    }
+  }
+}
+
 function drawCrosshair() {
   const ax = 0.016 * (canvas.height / canvas.width), ay = 0.016;
   const g = [0.7, 0.85, 0.9];
@@ -1787,6 +1867,11 @@ function frame(now) {
       carryDecoy(g);
       carryBoomerang(g);
       carryTrail(g);
+      // The course is a carried object like all of those: its hoops are points
+      // of the universal cover and its normals are 4-vectors at them, so both
+      // move by the SAME g. Snapping to the nearest copy would slide a gate
+      // out from under a player mid-flight.
+      if (course) carryCourse(course, g);
       // And the trail of past positions - not by moving it, but by recording
       // WHICH fold this was, so the shader can interpolate along the real path
       // instead of across the jump. See linkHistory.
@@ -1811,6 +1896,15 @@ function frame(now) {
       }
     }
     banked += sweptArea(bankFrom, point(player));
+    // The hoop test rides on exactly the segment the holonomy meter uses, and
+    // that is not a convenience: bankFrom is the substep's start point CARRIED
+    // THROUGH ANY FOLD that happened during it, so the two ends are in the
+    // same chart. Testing raw start against folded end would report a flight
+    // right across the room every time the player crossed a face, and every
+    // hoop in between would count at once.
+    if (run && run.phase === PHASE.RUNNING) {
+      if (runStep(run, h, bankFrom, point(player)) >= 0) hoopFlash = 0.35;
+    }
     // Keep the carried objects in range. Without this they drift with the
     // player and their coordinates run away; see settleCarried.
     settleCarried(point(player));
@@ -1852,6 +1946,8 @@ function frame(now) {
   const blk = activeBlock(0);
   const decoyAt = decoyPoint(0);
   const cut = activeCut(0);
+  // The gate you just took lights up for a third of a second.
+  if (hoopFlash > 0) hoopFlash = Math.max(0, hoopFlash - dt);
   if (blastFx) {
     blastFx.age += dt;
     if (blastFx.age > BLAST_FX) blastFx = null;
@@ -1974,6 +2070,7 @@ function frame(now) {
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
   drawRope(basis);
+  drawCourse(basis);
   drawCrosshair();
 
   const f = (n) => n.toFixed(2).padStart(6);
@@ -2007,6 +2104,15 @@ function frame(now) {
           ? `OUT ${bar(boomerangProgress(), 10)}`
           : `ready \u00b7 B  (${optVal('boomerang')})`}\n`
       : 'boomerang off \u00b7 O to switch it on\n') +
+    (courseOn() && run
+      ? `course    ${run.phase === PHASE.RUNNING
+            ? `${formatTime(run.t)}  ${bar(runProgress(run), 10)}  `
+              + `hoop ${run.next + 1}/${course.hoops.length}`
+            : run.phase === PHASE.DONE
+              ? `FINISHED ${formatTime(run.t)}`
+              : 'ready \u00b7 press K'}`
+          + `${run.best !== null ? `   best ${formatTime(run.best)}` : ''}\n`
+      : '') +
     (optVal('build') === 'on'
       ? `build     ${activeBlock()
           ? (blockSolid()

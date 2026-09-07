@@ -18,13 +18,13 @@ project, **XL** is a rewrite of something load-bearing.
 
 Nothing here is interesting on its own. All of it blocks everything else.
 
-### M1. A round system  **S**
+### ~~M1. A round system~~ **DONE** — `modes.js`
 
 There is no score, no timer, no phase, no win condition anywhere in the
 codebase. `grep -i "score|round|timer|win"` finds a spawn-clearance heuristic
 and nothing else.
 
-Shape: a `modes.js` exporting `{ name, onStart, onTick(dt), onEvent, hud() }`,
+Built as: `modes.js` exporting `{ name, onStart, onTick(dt), onEvent, hud() }`,
 with main.js delegating to whichever is selected. **No DOM**, like physics.js,
 so it is testable — that rule is what makes physics.js testable and it should
 not be broken for game logic.
@@ -53,7 +53,7 @@ drawn and nothing errors. The anchor, beacon, opponent and blast already take
 slots. Raise it in main.js *and* shader.js together and re-run
 `tools/link-time.js` before any mode puts many objects in the world at once.
 
-### M3. Trigger volumes  **S**
+### ~~M3. Trigger volumes~~ **DONE** — hoops, ordered
 
 "Is this character inside region k, and did they enter regions in order?"
 
@@ -65,7 +65,7 @@ Needs per-player state and ordered activation (checkpoint 3 only counts after
 2), or players will cut the course by wrapping — which in a compact manifold
 they absolutely will, and that is a feature to design around rather than a bug.
 
-### M4. Timer and scoreboard on the HUD  **S**
+### ~~M4. Timer and scoreboard on the HUD~~ **DONE**
 
 Trivial, and nothing exists. Needed by every timed mode.
 
@@ -128,7 +128,24 @@ trial want one.
 
 ## Part 1 — the modes, easiest first
 
-### 1. Drone hoops, timed  **S** — build this first
+### ~~1. Drone hoops, timed~~ **DONE** — and it built M1, M3 and M4 with it
+
+`modes.js` + `modes.test.js` (56 tests), option `Hoop course`, key K. The round
+system, ordered trigger volumes and the HUD clock all exist now, which is what
+this mode was chosen to pay for.
+
+Two things worth knowing before the next mode uses them:
+
+- **The bounded world's course is FLAT**, measured at altitude 0.0000 for every
+  hoop, and it is forced: every closed geodesic of the octagon group lies in
+  the floor plane. The open world gives an altitude range of 1.315 and is a
+  real 3D course. Any mode built on closed geodesics inherits this.
+- **The crossing test rides on `bankFrom`**, the substep start point already
+  carried through any fold. Racing and the grapple course need the same
+  segment, so reuse it rather than re-deriving one.
+
+The original plan for it, kept because the reasoning is still the argument for
+the next few modes:
 
 **Why first:** almost all of it already exists. `Gravity: none` and
 `Camera up: free` are shipped options; flight works; zoom works. What is missing
@@ -314,10 +331,12 @@ because the manifold is compact.
 ## Suggested order
 
 1. ~~**M2** (lists)~~ — **done**, 160 tests.
-2. **M1 + M3 + M4** (round system, triggers, HUD) — built against mode 1.
-   **This is the next step.**
-3. **Mode 1, drone hoops.** Proves the machinery. Nearly free otherwise.
+2. ~~**M1 + M3 + M4**~~ (round system, triggers, HUD) — **done**, built
+   against mode 1 exactly as planned.
+3. ~~**Mode 1, drone hoops.**~~ **done** — 56 tests.
 4. **Mode 2, grapple course.** Gives the holonomy meter a non-combat use.
+   **This is the next step**, and it is mostly level authoring now that the
+   round system, the ordered triggers and the clock all exist.
 5. **M9 + Mode 3, racing.** The hyperbolic racing line is worth the weekend.
 6. **M5 + Mode 4, hide and seek.** The kit is already 80% there.
 7. **M7 + Mode 5, Rocket League 1v1.**

@@ -362,6 +362,7 @@ overlay is generated from it, so adding a setting is one entry.
     Portals       off / on            keys 1 and 2 place a pair, 3 clears
     Boomerang     aimed / closed geodesic / off   key B
     Build (G)     on / off            a delayed block; see Abilities
+    Hoop course   off / on            a timed course; K starts it. See Modes
     Holonomy (Q)  sign decides / dash only / blast only
     Opponent      bot / network / off a bot that chases, or a real player (N)
     Fog           normal / thin / thick
@@ -720,6 +721,51 @@ short of the anchor, because the anchor is ON a surface.
 
 **Swing-to-fly.** Above `sqrt(G)` the geometry lifts you faster than gravity
 pulls. The HUD says so.
+
+## Game modes
+
+`modes.js` holds the round system — phase, clock, ordered checkpoints, best
+time — and it is DOM-free like physics.js so the rules are testable.
+`modes.test.js` has 56.
+
+**The hoop course (option `Hoop course`, key K).** Hoops laid along a CLOSED
+GEODESIC, so the course returns to its own start with no turning: fly dead
+straight and you arrive where you began. `modes.test.js` flies it and takes all
+six without steering once.
+
+**The ordering is not bureaucracy — without it the WRAP is the cheat.** In a
+compact manifold a straight line eventually reaches everything, so an unordered
+course would credit hoop five on the way to hoop two. Only `run.next` counts.
+
+**The crossing test must ride on a segment whose ends are in the SAME chart.**
+It uses `bankFrom` — the substep's start point already carried through any fold
+that happened during it, which the holonomy meter needed first. Testing a raw
+start against a folded end reports a flight right across the room at every face
+crossing, and every hoop between would count at once.
+
+**A course is a CARRIED object**, like the anchor and the beacon: `carryCourse`
+moves every hoop by the same `g`, and each hoop's NORMAL by the same element as
+its centre. Fold those apart and the plane stops passing through its own
+centre, so the gate draws in one place and is crossed in another — the bug
+`foldElement` exists to prevent, in its other form.
+
+**Hoops are drawn as LINE LOOPS, never as shader primitives.** Anything in
+`sceneMap` is inlined three times and paid for at link time, the budget that
+once took the scene program to 212 seconds. A hoop is a curve, main.js already
+draws curves for the rope, and a line loop costs the compiler nothing.
+`hoopNear` picks the copy nearest the player, because a course spanning the
+manifold has most of its hoops cells away in coordinates — drawn there they
+project to the wrong part of the screen, since the marcher's view teleports at
+every face and a line overlay does not.
+
+**The bounded world's course is FLAT, and that is forced — the same fact as the
+boomerang's.** Every generator of the octagon group is a translation along an
+axis lying IN the floor plane, so every closed geodesic there lies in it too:
+measured, all six hoops at altitude **0.0000**. It reads as a floor-level
+slalom. In the OPEN world the same code gives altitudes 0.243 to 1.558, a range
+of **1.315** — a genuine 3D flight course. **This mode is at its best in the
+open world**, where the SPOKES are drawn along exactly those axes and the
+scenery shows you the line before you know there is a race.
 
 ### Two that were considered and do not work here
 
