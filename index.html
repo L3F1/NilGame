@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hyperbolic grapple</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+  #hud {
+    position: fixed; left: 12px; top: 12px;
+    font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
+    color: #9fe; text-shadow: 0 1px 2px #000; pointer-events: none;
+    white-space: pre;
+  }
+  /* Anything that stops the module dead lands here instead of in the console,
+     where nobody looks. A GLSL compile failure and a JavaScript syntax error
+     draw exactly the same black canvas, and the difference between a five
+     second fix and an hour of guessing is being told which one it was. */
+  #boot {
+    position: fixed; left: 0; right: 0; top: 0; padding: 14px 18px;
+    font: 13px/1.6 ui-monospace, Menlo, Consolas, monospace;
+    color: #fdd; background: #601018; white-space: pre-wrap;
+    display: none; max-height: 60%; overflow: auto; z-index: 10;
+  }
+</style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="hud"></div>
+  <div id="boot"></div>
+  <script>
+    // Plain script, and before the module, so it is already listening when the
+    // module fails to parse, fails to link, or throws on its first line.
+    window.addEventListener('error', function (e) {
+      var b = document.getElementById('boot');
+      if (!b) return;
+      var where = e.filename ? e.filename + ':' + e.lineno : '';
+      b.style.display = 'block';
+      b.textContent = [
+        'THE PAGE DID NOT START',
+        '',
+        e.message || String(e.error) || 'unknown error',
+        where,
+        '',
+        'A shader that failed to compile and JavaScript that failed to parse',
+        'both draw an identical black canvas. The message above says which.'
+      ].join('\n');
+    });
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

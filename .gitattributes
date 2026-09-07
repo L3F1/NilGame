@@ -1,0 +1,18 @@
+# Line endings. CLAUDE.md requires these files stay LF, and on Windows that is
+# NOT the default: the Git for Windows installer sets core.autocrlf=true system
+# wide, which rewrites every text file to CRLF in your working directory on
+# checkout. This file overrides that for this repository, for everyone who
+# clones it, without anyone having to change a global setting.
+#
+# `text=auto` lets Git decide what is text and what is binary; `eol=lf` pins
+# the working-copy ending for everything it calls text.
+* text=auto eol=lf
+
+# Binary files. Marking them stops Git trying to convert or diff them as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

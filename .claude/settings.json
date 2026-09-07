@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node physics.test.js)",
+      "Bash(node physics.test.js *)",
+      "Bash(node hyp.test.js)",
+      "Bash(node hyp.test.js *)",
+      "Bash(node --check *)",
+      "Bash(node tools/shader-check.js)",
+      "Bash(node tools/shader-check.js *)",
+      "Bash(node tools/sdf-check.js)",
+      "Bash(node tools/sdf-check.js *)",
+      "Bash(node tools/march-check.js)",
+      "Bash(node tools/march-check.js *)",
+      "Bash(node tools/page-check.js)",
+      "Bash(node tools/page-check.js *)",
+      "Bash(node tools/link-time.js)",
+      "Bash(node tools/link-time.js *)",
+      "Bash(node tools/net-check.js)",
+      "Bash(node tools/net-check.js *)",
+      "PowerShell(node --check *)",
+      "PowerShell(node tools\\shader-check.js)",
+      "PowerShell(node tools\\sdf-check.js)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/verify.mjs\"",
+            "timeout": 180,
+            "statusMessage": "Running the checks this file owns..."
+          }
+        ]
+      }
+    ]
+  }
+}

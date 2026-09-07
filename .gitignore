@@ -1,0 +1,38 @@
+# Dependencies. Never commit these - they are large, they are machine-specific,
+# and `npm install` rebuilds them from package.json and package-lock.json.
+node_modules/
+
+# Build output. Generated from source, so committing it means two copies that
+# can disagree.
+dist/
+build/
+server/dist/
+server/build/
+
+# Colyseus deployment state, written by its own tooling.
+.colyseus-cloud.json
+.devmode.json
+
+# Local secrets. The tracked .env.development / .env.production hold sample
+# values only. The moment either one holds a real key or password, move that
+# key into a .env.local file - anything matching these patterns stays on your
+# machine and never reaches GitHub.
+.env.local
+.env.*.local
+*.local.json
+
+# Screenshots and renders from tools/preview.js when it is pointed at the
+# project directory instead of a scratch directory.
+/*.png
+
+# Editor and OS clutter.
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Claude Code personal overrides. .claude/settings.json IS committed - it holds
+# the shared permission list and the verification hooks. This one is yours
+# alone, so it stays out of the repository.
+.claude/settings.local.json
