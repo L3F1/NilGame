@@ -39,9 +39,15 @@ shader; a scene-graph library would hide the parts that matter.
 - `net.js` — the packet format and the WebRTC connection. Nothing browser-only
   at module scope, so it imports under Node and `physics.test.js` covers the
   packing. **No DOM**; the panel that drives it lives in main.js.
+- `modes.js` — game modes: rounds, timers, ordered checkpoints, and the hoop
+  course. **No DOM**, like physics.js, because this is the part with rules in
+  it and rules are worth testing. Hoops are drawn as LINE LOOPS by main.js, not
+  as shader primitives — a curve in `sceneMap` would be inlined three times and
+  cost link time, which is the budget that binds.
 - `main.js` — WebGL2 setup, input, frame loop, rope drawing, the options menu.
 - `index.html` — canvas, HUD, and a boot-error panel (see below).
-- `hyp.test.js` (36) and `physics.test.js` (160) — `node hyp.test.js`, etc.
+- `hyp.test.js` (36), `physics.test.js` (160) and `modes.test.js` (56) —
+  `node hyp.test.js`, etc.
   **Keep the summary line LAST, and `process.exit` after IT.** Tests appended
   after the summary still run and still print, but are not counted, so the
   total silently understates. Worse, an `if (failed) process.exit(1)` left in

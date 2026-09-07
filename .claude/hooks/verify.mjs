@@ -25,10 +25,11 @@ const ROOT = process.env.CLAUDE_PROJECT_DIR || resolve(here, '..', '..');
 // march-check (2.6 s) and page-check (9.5 s, cold) stay manual on purpose.
 const CHECKS = {
   'shader.js':  [['tools/shader-check.js']],
-  'hyp.js':     [['hyp.test.js'], ['physics.test.js']],
+  'hyp.js':     [['hyp.test.js'], ['physics.test.js'], ['modes.test.js']],
   'physics.js': [['physics.test.js']],
   'net.js':     [['physics.test.js']],
   'level.js':   [['tools/sdf-check.js'], ['physics.test.js']],
+  'modes.js':   [['modes.test.js']],
 };
 
 const readStdin = () => new Promise((res) => {
