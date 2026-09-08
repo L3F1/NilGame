@@ -417,8 +417,28 @@ mat4 boostMat(vec3 u, float t) {
 // One geodesic formula serves both: gamma(s) = cosK(s) o + sinK(s) u.
 vec4 rayLocal(vec3 dir, float s) { return vec4(sinK(s) * dir, cosK(s)); }
 // d/ds of it: at k = -1 that is (sinh s) o + (cosh s) u and at k = +1 it is
-// -(sin s) o + (cos s) u, which the -uCurv supplies.
-vec4 rayTangent(vec3 dir, float s) { return vec4(cosK(s) * dir, -uCurv * sinK(s)); }
+// -(sin s) o + (cos s) u, which the curvature's sign supplies.
+//
+// WRITTEN AS (0.0 - uCurv) AND NOT AS -uCurv, and that is not a style choice.
+// uCurv is a #define whose body is already negative in this build, so the
+// obvious spelling puts a unary minus straight in front of "(-1.0)". ANGLE
+// reads that as +1 and is right. GODOT'S SHADER PREPROCESSOR COLLAPSES THE
+// DOUBLE MINUS and reads it as -1, silently, with no warning and no compile
+// error -- so the ray tangent came back with its w component NEGATED, the
+// headlight term -mdot(n, tangent) went past 1 and clamped there, and every
+// lit pixel in the native build came out slightly brighter than the browser's
+// while not one came out darker. It took five rounds of bisection to find,
+// because nothing about it looks like a sign error: the geometry, the normals,
+// the marcher, the hit distance and even mdot(tangent, tangent) all agreed
+// exactly. A negated w is invisible to a length check, because w is squared.
+//
+// CLAUDE.md already warns that the parentheses around the VALUE are
+// load-bearing, since without them -uCurv expands to --1.0 and ANGLE calls
+// that a syntax error. This is the same hazard one step on: a second compiler
+// that accepts the construct and quietly means something else by it. A binary
+// minus cannot be collapsed, so this removes the class rather than the
+// instance. tools/godot-compare.js carries the measurement.
+vec4 rayTangent(vec3 dir, float s) { return vec4(cosK(s) * dir, (0.0 - uCurv) * sinK(s)); }
 vec4 chartMap(mat4 M, vec4 L) { return M * L; }
 mat4 chartRebase(mat4 M, vec3 dir, float s) { return M * boostMat(dir, s); }
 // cosK/sinK, not cosh/sinh. This said cosh and sinh unconditionally, which is

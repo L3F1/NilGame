@@ -20,13 +20,22 @@ The previous backlog is preserved in
 
 ## 1. Native-host evaluation (next)
 
-- [ ] Locate/install a stable Godot editor and record its exact version and GPU/backend.
+- [x] Locate/install a stable Godot editor and record its exact version and GPU/backend.
 - [ ] Load the same scene JSON and compare model points with JS golden fixtures.
-- [ ] Render H3 with quotient crossings, not just a flat demo or isolated sphere.
-- [ ] Measure cold/warm shader preparation, CPU/GPU frame time and input response at matching settings.
+- [x] Render H3 with quotient crossings, not just a flat demo or isolated sphere.
+- [x] Measure cold/warm shader preparation and CPU/GPU frame time at matching settings.
+- [ ] Measure input response; the fixture harness renders fixed viewpoints and cannot.
 - [ ] Build one editable native primitive with inspector, gizmo, undo and immediate play.
 - [ ] Check the desktop networking transport with two instances.
 - [ ] Decide Godot migration from evidence; evaluate Unity if a concrete Godot limitation blocks it.
+
+Rendering parity is MET: 13/13 fixture views on both Godot backends, bounded
+H3 agreeing to 0.0005 of 255 per channel, and shader preparation 8444 ms in
+the browser against 721 ms native. It cost one real shader bug, latent in the
+browser build and only findable with a second compiler; see
+[docs/decisions/001-runtime-strategy.md](docs/decisions/001-runtime-strategy.md).
+Authoring and networking are untested, and they are the reason for the
+direction change, so the host decision stays open.
 
 Acceptance: visible/numerical agreement, usable edit/play iteration and a
 documented performance comparison. Do not postpone this until after building

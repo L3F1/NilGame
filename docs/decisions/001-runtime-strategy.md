@@ -1,6 +1,8 @@
 # 001: Evaluate a native host before building the full editor
 
-Date: 2026-09-07. Status: evaluation direction selected; migration not executed.
+Date: 2026-09-07. Status: rendering parity and performance measured on Godot
+4.7.2; editor, input and networking criteria still open. Migration not executed.
+See "Measured result" at the end.
 
 ## Context and decision
 
@@ -118,3 +120,67 @@ No new plugin or service is required for the current foundation. Godot, Unity
 and dotnet were not found on PATH during this pass; that is not an inventory
 of all installed applications. A Godot executable is needed for the native
 experiment, and Blender becomes useful when asset authoring begins.
+
+## Measured result, 2026-09-07
+
+Criteria 2 and 3 are met. Criteria 1, 4 and 5 are still open.
+
+`tools/godot-export.js` rewrites the browser's own `fragFor()` output into
+`.gdshader` mechanically -- generated text is never hand-edited, so both
+runtimes execute the same shader source. `main.gd` renders thirteen fixed
+viewpoints, `tools/godot-reference.js` renders the identical fixture in WebGL2
+through headless Chrome, and `tools/godot-compare.js` diffs the RGBA.
+
+**Rendering agrees.** 13/13 views on both Godot backends, including the two
+that cross a fundamental-domain face (`floor-after-seam`, `open-after-seam`
+carry a fold) and both quotients. Bounded H3 views agree to a mean of
+**0.0005 of 255** per channel; the open dodecahedral world to 0.12-0.23, all of
+it isolated sub-pixel aliasing on a horizon packed with copies of the room.
+
+    Godot 4.7.2.stable.official, RTX 5070 Ti
+    reference: Chrome WebGL2 on ANGLE D3D11, same GPU
+
+    GPU ms/frame        WebGL2/ANGLE   Godot Vulkan   Godot GL Compat
+      floor-start           0.381          0.616           0.223
+      open-start            1.748          2.047           0.667
+      sphere-start          0.839          0.460           0.405
+
+    shader preparation  WebGL2 link 8444 ms   Godot first frame 721 ms
+
+**The shader-preparation figure is the find.** CLAUDE.md calls link time "the
+budget that binds" and records a 212 s catastrophe that killed the GPU process;
+the hyperbolic program still costs ANGLE 8.4 s and the browser cannot
+precompile. Godot reaches its first frame in 0.7 s. Per-frame cost is a wash --
+Vulkan somewhat slower than ANGLE, GL Compatibility fastest -- and all three
+are far inside a frame budget at this resolution, so the interesting axis is
+compilation, not throughput.
+
+**Getting there cost one real bug, and it was ours rather than Godot's.**
+Every H3 view first came back a few units brighter than the browser and NOT ONE
+pixel darker. That bias survived turning off ambient occlusion, fog and the
+normal's finite-difference width, so it was none of them. Bisecting with probe
+views: a frame forced to miss every ray agreed bit for bit, the normals agreed
+to 0.0018, the marcher's arclength and hit distance agreed, and
+`mdot(tangent, tangent)` was exactly 1 in both -- yet the headlight term
+disagreed on 97% of pixels. The tangent's **w** component was negated, which a
+length check cannot see because w is squared. The line was
+
+    vec4(cosK(s) * dir, -uCurv * sinK(s))     // #define uCurv (-1.0)
+
+ANGLE reads `-uCurv` as +1. Godot's preprocessor collapses the double minus and
+reads -1, with no warning and no compile error. Written `(0.0 - uCurv)` the
+mean error drops from 3.96 to 0.0005 and the residual becomes symmetric.
+
+Two things follow for the migration. A second compiler is worth having as a
+correctness check on the shader, not only as a host -- this bug was latent in
+the browser build and nothing there could have found it. And parity has to be
+judged on structure rather than on a mean: the first threshold conflated a real
+sign error with sub-pixel aliasing, and it took probe views to tell them apart.
+`tools/godot-compare.js` now reports the largest off-edge connected blob, which
+is what "the two renderers drew a different picture" actually looks like.
+
+Still open before any migration decision: language-neutral geometry fixtures
+(criterion 1), an editable primitive with gizmo and undo (criterion 4), and the
+network transport with two instances (criterion 5). Rendering parity alone does
+not settle authoring, and authoring is the reason for the direction change.
+

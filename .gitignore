@@ -32,6 +32,11 @@ server/build/
 .DS_Store
 Thumbs.db
 
+# Native rendering experiment: reproducible exports, local cache and captures.
+experiments/godot/.godot/
+experiments/godot/generated/
+experiments/godot/results/
+
 # Claude Code personal overrides. .claude/settings.json IS committed - it holds
 # the shared permission list and the verification hooks. This one is yours
 # alone, so it stays out of the repository.
