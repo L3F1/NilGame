@@ -13,7 +13,7 @@ integration step to keep truncation noise out of the residual.
 
 Existing tests additionally cover isometries, exponential/logarithm behavior,
 product composition, quotient reduction, conserved quantities, and collision.
-The new audit has eight groups; the complete Node run has 17 passing suites.
+The audit has eight groups; the complete Node run now has 18 passing suites.
 
 ## Findings fixed
 
@@ -30,6 +30,12 @@ The new audit has eight groups; the complete Node run has 17 passing suites.
   of phantom green bodies in the dropper.
 - Flat checker parity failed to descend to the lattice quotient. Twenty tiles
   per period now preserve both colors across a wrap; GPU tests cover this.
+- Nil column silhouettes now use exact ray intersections, checked against
+  independent flow evaluations and on the GPU. This removes the close-up
+  approximate-hit bands and frees columns from the beacon marcher's range.
+- H2R baffle shading now projects onto the surface and transports the normal.
+  Its underside uses a constant material instead of amplifying altitude
+  roundoff with a discontinuous stripe texture. Saved ceiling views cover it.
 
 ## Limits still open
 
@@ -37,11 +43,11 @@ The new audit has eight groups; the complete Node run has 17 passing suites.
   metric tests cover core CPU motion, not every shader expression or long ray.
 - Sol/SL2R use approximate integration and canonical camera frames. Long-ray
   convergence, transport, and multi-contact collision need further work.
-- Nil columns have exact distance fields; its decorative beacons use lower-bound
-  level sets. Repeated close-up tube edges need an isolated-column convergence
-  test before being classified as caustics or rendering artifacts.
-- Turning fog off also disables the range fade, but does not remove the finite
-  ray range or iteration budget. A miss still shows background.
+- Nil columns have analytic hits with a 4096-unit numeric guard. Its decorative
+  beacons remain approximate level sets with a 70-unit march limit. These are
+  not true metric spheres. Very distant GPU flow still has finite precision.
+- Turning fog off does not remove finite ray ranges or iteration budgets in
+  the other marchers. A miss still shows background.
 - H2R floor checks use Klein coordinates; large wedges of alternating color can
   be the texture itself. The confirmed lighting error was separate from this.
 - Godot rendering parity should be regenerated after the spherical shading fixes.

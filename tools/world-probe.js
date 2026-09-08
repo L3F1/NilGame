@@ -2,6 +2,17 @@
 // Exercises real DOM controls and input against the actual WebGL application.
 (async () => {
   const checks = [];
+  // Attribute upload failures to the actual uniform, rather than reporting a
+  // stale GL error several frames later at the placement check.
+  for (const method of ['uniform4fv','uniformMatrix4fv','uniform1f','uniform1i','drawArrays']) {
+    const original = gl[method];
+    gl[method] = function (...args) {
+      const result = original.apply(this,args);
+      const error = gl.getError();
+      if(error)throw new Error(`${geomKey()} ${method} ${Object.keys(U).find(k=>U[k]===args[0]) || ''}: GL ${error}; ${gl.getProgramInfoLog(gl.getParameter(gl.CURRENT_PROGRAM))}`);
+      return result;
+    };
+  }
   const check = (condition, name) => {
     if (!condition) throw new Error(name);
     checks.push(name);
@@ -32,7 +43,8 @@
         `${label}: flat placement is folded into the cell`);
     }
     check(!/NaN|Infinity/.test(hud.textContent), `${label}: finite HUD`);
-    check(gl.getError() === gl.NO_ERROR, `${label}: WebGL clean`);
+    const graphicsError = gl.getError();
+    check(graphicsError === gl.NO_ERROR, `${label}: WebGL clean (error ${graphicsError})`);
   }
   try {
     await frames(20);

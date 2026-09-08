@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "views": {
+    "nil-close-column": {
+      "preset": "nil", "coordinates": "nil",
+      "position": [10.23502525948995, 4.155661271504228, 55.7],
+      "yaw": 0.5, "pitch": 0.1,
+      "purpose": "The nearby pink column must have a single clean silhouette."
+    },
+    "nil-horizon": {
+      "preset": "nil", "coordinates": "nil",
+      "position": [0, 0, 55.7], "yaw": 0, "pitch": 0,
+      "purpose": "Distant columns remain visible without the former range fade."
+    },
+    "dropper-ceiling": {
+      "preset": "dropper", "coordinates": "h2r-floor",
+      "position": [0, 0, 0.1], "yaw": 0, "pitch": 1,
+      "purpose": "The underside of the baffle has no radial gray stripe artifacts."
+    }
+  }
+}

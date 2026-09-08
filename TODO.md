@@ -7,15 +7,22 @@ The previous backlog is preserved in
 
 ## Immediate priorities after geometry coverage
 
+- [x] Replace duplicated oversized agent instructions with shared working rules,
+  compact Astra/Claude entry points and a bounded Muse handoff queue. See
+  [agent setup](docs/engineering/AGENT_SETUP.md) for Ubuntu/WSL instructions.
 - [x] Independent geodesic/metric audit across all eight geometries; see
   [audit and limits](docs/math-audit.md).
 - [x] Fix product tangent lighting, spherical normal signs, unsupported self
   bodies, and the flat checker wrap; add GPU regressions and distant H2R samples.
 - [x] Add Fog off, including disabling the artificial range fade.
-- [ ] Isolate Nil columns and compare first-hit silhouettes at increasing
-  accuracy to distinguish real multiple images from edge artifacts.
-- [ ] Recheck the reported H2R floor/object banding interactively after these
-  fixes; separate Klein checker patterns from remaining numerical shading noise.
+- [x] Replace Nil column silhouette marching with independently tested exact
+  intersections; remove the march-range fade and default the preset to fog off.
+- [x] Fix dropper baffle stripes by sampling material on the surface; save
+  Nil/dropper camera regressions as data and provide a rendering command.
+- [x] Reproduce the reported H2R ceiling bands and verify their removal in
+  matching before/after renders.
+- [ ] Generalize primitive capabilities around distance bounds, exact ray hits
+  and surface normals; see [rendering contracts](docs/rendering-contract.md).
 - [ ] Regenerate Godot comparison fixtures after spherical normal corrections.
 
 1. [x] Fix glancing collisions in Sol/SL2R so walls preserve tangent motion.
@@ -53,13 +60,15 @@ levels, not evidence that a general connected-geometry engine is finished.
 - [ ] Check the desktop networking transport with two instances.
 - [ ] Decide Godot migration from evidence; evaluate Unity if a concrete Godot limitation blocks it.
 
-Rendering parity is MET: 13/13 fixture views on both Godot backends, bounded
+The earlier rendering parity milestone met 13/13 fixture views on both Godot backends, bounded
 H3 agreeing to 0.0005 of 255 per channel, and shader preparation 8444 ms in
 the browser against 721 ms native. It cost one real shader bug, latent in the
 browser build and only findable with a second compiler; see
 [docs/decisions/001-runtime-strategy.md](docs/decisions/001-runtime-strategy.md).
 Authoring and networking are untested, and they are the reason for the
 direction change, so the host decision stays open.
+Parity must be refreshed after the latest spherical and Nil renderer changes;
+the earlier result does not establish parity with today's browser build.
 
 Acceptance: visible/numerical agreement, usable edit/play iteration and a
 documented performance comparison. Do not postpone this until after building

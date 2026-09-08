@@ -113,12 +113,15 @@ const profile = join(tmpdir(), `pagecheck-${sw ? 'sw' : 'gpu'}`);
 if (!warm) { try { rmSync(profile, { recursive: true, force: true }); } catch { /* first run */ } }
 
 const child = spawn(findBrowser(), [
+  '--enable-logging=stderr',
   '--headless=new', `--user-data-dir=${profile}`,
   '--no-first-run', '--no-default-browser-check', '--disable-background-networking',
   ...(sw ? ['--enable-unsafe-swiftshader', '--use-angle=swiftshader']
          : ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist']),
   '--window-size=640,400', `http://127.0.0.1:${PORT}/`,
-], { stdio: 'ignore' });
+], { stdio: ['ignore','ignore','pipe'], windowsHide: true });
+let browserErrors = '';
+child.stderr.on('data', chunk => { browserErrors = (browserErrors + chunk).slice(-24000); });
 
 const t0 = Date.now();
 const report = await new Promise((resolve) => {
@@ -146,6 +149,7 @@ if (report.checks) console.log(`world/input checks : ${report.checks.length} pas
 
 const problems = [];
 if (report.err) problems.push('the page threw');
+if (report.err) console.log(browserErrors.split('\n').filter(line=>/GL_INVALID|D3D|shader|error X|compile/i.test(line)).join('\n'));
 if (report.boot) problems.push('the boot panel fired');
 if (!first) problems.push('the HUD is empty, so the module never ran');
 // NaN in the HUD means the physics has already destroyed itself, which draws a

@@ -18,6 +18,7 @@ import { h2rGLSL } from './h2r.js';
 import { s2rGLSL } from './s2r.js';
 import { e3tGLSL } from './e3t.js';
 import { nilGLSL } from './nil.js';
+import { nilFragment } from './engine/geometry/nil-renderer.js';
 import { lieFragment } from './engine/geometry/lie-shader.js';
 import { spaceFor } from './engine/geometry/registry.js';
 
@@ -1208,11 +1209,17 @@ vec3 materialColor(float m, vec4 p, float up, float t) {
   if (m < 4.5) return vec3(0.15, 0.75, 0.85);
   if (m < 5.5) return vec3(0.34, 0.26, 0.20);   // bar
   if (m < 6.5) {
+#if GEOM == G_H2R
+    // A flat baffle underside has constant altitude. A discontinuous altitude
+    // band only magnifies projection roundoff there, so use its mean color.
+    return vec3(0.335, 0.345, 0.375);
+#else
     // Walls get a coarse horizontal banding, in altitude. Altitude is a
     // Gamma-invariant function, so the courses line up across a face instead
     // of stopping dead at one - which is the whole point of the quotient.
     float band = mod(floor(hHeight(p) * 9.0), 2.0);
     return mix(vec3(0.30, 0.31, 0.34), vec3(0.37, 0.38, 0.41), band);
+#endif
   }
   if (m < 7.5) return vec3(0.30, 0.27, 0.34);   // tower
   if (m < 8.5) return vec3(0.46, 0.44, 0.38);   // spoke
@@ -1526,6 +1533,21 @@ vec3 trace(vec2 uv) {
     col = FOG_COL;
   } else {
     vec4 n = sceneNormal(p, hit);
+#if GEOM == G_H2R
+    // Pixel-footprint hits stop OUTSIDE the surface. Sampling AO/materials
+    // there turns changes in march iteration count into visible contour bands.
+    // Shade the nearby surface instead; preserve the original ray tangent for
+    // the headlight calculation below.
+    float residual = sceneMap(p, hit).x;
+    vec4 shadePoint = geoStep(p, n, -residual);
+    float horizontalNormal = sqrt(max(hdot(n,n),0.0));
+    float ch = cosS(-horizontalNormal * residual);
+    float derivative = -kS * horizontalNormal * sinS(-horizontalNormal * residual);
+    vec4 shadeNormal = vec4(derivative*p.x+ch*n.x,derivative*p.y+ch*n.y,n.z,derivative*p.w+ch*n.w);
+#else
+    vec4 shadePoint = p;
+    vec4 shadeNormal = n;
+#endif
     // These are cosines between unit vectors, so they belong in [0,1]. Saying
     // so costs nothing and means a normal that has lost its length can only
     // shade the surface wrongly, never blow the pixel out to white.
@@ -1541,12 +1563,20 @@ vec3 trace(vec2 uv) {
     // Directions must not receive the product chart's height translation.
     vec4 tangent = chartDirection(chart, rayTangent(dir, s));
 #endif
+    float shadeTravel = hit;
+#if GEOM == G_H2R
+    // Height evolves linearly along product rays. On a horizontal baffle,
+    // resolve its plane exactly for fog too; the footprint stopping distance
+    // otherwise makes the far fade inherit the marcher's iteration bands.
+    if (mat > 5.5 && mat < 6.5 && abs(n.z) > 0.999 && abs(tangent.z) > 1e-5)
+      shadeTravel = max(0.0, hit - residual * n.z / tangent.z);
+#endif
     float head = clamp(-mdot(n, tangent), 0.0, 1.0);
-    float occ = ambient(p, n, hit);
+    float occ = ambient(shadePoint, shadeNormal, hit);
     // Occlusion belongs on the ambient term, not on the whole shade. The key
     // and headlight terms are direct light; a crevice does not stop them, it
     // stops the sky.
-    col = materialColor(mat, p, mdot(n, upAt(p)), hit)
+    col = materialColor(mat, shadePoint, mdot(shadeNormal, upAt(shadePoint)), hit)
         * (0.16 * occ + (0.62 * key + 0.30 * head) * (0.35 + 0.65 * occ));
     // Only the transient markers glow. An orb glowed too, which is fine with
     // one of them and ruinous with one in every cell in every direction: they
@@ -1564,12 +1594,12 @@ vec3 trace(vec2 uv) {
       float phase = uTime - hit / max(uLightC, 1e-3);   // uTime < 0 disables
       col *= 0.55 + 0.75 * (0.5 + 0.5 * sin(phase * 2.2));
     }
-    vec3 ext = exp(-hit * uFog * FOG_ABSORB);
+    vec3 ext = exp(-shadeTravel * uFog * FOG_ABSORB);
     col = col * ext + FOG_COL * (1.0 - ext);
     // Blue outlives the other two, so at the range limit it has not quite
     // converged and geometry would pop as it crossed. Close the last quarter
     // by hand; it costs one smoothstep and there is nothing to see out there.
-    if (uFog > 0.0) col = mix(col, FOG_COL, smoothstep(tCap * 0.72, tCap, hit));
+    if (uFog > 0.0) col = mix(col, FOG_COL, smoothstep(tCap * 0.72, tCap, shadeTravel));
   }
 
   // Grazing hits at long range push the normal estimate into cancellation
@@ -1633,6 +1663,7 @@ void main() {
  */
 export function fragFor(g) {
   const key = typeof g === 'number' ? (g < 0 ? 'h3' : 's3') : g;
+  if (key === 'nil') return nilFragment(NIL_MATH_GLSL, nilGLSL());
   if (key === 'sol' || key === 'sl2r') return lieFragment(key);
   const id = spaceFor(key).shaderId;
   return FRAG_SRC.replace('__GEOM_ID__', String(id));
@@ -1640,4 +1671,5 @@ export function fragFor(g) {
 
 // The default program. Every tool imports this, so what shader-check compiles
 // and link-time times is the hyperbolic build -- the one that is always made.
+export const NIL_MATH_GLSL = HYP_GLSL.split('#elif IS_NIL\n')[1].split('\n#else\n// --- H^3')[0];
 export const FRAG = fragFor(-1);

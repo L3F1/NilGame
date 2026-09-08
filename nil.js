@@ -47,6 +47,7 @@
 // flow; geometry-audit.test.js independently checks the metric equation.
 
 import { matMul as multiplyMatrices } from './geom.js';
+import { NIL_CYLINDER_GLSL } from './engine/geometry/nil-cylinder.js';
 
 export const matMul = multiplyMatrices;
 
@@ -538,6 +539,21 @@ export function nilGLSL() {
 const vec4 NIL_COL[${NIL_COLUMNS.length}] = vec4[${NIL_COLUMNS.length}](
 ${cols}
 );
+${NIL_CYLINDER_GLSL}
+const int NIL_COLUMN_COUNT=${NIL_COLUMNS.length};
+vec2 nilFirstColumn(vec3 p,vec3 u,int count){
+  vec2 hit=vec2(1e20,0.0);
+  for(int i=0;i<count;i++){
+    float t=nilCylinderHit(p,u,NIL_COL[i]);
+    if(t<hit.x)hit=vec2(t,NIL_COL[i].w);
+  }
+  return hit;
+}
+vec2 nilBeaconWorld(vec4 p){
+  vec2 m=vec2(1e9,0.0);
+${orbs}
+  return m;
+}
 
 vec2 nilWorld(vec4 p) {
   vec2 m = vec2(1e9, 0.0);

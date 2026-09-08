@@ -56,12 +56,14 @@ const S2R = await import(pathToFileURL(join(ROOT, 's2r.js')).href);
 const TRACK = await import(pathToFileURL(join(ROOT, 'race-track.js')).href);
 const NIL = await import(pathToFileURL(join(ROOT, 'nil.js')).href);
 const H2R = await import('../h2r.js');
+const CYL = await import('../engine/geometry/nil-cylinder.js');
 const LAB = await import('../engine/world/lie-labs.js');
 const FLOW = await import('../engine/geometry/numerical-flow.js');
 const { lieFragment } = await import('../engine/geometry/lie-shader.js');
 // Exercise the actual shader implementation, not a third copy of its math.
-const nilSource = (await import(pathToFileURL(join(ROOT, 'shader.js')).href)).fragFor('nil');
-const nilMath = nilSource.split('#elif IS_NIL\n')[1]?.split('\n#else\n// --- H^3')[0];
+const shaders = await import(pathToFileURL(join(ROOT, 'shader.js')).href);
+const nilSource = shaders.fragFor('h3');
+const nilMath = shaders.NIL_MATH_GLSL;
 if (!nilMath?.includes('vec3 nilFlow(')) throw new Error('Nil shader extraction needs updating');
 const productDistance = nilSource.split('float hHorizDist(vec4 p, vec4 q) {')[1]?.split('// Distance in H^2 x R')[0];
 if (!productDistance) throw new Error('Product distance extraction needs updating');
@@ -89,6 +91,12 @@ function sample(make) {
 }
 
 const CASES = [
+  {
+    name:'Nil exact cylinder first hits',tol:.002,vector:true,
+    batches:sample(()=>{const v=[rnd()*2-1,rnd()*2-1,rnd()<.3?1e-5:rnd()*2-1],n=Math.hypot(...v);return [...v.map(x=>x/n),1];}),
+    js:p=>[Math.min(1000,CYL.cylinderHit([-2,0,5],p.slice(0,3),[0,0,.5])),0],
+    glsl:CYL.NIL_CYLINDER_GLSL+'\nvec2 worldMap(vec4 p){return vec2(min(1000.0,nilCylinderHit(vec3(-2.0,0.0,5.0),p.xyz,vec4(0.0,0.0,.5,0.0))),0.0);}',
+  },
   ...[-1,1].map(k=>({
     name:`curvature ${k}: shader normals tangent and unit`,tol:3e-4,vector:true,
     batches:sample(()=>{const t=.2+rnd()*1.5,a=rnd()*Math.PI*2,z=rnd()-.5;

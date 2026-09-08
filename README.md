@@ -17,7 +17,9 @@ the research direction, not a shipped feature.
 - [Scene format](docs/scene-format.md): saved data, coordinates and current limits.
 - [Runtime decision](docs/decisions/001-runtime-strategy.md): Godot, Unity, web, performance and multiplayer.
 - [Existing playground](docs/playground.md): controls, mechanics and mathematical explanations.
-- [Working rules](AGENTS.md): numerical pitfalls and required verification.
+- [Working rules](docs/engineering/WORKING_RULES.md): numerical pitfalls and required verification.
+- [Agent setup](docs/engineering/AGENT_SETUP.md): shared Astra/Claude rules and Muse's WSL handoff.
+- [Rendering contracts](docs/rendering-contract.md): distance bounds, exact hits and saved review views.
 
 ## What runs today
 
@@ -77,6 +79,10 @@ cannot establish that a level is traversable. Run `tools/link-time.js` after
 scene complexity changes, `tools/sdf-check.js` after distance-field changes,
 `tools/march-check.js` after marcher changes, and `tools/net-check.js` after
 network changes. See AGENTS.md for the reasons and GPU requirements.
+
+Reproduce the reported Nil/dropper views with `node tools/render-fixture.js`
+followed by `nil-close-column`, `nil-horizon`, or `dropper-ceiling`. These save
+review images; they are not automated image-difference tests.
 
 ## Runtime direction
 

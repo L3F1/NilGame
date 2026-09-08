@@ -82,7 +82,7 @@ export const PRESETS = {
   nil: {
     label: 'Nil spiral climb',
     note: 'Steer a rising helix through six gates. Going straight up is the long way.',
-    set: { curv: 'Nil', course: 'climb', fog: 'thin', quality: 'medium' },
+    set: { curv: 'Nil', course: 'climb', fog: 'off', quality: 'medium' },
   },
   sol: {
     label: 'Sol stretch chamber',
