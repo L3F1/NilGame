@@ -14,6 +14,12 @@ web app as a reference until parity is tested. New portable modules live in
 radial E3/H3/S3 mapping currently run only in tools/tests. Mixed-geometry
 rendering, portal transit and the S3 bubble remain future work.
 
+The per-world design rationale and the gameplay kit were archived on
+2026-09-07 into [docs/archive/geometry-worlds.md](docs/archive/geometry-worlds.md)
+and [docs/archive/gameplay-kit.md](docs/archive/gameplay-kit.md), to keep this
+file to the rules. **Every trap from them was kept**, under "Traps in the
+archived subsystems" below; go to the archive for the reasoning behind one.
+
 Separate metric, topology, region ownership and connection policy. Reject
 unsupported document features explicitly. Run `node tools/scene-check.js`
 after document/chart changes, plus the existing regression checks.
@@ -86,16 +92,19 @@ shader; a scene-graph library would hide the parts that matter.
   product has neither. **No DOM, no graphics.**
 - `h2r.js` — H^2 x R and the DROPPER it exists for: a hyperbolic floor plan
   and a Euclidean height, which do not interact. `product.js` at kS = -1, plus
-  the shaft, the column field and the course. See "H^2 x R" below.
+  the shaft, the column field and the course. See
+  [docs/archive/geometry-worlds.md](docs/archive/geometry-worlds.md).
 - `s2r.js` — S^2 x R and the LAP COURSE: a spherical floor plan and the same
   Euclidean height. `product.js` at kS = +1, plus the world, walking, jumping
   and the course. The first world here with a compact floor AND honest
-  gravity. See "S^2 x R" below.
+  gravity. See
+  [docs/archive/geometry-worlds.md](docs/archive/geometry-worlds.md).
 - `e3t.js` — the FLAT 3-manifolds, E^3 quotiented by a lattice. `geom.js` at
   k = 0 plus a rectangular lattice, two worlds mirroring the two hyperbolic
   ones exactly (slab and 3-torus), a floor plan, walking and a course. The
   CONTROL, and the only world where a ported map is the map. **No DOM, no
-  graphics.** See "E^3 / Lambda" below.
+  graphics.** See
+  [docs/archive/geometry-worlds.md](docs/archive/geometry-worlds.md).
 - `engine/geometry/registry.js` — the geometry registry: key, option label, shader id, program
   name. `shader-check`, `link-time` and `world-probe` all iterate it, so
   registering a geometry is most of adding one.
@@ -498,355 +507,6 @@ what it means.
 Zoom is on the SCROLL WHEEL, not in the menu — it is a thing you do while
 looking, like aiming. `X` snaps back to 1x.
 
-## Abilities, and the geometry each one rests on
-
-Every one is a thing you cannot do in a flat world. That is the bar.
-
-**Gravity beacon (F).** Swaps which function gravity is the gradient of:
-distance to the floor plane becomes distance to a point. Level sets become
-spheres, so you fall inward and orbit rather than land. It follows the ONE lift
-you planted (`carryBeacon`); aiming at the nearest lift flips gravity whenever
-you cross the equidistant surface.
-
-A linear potential CONFINES you — there is no escape speed, and in a compact
-manifold there is nowhere to escape to. Circular-orbit speed is
-`sqrt(G * tanh(r))` against the floor world's `sqrt(G / tanh(h))`; both tend to
-`sqrt(G)`. `physics.test.js` measures the `coth` against the simulation.
-
-**Holonomy dash (Q).** A straight impulse along the view direction, with
-`DASH_COOLDOWN` before it can be used again. It used to take itself back with
-an opposite impulse later, which is tidy and plays badly — the speed evaporates
-under you mid-arc.
-
-The bank fills by going around things. Transporting a frame around a closed
-loop on a curvature -1 surface rotates it by the area enclosed; `sweptArea`
-accumulates exactly that, since in geodesic polar the swept sector integrates
-to `(cosh(r) - 1) dtheta`. Circling wide is worth enormously more than circling
-tight, and walking straight banks nothing.
-
-Do NOT try to measure this through `alignUp`. On the floor under plane gravity
-E3 is already up, so the re-pinning rotation is the identity and carries no
-information. The first version of the meter read zero everywhere.
-
-**THE BANK IS SIGNED, and the sign is a second ability.** `sweptArea`
-integrates `(cosh(r) - 1) dtheta` and `dtheta` has a sign, so circling
-counter-clockwise fills it positive and clockwise fills it negative — and going
-back round the other way empties what you had. That sign used to be thrown away
-by a `Math.abs` in `dash()`, which is a waste of the most interesting thing the
-meter has: **which way you went round something decides which ability you have
-charged.** Under `Holonomy (Q) = sign decides`, positive is the dash and
-negative is a BLAST: `holoBlast` damages and shoves everything within
-`blastRadius(charge)` of you, measured on the ORBIT like every other
-interaction between characters.
-
-The radius runs 0.55 to 1.60, which sounds like a factor of three and is not:
-volume grows like `e^{2r}`, so a full charge reaches about **six times** the
-space an empty one does. `physics.test.js` asserts on the volume rather than
-the radius for exactly that reason. Note also what the same arithmetic says
-about the arena — the octagon world's covering radius is under two, so a fully
-charged blast very nearly covers the whole cell, and there is no standing off
-at range in a room that comes back round to itself.
-
-`dash only` and `blast only` are kept because a mode where you cannot choose is
-a hard sell as the only mode, and comparing the two is the reason both exist.
-
-**Zoom (scroll wheel, 1x to 8x).** An honest optical zoom: divide the
-transverse ray offset by the zoom and the fan narrows, so every ray is still a
-geodesic and what you see is still what light does. Three things ride along
-with it and all three are needed, or the zoom looks broken rather than close:
-the hit threshold is a PIXEL FOOTPRINT, so it must shrink with the zoom or
-magnified surfaces come out blobby; and fog and `uMaxT` have to back off, or
-zooming in only magnifies the fog. It costs less than the fan it replaced,
-because the direction no longer depends on t.
-
-It REPLACED flat vision, which scaled the fan by `alpha(t) = t/sinh(t)` and so
-converted the hyperbolic `s/sinh(d)` falloff into the flat `s/d` one exactly,
-leaving the near field alone because alpha(0) = 1. That is a thing a zoom
-cannot do, and it was lovely — but it was a LENS, the sample path stopped being
-a geodesic, and depth stopped reading as depth, which is hard to fight in. If
-it is ever wanted back, it is the one-line `rayDir` in shader.js plus a t in
-the signature — but note it also forced `exitDist` to be recomputed at every
-step, which the zoom does not.
-
-**Finite light speed, and it moves the PLAYER, not just a pulse.** Light from
-distance t left `t/uLightC` seconds ago. The orbs pulse, so the same orb is
-caught at a different phase in every copy; and your own body is drawn from a
-HISTORY — a ring of 32 folded positions, one every 0.2s, indexed by distance in
-`selfAt`. The copy two cells off shows where you were a moment ago; the one
-five cells off, long before. One object, a procession of its own past, all in
-view at once. This is the thing only a compact manifold can show, because it is
-the only place you can look at yourself from outside.
-
-The first version pulsed the ORBS only — the material test was
-`mat > 3.5 && mat < 4.5` and the player is a different material — so staring at
-your own copy showed nothing, which was the whole point of having a body.
-Interpolation between samples is a straight combination pushed back onto the
-hyperboloid; without it the copies advance in visible jerks five times a second.
-The drawn body is `PLAYER_R * 1.25`, a little bigger than the collision radius,
-because a sphere the size of the hitbox is a speck one cell away.
-
-**Interpolating that history takes THREE things, and missing any one of them
-tore the body into horizontal stripes.**
-
-1. **Interpolate along the segment, not between two folded neighbours.** Every
-   entry is folded as it is recorded, so a face crossing makes the stored trail
-   jump right across the room while the player has not moved. Mixing across
-   that swept a phantom body through the domain at 88x the honest speed, and
-   every ray caught it somewhere different — thin sheets where a sphere should
-   be. `main.js linkHistory` records WHICH group element each crossing folded
-   by, so the far end of each segment is the near end's own copy.
-   **Do not look for the nearest copy instead** — a fold can be a product of
-   two generators, the search misses it, and collapsing the segment turns a
-   smear into a hard step, which measured 70x worse than the bug.
-2. **Fold the interpolated point.** A straddling segment ends outside the
-   domain, and the marcher only ever samples inside it, so an outside centre
-   draws the body in the wrong place — and consecutive segments would not join.
-   One pairing is enough; a sample is a fifth of a second of travel.
-3. **Divide the step by `1 + speed/c`.** This is the one surface in the scene
-   that MOVES as the ray advances — its centre is `selfAt(t)`. Sphere tracing
-   assumes a fixed field, so the raw distance overshoots by up to that
-   fraction, and at the slow setting speed/c approaches 1 and the ray punches
-   clean through on some pixels and not others: holes, in bands.
-
-   Measured, walking at 1.0 with c = 2: the centre drifted at 25.8 per unit of
-   ray distance before and 0.50 after — and 0.50 is exactly speed/c, the honest
-   answer. Measure it as distance in the MANIFOLD, not in coordinates: what is
-   drawn is the whole orbit, so changing which representative you name is
-   invisible on screen and a coordinate metric reports it as an enormous jump.
-
-**The grapple's constraint must be SWEPT.** When the rope goes taut it MOVES
-the player along it, and a move that is not swept is a move that goes through
-walls: reeling hard pulls several centimetres a substep, the rope does not care
-what is in the way, and `collide` — which only pushes out along the local
-normal — could not always get you back. `grappleStep` now casts along the pull
-and stops a body's width short of the first surface, so the wall wins. A rope
-pulling you into a wall pins you against it, which is the right answer.
-
-**Portals (1, 2, 3).** A pair of discs and one isometry,
-`T = Pb * R_pi * inv(Pa)`, where a portal placement's column 3 is where it is
-and column 0 is its outward normal.
-
-**The normal comes from the WALL, not from the aim.** `placePortal` casts,
-then takes the SDF gradient at the hit point and orients column 0 along it, so
-a floor portal lies flat and a wall portal stands upright however you were
-standing. Facing it along the look direction instead put the disc at whatever
-angle you happened to be at — and since the pairing is built from the two
-placements, a crooked portal quietly tilts everything you walk out into. With
-nothing in range there is no surface to take a normal from, and it falls back
-to hanging in the air facing you.
-
-**`PORTAL_LIFT` must clear `PLAYER_R`, and it is derived from it.** Collision
-stops the player's CENTRE at `PLAYER_R` from the wall, but crossing a portal is
-the centre passing through its plane. Mounted closer than that, the centre can
-never legally reach it: you walk into the wall and stop. It was 0.06 against a
-0.07 player, which is why portals worked "sometimes" — only when a fast enough
-approach carried the centre past the plane inside one substep, before `collide`
-pushed it back out. A coin flip decided by frame rate.
-
-Nearly free here because the quotient
-already built it: a face of the fundamental domain IS a portal glued by the
-group, and the renderer handles both the same way. `exitDist` and
-`portalCross` are the same closed form.
-
-Two things are forced rather than chosen:
-
-- **A portal is one-sided.** Crossing A front-to-back puts you BEHIND B moving
-  out of it, so you immediately cross B back-to-front. If that counted as a
-  crossing too you would bounce straight back.
-- **The pi rotation is load-bearing.** Without it you emerge going backwards
-  into B's wall. Negate two frame columns rather than one, or it is a
-  reflection and the world comes out mirrored.
-
-**A portal hands you a different "down", and the camera has to SWING to it.**
-`alignUp` re-pins the frame in a single substep — 98 degrees, measured, walking
-from a wall portal into a floor one. That is the yank.
-
-**The swing is a WHOLE ROTATION, not a lean, and the first attempt got this
-wrong.** The pendulum's `tilt` is a small-angle 2-vector, which is right for
-leaning into a stop and hopeless here: its magnitude is `sin(angle)`, so it
-cannot tell 10 degrees from 170, and clamping it to a third of a radian left
-fifty of those 98 degrees still happening in one frame — which still reads as a
-snap, because it is one. So `camSwing` carries a real axis-angle offset instead,
-taken off the 3x3 block of the rotation `alignUp` applied, with its angle sprung
-back to zero. Measured: **98 degrees of snap becomes 0.000 degrees of jump on
-the first frame**, under one degree by 1.6 s.
-
-`cameraBasis` applies it to the whole basis at once and `shaderAngles` folds the
-result back into the yaw/pitch/roll the shader builds its own basis from —
-checked exact to 3e-14 over 200000 random view-plus-swing combinations, because
-if those two disagree the rope draws off the crosshair.
-
-The spring runs in EVERY upright mode, not only 'pendulum' — only the
-acceleration drive belongs to that setting.
-
-**Boomerang (B).** Flies a CLOSED GEODESIC, so it returns to exactly where it
-was launched — not because anything steers it, but because the manifold is
-compact and some of its geodesics close up. It flies dead straight the whole
-way. Which axis it takes is a heuristic (alignment with the aim, less how far
-out of the way it is); the geometry is exact once chosen. It is CAUGHT after
-one lap, because after one lap it is back in your hand; without that it flew
-for ever and the HUD read OUT until you respawned.
-
-**That mode sweeps the FLOOR in the bounded world, and that is forced.** Every
-generator of the octagon group is a translation along an axis LYING IN the
-floor plane, so every closed geodesic there lies in that plane — measured, all
-8 axes at altitude 0.0000. It therefore skims the ground however you aim, which
-reads unmistakably as gravity dragging it down. **Nothing pulls it down**:
-gravity is not in its integrator and never was. It is a fact about the octagon
-group. In the OPEN world the axes range over 1.36 of altitude and it is a
-genuine 3D path.
-
-**So the DEFAULT is `aimed`:** dead straight down the sightline, out to
-`BOOM_RANGE`, then back to your hand. It does not need the manifold to return
-it, so it works at any aim — aim 40 degrees up and it reaches altitude 2.9 from
-a launch at 0.6, which is the test. `closed geodesic` keeps the old behaviour
-on the way out, because letting the manifold hand a projectile back is the more
-interesting thing and should not be lost.
-
-**It BOUNCES, and a bounce costs nothing to be exact about.** Along a geodesic
-the velocity in FRAME components is constant, so at any moment the direction of
-travel at the current point, in that point's own frame, is just `b.dir`. A
-rebound is therefore the ordinary `d - 2(d.n)n` against the SDF gradient there,
-followed by re-basing the flight onto the wall — a bounced throw is as exact as
-a straight one, and it is a new geodesic rather than a special case of
-anything. Two guards: only bounce when `d.n < 0` (heading INTO the surface), or
-it flips twice on consecutive substeps and sits vibrating in the wall; and push
-clear by the penetration depth, or the next substep finds it inside again. It
-bounces off the level, off blocks and off panes, because all of those are
-`worldSDF`. A deflected closed geodesic is no longer closed, so a bounce
-switches that mode to the homing return.
-
-**The rebound test is against `BOOM_SKIN`, not the drawn radius, and it MUST
-stay under `PLAYER_R`.** A throw leaves from the player CENTRE, and `collide`
-only guarantees that centre is 0.07 clear of anything - so a 0.09 boomerang is
-already inside the floor at launch, and testing the full radius made every
-throw aimed even slightly downward skip off the ground before it left your
-hand. Measured: one bounce on the first substep at 10 degrees of depression.
-
-**It comes back to WHERE YOU ARE, not to where you threw it from.** The return
-leg is a chase, not a geodesic: it steers at the `nearestLift` of the point
-handed in, so it flies at the copy of you it can actually see, which may well
-be through a face. `boomerangStep(dt, sdf, home)` — pass `home` as null and it
-does not steer at all, which is what the closed-geodesic drift test needs.
-
-**Turning it round is a ROTATION, not a lerp, and this is a real trap.** Mixing
-two unit vectors and renormalising looks like a cheap slerp and fails
-completely at the one angle that matters: for `d` exactly opposite `u` the mix
-is a shorter copy of `d`, which normalises straight back to `d`. A throw aimed
-dead ahead turns round into precisely that case, so the first version never
-turned at all — it flew out and kept going until the lifetime killed it, with
-coordinates doubling every half second (measured: 1.6e7 by t = 6.5, then NaN).
-`turnToward` is Rodrigues about `d x u`, with any perpendicular axis when that
-cross product vanishes. The aimed throw ALSO reverses on the spot at range, so
-the return starts by retracing and bends from there — both because that is what
-a boomerang looks like and because it keeps the degenerate case from arising.
-
-`BOOM_LIFE` is a hard stop, and it does double duty: it bounds the total
-arclength composed into the placement by the homing re-bases, which is what
-keeps `e^{total}` error growth harmless (a realistic flight is ~5 units, so
-`e^5 * 1e-16` = 2e-14).
-
-**Build (G).** A sphere of solid space where you are looking, which is NOT
-solid when you throw it: `BLOCK_DELAY` of 0.75 s while it forms, then
-`BLOCK_LIFE` of 9 s. The delay is the whole design — an instant wall is a panic
-button, a wall that arrives in three quarters of a second is a prediction, and
-a prediction is something an opponent can read and beat. It is drawn while
-forming, at full size and a dimmer colour, so that read is available.
-
-It is worth more here than it would be in a flat game for the reason everything
-here is: volume grows like `e^{2r}`, so a 0.34 sphere blocks an enormous solid
-angle from two units away and nearly nothing from six. **Cover is intensely
-local** — you cannot wall off a lane, only the piece of it you are standing in.
-
-Everything solid goes through `worldSDF` in main.js (`min` of the level and the
-block), not `levelSDF`, or a block would be scenery you walk through.
-
-**Bumping.** Characters collide, on the ORBIT distance — two fighters that look
-like they are touching may be named a cell apart, and comparing coordinates
-would let them walk through each other on screen while colliding with nothing
-at a distance. The push is symmetric and removes the approach speed; without
-that they interpenetrate and are pushed out every substep, and buzz.
-
-**Decoy (V).** A copy of yourself, built out of your own position history.
-
-The trail is already there — the finite-light-speed mode keeps it so the shader
-can draw where you WERE. `plantDecoy` hands the last three seconds of it to a
-body that walks that beat on a loop until it expires.
-
-**It is drawn with the player's own material, and that is the whole ability.**
-In a compact manifold your images already stand one cell away down every
-sightline, so anyone looking at you is looking at a dozen of you: one more,
-moving the way you move, is not a costume, it is genuinely the same thing to
-look at. This is the one ability here that would not work at all in a flat
-world, because there you have a single body on screen to compare it against.
-
-It needs the near cutoff (see Rendering gotchas): a decoy planted while
-standing still sits exactly where you are, and a camera inside a sphere fills
-the screen with one flat colour.
-
-**Recall (H).** Back to where you were three seconds ago, along your own path.
-
-The trail it reads is the SAME samples the shader gets and the OPPOSITE
-representative: `selfHist` is folded because the marcher needs it folded, and
-`trail` is unfolded and carried through every crossing by the element that
-folded the player. That is not a duplicate, it is the point. Recall means "put
-me back at the point of the MANIFOLD I was at", and a folded store names
-whichever lift happened to be current when the sample was taken — so a recall
-after a crossing would drop you in a different copy from the one you walked.
-The trail obeys the carried-objects rule exactly like the anchor and the
-beacon, and it stays in range on its own because it is only a few seconds long.
-
-`recallTarget` walks back down the trail rather than insisting on one index,
-because something may have been BUILT in the place you were standing. It
-returns null rather than dropping you inside a wall. The rope is dropped on
-recall: an anchor several units away would yank rather than swing.
-
-**Sightline cutter (T).** A disc of totally geodesic plane, for five seconds.
-
-Its distance field is `asinh(<p,N>)` for a unit spacelike N — the same formula
-the floor uses, exact, and one inner product wide. The disc is that slab
-intersected with a ball, `max` of the two, which is exact inside and an
-underestimate outside the rim: the safe direction, and the convention every
-primitive in level.js already uses.
-
-**The plane comes for free from the aim.** The ambient unit tangent to your own
-aiming geodesic AT the point you are looking at is already a unit spacelike
-vector orthogonal to that point, so it IS the plane's normal, with no
-construction at all: `<at, N> = 0` and `<N, N> = 1` by definition.
-
-An unbounded geodesic plane cuts H^3 into two CONVEX half-spaces and so blocks
-line of sight completely, at any range — that is the argument the floor rests
-on. This is a disc, so it does not manage that, but 0.6 against a cell of
-inradius 1.0 covers a great deal of a lane. It and the block are the same idea
-at different aspect ratios: a ball you hide behind and a pane you shut a
-corridor with. The block has a delay and no aim; the pane is instant and
-precisely aimed, with a longer cooldown.
-
-**Its normal must be folded by the SAME element as its centre.** `foldElement`
-exists for this and for nothing else. Fold them apart and the plane no longer
-passes through its own centre, so it draws as a slanted sliver somewhere else.
-Near an edge one straddle copy is not enough and the pane is clipped at the
-second face — the same limitation level content has, and the reason `CUT_R`
-stays well under the inradius.
-
-**Anchor swap (E).** Trade places with the grapple hook.
-
-Ordinary in a flat game and not here, for two reasons. The rope's length is
-untouched, so you arrive at exactly the radius you left at and keep swinging —
-from the other end of the same circle. And the anchor may be down a sightline
-that WRAPPED, so the place you are trading into can be a different copy of the
-room: you fired at something that looked far away and you were looking at the
-back of your own head. It is a blink whose range you established earlier, by
-aiming.
-
-The frame goes with you by parallel transport along the connecting geodesic
-(`warpTo`, shared with recall), so the velocity's frame components still mean
-what they meant and nothing has to be re-aimed. It stops `PLAYER_R + 0.06`
-short of the anchor, because the anchor is ON a surface.
-
-**Swing-to-fly.** Above `sqrt(G)` the geometry lifts you faster than gravity
-pulls. The HUD says so.
-
 ## One geometry, three curvatures
 
 `geom.js` is `hyp.js` with the curvature left in. Write the ambient space as
@@ -922,805 +582,6 @@ carry a global "which solid am I in", and getting that out of step with the
 renderer is a whole class of bug. `geometry(k)` returns a value, so two can be
 held at once and compared in a single test with nothing to switch.
 
-## The spherical world
-
-`Curvature: spherical` is a DIFFERENT SPACE, not a different level, and it is
-the smallest of the three to make into a place.
-
-**S^3 needs no quotient.** It is already compact, so there is no fundamental
-domain, no face scan, no pairing, no fold and no straddle copy — every one of
-which exists on the hyperbolic side to fake compactness. Fly far enough in any
-direction and you come back after 2*pi, because that is what a geodesic on a
-sphere does. That is why the spherical program links in **4.7 s against the
-hyperbolic 8.8**: `domainMap`, `exitDist`, `domainDepth`, the fold loop and all
-39 level primitives are dead code there, and a `#define` lets the compiler see
-it (see the inlining rule).
-
-**APPARENT SIZE IS NOT MONOTONIC IN DISTANCE, and the scene is built to show
-it.** An object of proper radius r at distance t subtends about `r / sin(t)`,
-and `sin` peaks at pi/2 — so things look SMALLEST a quarter of the way round
-the world and get bigger again as they recede, until at the antipode a single
-point fills the sky. The scene is a ring of six at pi/2 (r 0.30, apparent
-0.300) and a ring of eight at 2.80 (r 0.15, apparent 0.448): **1.78x the
-distance and 1.49x the apparent size**. It is the exact inverse of the
-hyperbolic worlds, where `e^{2r}` shrinks everything away almost at once.
-
-**A LORENTZ MATRIX IS NOT AN ISOMETRY OF THE 3-SPHERE**, and this is the trap
-the whole thing turns on. The hyperbolic spawn point has `<p,p> = -1` under the
-Minkowski form, as it must, and `+1.81` under the Euclidean one where a valid
-S^3 point needs exactly `+1`. Hand the spherical marcher a hyperbolic placement
-and every ray starts 0.81 off the manifold, `hDist` never closes, nothing is
-ever hit, and the screen comes out **99.3% black** — which is indistinguishable
-from a shader that failed to compile. So switching curvature MUST re-place the
-player (`resetForCurvature`), and `s3.test.js` checks `<p,p> = +1` on every
-scene point for exactly this reason.
-
-**There is no gravity and there cannot be.** "Down" has to be a function with
-`|grad| = 1`, and on a sphere the only candidates point at a pole, so a whole
-world would fall to one spot. Free flight is the honest model, which is the
-other reason this was the cheap one: no floor, no walking, no rope.
-
-**The range limit does not exist here, and that is the engineering case.**
-Coordinates are bounded by 1 at every distance including the antipode —
-measured, float32 holds `<p,p>` to 2.5e-8 at 0.999 of the way round, where the
-hyperbolic side is already off by 1e-3 by d = 7. A level ten times bigger is
-free in S^3 and impossible in H^3.
-
-**What it is NOT:** the fighting kit. The boomerang, the block, the pane,
-portals, the opponent, the courses and the self body are all built on `hyp.js`
-and its group. The option locks below take them away rather than leaving dead
-keys. The self body is the one worth coming back for: in S^3 light goes all the
-way round, so you would see yourself down every sightline with no quotient at
-all — but `selfHist` is a ring of FOLDED positions plus the elements linking
-them, machinery that only makes sense when the marcher cannot leave a domain.
-
-## H^2 x R, the product geometry
-
-`Curvature: H^2 x R` is the fourth geometry and the third scene program. It is
-the first one here that is **not of constant curvature**: it is a PRODUCT, a
-hyperbolic plane crossed with a Euclidean line, and the two factors do not
-interact at all.
-
-    a point   (x0, x1, z, x3)   with x0^2 + x1^2 - x3^2 = -1, z free
-    the H^2 factor   components 0, 1, 3
-    the flat factor  component 2, which is the height, an ordinary number
-
-**The tangent form is diag(1,1,1,-1), the SAME one H^3 uses**, because the
-extra `+z^2` of the flat factor sits exactly where H^3's third spatial
-coordinate does. That is why `mdot`, the lighting and every normalisation in
-the shader are shared with the hyperbolic build unchanged, and only distance,
-the ray, the chart composition and the up vector had to be written twice.
-
-**Distance is PYTHAGORAS in the two factors, exactly:**
-
-    dist(p, q) = hypot(horizDist(p, q), p.z - q.z)
-
-Not an approximation and not an underestimate, which is why every SDF here is
-exact rather than the usual safe underestimate. A vertical column is a
-horizontal distance with the height dropped entirely; the floor is the height
-coordinate itself, which is the cheapest exact surface anywhere in this
-project.
-
-### THE TRAP: the height is AFFINE, so a mat4 multiply is wrong
-
-`Isom(H^2 x R) = Isom(H^2) x Isom(R)`, and that **does not embed in GL(4)** on
-this model. The H^2 part is a 3x3 Lorentz block on components 0, 1, 3; the
-height part is an ordinary translation, which must be ADDED and never scaled.
-
-A plain matrix multiply scales the stored height by the other factor's timelike
-coordinate. Measured: a step of 1.3 along a direction 60% horizontal, from a
-placement 2.1 up, landed at **3.812 instead of 3.140** — the 2.1 had been
-multiplied by `cosh(0.78) = 1.3199` — and `M o inv(M)` was off the identity by
-1.62. So `h2r.js` has its own `applyPoint`, `applyVec` and `compose`, and the
-shader has its own `chartMap` and `chartRebase`. `h2r.test.js` pins both the
-right answer and the wrong one, so the test cannot pass by restating the
-implementation.
-
-`applyPoint` and `applyVec` differ in exactly one component and keeping them
-straight is the whole discipline: a POINT's height translates, a TANGENT
-VECTOR's does not.
-
-### What the geometry buys, and it is three things
-
-**1. The fall time does not depend on the input.** `z = const` is totally
-geodesic, so a horizontal geodesic stays at its height. Measured on the real
-integrator, dropping from 24 at horizontal speeds 0, 0.4, 0.8, 1.6 and 3.0:
-**the same time to every printed digit**. In H^3, with H^3's own integrator,
-the same drop from altitude 3 takes 1.4146 s at a standstill and **never lands
-at all** at walking speed 0.9. That contrast is the headline test.
-
-**2. The frame never tilts, so there is no `alignUp`.** Parallel transport in a
-product is componentwise: E3 stays exactly vertical and E1, E2 stay exactly
-horizontal, measured to 1e-16 over a 400-step wandering walk. In H^3 that is
-false and `physics.alignUp` exists precisely to re-pin it — 111 degrees in one
-substep when it was left out of the open world.
-
-**3. The range limit applies to the HORIZONTAL factor only.** The height is an
-affine coordinate, so it is exact at any depth: 1e6 units up is stored exactly.
-That is why a 44-unit shaft is free here and impossible in H^3, where
-coordinates grow like `cosh` and run out of float64 near d = 16.
-
-But the horizontal factor has the ordinary hyperbolic limit, and here there is
-**no quotient to fold it back** — so unlike the compact worlds, a ray really
-can march out to where float32 has nothing left. **That drew as speckle across
-the entire far field and looked exactly like a precision bug in the normal.**
-It was not: it is the documented d = 7 limit, arriving somewhere new because
-nothing was folding. The fix is a PER-RAY cap:
-
-    horiz = length(dir.xy)                 // the ray's share of the H^2 factor
-    tCap  = min(uMaxT, 7.0 / max(horiz, 1e-4))
-
-so a sightline straight down the shaft runs the full 60 units and one across
-the floor plan is cut at 7 and ends in fog — which is what a horizon is. Note
-that this is the only place in the project where the range limit is a
-*rendering* parameter rather than a level-design one.
-
-**The pixel footprint is ANISOTROPIC here and taking the hyperbolic answer for
-both directions is wrong in the expensive direction.** Neighbouring rays
-separate like `sinh(a t)/a` across the floor plan and like `t` straight down
-the shaft, where `a` is the horizontal share; `sinh(a t)/a` degenerates to
-exactly `t` as `a` goes to zero, so one expression covers both. Using `sinh(t)`
-reads a footprint of 6e18 on a 44-unit vertical sightline, clamps to the cap,
-and asks the marcher for detail sixty times finer than a pixel on the one
-surface it is looking at.
-
-**The floor checker must fade with distance**, for the same pixel-footprint
-reason: one cell of a 7-per-unit checker is far under a pixel wide when the
-floor is 40 units away, and below a pixel the right answer is the average.
-Guarded to this build, because the hyperbolic worlds never see their floor from
-further than a cell or two.
-
-### No quotient, on purpose
-
-There is no group, no fundamental domain, no fold, no straddle copy. A point
-has exactly one name, so `hoopNear`, `foldPoint` and `carryCourse` have nothing
-to do and are not called. A dropper wants none of it: you fall down a shaft
-ONCE, and there is nothing to come back to.
-
-What replaces the wrap as a sense of place is the **column field** — 30
-vertical cylinders in three rings at horizontal radius 1.70, 3.10 and 4.40. The
-counts (6, 10, 14) are chosen so the ANGULAR spacing is even rather than the
-count, because circumference is `2 pi sinh(R)` and an outer ring needs more
-columns to look equally dense. Falling past them, the near ring sweeps by and
-the far one crowds at the horizon, and that difference is the hyperbolic plan
-being legible at a glance.
-
-### The dropper
-
-`Course = dropper`, key K, preset 6. Five gates down a 44-unit shaft.
-
-**The layout was SEARCHED for, not written down** — the same discipline as the
-opponent spawn and the grapple ring. 1080 layouts over ring radius, turn per
-gate, drop per gate, gate radius and wobble, against four criteria all measured
-on the real integrator:
-
-1. every gate ring is clear of the column field
-2. a NO-INPUT drop takes zero gates, or the course is decoration
-3. a greedy "aim at the next gate, full input" policy takes every one
-4. a LAZY policy — same aim, 55% input — fails
-
-85 passed all four. The winner: ring radius 1.5, 150 degrees of turn and 8
-units of drop per gate, gate radius 0.60, five gates. Ring clearance from the
-columns 0.260; gate-to-gate offsets 1.50 then 2.94 four times, with a mean
-`sinh(d)/d` of **2.85** — so the hyperbolic plan is doing real work rather than
-being a flat course with a curved metric written on it. At the 0.70 offsets the
-first search returned, `sinh(d)/d` is 1.08 and the geometry does nothing.
-The aimed run takes 11.35 s and uses 53% of the tightest gate's radius.
-
-**The skill of the mode is a compounding, and it is the reason the plan stays
-hyperbolic while the fall goes flat.** An aiming error `e` at distance `d`
-misses by `sinh(d) e`, and the gate's apparent size falls like `1/sinh(d)`. The
-two multiply: committing to the line early is worth exponentially more than
-correcting late. Criterion 4 above is what pins that — a run that merely drifts
-toward each gate does not get there.
-
-**A gate is a HORIZONTAL DISC, so the crossing test is a sign change of the
-height coordinate**, not of an inner product against a geodesic plane. That is
-why `modes.js runStep` now takes the test off `run.course.crossed` when the
-course supplies one, and falls back to `hoopCrossed` when it does not — the
-phase, the clock, the ordering and the best time are the same in both, and only
-the geometry of a gate differs. Downward only: in a dropper there is no
-climbing back.
-
-**Gates are drawn as LINE LOOPS**, like the hyperbolic hoops and for the same
-reason — a curve in `sceneMap` is inlined three times and paid for at link
-time, which is the budget that binds.
-
-### What it is NOT
-
-The fighting kit, both hyperbolic courses, the self body and the quotient are
-all built on `hyp.js` and its group, and a product placement does not satisfy
-that form at all. The option locks take them away rather than leaving dead
-keys. **Gravity is the one interesting exception: it is NOT locked off, because
-falling is the entire mode** — it is simply not `physics.js`'s gravity. The
-height is a coordinate, so the fall is a constant subtraction from one velocity
-component and there is no field object to choose; the option is pinned to say
-so rather than left offering three answers to a settled question.
-
-## S^2 x R, and `product.js`
-
-`Curvature: S^2 x R` is the fifth geometry and the fourth scene program. It is
-the exact MIRROR OF THE BOUNDED WORLD:
-
-    floor (2D wrap)   the floor wraps because a GROUP glues one octagon to the
-                      next; the height does not wrap
-    S^2 x R           the floor wraps because IT IS A SPHERE -- no group, no
-                      fundamental domain, no fold, no straddle copy; the
-                      height does not wrap
-
-Same shape of world, opposite mechanism, opposite curvature. Running the hoop
-course in one and the lap course in the other back to back is the cleanest way
-to feel what a quotient actually IS, because the experience is identical and
-only the reason differs.
-
-**`product.js` is to `h2r.js` and `s2r.js` what `geom.js` is to `hyp.js`.**
-Surface x R with the surface's curvature left in, so both come out of one set
-of formulas with sinh/cosh swapped for sin/cos, and E^2 x R = E^3 falls out as
-the degenerate control. `h2r.js` delegates to it and its 51 existing tests are
-the regression check — they were written against the old implementations and
-pass unchanged, including the two that pin the affine-height trap.
-
-Two sign traps in the generalisation, both found by running those tests:
-
-- **`horizDist` takes NO `kS` factor.** `<p-q,p-q> = 4 sinK(d/2)^2` needs the
-  form as it stands: `sinh^2 - (1-cosh)^2 = 4 sinh^2(d/2)` at kS = -1 and
-  `sin^2 + (1-cos)^2 = 4 sin^2(d/2)` at kS = +1, both already positive.
-  Multiplying by kS clamped every hyperbolic distance to zero and the
-  dropper's five gates all landed on top of each other.
-- **The surface translation is a BOOST at kS = -1 and a ROTATION at kS = +1**,
-  and the `-kS` in front of `sinK` is the whole of that difference:
-  `h -> -kS sinK(b) o + cosK(b) h`. It is the one place the sign of the
-  curvature is more than a choice of trig function. `s2r.test.js` pins it by
-  checking that the surface block inverts by plain TRANSPOSITION at kS = +1,
-  which only an orthogonal block does.
-
-### What it is the first to have: a compact floor AND honest gravity
-
-    H^3 / Gamma   compact, but "down" has to be CHOSEN, and in the open world
-                  no consistent down exists at all
-    S^3           compact, and gravity is IMPOSSIBLE -- every unit-gradient
-                  function on a sphere points at a pole, so a whole world
-                  falls to one spot
-    H^2 x R       honest gravity (z is affine, |grad z| = 1 exactly) over an
-                  INFINITE floor
-    S^2 x R       BOTH
-
-So this is the first world you can walk right round and arrive where you
-started, under real gravity, with no group anywhere. `s2r.js` has walking,
-falling, jumping and collision; it is a small honest slice like `s3.js`, not
-`physics.js`, and none of the fighting kit exists there.
-
-**A jump is where a player feels the Euclidean height.** Apex exactly
-`v^2/2g`, hang time exactly `2v/g`, and — measured at 0, 0.7, 1.5 and 2.2 of
-running speed — **identical to the last bit at every speed**, because the two
-factors of a product do not interact. Same claim as the dropper's fall,
-somewhere you meet it every few seconds.
-
-### YOU CANNOT ESCAPE BY RUNNING STRAIGHT
-
-Any two geodesics on a sphere meet, twice, always. On the H^2 floor almost none
-do — they diverge like `e^d`, which is why CLAUDE.md records that flanking is
-cheap, retreating is very cheap and a straight-line chase is a losing move.
-Here, running straight away from someone running straight is how you meet them
-on the far side: measured, two runs from one place at any angle are back
-together, to 1e-16, after half a lap. Every design rule this project has that
-rests on hyperbolic divergence inverts.
-
-### Apparent size is MIXED, and the world is built to show it
-
-    horizontally   r / sin(d): smallest at a quarter turn, growing after, and
-                   at the antipode a single point fills the horizon
-    vertically     r / d, ordinary flat falloff, monotonic for ever
-
-S^3 is non-monotonic in every direction and H^2 x R is monotonic in both, so
-this is the only geometry here where the two disagree.
-
-**The demo is an EQUALITY rather than a trend, because an equality can be
-checked by eye.** A cap of pillars 0.45 from each pole, and `sin(0.45) =
-sin(pi - 0.45)` exactly: standing at spire A, the near cap is 0.45 away and the
-far cap is 2.69 away and **they subtend the same angle, to twelve digits**. In
-either hyperbolic world the far one would be 6.3% of the near one's width and
-0.4% of its solid angle.
-
-### The layout, and the two things it taught
-
-**Scenery cannot go in rings around the SPAWN.** A ring at a fixed arc has
-members at every azimuth and the course leaves at azimuth 0, so something is
-always in the way — measured, an unphased ring of 8 at a quarter turn put a
-column dead ahead and a straight lap stopped against it at arc 1.341. Phasing
-only moves which member blocks: at a quarter turn a column must be 48 degrees
-of azimuth off the line to clear the corridor, and eight evenly spaced columns
-cannot all be. **A POLE of the course circle is a quarter turn from every point
-of it**, so a cap of scenery around one is clear of the whole lap at once, by
-construction rather than by search.
-
-**THERE ARE NO PARALLEL LINES, SO THERE IS NO AVENUE ALONGSIDE YOUR ROUTE.**
-The obvious fix — columns at a constant 1.05 sideways all the way round, a road
-with trees down both sides — puts every one of them 60 degrees or more off the
-direction of travel (computed: 67.9 at a quarter of the way, never below 60.1),
-and the field of view is about 40 degrees to a side. **Not one was ever on
-screen while running**, and the screenshot mid-lap was a flat horizon and
-nothing else. What works is CLOSE and BETWEEN: the drawn gate rings reach 0.70
-sideways but have no extent along the course, so a column halfway between two
-gates only has to clear the running corridor. At 0.42 sideways and half a
-gate-spacing along it is 0.41 clear of the nearest ring point and comes down to
-24 degrees of bearing.
-
-**The two SPIRES stand at the poles of the lap**, so each is exactly a quarter
-turn from every gate: running the whole way round, neither comes closer and
-neither gets further, and the two just sweep a full turn around you staying
-opposite each other on the horizon. Nothing flat or hyperbolic does that —
-there, holding something at constant range means constantly turning.
-
-### The lap course
-
-`Course = lap`, key K, preset 7. Six gates evenly spaced around a great circle,
-so **running dead straight takes every one and returns you to the start** —
-measured, 6/6 with no steering at all, in exactly `S2R_LAP / S2R_WALK` seconds.
-
-That is what the bounded world's hoop course does and the mechanism is the
-opposite one. It is ORDERED for a reason that has nothing to do with wrapping
-this time: a lap in the WRONG DIRECTION would otherwise count every gate too.
-
-**A gate is a VERTICAL PLANE, so the sign test uses `sdot` and ignores the
-height entirely** — that is what makes it a doorway you run through rather than
-a hoop at one altitude. The radius test then uses the FULL distance, so jumping
-clean over the top does not count. **The gate's centre height is its own
-radius**, so the ring stands ON the floor rather than half buried; at 0.35 it
-was buried and the drawn loop dipped 0.20 underground, which only the clearance
-test noticed.
-
-### In the shader
-
-Both products share ONE arm, with `kS` as a `#define` — the same relationship
-`product.js` has with the two files. `cosS/sinS/asinS` follow `kS` and are NOT
-the same as `cosK/sinK/asinK`, which follow `uCurv`, the ambient tangent form:
-the two agree in S^2 x R and disagree in H^2 x R.
-
-**`p.xy / p.w` IS A GNOMONIC PROJECTION ON A SPHERE AND IT DOES NOT REACH.**
-The floor checker is drawn in Klein coordinates in the hyperbolic worlds, which
-is right there and wrong here: `p.w` is `cos(d)`, so the ratio blows up at a
-quarter turn and CHANGES SIGN past it. The checker moired into noise at pi/2
-and then mirrored itself over the far hemisphere — half a world drawn twice.
-The three surface coordinates are bounded by 1 everywhere including the
-antipode, so a 3D checker restricted to the sphere is even, has no singular
-point, and needs no projection at all.
-
-**There is no range cap here and that is the engineering case.** H^2 x R needs
-a per-ray horizontal cut because it is the only geometry in the project that is
-both unbounded and unglued; S^2 x R's surface coordinates are bounded by 1 at
-every distance and its height is affine and exact at any depth, so a ray may
-run the full range in any direction.
-
-**The pixel footprint takes `t`, not `sin(a t)/a`.** The horizontal spread
-COLLAPSES TO ZERO at the antipode — that is the focusing that makes a point
-there fill the sky — and a footprint of zero asks the marcher for infinitely
-fine detail. `t` is the vertical spread and an honest upper bound on both,
-since `sin(a t)/a <= t` always. Surfaces near the antipode come out slightly
-fat, which is what focusing looks like.
-
-Link times, warm, three runs: hyperbolic **8.6-8.7 s**, spherical **3.6-3.8 s**,
-H^2 x R **3.9 s**, S^2 x R **3.9 s**.
-
-## E^3 / Lambda, the flat 3-manifolds
-
-`Curvature: flat torus` is the sixth geometry and the fifth scene program, and
-it is the first one here that is deliberately BORING TO LOOK AT. Everything
-else in this project exists because it does something a flat world cannot.
-This one exists to be the thing they are measured against, and it earns the
-place three times over.
-
-**1. IT IS THE ONLY WORLD WHERE A PORTED MAP IS THE MAP.** `port.js` spends
-seven hundred lines on the fact that there is no isometric embedding between
-surfaces of different curvature, and every strategy in it trades one exact
-property for two wrong ones. Port a flat floor plan into flat space and there
-is nothing to trade: every length, every angle, every straight wall, exactly.
-`E3T_PLAN` is a plan of line segments in ordinary flat coordinates and
-`tools/port-map.js` will carry the same one into either hyperbolic world, so
-"what does curvature do to a level" stops being an argument and becomes a
-comparison you can run back to back. **Read the coordinates as a Euclidean
-grid, and note that this is the ONE world here where that sentence is true** --
-level.js says in capitals that its `(a, b)` are geodesic polar and that two
-positions are not `|da, db|` apart. Here they are. That is the whole content
-of "flat".
-
-**2. IT IS THE EXACT STRUCTURAL MIRROR OF THE TWO HYPERBOLIC WORLDS**, and it
-reuses their option rather than adding one:
-
-    floor (2D wrap)   H^3:  octagon -> genus-2 surface x R
-                      E^3:  square  -> 2-torus x R
-    open  (3D wrap)   H^3:  Seifert-Weber dodecahedral space
-                      E^3:  the 3-torus
-
-The square cell is 3.0 across, so its inradius is **1.50 against the octagon's
-1.5286** -- the rooms are very nearly the same size, which is the only way the
-comparison is honest.
-
-**3. THE 3-TORUS DOES A THING NO OTHER WORLD HERE CAN.** See "gravity without
-a height" below.
-
-### The quotient lives in the DISTANCE FUNCTION, and that is the whole design
-
-CLAUDE.md says of the hyperbolic build that "reducing every sample instead
-would work and is far simpler, but reduction costs seven iterations of eight
-inner products, and at 220 steps a pixel that is not affordable". That
-reasoning is correct and it is worth watching it FLIP.
-
-Reduction here is `Math.round`. So the strategy that was out of reach in H^3 is
-the obvious one: take the MINIMUM IMAGE of every displacement, inside the
-distance function, and then nothing else in the renderer or the physics has to
-know a group exists. **No fundamental domain, no face scan, no exact exit
-solve, no fold loop, no straddle copies, no carried objects.** `hDist` in the
-flat shader is one line and it is the entire group:
-
-    float hDist(vec4 p, vec4 q) { return length(wrapDisp(p.xyz - q.xyz)); }
-
-Every marker, every self copy and every level primitive is folded by using it.
-The ray marches straight out into the covering space and never teleports at
-all, which is why `HAS_QUOTIENT` is 0 for this build -- **that flag means the
-fundamental-domain APPARATUS is absent, not that the manifold has no group.**
-
-**Exact, with one condition, and it is the condition the hyperbolic worlds
-already impose in another spelling:** the primitive must fit inside HALF a cell
-along each glued axis. A sphere is exactly right whenever `r < L/2`; a segment
-whenever its half-length plus its thickness is. That is level.js's "centre
-distance plus thickness must stay under the inradius", restated flat, and
-`e3t.test.js` checks the level against it rather than trusting it.
-
-Measured, `tools/sdf-check.js`: the two implementations agree to **8.5e-7 four
-cells out**, against a tolerance of 2e-5. The hyperbolic pair is checked only
-INSIDE the fundamental domain and holds 4.6e-7 there against a tolerance of
-2e-3, a hundred times looser -- because its coordinates grow like `cosh` and
-the flat ones do not grow at all. That ratio is the engineering case for this
-build in one number.
-
-**The placement is still folded, and only float32 asks for it.** Nothing else
-would: an unfolded centre draws in the right place, because `hDist` folds. But
-a long session walks out to coordinates of a few hundred and the shader then
-takes small differences of large numbers. `foldPlacement` subtracts a lattice
-vector and leaves the frame alone -- `settleCarried` making the same argument,
-much cheaper here. It is safe to do at any moment, which is not obvious, and
-it is safe because every other question is asked through `torusDisp`.
-
-**But the crossing test must wrap the STEP, not each end.** Folding `p1`
-against a gate independently lets a substep that straddles a half-cell boundary
-come back as a jump of a whole cell -- a spurious sign change, and a gate
-credited from nowhere. `hoopCrossed` carries `d0` forward by `torusDisp(p1,
-p0)` instead. This is the flat spelling of "the crossing test must ride on a
-segment whose ends are in the SAME chart", and it has the identical symptom.
-
-### GRAVITY WITH A FORCE AND NO POTENTIAL, which only T^3 has
-
-The rule every world here is decided by: gravity must be the gradient of a
-unit-gradient function INVARIANT under the group. The 3-torus splits it down
-the middle, and it is the only world here that can:
-
-    the FORCE descends.       d/dz is invariant under every lattice
-                              translation, so "down" is a perfectly good
-                              constant vector field on T^3.
-    the POTENTIAL does not.   z is not periodic, so there is no height function
-                              on T^3 at all -- and there cannot be, since a
-                              continuous function on a compact manifold has a
-                              maximum and a maximum has no gradient.
-
-Played, that is: **you fall through the floor, arrive through the roof, and
-arrive faster than you left.** There is no terminal state and no conservation
-of energy, because energy is only defined once you name a lift and the lift
-changes every lap. An endless fall inside a finite room. Measured on the real
-integrator: `sqrt(2 g Lz)` = **7.35 after one lap, 10.39 after two, 12.73 after
-three**, and the point never leaves the cell.
-
-Compare the other four. The octagon world's field has a potential and confines
-you. The open world has no field and provably cannot -- a closed hyperbolic
-3-manifold admits no invariant unit-gradient function. S^3 admits none either,
-because every candidate points at a pole. Both products have an honest
-Euclidean height with an honest potential and a floor at the bottom of it.
-
-**The bug this hid, and it is the reason free flight has two arms.** Steering
-toward a target speed is a first-order lag, so adding a constant `-g dt` to it
-gives a TERMINAL VELOCITY of `g/rate`: measured, **1.50 against the honest
-7.35**, identical every lap. The endless fall had silently become a lift
-descending at walking pace. With gravity on, the vertical takes a thrust and
-gravity and NOTHING takes speed away.
-
-### Closed geodesics are DENSE here, and rigid in H^3
-
-    octagon world      exactly EIGHT closed geodesics through the cell centre,
-                       one per generator, all of length 2*OCT_R = 3.057, and
-                       every other direction never returns
-    dodecahedral       twelve
-    T^3                a direction closes IF AND ONLY IF it is RATIONAL, so
-                       the closing directions are DENSE in the sphere of
-                       directions -- 290 primitive ones with coefficients up
-                       to 3 alone
-
-And they come in CONTINUOUS FAMILIES: every parallel translate of a closed
-geodesic is closed and has the same length, checked to 1e-12. In a hyperbolic
-manifold each one is isolated and rigid, with finitely many below any bound.
-That is Mostow rigidity showing up as a fact about level design, and it is why
-the hyperbolic boomerang has a heuristic that picks one of eight fixed axes
-rather than flying where it was aimed.
-
-`nearestClosedDir` is the flat version of that problem and it reads completely
-differently: it is rational approximation, a better answer always exists a
-little further out, and **what a careless aim costs is TIME** -- the length of
-the `(a,b,c)` geodesic is `|(a Lx, b Ly, c Lz)|`, so a complicated ratio is a
-long flight. Aim carelessly and it comes back next week.
-
-### The level, and what each half is for
-
-**Two content sets, split by world exactly as level.js splits its own.**
-
-The SLAB has a floor at z = 0, a roof at z = 3, a plan of wall segments and
-four pillars. **The centreline y = 0 is kept clear all the way across**, and
-that corridor joins its own image at x = +-1.5 into a street with no end. Look
-down it and you see an infinite line of copies of yourself, and **in flat space
-they recede like 1/d, so a dozen are visible at once** -- in either hyperbolic
-world `e^{2r}` makes the second copy a speck. That contrast is the cheapest and
-clearest thing this world has to show and it costs one uncluttered corridor.
-The two doorways are OFFSET from each other, so the back alley -- the strip
-from y = 1.05 out to the face, which joins the strip on the far side and is
-therefore also endless -- cannot be seen into from the street. **That second
-corridor exists only because of the wrap: there is no wall at y = +-1.5, there
-is no y = +-1.5.**
-
-The 3-TORUS has RODS and nothing else. A rod along x meets the faces x = +-1.5
-head on and the gluing there is the identity translation, so it joins its own
-image exactly: **one rod is an infinite straight rod, through every copy of the
-room, for ever.** Three families along the three axes, passing through each
-other without meeting. The hyperbolic spokes need a page of argument about the
-3/10 turn lining a spoke up with its neighbour's; here it is a translation and
-there is nothing to check, which is precisely the difference this world exists
-to show. The walls and pillars are dropped there because they are meaningless:
-a wall with no roof to stop at is an infinite vertical slab, and one of them
-stands across the geodesic the course flies down.
-
-**The rod offsets are SEARCHED for, and the search decided the COURSE too,
-which was not the plan.** A rod is an infinite line and the course is a closed
-geodesic wrapping several cells, so a carelessly placed rod meets it somewhere.
-Sweeping the offset grid against the whole course line:
-
-    (1,0,0)  len 3.00   best rod clearance 1.400
-    (1,1,0)  len 4.24                      0.961
-    (1,1,1)  len 5.20                      0.961  on ALL THREE axes
-    (2,1,0)  len 6.71                      0.571
-    (2,1,1)  len 7.35                      0.571
-    (3,1,1)  len 9.95                      0.374
-
-(2,1,1) was the first choice, for being the more elaborate wrap. It leaves
-0.571 against a gate radius of 0.55, so a rod misses a gate's rim by 0.021 and
-the scaffold has to be built around the race track. **(1,1,1) is shorter, is
-far easier to say -- fly down the cell diagonal and you are back after
-`L*sqrt(3)` -- and leaves 0.41 of genuine margin.**
-
-### The torus course
-
-`Course = torus`, key K, preset 10. Four gates along the closed (1,1,1)
-geodesic, so **flying dead straight takes every one and returns you to the
-start** -- which is word for word what the bounded world's hoop course does and
-what the S^2 x R lap course does, in a third mechanism. Three worlds, one
-sentence, and running them back to back is the point of having all three.
-
-**The start is already looking down the line**, and the hyperbolic course
-cannot manage that. Its hoops have to lie on the axis through the CELL CENTRE,
-because a geodesic parallel to a generator's axis but offset from it does not
-close up, so `beginRun` has to move the player onto the course. Here every
-parallel translate closes, so the course could be laid anywhere and the player
-could join it anywhere along its length.
-
-**The course pins the world to `open (3D wrap)`, and the pinning is the mirror
-of the hyperbolic one.** The (1,1,1) course rises, and in the slab z is not
-glued, so a geodesic with any rise never comes back. Compare the octagon world,
-which is forced the other way and for a much deeper reason: every generator
-there is a translation along an axis lying IN the floor plane, so every closed
-geodesic lies in it too -- all six hoops at altitude 0.0000, a floor-level
-slalom, and no aim can change that. Here the flat course is 3D by construction
-and the flat FLOOR world simply has no closed geodesic with any rise at all.
-
-### In the shader, and what it costs
-
-The flat arm is short because a geodesic is a straight line: `rayLocal` is
-`dir*s`, `chartMap` is a plain `mat4` multiply that is exactly right rather
-than nearly right, `geoStep` is `p + n*d`, and `boostMat` is the affine
-translation the boost degenerates to at k = 0.
-
-**The k = 0 arm of `cosK/sinK/asinK` has to be written out**, and this is a
-trap worth naming: the shared selector tests `uCurv < 0.0`, so a zero curvature
-would fall through to `cos` and `sin`, which are not the flat limits of
-anything. `cosK -> 1` and `sinK -> t` is the limit that keeps
-`cosK^2 + k sinK^2 = 1` true at k = 0.
-
-**`projT` needs its own arm too.** The tangent space at a flat point is all of
-R^3 and the form is degenerate, so there is no constraint to project out --
-only the affine row to clear. `G + mdot(G,p)*p` is meaningless here.
-
-**A latent S^3 bug fell out of writing it.** `geoStep` said `cosh` and `sinh`
-unconditionally, which is right in H^3 and wrong in S^3. The error is O(d^3)
-and ambient-occlusion steps are short, so it never showed -- but the spherical
-build was stepping off the sphere a little at every AO tap. It is `cosK/sinK`
-now, which also makes the flat arm free.
-
-**`p.xy / p.w` works unchanged here**, and it is worth saying why after S^2 x R
-made such a mess of it. In flat homogeneous coordinates `p.w` is 1, so the
-"Klein" checker is just `p.xy` and a 7-per-unit grid on the floor is exactly
-right. On a sphere the same expression is a gnomonic projection that covers
-half a world; here it is the identity.
-
-**The gold cell boundary is drawn, and it is NOT locked off the way "no
-fundamental domain" is everywhere else.** There is one here, it is a square,
-and it matters MORE than the octagon's: there the rooms visibly crowd together
-and the corners give the quotient away on their own, and here **nothing on
-screen distinguishes a 3-metre cell that wraps from an endless plain.** The
-line is the only evidence.
-
-**It is the CHEAPEST scene program in the project.** Link times, warm, on a
-5070 Ti: hyperbolic **8.6 s**, spherical **3.9 s**, H^2 x R **4.0 s**,
-S^2 x R **3.9 s**, **E^3 / lattice 3.1 s**. It has no quotient apparatus and no
-transcendentals at all -- `cosK`, `sinK` and `asinK` are `1`, `t` and `x` --
-so the D3D compiler has almost nothing left to inline.
-
-### The bug that only a screenshot found
-
-`unglued` in main.js meant "spherical or a product", and the flat world made
-the name wrong: **E^3/Lambda emphatically HAS a group, and it is still wrong to
-send its points through `foldPoint`,** which reduces against the octagon or
-dodecahedral generators. A flat point put through those comes back as nonsense
--- the same class of mistake as handing the spherical marcher a Lorentz matrix.
-
-It hid well. The self body drew at a plausible-looking wrong place, and **at
-the spawn it was right, because the flat origin and the hyperbolic origin
-happen to have identical coordinates.** What gave it away was a rendered frame
-of the 3-torus with green spheres in it: those are material 12, "the player,
-seen as a copy", and they are correct and free here -- `hDist` folds every
-displacement, so the player's body is drawn in every cell down every sightline
-with no machinery at all. Chasing why they were there found where they were.
-
-`unglued` is now `adapterWorld()`, which is what it always meant: has no
-HYPERBOLIC fold.
-
-**Finite light speed is still locked off, and the reason had to be corrected
-too.** It is not that there are no self copies -- there are, and they come
-free. It is that `selfHist`, the ring of FOLDED samples plus the group elements
-linking them, is built on the hyperbolic fold.
-
-## Two modes that shipped unplayable, and what it took to notice
-
-`racing.js` (the orbital sprint, S^2 x R) and the dropper's lethal baffles
-(`h2r.js`) both arrived complete-looking, both booted, both drew correctly, and
-**neither could be finished by any input whatsoever.** Neither had a test.
-
-That is the whole lesson, and it is the one this project already knew: the
-opponent spawn, the grapple ring, the dropper's gate layout and the flat
-world's rods were all SEARCHED FOR against criteria simulated on the real
-integrator, precisely because a layout that looks right and cannot be played
-is invisible from a screenshot. These two were written down instead.
-
-Both are now searched and both have `racing.test.js` behind them, 44 tests.
-
-### The dropper: 0/5 at every input from 0.0 to 1.0
-
-Two independent faults, and the second is the more instructive.
-
-**The baffles were holed over the wrong gate.** A baffle is a horizontal slab
-across the shaft with one hole in it, and each sat 0.5 below its own gate with
-the hole concentric with that gate. But the NEXT gate is 2.937 sideways, so the
-hole was nowhere near the path: pass one gate, and the only way onward was
-through solid slab.
-
-The fix is what a baffle is FOR. A gate says "be here at this height". A baffle
-says "and be ON THE WAY between here and the next one" -- which is the
-constraint the mode's own skill argument is about, since an aiming error `e` at
-distance `d` misses by `sinh(d) e` while the gate's apparent size falls like
-`1/sinh(d)`. Without one, nothing checks the line, only the endpoints. So the
-hole goes at the midpoint of the geodesic between consecutive gates, at the
-midpoint height. **SEARCHED** over height fraction and hole radius, 36
-candidates against the four original criteria, 6 passed:
-
-    frac 0.50, hole 0.95   aimed 5/5 in 11.35s   lazy(0.55) 1/5   no input 0/5
-
-picked because its hole rim stands **0.348** clear of the column field, widest
-of the six. Two numbers say it is not decoration:
-
-- **the aimed line uses 94% of a hole and 54% of a gate**, so the baffle is the
-  TIGHTER of the two constraints, which is the only reason to have one;
-- **an 0.85-input run dies ON A BAFFLE** rather than merely missing a gate,
-  which is the difference between a hazard and a checkpoint.
-
-And 11.35 s is exactly what the aimed run cost before baffles existed, so a
-correct line pays nothing for them.
-
-**THE COLUMNS WERE MADE LETHAL, AND THAT INVALIDATED A SEARCH THAT HAD ALREADY
-BEEN RUN.** This is the one to remember. The gate ring was searched with the
-column field as SCENERY -- CLAUDE.md records "Ring clearance from the columns
-0.260", and a gate's RIM comes within **0.220** of a column with the player
-0.10 across. Adding the columns to the lethal set turned a 0.12 margin into
-instant death, and the aimed run died at altitude 42.6, above every baffle,
-having flown out to the 1.70 column ring on its way to a gate at radius 1.5.
-
-The columns are scenery and stay scenery. They are still SOLID -- they are in
-`h2rSDF`, so `h2rCollide` stops you -- which is the honest reading: you bounce
-off the furniture and you die on the course. `dropperObstacleSDF` is the
-baffles and nothing else.
-
-**A lethal surface must be tested SWEPT.** The slab is 0.16 thick against a
-player 0.20 across, so the hit zone is 0.36 and a single fast substep can start
-above it and end below it with neither endpoint inside -- a point test reports
-a clean pass through solid rock. `dropperImpact` sphere-traces the substep;
-`racing.test.js` builds exactly that tunnelling case and checks both that the
-sweep catches it and that a point test at either end would not have.
-
-### The race: stopped dead at arc 1.241, told to do the impossible
-
-**The HUD recommended a detour the road is too narrow for.** A hurdle is 0.23
-of arc in a road of half-width 0.29, so the on-road gap beside one is **0.060
-against a player 0.10 across** -- and the only text on screen said "jump
-earlier or go around". Every driver drove into the side of it and stayed there.
-
-The mode already had the right mechanic and never said so. Measured against the
-jump the racer actually has (apex 0.405, hang 0.600 s, a top at 0.14 to clear
-plus the player's own 0.10):
-
-    arc covered while clear of the top   0.413 at road speed
-                                         0.728 on turbo
-    arc a hurdle of radius r needs       2r + 0.20  =  0.66
-
-**You cannot clear a hurdle at cruising speed. You can on turbo.** So drifting
-the turns pays for the jumps, which is the loop an arcade racer wants, and it
-was all there and undiscoverable. On the real integrator: **6.81 s a lap on the
-boosted line, 22.92 s on the off-road detour, and a run that does neither stops
-dead** -- at arc 1.240 against a hurdle edge computed at 1.241.
-
-The gap beside a hurdle is left impassable rather than widened. A hurdle you
-can thread on the tarmac is one nobody ever jumps.
-
-**The gates overlapped each other and were wider than the road.** Twelve of
-radius 0.40 sat 0.524 apart: a diameter of 0.80 in a gap of 0.52, so the course
-was a tunnel of interpenetrating rings rather than a line of checkpoints. And
-at 0.40 against a road half-width of 0.29 you could be off the tarmac and still
-score, so the two instructions the mode gives -- stay on the road, take the
-gates -- pulled apart. Now **ten of radius 0.30**: they clear each other (0.600
-in 0.628), they match the road, and ten does not divide the lap into quarters,
-so no gate lands on a hurdle at a quarter and three quarters of the way round.
-
-**ON A SPHERE THE FAR GATES ARE THE BIGGEST THINGS ON SCREEN**, and an overlay
-is where that stops being a curiosity and becomes a bug. Apparent size goes
-like `r/sin(d)`: smallest a quarter turn away and growing again after. Drawing
-a whole lap put every ring already passed, and every one half a world away,
-across the view as huge concentric circles -- **the ones you could not use were
-the loudest.** Three ahead is what a racing line needs and is the only range
-where `r/sin(d)` is still doing the ordinary thing.
-
-**And `raceObstacleSDF` used `Math.acos` of the inner product.** Algebraically
-the arc distance, numerically the wrong way to get it: `acos` loses precision
-exactly where its argument is near 1, which is where two points are CLOSE --
-the only regime a collision test ever runs in. Worse, its GLSL half used
-`hHorizDist`, the `4 sin^2(d/2)` form, so **the two sides did different
-arithmetic for the same number** -- precisely the drift `tools/sdf-check.js`
-exists to catch, and could not, because `race-track.js` was not one of its
-cases. It is now, and it agrees to 9.1e-8.
-
-**Two smaller ones worth the note:** `racing.js` carried its own bare `0.29`
-for the road width beside `race-track.js`'s `RACE_WIDTH`, which is two places
-for one number in a file pair that exists to have one; and `race-track.js`
-importing `horizDist` back out of `s2r.js` makes an import CYCLE, since `s2r`
-imports it to emit its GLSL. The cycle happens to work, because nothing calls
-across it at module scope, and that is exactly the kind of thing that stops
-working when someone adds a constant. The identity is three lines; it is
-written out.
-
-### `tools/sdf-check.js` grew a fourth case and a failure mode
-
-It now checks the hyperbolic level, both flat worlds and S^2 x R with the race
-track on. Adding the fourth broke it in a way worth naming, because the symptom
-named nothing: **`browser failed: exit null`, with the page having run
-perfectly.** The page embeds its own sample points and `--dump-dom` hands the
-whole document back, so input and output came home in one buffer -- past
-`execFileSync`'s 1 MB `maxBuffer`, which kills the child with SIGTERM. The
-script node now removes itself before the dump, `maxBuffer` is 64 MB as the
-belt to that brace, and the error message distinguishes the two cases that look
-identical from outside: a kill with output already produced is this side's
-buffer, and one without is the shader or the time budget.
-
 ## Modes take options away, and they do it through `optVal`
 
 `rawVal(k)` is what the player picked. `optVal(k)` is what the game uses, and a
@@ -1789,152 +650,6 @@ Two rules they follow:
   mode that has no course — measured, switching from "Hoop course" to
   "Spherical flight" left the run in `PHASE.RUNNING` with a live timer.
 
-## Game modes
-
-`modes.js` holds the round system — phase, clock, ordered checkpoints, best
-time — and it is DOM-free like physics.js so the rules are testable.
-`modes.test.js` has 56.
-
-**The crossing TEST belongs to the COURSE, not to `runStep`.** `hoopCrossed`
-is the right one for a hoop in H^3 — a sign change of `<p,N>` against a
-geodesic plane — and it is wrong for a dropper gate, which is a horizontal disc
-in a space where the height is a coordinate. So a course may carry
-`crossed(p0, p1, gate)` and `runStep` defers to it; the hyperbolic courses
-carry none and get the default. Everything else about a run — the phase, the
-clock, the ordering, the best time — is the same in every geometry, which is
-what made `modes.js` reusable across three of them without a rewrite.
-
-**A MODE THAT DEFAULTS TO OFF NEEDS ITS KEY TO TURN IT ON.** Both courses
-shipped working and unreachable. `KeyK` was gated behind `courseOn()`, the
-option defaults to `off`, and K was missing from the on-screen key list - so
-the only way in was to already know the mode existed and find it in the menu.
-Pressing K did nothing, and since the hoops are a line-loop OVERLAY the map is
-unchanged by design, so there was no signal at all that anything had happened.
-**A key named on screen must always do something when pressed**; if the feature
-is off, the key turns it on.
-
-**And a run must START you on the course.** `geodesicCourse` has to lay its
-hoops on the axis through the CELL CENTRE, because a geodesic parallel to a
-generator's axis but offset from it does not close up - so the course cannot
-come to the player and `beginRun` moves the player to the course. Altitude
-matters for the same forced reason: every closed geodesic in the bounded world
-lies IN the floor plane, so the hoops are centred at altitude 0 and the
-ordinary spawn at 0.6 is above a gate of radius 0.3 *entirely*. Measured, gate
-1's ring points on screen at the moment the clock started: **0 of 41 before,
-34 of 41 after** (and 0 -> 41 for the grapple ring). `aimAt` inverts
-`cameraBasis` through the same `logTo` that `project` uses, so where the camera
-points and where the hoop draws cannot disagree.
-
-**The hoop course (option `Hoop course`, key K).** Hoops laid along a CLOSED
-GEODESIC, so the course returns to its own start with no turning: fly dead
-straight and you arrive where you began. `modes.test.js` flies it and takes all
-six without steering once.
-
-**The ordering is not bureaucracy — without it the WRAP is the cheat.** In a
-compact manifold a straight line eventually reaches everything, so an unordered
-course would credit hoop five on the way to hoop two. Only `run.next` counts.
-
-**The crossing test must ride on a segment whose ends are in the SAME chart.**
-It uses `bankFrom` — the substep's start point already carried through any fold
-that happened during it, which the holonomy meter needed first. Testing a raw
-start against a folded end reports a flight right across the room at every face
-crossing, and every hoop between would count at once.
-
-**A course is a CARRIED object**, like the anchor and the beacon: `carryCourse`
-moves every hoop by the same `g`, and each hoop's NORMAL by the same element as
-its centre. Fold those apart and the plane stops passing through its own
-centre, so the gate draws in one place and is crossed in another — the bug
-`foldElement` exists to prevent, in its other form.
-
-**Hoops are drawn as LINE LOOPS, never as shader primitives.** Anything in
-`sceneMap` is inlined three times and paid for at link time, the budget that
-once took the scene program to 212 seconds. A hoop is a curve, main.js already
-draws curves for the rope, and a line loop costs the compiler nothing.
-`hoopNear` picks the copy nearest the player, because a course spanning the
-manifold has most of its hoops cells away in coordinates — drawn there they
-project to the wrong part of the screen, since the marcher's view teleports at
-every face and a line overlay does not.
-
-**The bounded world's course is FLAT, and that is forced — the same fact as the
-boomerang's.** Every generator of the octagon group is a translation along an
-axis lying IN the floor plane, so every closed geodesic there lies in it too:
-measured, all six hoops at altitude **0.0000**. It reads as a floor-level
-slalom. In the OPEN world the same code gives altitudes 0.243 to 1.558, a range
-of **1.315** — a genuine 3D flight course. **This mode is at its best in the
-open world**, where the SPOKES are drawn along exactly those axes and the
-scenery shows you the line before you know there is a race.
-
-**The grapple course (`Course = grapple`) is the opposite mode, and it is what
-the SIGNED holonomy meter was waiting for.** A ring of CHARGE GATES: a gate
-will not count until `banked` reads past its threshold **with the right sign**.
-`sweptArea` integrates `(cosh(r) - 1) dtheta` and `dtheta` has a sign, so
-circling one way fills the meter and the other way empties it — until now that
-sign only ever chose between a dash and a blast. The gates alternate, so
-getting from a `+0.8` gate to a `-0.8` one means unwinding what you banked and
-then banking as much again the other way round. And because the integrand is
-`cosh(r) - 1`, a wide arc is worth exponentially more than a tight one: the
-cheap charge is a long swing around a tower, not a spin on the spot. **In a
-flat world the mechanic does not exist — the same integral is identically
-zero.**
-
-**A shut gate is flown THROUGH, not bounced off.** Making it solid would put a
-disc across a corridor you are swinging down at speed, which is a wall you hit
-by accident. The honest failure is that the pass does not count; `run.refused`
-records it so the HUD can say why, and the ring draws RED until the meter
-crosses.
-
-**The gate ring is SEARCHED for, not written down** — the same lesson as the
-opponent spawn. The obvious choice, floor radius 1.0 with no rotation, puts a
-gate INSIDE a wall: the walls are a pinwheel at exactly that radius, and
-`levelSDF` at the first gate reads **-0.034**. Swept over radius, altitude and
-rotation, the best clear ring is r = 1.30, h = 0.45, rotated 9 degrees, which
-stands every gate **0.336** clear and keeps them all within 1.412 of the centre.
-`modes.test.js` asserts both that the chosen ring is clear and that the naive
-one is not.
-
-### Three that were considered, and what became of them
-
-**Rescaling the curvature radius ("flatten") is impossible in the quotient.**
-The octagon's 45 degree angles depend on its size, so a smaller octagon stops
-being a genus-2 fundamental domain. The group is rigid. Zoom is the substitute,
-though a weaker one: it magnifies uniformly rather than converting the falloff.
-
-**Tethering to an ideal point is impossible.** A compact manifold has no
-boundary at infinity. Holonomy dash is the substitute.
-
-**A DROPPER is impossible IN H^3 — and that turned out to be a fact about
-H^3 rather than about droppers. It is now a mode, in `h2r.js`.** Keep the
-measurement below: it is what says which geometry the mode needed, and it is
-the reason H^2 x R was built. The finding is that in H^3 steering and
-descending are ANTAGONISTIC. A geodesic tangent to an
-equidistant surface of the floor plane has its lowest point there and rises
-away on both sides, so horizontal motion is motion that climbs. Above a
-critical horizontal speed the geometry beats gravity outright and you stop
-descending, and that speed collapses with altitude — measured by bisecting on
-the real integrator: 1.854 at altitude 1, 0.924 at 2, 0.417 at 3, 0.178 at 4,
-0.073 at 5, roughly halving per unit.
-
-`WALK_SPEED` is 0.9, so **a player at full walking speed stops descending above
-altitude 2.034**. Ordinary play never meets this, because the floor is at 0 and
-the player walks at 0.07 — but anything played high does. Holding a steady
-sideways input while falling from 2.4 is a cliff and not a dial: 0% input
-reaches the floor in 1.29 s, and 20% or more never arrives at all in 60 s.
-
-Below the cliff there is no room either: that 1.29 s fall puts gates 0.13 s
-apart while `WALK_SPEED` buys 0.12 of lateral movement in the same time, so the
-gate radius does all the work. Swept over radius, offset and gravity scale,
-there is no setting where a straight drop fails and a steered run succeeds.
-**Lowering gravity makes it worse** — the critical speed scales down with
-gravity, so a gentler fall is one that any input stops completely.
-
-**What fixes it is changing the SPACE, not the numbers.** The whole failure is
-that the level sets of the height in H^3 are EQUIDISTANT SURFACES of a geodesic
-plane: they curve away from it, so a horizontal geodesic climbs. In H^2 x R the
-level sets `z = const` are TOTALLY GEODESIC copies of H^2, a horizontal
-geodesic stays at its height for ever, and the fall time is exactly independent
-of the input — measured at every horizontal speed from 0 to 3, identical to
-every printed digit. See "H^2 x R" below.
-
 ## Level authoring
 
 The floor is an H^2, so it has no Euclidean grid. `(a, b)` are **geodesic
@@ -1955,139 +670,32 @@ dodecahedron reaches 1.854 that way.
 
 ### Porting a flat map into a curved one — `port.js`
 
-**There is no isometric embedding, and Gauss says so in one line.** Curvature is
-intrinsic (*Theorema Egregium*), so a distance-preserving map between surfaces
-of different curvature does not exist. Same fact as an orange peel not lying
-flat. The question is therefore never "which projection is right" but **WHICH
-PROPERTY DO YOU WANT KEPT**, and there are exactly three classical answers,
-each exact in one thing and wrong in the others:
+**There is no isometric embedding between surfaces of different curvature**
+(*Theorema Egregium*), so the question is never "which projection is right" but
+WHICH PROPERTY DO YOU WANT KEPT. Three classical answers, each exact in one
+thing: **polar** (distance and bearing from the centre), **conformal**
+(angles), **projective/Klein** (STRAIGHTNESS — a Euclidean chord is a
+geodesic). **Usually you want Klein**, because a map of straight walls is a map
+whose meaning is which straight lines exist; measured exact to 1e-16. A fourth
+strategy, the DEVELOPING MAP, keeps every edge length and turn angle exactly
+and cannot close its loops — the gap is the enclosed area, the same integral
+`physics.sweptArea` banks. Develop along a spanning tree and the port is exact.
 
-    embedding     exact                             cost
-    ---------------------------------------------------------------------
-    polar         distance and bearing FROM THE      everything transverse,
-                  CENTRE. It is the exponential      stretched by sinh(u)/u
-                  map, so `translation([a,b,0])`
-                  already IS this one
-    conformal     ANGLES, everywhere. A small        scale, by 2/(1-u^2):
-    (Poincare)    circle stays a circle at every     rooms shrink toward
-                  radius                             the rim
-    projective    STRAIGHTNESS. A Euclidean chord    angles and distances
-    (Klein)       of the disc IS a geodesic, so
-                  every wall stays a wall
+`node tools/port-map.js` does the comparison, the clearance check and the cycle
+report. Full argument and all the measurements:
+[docs/archive/geometry-worlds.md](docs/archive/geometry-worlds.md).
 
-**Usually you want the projective one, and that is not taste.** A map made of
-straight walls is a map whose entire meaning is which straight lines exist: the
-rooms, the corners, the sightlines. Klein keeps all of that exactly — measured
-at **1e-16** over every interior point of every segment, at every scale — and
-changes only the metric, which is what you asked for by porting into a curved
-space at all. Take the conformal one when the map is about SHAPES (a curve, a
-spiral, a logo) and the polar one when it is about RANGES from one place.
+**The disc models end at u = 1 and a point outside THROWS rather than clamps** —
+a clamp hands back a finite answer for a point that is not in the model, and
+the level would build and be silently wrong.
 
-**In E^2 all three are the same map**, and that is the control rather than a
-footnote: the difference between them IS the curvature. `port.test.js` asserts
-it, along with the three defining properties and the two that fail.
-
-The radial profiles are the whole file, and they are the usual sinh/sin swap:
-
-                    hyperbolic      flat     spherical
-      polar         u               u        u
-      conformal     2 atanh(u)      u        2 atan(u)
-      projective    atanh(u)        u        atan(u)
-
-**The hyperbolic disc models end at u = 1, and that edge is infinitely far away
-in the metric.** A point outside it THROWS rather than clamping — a clamp would
-hand back a finite answer for a point that is not in the model, and the level
-would build and be silently wrong, which is the worst failure available here.
-
-**And what NO embedding can do, which is the useful half.** A hyperbolic
-quadrilateral has angle sum strictly less than 2*pi, so **a square room with
-four right angles does not exist in H^2 at all**. Any map that keeps the walls
-straight must lose the right angles; any map that keeps the right angles must
-bend the walls. Measured: a right-angled corner comes out at 55 degrees under
-all three, and WIDE in S^2 for the mirror reason. A ported level that needs
-both needs re-authoring, not re-projecting.
-
-**`fitScale`'s `fill` is the real design lever**, and a large one. It says how
-much of the model disc the map may use, which in the curved cases is the same
-thing as how hyperbolic it feels: the same plan at fill 0.30 has a distance
-spread of 1.15x and at fill 0.95 has 3.4x. The default is 0.9 rather than 1
-because in a disc model the last tenth of the radius is most of the space.
-
-**THE FOURTH STRATEGY IS DIFFERENT IN KIND, and for an extended map it is the
-one to reach for.** The three above are all radial, measured from ONE centre,
-which suits a compact blob and crushes a corridor whose distortion is then set
-by how far it happens to be from a centre that has nothing to do with it. The
-alternative is a DEVELOPING MAP: unroll the flat instructions one edge at a
-time, carrying the frame along, and
-
-    KEEP EVERY EDGE LENGTH AND EVERY TURN ANGLE, EXACTLY.
-
-A corridor 8 long is 8 long and a right-hand turn is 90 degrees, everywhere on
-the map. It has exactly one cost and it is not negotiable:
-
-**THE LOOP DOES NOT CLOSE, AND THE GAP IS THE AREA IT ENCLOSES.** Walk a flat
-rectangle -- four edges, four right turns -- and you are back where you
-started; develop the same instructions into H^2 and you are not. That is not
-accumulated error and no care removes it: a geodesic n-gon in H^2 has angle sum
-`(n-2)pi` MINUS its area, so a polygon with the flat angles has nowhere to be.
-Measured, `spin = k * area` in the small-polygon limit -- squares of side 0.4,
-0.2, 0.1, 0.05 give `spin/area` of **-1.052, -1.013, -1.003, -1.001 in H^2**
-and **+0.946, +0.987, +0.997, +0.999 in S^2**, and E^2 gives exactly zero.
-The headline number: **a 1x1 flat square developed into H^2 comes back 0.87
-short and 75.6 degrees rotated.**
-
-**It is the same integral the holonomy dash banks.** `physics.sweptArea`
-integrates `(cosh(r) - 1) dtheta` around the player's path and calls it a
-charge; `port.developClosure` composes isometries around a path and calls it an
-error. One fact, seen twice, with opposite attitudes.
-
-**So develop along a SPANNING TREE and the port is exact.** Any part of a map
-with no loops -- a corridor, a branch, a dead end, a whole tree of rooms --
-ports with every length and every angle intact, in any geometry, measured to
-1e-12. Only the CYCLES cannot be satisfied, and there are exactly
-`edges - nodes + components` of them; cut those, develop the rest, and re-close
-each cut by hand. `port.fundamentalCycles` finds them and `developClosure` says
-what each one is asking a cut to absorb. Under a few degrees, nudge a corridor.
-Over a right angle, the geometry will not take it.
-
-**And the encouraging half: BRANCHING MAPS PORT TO H^2 BETTER THAN TO E^2.** A
-tree of rooms needs room that grows exponentially with depth, which is what
-hyperbolic space has and flat space does not -- in E^2 a deep branching level
-has to fold back on itself and crowd. Cycles are what hyperbolic space is bad
-at; trees are what it is BETTER at. The demo plan's two cycles ask a cut to
-absorb 57.9 degrees; a tree plan of the same size asks for nothing at all.
-
-**`node tools/port-map.js`** closes the loop: a flat floor plan of line
-segments in, the comparison table, the clearance check, the CYCLE REPORT (what
-a developing port would cost, at the same scale) and a `WALLS` array ready to
-paste. `--embed=`, `--world=`, `--fill=`; with no arguments it runs a
-built-in demo plan. It fits to `inradius - thickness` rather than to the
-inradius, because a wall has to fit inside the domain WITH its thickness, and
-getting that the wrong way round is how a wall ends up cut off at a face —
-which nothing else notices, since both SDFs still agree and the physics still
-collides correctly.
-
-**A triangle mesh is the wrong input and a floor plan is the right one.** The
-marcher steps by exact distance and a mesh has none; every primitive here is an
-intersection of slabs whose distance is one `asinh` of one inner product. A
-`WALL` is already three of those built from two floor points, so segments in
-and walls out is the natural pipeline, and it works in both worlds that have a
-floor. Read the input coordinates as geodesic polar, never as a Euclidean grid.
-
-**`distToGeodesic`: the perpendicular part of the log is NOT the distance**, and
-it looks exactly like it should be. Splitting `log_a(p)` into components along
-and across the axis and taking the norm of the second is the FLAT answer done
-in the tangent space; it underestimates, by 0.299 against a true 0.35 in the
-test that caught it. The right relation is the right-triangle one, a single
-line in all three curvatures:
-
-    sinK(d) = sinK(rho) * sin(theta)
-
-and it degenerates to `d = rho sin(theta)` at k = 0, which is why the flat
-answer looks correct until it is measured. **Take `sin(theta)` from the CROSS
-PRODUCT, never from `sqrt(1 - cos^2)`** — the angle asked about is usually near
-zero, since "the point is on the line" is exactly theta = 0, and there the
-square root reads 3.55e-8 for an exact zero.
+**`distToGeodesic`: the perpendicular part of the log is NOT the distance.**
+Splitting `log_a(p)` and taking the norm across the axis is the FLAT answer
+done in the tangent space; it underestimates, 0.299 against a true 0.35. The
+right relation is `sinK(d) = sinK(rho) * sin(theta)`, one line in all three
+curvatures. **Take `sin(theta)` from the CROSS PRODUCT, never from
+`sqrt(1 - cos^2)`** — the angle is usually near zero, where the square root
+reads 3.55e-8 for an exact zero.
 
 **Three worlds hold their scene as data and emit it twice BY HAND** —
 `level.js`, `s3.js` and `h2r.js` each carry their own number formatter and
@@ -2379,6 +987,173 @@ round. That corridor is the same corridor in every copy.
   frame. Normals in **physics.js** *are* frame components, legitimately — there
   the point and the frame are the same placement's.
 
+## Traps in the archived subsystems
+
+The per-world rationale and the gameplay kit moved to
+[docs/archive/geometry-worlds.md](docs/archive/geometry-worlds.md) and
+[docs/archive/gameplay-kit.md](docs/archive/gameplay-kit.md) on 2026-09-07.
+**Every trap in them was kept here**, because a trap is a rule and the rest is
+an argument. Each line below cost a session or most of one; the archive has the
+measurement and the reasoning behind it.
+
+### Switching geometry
+
+- **A LORENTZ MATRIX IS NOT AN ISOMETRY OF THE 3-SPHERE.** The hyperbolic spawn
+  has `<p,p> = -1` under the Minkowski form and `+1.81` under the Euclidean one
+  where S^3 needs exactly `+1`. Hand the spherical marcher a hyperbolic
+  placement and every ray starts off the manifold, nothing is ever hit, and the
+  screen comes out **99.3% black** — indistinguishable from a failed compile.
+  Switching curvature MUST re-place the player (`resetForCurvature`).
+- **Never send a flat point through the hyperbolic `foldPoint`.** It reduces
+  against the octagon or dodecahedral generators and comes back as nonsense.
+  The predicate is `adapterWorld()` — "has no HYPERBOLIC fold" — and it was
+  once called `unglued`, which quietly meant the wrong thing: E^3/Lambda
+  emphatically HAS a group. It hid because the flat origin and the hyperbolic
+  origin have identical coordinates, so it was right at the spawn and wrong
+  everywhere else.
+- **`geoStep` must use `cosK`/`sinK`, not `cosh`/`sinh`.** Unconditional
+  `cosh`/`sinh` is right in H^3 and wrong in S^3; the error is O(d^3) and AO
+  steps are short, so the spherical build stepped slightly off the sphere at
+  every tap for a long time without showing it.
+
+### The product geometries (`product.js`, `h2r.js`, `s2r.js`)
+
+- **THE HEIGHT IS AFFINE, SO A `mat4` MULTIPLY IS WRONG.** `Isom(H^2 x R)` does
+  not embed in GL(4) on this model: the surface part is a 3x3 Lorentz block and
+  the height must be ADDED, never scaled. A plain multiply scales the stored
+  height by the other factor's timelike coordinate — measured, a step of 1.3
+  from 2.1 up landed at **3.812 instead of 3.140**, and `M o inv(M)` was 1.62
+  off the identity. Hence `applyPoint`, `applyVec` and `compose` in `h2r.js`
+  and `chartMap`/`chartRebase` in the shader. **`applyPoint` and `applyVec`
+  differ in exactly one component**: a POINT's height translates, a TANGENT
+  VECTOR's does not.
+- **`horizDist` takes NO `kS` factor.** `<p-q,p-q> = 4 sinK(d/2)^2` needs the
+  form as it stands, and both signs are already positive. Multiplying by `kS`
+  clamped every hyperbolic distance to zero and stacked the dropper's five
+  gates on top of each other.
+- **The surface translation is a BOOST at `kS = -1` and a ROTATION at `kS = +1`**,
+  and the `-kS` in front of `sinK` is the whole difference. The test that pins
+  it is that the surface block inverts by plain TRANSPOSITION at `kS = +1`.
+- **H^2 x R needs a PER-RAY range cap**, `min(uMaxT, 7.0 / horiz)`. It is the
+  only geometry here that is both unbounded and unglued, so a ray really can
+  march to where float32 has nothing left; it drew as speckle across the whole
+  far field and looked exactly like a precision bug in the normal.
+- **The pixel footprint is ANISOTROPIC in H^2 x R**: `sinh(a t)/a`, which
+  degenerates to `t` as `a` goes to zero. Using `sinh(t)` reads a footprint of
+  6e18 on a 44-unit vertical sightline and asks for detail sixty times finer
+  than a pixel.
+- **S^2 x R takes `t` for the footprint, not `sin(a t)/a`** — the horizontal
+  spread COLLAPSES TO ZERO at the antipode, and a footprint of zero asks for
+  infinitely fine detail. `t` is an honest upper bound on both.
+- **`p.xy / p.w` IS A GNOMONIC PROJECTION ON A SPHERE AND IT DOES NOT REACH.**
+  `p.w` is `cos(d)`, so the Klein checker blows up at a quarter turn and CHANGES
+  SIGN past it — moire at pi/2, then half a world drawn twice. Use a 3D checker
+  on the bounded surface coordinates. It works unchanged in the FLAT world,
+  where `p.w` is 1 and the same expression is the identity.
+- **The floor checker must fade with distance** in H^2 x R: one cell is far
+  under a pixel at 40 units, and below a pixel the right answer is the average.
+
+### E^3 / Lambda
+
+- **The crossing test must wrap the STEP, not each end.** Folding `p1`
+  independently lets a substep straddling a half-cell boundary come back as a
+  jump of a whole cell — a spurious sign change and a gate credited from
+  nowhere. `hoopCrossed` carries `d0` forward by `torusDisp(p1, p0)`.
+- **Free flight needs two arms, or gravity gives a terminal velocity.** Steering
+  toward a target speed is a first-order lag, so adding a constant `-g dt` to it
+  terminates at `g/rate` — measured **1.50 against the honest 7.35**, identical
+  every lap, and the endless fall had silently become a lift. With gravity on
+  the vertical takes a thrust and NOTHING takes speed away.
+- **The k = 0 arm of `cosK`/`sinK`/`asinK` has to be written out.** The shared
+  selector tests `uCurv < 0.0`, so zero curvature falls through to `cos`/`sin`,
+  which are not the flat limits of anything. **`projT` needs its own arm too**:
+  the form is degenerate, so there is no constraint to project out.
+- **A primitive must fit inside HALF a cell along each glued axis** for the
+  minimum image to be exact — level.js's clearance rule, restated flat.
+- **The gold cell boundary is drawn here and is NOT locked off.** Nothing else
+  on screen distinguishes a 3-metre cell that wraps from an endless plain.
+
+### Courses and modes (`modes.js`)
+
+- **The crossing TEST belongs to the COURSE, not to `runStep`.** A hoop in H^3
+  is a sign change against a geodesic plane; a dropper gate is a horizontal
+  disc. A course may carry `crossed(p0, p1, gate)` and `runStep` defers to it.
+- **The crossing test must ride on a segment whose ends are in the SAME chart.**
+  It uses `bankFrom`, the substep's start carried through any fold that
+  happened during it. A raw start against a folded end reports a flight across
+  the room at every face crossing, and every hoop between counts at once.
+- **A course is a CARRIED object.** `carryCourse` moves every hoop by the same
+  `g`, and each hoop's NORMAL by the same element as its centre — fold those
+  apart and the gate draws in one place and is crossed in another.
+- **Ordering is not bureaucracy: without it the WRAP is the cheat.** A straight
+  line eventually reaches everything, so an unordered course credits hoop five
+  on the way to hoop two.
+- **Hoops are LINE LOOPS, never shader primitives.** Anything in `sceneMap` is
+  inlined three times and paid for at link time. `hoopNear` picks the copy
+  nearest the player, or it projects to the wrong part of the screen.
+- **A run must START you on the course.** A geodesic parallel to a generator's
+  axis but offset from it does not close, so the course cannot come to the
+  player and `beginRun` moves the player to it. Measured, gate 1's ring points
+  on screen when the clock started: **0 of 41 before, 34 of 41 after**.
+- **A MODE THAT DEFAULTS TO OFF NEEDS ITS KEY TO TURN IT ON.** Both courses
+  shipped working and unreachable. **A key named on screen must always do
+  something when pressed**; if the feature is off, the key turns it on.
+- **LAYOUTS ARE SEARCHED FOR, NOT WRITTEN DOWN**, against criteria simulated on
+  the real integrator. The opponent spawn, the grapple ring, the dropper gates
+  and baffles, and the flat world's rods all were. Two modes that were written
+  down instead shipped complete-looking, booting, drawing correctly and
+  **finishable by no input whatsoever** — which a screenshot cannot show.
+- **Changing what is LETHAL invalidates a search already run.** The dropper's
+  gate ring was searched with the columns as scenery and clears one by 0.220
+  against a player 0.10 across; adding them to the lethal set turned a 0.12
+  margin into instant death. They are scenery, and still solid.
+- **A lethal surface must be tested SWEPT.** A 0.16 slab against a 0.20 player
+  is a 0.36 hit zone, and one fast substep can start above and end below with
+  neither endpoint inside — a point test reports a clean pass through rock.
+
+### The kit, if it is ever picked back up
+
+- **Everything solid goes through `worldSDF`, not `levelSDF`**, or a block is
+  scenery you walk through — and over a network, their block and their pane too.
+- **Distance between characters is the ORBIT distance, never the coordinate
+  one.** The same character named one cell over reads 3.06 away in coordinates
+  and 0.00 in the manifold. **A hit needs a cooldown**, or one pass registers on
+  every substep; **your own throw must not hit you**; the bump push is symmetric
+  and removes the approach speed, or bodies buzz.
+- **The grapple's constraint must be SWEPT.** Reeling pulls centimetres a
+  substep and `collide` only pushes out along the local normal, so an unswept
+  constraint goes through walls.
+- **`PORTAL_LIFT` must clear `PLAYER_R`, and is derived from it.** Mounted
+  closer, the centre can never legally reach the plane: portals "worked
+  sometimes", decided by frame rate. **A portal is one-sided**, and **the pi
+  rotation is load-bearing** — negate TWO frame columns, or it is a reflection
+  and the world comes out mirrored. The normal comes from the WALL (the SDF
+  gradient), not from the aim.
+- **The camera swing is a WHOLE ROTATION, not a lean.** A small-angle tilt
+  cannot tell 10 degrees from 170; `camSwing` carries a real axis-angle offset
+  sprung to zero. 98 degrees of snap becomes 0.000 on the first frame. The
+  spring runs in EVERY upright mode. `cameraBasis` and `shaderAngles` must
+  agree exactly, or the rope draws off the crosshair.
+- **Boomerang: `BOOM_SKIN` must stay under `PLAYER_R`**, or every slightly
+  downward throw skips off the ground before it leaves your hand. **Turning it
+  round is a ROTATION, not a lerp** — mixing two opposite unit vectors and
+  renormalising returns the original, so the first version never turned at all
+  and ran to NaN. Bounce only when `d.n < 0`, and push clear by the penetration
+  depth. `BOOM_LIFE` bounds the arclength composed into the placement.
+- **`selfHist` is FOLDED and `trail` is UNFOLDED, deliberately.** The marcher
+  needs folded samples; recall means "put me back at the point of the MANIFOLD
+  I was at", which a folded store cannot name after a crossing.
+- **Interpolating the light-speed history takes THREE things**, and missing any
+  one tore the body into stripes: interpolate along the segment using the
+  element `linkHistory` recorded (never search for the nearest copy); fold the
+  interpolated point; and divide the step by `1 + speed/c`, because that centre
+  MOVES as the ray advances and sphere tracing assumes a fixed field.
+- **A pane's normal must be folded by the SAME element as its centre**
+  (`foldElement`), or the plane stops passing through its own centre. `CUT_R`
+  stays well under the inradius, because one straddle copy is not enough.
+- **Do not measure holonomy through `alignUp`.** Under plane gravity E3 is
+  already up, so the re-pinning rotation is the identity and the meter reads
+  zero everywhere.
 ## Current state and next steps
 
 1. ~~Geometry module with tests~~ — 36/36.
@@ -2394,8 +1169,9 @@ round. That corridor is the same corridor in every copy.
 8. ~~A kit worth fighting with~~ — boomerang (bouncing, homing), build,
    decoy, recall, sightline cutter, holonomy dash/blast, anchor swap, portals,
    beacon, grapple. 160 tests.
-9. ~~Multiplayer~~ — two players over WebRTC, `net.js`. See below: the netcode
-   is ordinary, the STATE is not.
+9. ~~Multiplayer~~ — two players over WebRTC, `net.js`. The netcode is
+   ordinary, the STATE is not: see
+   [docs/archive/gameplay-kit.md](docs/archive/gameplay-kit.md).
 10. ~~Actual game modes~~ — the hoop course, the grapple course and the
     dropper, all in `modes.js` with 78 tests. The dropper needed a fourth
     geometry rather than a fourth set of numbers.
@@ -2411,7 +1187,8 @@ round. That corridor is the same corridor in every copy.
     registration rather than a sweep through main.js.
 12. ~~Porting a flat map into a curved one~~ - `port.js`, `tools/port-map.js`.
     Three embeddings, each exact in one property, plus the measurements that
-    say which. See "Porting a flat map" under Level authoring.
+    say which. See "Porting a flat map" under Level authoring, and
+    [docs/archive/geometry-worlds.md](docs/archive/geometry-worlds.md).
 13. ~~A world where a ported map is exact~~ - `e3t.js`. The point of item 12
     was never a table of distortions, it was being able to PLAY the comparison,
     and that needs a flat world to play the undistorted half in.
@@ -2500,146 +1277,6 @@ with a throw, a block, a decoy and a pane each will quietly stop drawing. It
 fails invisibly — nothing errors, the object is simply not there. Raise MARKS
 in BOTH files together, and re-run `tools/link-time.js`, because the marker
 loop is inside `sceneMap`.
-
-## Characters, health and hits
-
-A character is a placement, a velocity and some health, and the player is one
-of them. Keeping them in one shape rather than special-casing the player is
-what makes a second one cheap, and it is the whole prerequisite for a network:
-that struct is what a packet carries.
-
-**Distance between characters is the ORBIT distance, never the coordinate one.**
-Space is H^3/Gamma, so the same character named one cell over reads as 3.06
-away in coordinates and 0.00 away in the manifold — `physics.test.js` pins
-exactly that. What you SEE is the orbit, so what a hit must use is the orbit:
-the minimum over the group of the distance to each copy. Comparing raw
-coordinates gives a weapon that misses what it visibly struck. Identity plus
-the generators is enough, because two things close enough to touch are at most
-one face apart.
-
-**A hit needs a cooldown.** The boomerang overlaps a target for many substeps
-of one pass, and without `HIT_COOLDOWN` it registers on every one of them and
-deletes a character in a frame. The test checks a pass lands exactly once.
-
-**Your own throw must not hit you.** `boomerangHits` skips the thrower's id: it
-comes back to your hand, not into your face.
-
-**The opponent spawn is SEARCHED for, not written down.** The first hand-picked
-pair sat 0.30 from a tower of radius 0.26, so the bot spawned wedged against
-it — every step drove it into the surface, `collide` cancelled the velocity,
-and it stood still for five seconds looking like broken pathfinding. From a
-clear spawn it closes 0.899 to 0.005. Clearance is capped at `PLAYER_R` for
-anything standing on the floor, because the floor is part of the level, so the
-test is "as clear as open ground", not "clear by a wide margin".
-
-**Both movement models are live and toggleable**, so they can be compared
-without deleting either.
-
-## Multiplayer
-
-Two players, `net.js`, `tools/relay.js`, `tools/net-check.js`. Set
-`Opponent: network` in the options and press `N` for the panel.
-
-**The netcode is ordinary on purpose:** an unreliable data channel
-(`ordered:false, maxRetransmits:0`), each peer authoritative over its own body,
-twenty state packets a second, the remote body smoothed toward the last packet.
-A packet that arrives late is worse than useless — it would overwrite a newer
-one — and the next is 50 ms away, so a lost one costs a frame of smoothing.
-
-**The STATE is the part that is not ordinary, and it turns out to be easy for a
-reason worth knowing.** A position here is a point of H^3/Gamma and therefore
-has infinitely many names, one per group element; two peers who walked the same
-route are in general holding DIFFERENT representatives, because each folded at
-whatever moment its own substep crossed a face. "Send me your coordinates" is
-meaningless.
-
-The fix was already in the game because the renderer needed it first:
-**`reduceToDomain` is canonical**, `reduce(g*p) === reduce(p)`, which
-`hyp.test.js` pins and `physics.test.js` now re-checks from the network's side
-over 200 random placements. So the folded representative is a name both ends
-agree on. Fold everything before it goes on the wire and the packet means the
-same thing at both ends. Everything in `packState` is folded, including the
-pane's normal — by the same element as its centre, via `foldElement`.
-
-Two consequences:
-
-- **Both peers must be in the SAME World.** Different groups, different
-  fundamental domains, so a folded point from one is nonsense in the other. The
-  world index rides in every packet and the receiver refuses to draw a mismatch
-  and says so on the HUD.
-- **Every distance between players is an ORBIT distance.** Folded coordinates
-  can differ by a whole cell for two players standing next to each other across
-  a face. This was already true for the bot.
-
-**The remote drives the same `foe` character the bot does.** That is the whole
-reason characters were pulled into physics.js: the struct a bot moves is the
-struct a packet carries, so there is no second code path. `stepFoe` returns
-early in network mode — nothing local may touch a body the other end owns.
-
-**Damage is self-assessed at both ends.** I decide whether their boomerang or
-blast caught me and broadcast my own health; they do the same. Neither player
-can be hit by something they never saw, and there is no authority to argue
-with. The right trade for two players and no server.
-
-**Their block and their pane are in `worldSDF`.** Not optional: a wall that is
-solid on one screen and not the other is not a wall, it is a disagreement, and
-it shows up the first time one player stands behind something the other walks
-through.
-
-**`bump` takes only your own half over a network.** Both ends run the same
-push against their own copy, so shoving the remote body as well fights the next
-packet and reads as the other player jittering.
-
-Interest management, if this ever grew past two, is INVERTED compared to a flat
-game: volume grows like `e^{2r}`, so almost everyone is far away and trivially
-culled and the handful near you dominate. A uniform grid is exactly the wrong
-structure.
-
-### How to actually play it
-
-The game is **static files**. There is nothing to install and no build step, so
-"hosting" it means putting the folder somewhere a browser can fetch it.
-
-- **Same machine, two windows** — Live Server as usual, or
-  `node tools/relay.js` and open `http://localhost:8080/`.
-- **Same network** — `node tools/relay.js` on one machine; the other player
-  opens `http://<that machine's LAN address>:8080/`. Both press `N`, use the
-  relay box with the same room name.
-- **Over the internet, no server at all** — put the folder on any static host
-  (GitHub Pages, Netlify, itch.io, Cloudflare Pages; all free, all a drag and
-  drop or a `git push`). Both players open the page, one presses `N` and
-  `Host`, sends the code by whatever they already use to talk, the other pastes
-  it and `Join`s, and sends the reply back. **This is the path that needs no
-  infrastructure whatsoever** — the two browsers connect directly and the codes
-  are just text.
-- **Over the internet, with matchmaking** — the relay on any host with an open
-  port. It only ever forwards the two handshake blobs; kill it mid-match and
-  the match continues.
-
-Sending someone a download works too but is worse: they need a local server
-anyway, because ES modules will not load from a `file://` URL.
-
-**HTTPS matters.** Pointer lock and WebRTC both require a secure context, which
-means `https://` or `localhost`. A page served over plain `http://` from
-another machine's IP will not lock the mouse. Every static host above is HTTPS
-by default; a LAN relay is exempt only because `localhost` is.
-
-### Limits of doing this on the web
-
-- **No UDP.** WebRTC data channels are the only unreliable transport a browser
-  has, and they are SCTP over DTLS over UDP — fine, but you cannot hand-roll a
-  packet layer.
-- **Signalling cannot be avoided.** Two browsers cannot find each other without
-  exchanging a blob first. Copy and paste is the zero-infrastructure answer.
-- **NAT.** A public STUN server handles most home connections; symmetric NAT
-  needs a TURN relay, which is bandwidth someone has to pay for. The relay here
-  is NOT a TURN server — it forwards handshakes only.
-- **Shader link time is a real budget** (see the inlining rule). A browser will
-  kill a GPU process that takes too long, and there is no way to precompile.
-- **32-bit floats in the shader** cap the range at about `d = 7`, which is why
-  the level is small. That is a limit of the platform, not of the idea.
-- **No threads worth having.** Web Workers cannot share a WebGL context, and
-  the physics is cheap; the marcher is the cost and it is already on the GPU.
 
 ## Design constraints that come from the geometry
 
