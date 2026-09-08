@@ -55,6 +55,9 @@ const E3T = await import(pathToFileURL(join(ROOT, 'e3t.js')).href);
 const S2R = await import(pathToFileURL(join(ROOT, 's2r.js')).href);
 const TRACK = await import(pathToFileURL(join(ROOT, 'race-track.js')).href);
 const NIL = await import(pathToFileURL(join(ROOT, 'nil.js')).href);
+const LAB = await import('../engine/world/lie-labs.js');
+const FLOW = await import('../engine/geometry/numerical-flow.js');
+const { lieFragment } = await import('../engine/geometry/lie-shader.js');
 // Exercise the actual shader implementation, not a third copy of its math.
 const nilSource = (await import(pathToFileURL(join(ROOT, 'shader.js')).href)).fragFor('nil');
 const nilMath = nilSource.split('#elif IS_NIL\n')[1]?.split('\n#else\n// --- H^3')[0];
@@ -76,6 +79,21 @@ function sample(make) {
 }
 
 const CASES = [
+  ...['sol','sl2r'].flatMap(key => {
+    const math = lieFragment(key).split('void rhs')[1].split('void main()')[0];
+    const glsl = 'void rhs' + math;
+    return [{
+      name:`${key} chamber`,tol:2e-5,
+      batches:sample(()=>[rnd()*6-3,rnd()*6-3,rnd()*6-3,1]),
+      js:p=>[LAB.field(key,p),0],
+      glsl:glsl+'vec2 worldMap(vec4 p){return vec2(scene(p.xyz),0.0);}',
+    }, ...[0,1,2].map(axis=>({
+      name:`${key} flow component ${axis}`,tol:3e-4,vector:true,
+      batches:sample(()=>{const v=[rnd()-.5,rnd()-.5,rnd()-.5], n=Math.hypot(...v);return [...v.map(x=>x/n),rnd()*4];}),
+      js:s=>{const [p,u]=FLOW.integrate(LAB.model(key).derivative,[0,0,0],s.slice(0,3),s[3],.002);return [p[axis],u[axis]];},
+      glsl:glsl+`vec2 worldMap(vec4 s){vec3 p=vec3(0.0),u=s.xyz;for(int i=0;i<100;i++)advance(p,u,s.w/100.0);return vec2(p[${axis}],u[${axis}]);}`,
+    }))];
+  }),
   {
     name: 'Nil scene', tol: 1e-4,
     batches: sample(() => [(rnd() - .5) * 20, (rnd() - .5) * 20, rnd() * 65, 1]),

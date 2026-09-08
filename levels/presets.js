@@ -84,5 +84,15 @@ export const PRESETS = {
     note: 'Steer a rising helix through six gates. Going straight up is the long way.',
     set: { curv: 'Nil', course: 'climb', fog: 'thin', quality: 'medium' },
   },
+  sol: {
+    label: 'Sol stretch chamber',
+    note: 'Fly vertically to exchange the scale of the two horizontal directions.',
+    set: {curv:'Sol', course:'off', quality:'high'},
+  },
+  sl2r: {
+    label: 'SL2R twist chamber',
+    note: 'Explore the lifted tangent bundle: base travel and fibre motion interact.',
+    set: {curv:'SL2R', course:'off', quality:'high'},
+  },
 };
 export const PRESET_KEYS = Object.keys(PRESETS);

@@ -27,6 +27,10 @@ export const SPACES = Object.freeze([
   // against a helix that is transcendental. One thing changes at a time.
   Object.freeze({ key: 'nil', option: 'Nil', shaderId: 5,
     programName: 'scene (Nil)', family: 'lie-group' }),
+  Object.freeze({ key: 'sol', option: 'Sol', shaderId: 6,
+    programName: 'scene (Sol)', family: 'lie-group' }),
+  Object.freeze({ key: 'sl2r', option: 'SL2R', shaderId: 7,
+    programName: 'scene (SL2R cover)', family: 'lie-group' }),
 ]);
 
 export function spaceFor(key) {

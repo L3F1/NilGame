@@ -18,6 +18,7 @@ import { h2rGLSL } from './h2r.js';
 import { s2rGLSL } from './s2r.js';
 import { e3tGLSL } from './e3t.js';
 import { nilGLSL } from './nil.js';
+import { lieFragment } from './engine/geometry/lie-shader.js';
 import { spaceFor } from './engine/geometry/registry.js';
 
 export const VERT = `#version 300 es
@@ -1600,6 +1601,7 @@ void main() {
  */
 export function fragFor(g) {
   const key = typeof g === 'number' ? (g < 0 ? 'h3' : 's3') : g;
+  if (key === 'sol' || key === 'sl2r') return lieFragment(key);
   const id = spaceFor(key).shaderId;
   return FRAG_SRC.replace('__GEOM_ID__', String(id));
 }

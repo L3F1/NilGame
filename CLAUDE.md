@@ -36,9 +36,10 @@ ported map is the map, and the one the other five are measured against.
 none. Movement, gravity, rendering and a grapple hook, all done honestly in the
 geometry. Nil has returned as a separate six-gate spiral climb (`nil.js`).
 
-Two Thurston geometries remain unplayable: **Sol** and **SL~(2,R)**. Sol has
-a test-only kernel in `engine/geometry/sol.js`. The historical "three that
-are left" discussion below predates the completed Nil integration.
+All eight geometries now have navigable experiments. **Sol** and **SL~(2,R)**
+are bounded flight labs; see `docs/lie-labs.md` for their limits and checks.
+Their packed positions are not isometry matrices: never use H3 transforms on
+them. The historical "three that are left" discussion predates these additions.
 
 Nil traps: carry the geodesic direction when rebasing a ray; test GPU flow
 with `tools/sdf-check.js`. Columns collide, decorative beacons do not (the

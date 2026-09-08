@@ -7,6 +7,7 @@ import * as H2R from '../../h2r.js';
 import * as S2R from '../../s2r.js';
 import * as E3T from '../../e3t.js';
 import * as NIL from '../../nil.js';
+import { labMotion, field as labField } from '../world/lie-labs.js';
 
 // Every adapter takes a trailing `env` describing what the OPTIONS have
 // selected inside this geometry, and only the flat one reads it. E^3/Lambda is
@@ -17,6 +18,8 @@ import * as NIL from '../../nil.js';
 const DEFAULT_ENV = Object.freeze({ open: false });
 
 const MOTION = Object.freeze({
+  sol: Object.freeze(labMotion('sol')),
+  sl2r: Object.freeze(labMotion('sl2r')),
   // H3's full kit, quotient folding and carried objects still use physics.js.
   h3: null,
   s3: Object.freeze({
@@ -112,6 +115,7 @@ export function motionInput(motion, env = DEFAULT_ENV) {
 
 /** The SDF the adapter collides against, for callers that need it directly. */
 export function motionSDF(key, env = DEFAULT_ENV) {
+  if (key === 'sol' || key === 'sl2r') return p => labField(key,p);
   if (key === 's3') return s3SDF;
   if (key === 'h2r') return H2R.h2rSDF;
   if (key === 's2r') return S2R.s2rSDF;

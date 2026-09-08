@@ -26,7 +26,10 @@ and open the local address it prints. The root app uses plain JavaScript ES
 modules and WebGL2; Node tests need no package install. Press **O** to browse
 the experiments.
 
-Six geometries have playable experiments: H3, S3, H2 x R, S2 x R, E3 and Nil.
+All eight Thurston geometries now have navigable experiments: H3, S3, H2 x R,
+S2 x R, E3, Nil, Sol and the universal cover of SL2R.
+The new [Sol and SL2R laboratories](docs/lie-labs.md) provide bounded flight
+chambers with solid obstacles; they are early rendering/movement tests.
 Nil's spiral climb has six ordered gates, solid columns and a passable finish
 beacon. Choose **Nil spiral climb** in the experiments menu; steer around the
 spire while rising. Its rays and movement follow the same helical geodesics.

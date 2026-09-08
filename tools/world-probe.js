@@ -22,7 +22,7 @@
     // whole reason resetForCurvature exists. E^3/Lambda's is the degenerate
     // one: the model is the affine plane x3 = 1, not a quadric at all.
     const form = k === 'h3' ? dot(p, p) : k === 's3' ? p.reduce((s, x) => s + x * x, 0)
-      : k === 'h2r' ? H2R.hdot(p, p) : (k === 'e3t' || k === 'nil') ? p[3] : S2R.sdot(p, p);
+        : k === 'h2r' ? H2R.hdot(p, p) : ['e3t','nil','sol','sl2r'].includes(k) ? p[3] : S2R.sdot(p, p);
     check(Math.abs(form - (k === 'h3' || k === 'h2r' ? -1 : 1)) < 1e-6,
       `${label}: placement lies in ${k}`);
     // And the flat one must also stay inside the cell -- nothing else folds

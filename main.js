@@ -1044,6 +1044,18 @@ function computeForced() {
   // well -- but it is a CONTACT form, dw = -dx ^ dy is not zero, so it is the
   // gradient of nothing and there is no potential anywhere. Nil also has no
   // invariant horizontal plane at all, so there is no floor to fall to.
+  if (['Sol', 'SL2R'].includes(rawVal('curv'))) {
+    lock('field', 'none', 'flight laboratory');
+    lock('upright', 'free', 'canonical coordinate frame');
+    lock('move', 'walking', 'flight laboratory');
+    lock('edges', 'hide', 'no quotient');
+    lock('light', 'instant', 'no history rendering');
+    lock('foe', 'off', 'hyperbolic only');
+    lock('boomerang', 'off', 'hyperbolic only');
+    lock('build', 'off', 'hyperbolic only');
+    lock('portals', 'off', 'hyperbolic only');
+    lock('course', 'off', 'navigation laboratory');
+  }
   if (rawVal('curv') === 'Nil') {
     lock('field', 'none', 'down is not a gradient in Nil');
     lock('upright', 'free', 'the stabiliser is only SO(2)');
@@ -3159,6 +3171,16 @@ RUN DEAD STRAIGHT AND YOU COME BACK HERE, after ${S2R.S2R_LAP.toFixed(2)}
       + 'the baffles say you were ON THE WAY. Hit one and you restart.\n'
       + 'The columns are solid but harmless -- you bounce off them.\n'
       + 'WASD steer · mouse look · R / K retry · O worlds';
+    requestAnimationFrame(frame);
+    return;
+  }
+  if (geomKey() === 'sol' || geomKey() === 'sl2r') {
+    hud.textContent = `${geomKey() === 'sol' ? 'SOL / STRETCH CHAMBER' : 'SL2R / TWIST CHAMBER'}\n`
+      + `speed ${speed.toFixed(2)}\n\n`
+      + (geomKey() === 'sol' ? 'Rise and descend: the two horizontal directions change scale oppositely.\n'
+        : 'Horizontal motion couples to the unwrapped fibre direction.\n')
+      + 'Explore the grid and fly around the solid blocks.\n'
+      + 'WASD fly · space/shift rise/descend · mouse look · R reset · O worlds';
     requestAnimationFrame(frame);
     return;
   }
