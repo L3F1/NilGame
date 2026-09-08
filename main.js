@@ -11,6 +11,7 @@ import {
 import { levelSDF, setMode, getMode, MODE } from './level.js';
 import { VERT, fragFor, LINE_VERT, LINE_FRAG } from './shader.js';
 import * as E3T from './e3t.js';
+import * as NIL from './nil.js';
 import { SPACES, spaceFor, spaceForOption } from './engine/geometry/registry.js';
 import { PRESETS, PRESET_KEYS } from './levels/presets.js';
 import { createWorldMenu } from './app/menu.js';
@@ -592,7 +593,7 @@ const opts = {
   //            enough holonomy of the right SIGN, so you must swing around
   //            something the right way round to get through. About what you
   //            do. Wants gravity and the rope.
-  course:     { label: 'Course (K)',   values: ['off', 'hoops', 'grapple', 'dropper', 'lap', 'race', 'torus'], i: 0 },
+  course:     { label: 'Course (K)',   values: ['off', 'hoops', 'grapple', 'dropper', 'lap', 'race', 'torus', 'climb'], i: 0 },
   // What Q spends the banked holonomy on. 'sign decides' is the interesting
   // one: sweptArea is SIGNED, so going round something one way charges a dash
   // and the other way charges a blast, and there is no third option where you
@@ -1035,6 +1036,27 @@ function computeForced() {
     lock('course', 'off', 'hyperbolic only');
   }
 
+  // NIL. The same family as S^3, and mostly for the same reasons: the kit is
+  // hyperbolic-only, there is no fundamental domain to outline, and the self
+  // copies light speed draws need a quotient's fold. Gravity and camera up go
+  // for a reason of Nil's own, and it is the sharpest in the project: the
+  // vertical field is left invariant, so a constant "down" descends perfectly
+  // well -- but it is a CONTACT form, dw = -dx ^ dy is not zero, so it is the
+  // gradient of nothing and there is no potential anywhere. Nil also has no
+  // invariant horizontal plane at all, so there is no floor to fall to.
+  if (rawVal('curv') === 'Nil') {
+    lock('field', 'none', 'down is not a gradient in Nil');
+    lock('upright', 'free', 'the stabiliser is only SO(2)');
+    lock('move', 'walking', 'free flight');
+    lock('edges', 'hide', 'no fundamental domain');
+    lock('light', 'instant', 'self copies need a quotient');
+    lock('foe', 'off', 'hyperbolic only');
+    lock('boomerang', 'off', 'hyperbolic only');
+    lock('build', 'off', 'hyperbolic only');
+    lock('portals', 'off', 'hyperbolic only');
+    lock('course', 'climb', 'the climb is what Nil is for');
+  }
+
   // H^2 x R takes the same family away for the same kind of reason, and adds
   // one of its own: the whole fighting kit and both hyperbolic courses are
   // built on hyp.js and its group, and a product placement does not satisfy
@@ -1136,6 +1158,9 @@ function computeForced() {
   }
   if (wantCourse === 'torus' && rawVal('curv') !== 'flat torus') {
     lock('course', 'off', 'flat torus only');
+  }
+  if (rawVal('course') === 'climb' && rawVal('curv') !== 'Nil') {
+    lock('course', 'off', 'Nil only');
   }
 
   // A course is a time trial. Everything that exists to fight with is off:
@@ -1826,6 +1851,32 @@ function anyProduct() { return productWorld() || sphereFloorWorld(); }
 function flatWorld() { return geomKey() === 'e3t'; }
 
 /**
+ * NIL, the Heisenberg group: the first Thurston geometry here that is neither
+ * constant curvature nor a product, and the least invasive world yet.
+ *
+ * It is a Lie GROUP with a left-invariant metric, so every isometry is affine,
+ * a placement is an ordinary 4x4 whose columns are the frame, and the shader's
+ * chartMap is a plain multiply. That is the shape this codebase had when it
+ * WAS a Nil game.
+ *
+ * What it costs is the distance function, which has no closed form -- and that
+ * cost far less than the roadmap predicted. Sphere tracing only ever needed a
+ * LOWER BOUND, which every SDF here already is outside its corners, so the
+ * marcher's step rule is untouched; Nil supplies a bound from the isoperimetric
+ * inequality instead, because climbing in Nil is done by enclosing area. What
+ * really is structural is the QUOTIENT: a fundamental domain needs the ray/face
+ * crossing solved and against a HELIX that is transcendental, so this world has
+ * none, exactly as S^3 and both products have none.
+ *
+ * The fact you meet first: GOING STRAIGHT UP IS NOT THE SHORTEST WAY UP. The
+ * climb's finish sits 60 units directly overhead, costing 60 to fly on the axis
+ * or 26.7 on a helix of radius 4.13. Every azimuth gives a helix of that same
+ * length, so the finish is visible as a RING of images around you at the launch
+ * elevation as well as one dim copy straight up.
+ */
+function nilWorld() { return geomKey() === 'nil'; }
+
+/**
  * Anything that is not H^3: the worlds that run on a motion adapter rather
  * than on physics.js and its group.
  */
@@ -1996,7 +2047,8 @@ function ensureCourse() {
 function aimAt(q) {
   const lv = sphereFloorWorld() ? S2R.logTo(player, q)
     : productWorld() ? H2R.logTo(player, q)
-      : flatWorld() ? E3T.logTo(player, q) : logTo(player, q);
+      : nilWorld() ? NIL.logTo(player, q)
+        : flatWorld() ? E3T.logTo(player, q) : logTo(player, q);
   const m = Math.hypot(lv[0], lv[1], lv[2]);
   if (m < 1e-9) return;
   yaw = Math.atan2(lv[1], lv[0]);
@@ -2039,7 +2091,7 @@ function beginRun() {
     // hyperbolic course cannot do that -- its hoops must lie on the axis
     // through the CELL CENTRE, since a geodesic parallel to a generator's axis
     // but offset from it does not close up.
-    if (!flatWorld() && course.hoops.length) aimAt(course.hoops[0].at);
+    if (!flatWorld() && !nilWorld() && course.hoops.length) aimAt(course.hoops[0].at);
     if (racing()) { racer.heading = yaw; pitch = -0.08; }
     startRun(run);
     return;
@@ -2359,7 +2411,8 @@ function project(q, basis) {
   // product placement draws the course somewhere it is not.
   const lv = sphereFloorWorld() ? S2R.logTo(player, q)
     : productWorld() ? H2R.logTo(player, q)
-      : flatWorld() ? E3T.logTo(player, q) : logTo(player, q);
+      : nilWorld() ? NIL.logTo(player, q)
+        : flatWorld() ? E3T.logTo(player, q) : logTo(player, q);
   const m = Math.hypot(lv[0], lv[1], lv[2]);
   if (m < 1e-9) return null;
   const u = [lv[0] / m, lv[1] / m, lv[2] / m];
@@ -2448,7 +2501,7 @@ function drawCourse(basis) {
     // circles -- the ones you could not use were the loudest. Three ahead
     // is what a racing line needs and is the only range where r/sin(d) is
     // still doing the ordinary thing.
-    if (racing() && (i < (run?.next || 0) || i > (run?.next || 0) + 2)) continue;
+    if ((racing() || nilWorld()) && (i < (run?.next || 0) || i > (run?.next || 0) + (nilWorld() ? 1 : 2))) continue;
     const taken = run && i < run.next;
     const hoop = course.hoops[i];
     const next = run && i === run.next;
@@ -2473,8 +2526,9 @@ function drawCourse(basis) {
     // coordinate's nearest image. Two mechanisms, one symptom.
     const ring = sphereFloorWorld() ? S2R.gateRing(hoop, 40)
       : productWorld() ? H2R.gateRing(hoop, 40)
-        : flatWorld() ? E3T.gateRing(hoop, 40, me)
-          : hoopRing(hoopNear(hoop, me), 40);
+        : nilWorld() ? NIL.gateRing(hoop, 40)
+          : flatWorld() ? E3T.gateRing(hoop, 40, me)
+            : hoopRing(hoopNear(hoop, me), 40);
     for (const q of ring) {
       const ndc = project(q, basis);
       if (ndc) strip.push(ndc);
@@ -2881,13 +2935,13 @@ function frame(now) {
   // the cheapest and clearest picture of what a quotient is that this project
   // has, and it costs one uncluttered corridor and a range of 30.
   const flat = flatWorld();
-  const base = (product ? 0.030 : sphereFloor ? 0.075 : flat ? 0.055
+  const base = (nilWorld() ? 0.025 : product ? 0.030 : sphereFloor ? 0.075 : flat ? 0.055
     : openWorld ? 0.45 : 0.20)
     * { normal: 1, thin: 0.55, thick: 1.9 }[optVal('fog')];
   gl.uniform1f(U.fog, base / Math.sqrt(zoomed));
   gl.uniform1f(U.ao, optVal('shading') === 'flat' ? 0 : 1);
   gl.uniform1f(U.maxT,
-    (product ? 60.0 : sphereFloor ? 12.0 : flat ? 30.0 : openWorld ? 10.0 : 14.0)
+    (nilWorld() ? 70.0 : product ? 60.0 : sphereFloor ? 12.0 : flat ? 30.0 : openWorld ? 10.0 : 14.0)
     * Math.sqrt(zoomed));
   // Portals, FOLDED, for the same reason every other world point is: the
   // marcher folds its own samples, so an unfolded placement would be compared
@@ -3105,6 +3159,19 @@ RUN DEAD STRAIGHT AND YOU COME BACK HERE, after ${S2R.S2R_LAP.toFixed(2)}
       + 'the baffles say you were ON THE WAY. Hit one and you restart.\n'
       + 'The columns are solid but harmless -- you bounce off them.\n'
       + 'WASD steer · mouse look · R / K retry · O worlds';
+    requestAnimationFrame(frame);
+    return;
+  }
+  if (nilWorld()) {
+    hud.textContent = `NIL / SPIRAL CLIMB\n`
+      + (run?.phase === PHASE.DONE
+        ? `FINISHED ${formatTime(run.t)} · best ${formatTime(run.best)}\n`
+        : `time ${formatTime(run?.t || 0)} · gate ${(run?.next || 0) + 1}/${NIL.NIL_GATES}\n`)
+      + `height ${NIL.coords(player)[2].toFixed(1)} / ${NIL.NIL_H} · speed ${speed.toFixed(2)}\n\n`
+      + 'Follow the green gates around the spire. Steer as you climb.\n'
+      + 'The helix climbs 60 units in 26.7 units of travel.\n'
+      + 'Columns are solid; the finish beacon is passable.\n'
+      + 'WASD fly · space/shift rise/descend · mouse look · R/K retry · O worlds';
     requestAnimationFrame(frame);
     return;
   }

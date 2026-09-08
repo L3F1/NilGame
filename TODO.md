@@ -75,6 +75,18 @@ the inside of an ordinary sphere with an exterior surface to glue on.
 
 ## 4. Broader authoring and geometry coverage
 
+- [x] Finish Nil menu, HUD, six-gate climb and collision integration.
+- [x] Verify a climb from rest through all six gates with actual movement/collision.
+- [x] Fix Nil ray direction across local-frame restarts and check GPU flow against JS.
+- [x] Add a tested Sol numerical kernel and coordinate-plane distance fields.
+- [ ] Render Sol with bounded incremental integration; add a small navigable level.
+- [ ] Implement and verify the universal-cover SL2R kernel, then its renderer/level.
+
+Nil verification (2026-09-08): 47 Nil tests; all 14 then-existing suites pass;
+266 cold real-GPU world/input checks; seven shader programs compile. Nil links
+in 3.4 s on the RTX 5070 Ti. Existing H3 links in 10.7 s and remains a startup
+performance concern. Sol currently runs only in tests, not in the world menu.
+
 - [ ] Blender/glTF marker and primitive metadata import with explicit unit conversion.
 - [ ] Modular structures, collision proxies and seam/closure diagnostics.
 - [ ] Arbitrary mesh rendering/collision strategy profiled on actual levels.

@@ -18,6 +18,15 @@ export const SPACES = Object.freeze([
   // uOpen -- the slab (x, y glued) and the 3-torus (all three).
   Object.freeze({ key: 'e3t', option: 'flat torus', shaderId: 4,
     programName: 'scene (E^3 / lattice)', family: 'flat-quotient' }),
+  // NIL, the Heisenberg group: the first of the three Thurston geometries this
+  // project was missing, and its own family. Not constant curvature and not a
+  // product -- a Lie group with a left-invariant metric, so its isometries are
+  // affine and a placement is an ordinary mat4. It has NO QUOTIENT here, on
+  // purpose and for the same reason S^3 and both products have none: the
+  // fundamental-domain apparatus needs the ray/face crossing solved, and
+  // against a helix that is transcendental. One thing changes at a time.
+  Object.freeze({ key: 'nil', option: 'Nil', shaderId: 5,
+    programName: 'scene (Nil)', family: 'lie-group' }),
 ]);
 
 export function spaceFor(key) {

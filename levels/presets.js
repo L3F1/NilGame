@@ -79,5 +79,10 @@ export const PRESETS = {
       edges: 'hide', fog: 'thin', quality: 'medium',
     },
   },
+  nil: {
+    label: 'Nil spiral climb',
+    note: 'Steer a rising helix through six gates. Going straight up is the long way.',
+    set: { curv: 'Nil', course: 'climb', fog: 'thin', quality: 'medium' },
+  },
 };
 export const PRESET_KEYS = Object.keys(PRESETS);

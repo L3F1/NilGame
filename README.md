@@ -26,7 +26,10 @@ and open the local address it prints. The root app uses plain JavaScript ES
 modules and WebGL2; Node tests need no package install. Press **O** to browse
 the experiments.
 
-Five geometries have playable experiments: H3, S3, H2 x R, S2 x R and E3.
+Six geometries have playable experiments: H3, S3, H2 x R, S2 x R, E3 and Nil.
+Nil's spiral climb has six ordered gates, solid columns and a passable finish
+beacon. Choose **Nil spiral climb** in the experiments menu; steer around the
+spire while rising. Its rays and movement follow the same helical geodesics.
 H3 includes the octagon and Seifert-Weber quotients; E3 includes a slab and a
 3-torus. H3 has the full grapple/ability kit. Other experiments have their
 own motion and courses. Current H3 portals connect locations in H3; changing

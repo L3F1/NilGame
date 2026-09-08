@@ -6,6 +6,7 @@ import { S3G, s3SDF, s3Control, s3Step, s3Collide } from '../../s3.js';
 import * as H2R from '../../h2r.js';
 import * as S2R from '../../s2r.js';
 import * as E3T from '../../e3t.js';
+import * as NIL from '../../nil.js';
 
 // Every adapter takes a trailing `env` describing what the OPTIONS have
 // selected inside this geometry, and only the flat one reads it. E^3/Lambda is
@@ -82,6 +83,26 @@ const MOTION = Object.freeze({
       return E3T.e3tCollide(nextM, nextV, E3T.slabSDF);
     },
   }),
+  // NIL. Free flight, and it is free for a reason that is neither S^3's nor
+  // the 3-torus's. Nil HAS a perfectly good invariant down -- E3 is left
+  // invariant and rotation invariant -- and still admits no gravity worth the
+  // name, because that field is not a gradient: its dual 1-form has
+  // dw = -dx ^ dy, so no potential exists anywhere, not even in the simply
+  // connected cover. The 3-torus's obstruction is topological and lifting
+  // removes it; this one is local and nothing removes it. There is also no
+  // invariant FLOOR: left translation shears the plane z = 0, so a horizontal
+  // surface is not a thing Nil has.
+  nil: Object.freeze({
+    input: 'flight',
+    point: NIL.point,
+    course: NIL.climbCourse,
+    spawn: () => ({ vel: [0, 0, 0], ...NIL.climbStart() }),
+    step(M, vel, want, jump, dt) {
+      const v = NIL.nilFly(vel, want, dt);
+      const [nextM, nextV] = NIL.nilStep(M, v, dt);
+      return NIL.nilCollide(nextM, nextV, NIL.nilCollisionSDF);
+    },
+  }),
 });
 
 /** Which input model an adapter wants, given what the options have selected. */
@@ -95,6 +116,7 @@ export function motionSDF(key, env = DEFAULT_ENV) {
   if (key === 'h2r') return H2R.h2rSDF;
   if (key === 's2r') return S2R.s2rSDF;
   if (key === 'e3t') return env.open ? E3T.cubeSDF : E3T.slabSDF;
+  if (key === 'nil') return NIL.nilCollisionSDF;
   return null;
 }
 

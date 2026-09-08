@@ -17,6 +17,7 @@ import { s3GLSL } from './s3.js';
 import { h2rGLSL } from './h2r.js';
 import { s2rGLSL } from './s2r.js';
 import { e3tGLSL } from './e3t.js';
+import { nilGLSL } from './nil.js';
 import { spaceFor } from './engine/geometry/registry.js';
 
 export const VERT = `#version 300 es
@@ -99,6 +100,7 @@ const HYP_GLSL = `
 #define G_H2R 2
 #define G_S2R 3
 #define G_E3T 4
+#define G_NIL 5
 #define GEOM (__GEOM_ID__)
 
 // The two PRODUCT geometries share one arm of everything below, with the
@@ -127,6 +129,18 @@ const HYP_GLSL = `
 #define IS_FLAT 0
 #endif
 
+// NIL, the Heisenberg group. Its own family, because it is neither a product
+// nor a space of constant curvature: it is a Lie GROUP carrying a left
+// invariant metric, so every isometry is an affine map of R^3 and a placement
+// is an ordinary mat4 whose columns are the left-invariant frame. That makes
+// chartMap a plain multiply, exactly as in the flat build, and for the same
+// underlying reason rather than by coincidence.
+#if GEOM == G_NIL
+#define IS_NIL 1
+#else
+#define IS_NIL 0
+#endif
+
 // H^3 is the only one of the three with a QUOTIENT. S^3 is compact already and
 // H^2 x R is deliberately unglued, so for both of those the fundamental
 // domain, the face scan, the exact exit solve, the fold loop, the straddle
@@ -147,7 +161,7 @@ const HYP_GLSL = `
 // only distance, the ray and the up vector had to be written twice.
 #if GEOM == G_S3 || GEOM == G_S2R
 #define uCurv (1.0)
-#elif GEOM == G_E3T
+#elif GEOM == G_E3T || GEOM == G_NIL
 // Zero, and the form degenerates with it: mdot loses its w term entirely and
 // becomes the plain Euclidean dot on the spatial part, which is exactly right
 // for tangent vectors in flat space. See geom.js, where k = 0 is the model
@@ -169,7 +183,7 @@ float mdot(vec4 a, vec4 b) { return a.x*b.x + a.y*b.y + a.z*b.z + uCurv*a.w*b.w;
 // selector above tests uCurv < 0.0, so a zero curvature would fall through to
 // cos and sin, which are not the flat limits of anything. cosK -> 1 and
 // sinK -> t is the limit that makes cosK^2 + k sinK^2 = 1 hold at k = 0.
-#if IS_FLAT
+#if IS_FLAT || IS_NIL
 float cosK(float t) { return 1.0; }
 float sinK(float t) { return t; }
 float asinK(float x) { return x; }
@@ -374,6 +388,140 @@ vec4 projT(vec4 G, vec4 p) { return vec4(G.xyz, 0.0); }
 // Up is the vertical everywhere and exactly, the same as in both products, and
 // for the same reason: parallel transport in a flat space is componentwise, so
 // the frame never tilts and there is nothing for alignUp to re-pin.
+vec4 upAtG(vec4 p) { return vec4(0.0, 0.0, 1.0, 0.0); }
+
+#elif IS_NIL
+// --- NIL, the Heisenberg group -------------------------------------------
+//
+// A point is (x, y, z, 1) and the group law is
+//     (x,y,z) * (x',y',z') = (x+x', y+y', z+z' + (x y' - y x') / 2)
+// whose left-invariant orthonormal frame is
+//     E1 = d/dx - (y/2) d/dz   E2 = d/dy + (x/2) d/dz   E3 = d/dz
+//
+// NORMALS AND TANGENTS HERE ARE FRAME COMPONENTS, not ambient vectors, and
+// that is the one thing this arm does differently from every other. The frame
+// is orthonormal, so mdot on frame components is the correct inner product
+// with uCurv = 0 and no metric tensor anywhere. Carrying ambient vectors
+// instead would need the full metric at every shading point, for no gain --
+// and frame components are also chart independent, which is why the ray
+// tangent below needs no chartMap at all.
+const float NIL_PI = 3.14159265358979;
+
+// GPU sin/cos accuracy is implementation-dependent. Nil divides cancellation
+// by c and c*c, amplifying errors near horizontal rays. Range-reduced Taylor
+// polynomials keep the flow and its direction consistent in float32.
+vec2 nilTrig(float angle) {
+  float x = mod(angle + NIL_PI, 2.0 * NIL_PI) - NIL_PI;
+  float q = x * x;
+  float sn = x * (1.0 + q * (-1.0/6.0 + q * (1.0/120.0 + q * (-1.0/5040.0
+    + q * (1.0/362880.0 + q * (-1.0/39916800.0 + q * (1.0/6227020800.0
+    + q * (-1.0/1307674368000.0))))))));
+  float cs = 1.0 + q * (-1.0/2.0 + q * (1.0/24.0 + q * (-1.0/720.0
+    + q * (1.0/40320.0 + q * (-1.0/3628800.0 + q * (1.0/479001600.0
+    + q * (-1.0/87178291200.0 + q * (1.0/20922789888000.0))))))));
+  return vec2(sn, cs);
+}
+
+vec3 nilMul(vec3 a, vec3 b) {
+  return vec3(a.x + b.x, a.y + b.y, a.z + b.z + 0.5 * (a.x * b.y - a.y * b.x));
+}
+
+// Where h stands as seen from g, in g's own frame: the coordinates of g^-1 h.
+vec3 nilRel(vec3 g, vec3 h) {
+  float dx = h.x - g.x, dy = h.y - g.y;
+  return vec3(dx, dy, h.z - g.z + 0.5 * (g.y * dx - g.x * dy));
+}
+
+// THE GEODESIC FLOW, EXACT. Nil geodesics are HELICES: with the velocity in
+// frame components (u1, u2, c), the Euler-Arnold equations give u' = c x u, so
+// c is constant and the horizontal part rotates at rate c.
+//
+// THE SMALL-c BRANCH IS NOT OPTIONAL. X carries a 1/c and z a 1/c^2, both of
+// which cancel exactly and neither of which cancels in floating point, and a
+// nearly horizontal ray is the common case rather than a corner one. Four
+// series terms avoid cancellation through |ct| < 0.5 in GPU precision.
+// See nil.js, which carries the same formula in double precision and is
+// checked against an independent RK4 integration to 3.7e-11.
+vec3 nilFlow(vec3 u, float t) {
+  float c = u.z;
+  float a2 = dot(u.xy, u.xy);
+  float ct = c * t;
+  float X, Y, z;
+  if (abs(ct) < 0.5) {
+    float t2 = t * t, q = ct * ct;
+    X = t * (1.0 - q / 6.0 + q * q / 120.0 - q * q * q / 5040.0);
+    Y = c * t2 * (0.5 - q / 24.0 + q * q / 720.0 - q * q * q / 40320.0);
+    z = ct + a2 * c * t2 * t
+      * (1.0 / 12.0 - q / 240.0 + q * q / 10080.0 - q * q * q / 725760.0);
+  } else {
+    vec2 trig = nilTrig(ct);
+    X = trig.x / c;
+    Y = (1.0 - trig.y) / c;
+    z = ct + (a2 / (2.0 * c * c)) * (ct - trig.x);
+  }
+  return vec3(u.x * X - u.y * Y, u.y * X + u.x * Y, z);
+}
+
+// The transported direction: the horizontal part has turned by c*t, which is
+// the whole of what a helix does. Still in frame components, at the new point.
+vec3 nilFlowDir(vec3 u, float t) {
+  vec2 trig = nilTrig(u.z * t);
+  float sn = trig.x, cs = trig.y;
+  return vec3(u.x * cs - u.y * sn, u.x * sn + u.y * cs, u.z);
+}
+
+// The left translation to g, as a mat4. Columns 0,1,2 are E1,E2,E3 there and
+// column 3 is the point, which is the contract every other arm already keeps.
+mat4 nilTrans(vec3 g) {
+  return mat4(vec4(1.0, 0.0, -0.5 * g.y, 0.0),
+              vec4(0.0, 1.0, 0.5 * g.x, 0.0),
+              vec4(0.0, 0.0, 1.0, 0.0),
+              vec4(g.x, g.y, g.z, 1.0));
+}
+
+float hHeight(vec4 p) { return p.z; }
+
+// A RIGOROUS LOWER BOUND ON THE DISTANCE, because Nil HAS NO CLOSED FORM for
+// it. Sphere tracing never needed one: it needs a bound it can advance by, and
+// every SDF in this project is already an underestimate outside its corners.
+//
+// Two bounds, and the larger wins. The horizontal projection is 1-Lipschitz,
+// so d >= rho, and that one is exact when the target is level. Vertically,
+// z' = u3 + (x y' - y x')/2, so the height gained is the integral of u3 plus
+// the SIGNED AREA the horizontal path sweeps -- climbing in Nil is done by
+// enclosing area. Closing that path with the chord back to the start, which is
+// radial and sweeps nothing, the isoperimetric inequality bounds the area by
+// (L + rho)^2 / 4pi, and |integral of u3| <= L, so
+//     |zeta| <= L + (L + rho)^2 / (4 pi)
+// which inverts in closed form. At rho = 0 the sharper form of this IS the
+// distance exactly. Measured tightness: exact along a horizontal geodesic, 82%
+// straight up, and never worse than 1/sqrt(2) locally, which costs about 1.4x
+// the steps in the worst direction and nothing in the best.
+float hDist(vec4 p, vec4 q) {
+  vec3 w = nilRel(p.xyz, q.xyz);
+  float rho = length(w.xy);
+  float u = sqrt(NIL_PI * NIL_PI + NIL_PI * (rho + abs(w.z)));
+  return max(rho, 2.0 * (u - NIL_PI) - rho);
+}
+
+mat4 boostMat(vec3 u, float t) { return nilTrans(nilFlow(u, t)); }
+vec4 rayLocal(vec3 dir, float s) { return vec4(nilFlow(dir, s), 1.0); }
+// Frame components, so this is NOT put through chartMap -- see trace().
+vec4 rayTangent(vec3 dir, float s) { return vec4(nilFlowDir(dir, s), 0.0); }
+vec4 chartMap(mat4 M, vec4 L) { return M * L; }
+mat4 chartRebase(mat4 M, vec3 dir, float s) { return M * boostMat(dir, s); }
+// n is in frame components at p, so the step is the flow composed on the right.
+vec4 geoStep(vec4 p, vec4 n, float d) {
+  return vec4(nilMul(p.xyz, nilFlow(n.xyz, d)), 1.0);
+}
+// Raise the index and convert to FRAME components in one go: the gradient in
+// the frame is (E1 f, E2 f, E3 f), and the frame is unit lower-triangular, so
+// this is three multiplies rather than a matrix inverse.
+vec4 projT(vec4 G, vec4 p) {
+  return vec4(G.x - 0.5 * p.y * G.z, G.y + 0.5 * p.x * G.z, G.z, 0.0);
+}
+// E3 in frame components. Nil's stabiliser is only SO(2), so up is ALWAYS the
+// third frame vector and there is no tilted placement to re-pin.
 vec4 upAtG(vec4 p) { return vec4(0.0, 0.0, 1.0, 0.0); }
 
 #else
@@ -743,6 +891,8 @@ ${h2rGLSL()}
 ${s2rGLSL()}
 #elif GEOM == G_E3T
 ${e3tGLSL()}
+#elif GEOM == G_NIL
+${nilGLSL()}
 #endif
 vec2 sceneMap(vec4 p, float t) {
 #if HAS_QUOTIENT
@@ -753,6 +903,8 @@ vec2 sceneMap(vec4 p, float t) {
   vec2 m = h2rWorld(p);
 #elif GEOM == G_E3T
   vec2 m = e3tWorld(p);
+#elif GEOM == G_NIL
+  vec2 m = nilWorld(p);
 #else
   vec2 m = s2rWorld(p);
 #endif
@@ -1244,6 +1396,11 @@ vec3 trace(vec2 uv) {
     // re-base on distance too. A cell is about three across; two is plenty.
     if (!rebased && s > 2.0) {
       chart = chartRebase(chart, dir, s);
+#if IS_NIL
+      // Nil's canonical frame is not parallel transported. Preserve the
+      // evolving geodesic direction when restarting its exact flow.
+      dir = nilFlowDir(dir, s);
+#endif
       s = 0.0;
       p = chart[3];
       rebased = true;
@@ -1343,7 +1500,14 @@ vec3 trace(vec2 uv) {
     float key = clamp(mdot(n, upAt(p)), 0.0, 1.0);
     // d/ds of (cosK s) o + (sinK s) u. At k = -1 that is (sinh s) o + (cosh s) u
     // and at k = +1 it is -(sin s) o + (cos s) u, which the -uCurv gives.
+#if IS_NIL
+    // Already in frame components, and frame components are chart
+    // independent -- carrying this one would turn it back into an ambient
+    // vector and mdot would then be comparing two different things.
+    vec4 tangent = rayTangent(dir, s);
+#else
     vec4 tangent = chartMap(chart, rayTangent(dir, s));
+#endif
     float head = clamp(-mdot(n, tangent), 0.0, 1.0);
     float occ = ambient(p, n, hit);
     // Occlusion belongs on the ambient term, not on the whole shade. The key

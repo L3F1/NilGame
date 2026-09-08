@@ -54,6 +54,11 @@ const { fromFloor, domainDepth } = await import(pathToFileURL(join(ROOT, 'hyp.js
 const E3T = await import(pathToFileURL(join(ROOT, 'e3t.js')).href);
 const S2R = await import(pathToFileURL(join(ROOT, 's2r.js')).href);
 const TRACK = await import(pathToFileURL(join(ROOT, 'race-track.js')).href);
+const NIL = await import(pathToFileURL(join(ROOT, 'nil.js')).href);
+// Exercise the actual shader implementation, not a third copy of its math.
+const nilSource = (await import(pathToFileURL(join(ROOT, 'shader.js')).href)).fragFor('nil');
+const nilMath = nilSource.split('#elif IS_NIL\n')[1]?.split('\n#else\n// --- H^3')[0];
+if (!nilMath?.includes('vec3 nilFlow(')) throw new Error('Nil shader extraction needs updating');
 
 // Deterministic sample points, so a failure repeats.
 const N = 16 * 16, BATCHES = 12;
@@ -71,6 +76,31 @@ function sample(make) {
 }
 
 const CASES = [
+  {
+    name: 'Nil scene', tol: 1e-4,
+    batches: sample(() => [(rnd() - .5) * 20, (rnd() - .5) * 20, rnd() * 65, 1]),
+    js: NIL.nilMap,
+    glsl: `${nilMath}\n${NIL.nilGLSL()}\nvec2 worldMap(vec4 p) { return nilWorld(p); }`,
+  },
+  {
+    name: 'Nil geodesic flow and rebasing', tol: 2e-3, vector: true,
+    batches: sample(() => {
+      const u = [rnd() - .5, rnd() - .5, rnd() - .5];
+      const n = Math.hypot(...u);
+      return [...u.map((v) => v / n), rnd() * 30];
+    }),
+    js: (p) => { const q = NIL.flowOrigin(p.slice(0, 3), p[3])[0]; return [q[0] + Math.SQRT2 * q[1], q[2]]; },
+    glsl: `${nilMath}
+vec2 worldMap(vec4 samplePoint) {
+  vec3 p = vec3(0.0), u = samplePoint.xyz;
+  float stepSize = samplePoint.w / 16.0;
+  for (int i = 0; i < 16; i++) {
+    p = nilMul(p, nilFlow(u, stepSize));
+    u = nilFlowDir(u, stepSize);
+  }
+  return vec2(p.x + sqrt(2.0) * p.y, p.z);
+}`,
+  },
   {
     name: 'H^3, the bounded level',
     // ON the hyperboloid, built from floor coordinates rather than scattered
@@ -277,10 +307,10 @@ CASES.forEach((c, ci) => {
       const [gd, gm] = [gpu[ci][b][i * 2], gpu[ci][b][i * 2 + 1]];
       const [jd, jm] = c.js(c.batches[b][i]);
       checked++;
-      const err = Math.abs(gd - jd);
+      const err = c.vector ? Math.max(Math.abs(gd - jd), Math.abs(gm - jm)) : Math.abs(gd - jd);
       if (err > worst) { worst = err; worstAt = c.batches[b][i]; }
       // Material can legitimately differ where two primitives are equidistant.
-      if (gm !== jm && Math.abs(gd - jd) < 1e-3) matMismatch++;
+      if (!c.vector && gm !== jm && Math.abs(gd - jd) < 1e-3) matMismatch++;
     }
   }
   // The hyperbolic tolerance is 32-bit float against coordinates of size

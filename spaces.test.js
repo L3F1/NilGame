@@ -4,9 +4,9 @@ import { SPACES, spaceFor, spaceForOption } from './engine/geometry/registry.js'
 import { fragFor } from './shader.js';
 
 assert.deepEqual(SPACES.map((s) => [s.key, s.shaderId]),
-  [['h3', 0], ['s3', 1], ['h2r', 2], ['s2r', 3], ['e3t', 4]]);
+  [['h3', 0], ['s3', 1], ['h2r', 2], ['s2r', 3], ['e3t', 4], ['nil', 5]]);
 assert.deepEqual(SPACES.map((s) => s.option),
-  ['hyperbolic', 'spherical', 'H^2 x R', 'S^2 x R', 'flat torus']);
+  ['hyperbolic', 'spherical', 'H^2 x R', 'S^2 x R', 'flat torus', 'Nil']);
 for (const space of SPACES) {
   assert.equal(spaceFor(space.key), spaceForOption(space.option));
   assert.ok(Object.isFrozen(space));
@@ -16,7 +16,7 @@ for (const space of SPACES) {
 assert.equal(fragFor(-1), fragFor('h3'));
 assert.equal(fragFor(1), fragFor('s3'));
 // Object prototype names and mathematical-only spaces must not resolve.
-for (const key of ['e3', 'nil', 'toString', '__proto__', undefined]) {
+for (const key of ['e3', 'sol', 'toString', '__proto__', undefined]) {
   assert.throws(() => spaceFor(key), /Unknown geometry/);
   assert.throws(() => fragFor(key), /Unknown geometry/);
 }

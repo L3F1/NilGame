@@ -1,5 +1,5 @@
 // nil.js -- NIL, the Heisenberg group, and the first geometry here whose
-// distance function does not exist.
+// distance is not available as a simple closed-form expression.
 //
 // This project began as a Nil game and the port to H^3 replaced every line of
 // it; this is Nil coming back, on the architecture the other five paid for.
@@ -15,10 +15,8 @@
 //     E1 = d/dx - (y/2) d/dz      E2 = d/dy + (x/2) d/dz      E3 = d/dz
 //
 // so the metric is  dx^2 + dy^2 + (dz + (y dx - x dy)/2)^2. The half-and-half
-// spelling of the group law is not cosmetic: it is what makes rotation about
-// the vertical an isometry, because y dx - x dy is rotation invariant and
-// x dy on its own is not. With the lopsided convention Nil still works and
-// loses its whole rotation group, which is most of what it has.
+// spelling makes vertical rotations linear in these coordinates. Other
+// coordinate conventions retain the same isometries, expressed differently.
 //
 // WHAT A PLACEMENT IS, and it is the friendliest answer in the project. The
 // isometry group is Nil semidirect O(2) -- translations, plus rotation about
@@ -53,9 +51,9 @@
 // it is worth keeping rather than rewriting: TODO.md part 4 has Nil under
 // "where experiments need them". Nothing imports it, so it costs nothing.
 
-import { matMul } from './geom.js';
+import { matMul as multiplyMatrices } from './geom.js';
 
-export { matMul };
+export const matMul = multiplyMatrices;
 
 /** Identity placement: at the origin, frame E1,E2,E3, no turn. */
 export const NIL_ID = Object.freeze([
@@ -515,6 +513,13 @@ export function nilMap(p) {
 
 export function nilSDF(p) { return nilMap(p)[0]; }
 
+// Beacons are decorative: the final gate passes through one. Only columns
+// collide. The displayed beacons are level sets of a distance bound, not exact
+// geodesic spheres; a lower bound minus a radius does not locate a true sphere.
+export function nilCollisionSDF(p) {
+  return Math.min(...NIL_COLUMNS.map(([x, y, r]) => axisDist(p, x, y) - r));
+}
+
 const num = (v) => {
   const s = Number(v).toFixed(6);
   return s.includes('.') ? s : `${s}.0`;
@@ -714,7 +719,9 @@ export function gateRing(gate, n = 40) {
   for (let i = 0; i < n; i++) {
     const th = (i * 2 * Math.PI) / n;
     const u = [0, 1, 2].map((k) => e1[k] * Math.cos(th) + e2[k] * Math.sin(th));
-    const q = mul(g, flowOrigin(u, gate.r)[0]);
+    // Match the local-coordinate disc used by gateCrossed, not an exponential
+    // circle whose points generally leave that disc's plane.
+    const q = mul(g, u.map((value) => value * gate.r));
     out.push([q[0], q[1], q[2], 1]);
   }
   return out;

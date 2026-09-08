@@ -34,13 +34,15 @@ E^3/Lambda (`e3t.js`), which are the CONTROL — the only world here where a
 ported map is the map, and the one the other five are measured against.
 **Not every mode needs a quotient**, and three of the six deliberately have
 none. Movement, gravity, rendering and a grapple hook, all done honestly in the
-geometry. It was a Nil game first; the port to H^3 is complete and no Nil code
-remains.
+geometry. Nil has returned as a separate six-gate spiral climb (`nil.js`).
 
-Three of the eight Thurston geometries are still missing: **Nil** (which this
-started as), **Sol** and **SL~(2,R)**. All three are hard for the same reason
-and it is architectural rather than mathematical — see "The three that are
-left" at the end.
+Two Thurston geometries remain unplayable: **Sol** and **SL~(2,R)**. Sol has
+a test-only kernel in `engine/geometry/sol.js`. The historical "three that
+are left" discussion below predates the completed Nil integration.
+
+Nil traps: carry the geodesic direction when rebasing a ray; test GPU flow
+with `tools/sdf-check.js`. Columns collide, decorative beacons do not (the
+finish gate lies inside one). Course rings must match the crossing discs.
 
 The developer's background is AP CS (Java). Assume comfort with loops, arrays,
 recursion and OOP; assume no prior JavaScript, WebGL, GLSL or differential
