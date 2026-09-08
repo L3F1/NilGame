@@ -5,6 +5,19 @@ first-person levels to test each capability. Game-mode expansion is secondary.
 The previous backlog is preserved in
 [docs/archive/gameplay-backlog.md](docs/archive/gameplay-backlog.md).
 
+## Immediate priorities after geometry coverage
+
+1. [x] Fix glancing collisions in Sol/SL2R so walls preserve tangent motion.
+2. [ ] Measure long-ray convergence, exhausted rays and GPU frame cost in those labs.
+   Shader link time alone does not establish rendering accuracy or latency.
+3. [ ] Return to the Godot authoring experiment: one editable primitive with
+   inspector, undo and immediate play, using shared scene data.
+4. [ ] Test native networking before deciding whether to migrate the host.
+
+Defer additional geometry content, quotients and elaborate modes until these
+checks clarify the renderer and authoring foundations. Existing labs are test
+levels, not evidence that a general connected-geometry engine is finished.
+
 ## 0. Portable foundation
 
 - [x] Separate existing UI, preset data, registration and motion adapters into directories.
@@ -82,7 +95,8 @@ the inside of an ordinary sphere with an exterior surface to glue on.
 - [x] Render Sol with bounded incremental integration; add a small navigable level.
 - [x] Implement and verify the universal-cover SL2R kernel, then its renderer/level.
 - [ ] Sol/SL2R: long-ray convergence, exhaustion diagnostics and frame-time profiling.
-- [ ] Sol/SL2R: sliding collision, transported camera frames and objective courses.
+- [x] Sol/SL2R: basic sliding collision with glancing-contact regressions.
+- [ ] Sol/SL2R: multi-contact corners, transported camera frames and objective courses.
 
 Nil verification (2026-09-08): 47 Nil tests; all 14 then-existing suites pass;
 266 cold real-GPU world/input checks; seven shader programs compile. Nil links

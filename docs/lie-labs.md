@@ -27,8 +27,10 @@ Horizontal travel and fibre travel interact; this is not the H2 x R product.
   frame**. The adapters and shader explicitly use each metric's canonical frame.
 - Coordinate-plane distances give conservative intersection fields for boxes.
   Grid spacing is in coordinates; its physical spacing deliberately varies.
-- Collision substeps are at most 0.01 seconds. Contact stops movement; sliding
-  and a transported camera frame are follow-up work.
+- Collision substeps are at most 0.01 seconds. Glancing contacts preserve
+  tangent motion using metric-frame normals and a small separating speed.
+  Rejected attempts restart in the original frame. Tight corners still stop
+  motion when no safe slide is found; a full multi-contact solver is future work.
 - Rendering has a finite step/range budget. Distant or expensive grazing rays
   can return background. No complete-distance or global visibility claim is made.
 - The scene-document loader, native Godot fixtures, full H3 kit and multiplayer
@@ -43,7 +45,7 @@ component against CPU integration: 3,072 samples per case, flow lengths 0–4.
 `node tools/page-check.js --worlds` covers menu transitions, movement and reset.
 Run shader and real-GPU link checks after renderer changes.
 
-Next: long-ray convergence and exhaustion measurements, surface sliding,
+Next: long-ray convergence and exhaustion measurements,
 transported view frames, more legible route landmarks, then a small objective
 course. Profile frame cost at full resolution before increasing scene complexity.
 The new shader compile cost is small; that does not establish frame latency.

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { derivative, planeDistance } from './engine/geometry/sl2r.js';
 import { integrate } from './engine/geometry/numerical-flow.js';
-import { labMotion, field, coordinateVector } from './engine/world/lie-labs.js';
+import { labMotion, field, coordinateVector, placement, contactNormal } from './engine/world/lie-labs.js';
 const near=(a,b,e=1e-7)=>assert.ok(Math.abs(a-b)<e,`${a} != ${b}`);
 let passed=0;
 function test(name,fn){fn();passed++;console.log(`ok ${name}`);}
@@ -32,6 +32,24 @@ test('SL2R plane distances have unit metric gradients',()=>{
   }
 });
 for(const key of ['sol','sl2r']) {
+  test(`${key}: glancing wall contact preserves travel along the wall`,()=>{
+    const motion=labMotion(key), start=[-.9,-2.929,0];
+    let M=placement(start),vel=[.72,-.96,0];
+    for(let i=0;i<60;i++) {
+      [M,vel]=motion.step(M,vel,[.6,-.8,0],false,1/120);
+      assert.ok(field(key,M.slice(12,15))>=.07);
+    }
+    const scale=key==='sol'?1:Math.exp(-start[1]);
+    assert.ok((M[12]-start[0])*scale>.2,'must make useful tangential progress');
+    assert.ok(vel[0]>.4,'contact must retain tangential velocity');
+  });
+  test(`${key}: contact normal uses metric frame`,()=>{
+    const normal=contactNormal(key,[-.9,-2.929,0]);
+    const length=Math.hypot(1,.071);
+    near(normal[0],0);
+    near(normal[1],key==='sol'?1/length:1);
+    near(normal[2],key==='sol'?-.071/length:0);
+  });
   test(`${key}: spawn clear, movement and collision remain finite`,()=>{
     const motion=labMotion(key);let {M,vel}=motion.spawn();
     assert.ok(field(key,M.slice(12,15))>.07);
