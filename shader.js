@@ -220,8 +220,19 @@ float hdot(vec4 a, vec4 b) { return a.x*b.x + a.y*b.y + kS*a.w*b.w; }
 // curvatures for a difference of two points, and multiplying by kS clamped
 // every hyperbolic distance to zero when product.js first did it.
 float hHorizDist(vec4 p, vec4 q) {
+#if GEOM == G_H2R
+  // Radial/angular separation avoids subtracting huge, almost equal
+  // Minkowski squares near the edge of the hyperbolic floor plan.
+  float a = length(p.xy), b = length(q.xy);
+  vec2 ap = a > 0.0 ? p.xy / a : vec2(0.0);
+  vec2 bp = b > 0.0 ? q.xy / b : vec2(0.0);
+  float radial = sinh(0.5 * (asinh(a) - asinh(b)));
+  vec2 angular = ap - bp;
+  return 2.0 * asinh(sqrt(radial * radial + 0.25 * a * b * dot(angular, angular)));
+#else
   vec4 w = p - q;
   return 2.0 * asinS(sqrt(max(hdot(w, w), 0.0)) * 0.5);
+#endif
 }
 
 // Distance in H^2 x R, and in a product metric it is PYTHAGORAS in the two
@@ -595,12 +606,12 @@ mat4 chartRebase(mat4 M, vec3 dir, float s) { return M * boostMat(dir, s); }
 // the ambient-occlusion steps are short enough that it never showed, but the
 // spherical build was stepping off the sphere by a little at every AO tap.
 vec4 geoStep(vec4 p, vec4 n, float d) { return cosK(d) * p + sinK(d) * n; }
-vec4 projT(vec4 G, vec4 p) { return G + mdot(G, p) * p; }
+vec4 projT(vec4 G, vec4 p) { return G - uCurv * mdot(G, p) * p; }
 
 // Unit up-vector at p: the height gradient, an ambient tangent vector.
 vec4 upAtG(vec4 p) {
-  float s = sqrt(1.0 + p.z * p.z);
-  return vec4(p.z * p.x, p.z * p.y, 1.0 + p.z * p.z, p.z * p.w) / s;
+  float s = sqrt(max(1.0 - uCurv * p.z * p.z, 1e-12));
+  return (vec4(0.0, 0.0, 1.0, 0.0) - uCurv * p.z * p) / s;
 }
 #endif
 `;
@@ -1005,7 +1016,7 @@ vec4 sceneNormal(vec4 p, float t) {
     d[ax] = sgn * e;
     g[ax] += sgn * sceneMap(p + d, t).x;
   }
-  vec4 G = vec4(g.x, g.y, g.z, -g.w);          // raise the index
+  vec4 G = vec4(g.x, g.y, g.z, uCurv * g.w);   // raise using this geometry's metric
   G = projT(G, p);                             // project onto T_p
   // A tangent vector at p is spacelike, so mdot(G,G) > 0 - but at a grazing
   // hit the four differences nearly cancel and it can come back at or below
@@ -1108,6 +1119,12 @@ float exitDist(mat4 C, vec3 dir, float tMin) {
   return best;
 }
 
+#if IS_FLAT
+float flatChecker(vec2 p) {
+  return mod(floor(20.0 * p.x / E3T_L.x) + floor(20.0 * p.y / E3T_L.y), 2.0);
+}
+#endif
+
 vec3 materialColor(float m, vec4 p, float up, float t) {
   // The floor, the checker and the gold domain outline are all about the
   // QUOTIENT, and a spherical world has none. Guarding on uCurv -- a #define,
@@ -1140,8 +1157,14 @@ vec3 materialColor(float m, vec4 p, float up, float t) {
       // is pi across rather than 44 deep.
       col = mix(col, vec3(0.18, 0.215, 0.28), smoothstep(2.0, 9.0, t));
 #else
+#if IS_FLAT
+      // An even number of tiles per lattice period is required for the
+      // material to descend to the quotient. 7 * length(3) was odd.
+      float c = flatChecker(p.xy);
+#else
       vec2 kl = p.xy / p.w;
       float c = mod(floor(kl.x * 7.0) + floor(kl.y * 7.0), 2.0);
+#endif
       vec3 col = mix(vec3(0.15, 0.18, 0.24), vec3(0.21, 0.25, 0.32), c);
 #if IS_PRODUCT
       // FADE THE CHECKER OUT WITH DISTANCE, and it is the pixel-footprint rule
@@ -1229,6 +1252,14 @@ vec3 materialColor(float m, vec4 p, float up, float t) {
 // components means the same thing in every chart.
 vec3 rayDir(vec3 fwd, vec3 off) {
   return normalize(fwd + off / max(uZoom, 1e-3));
+}
+
+vec4 chartDirection(mat4 chart, vec4 local) {
+  vec4 tangent = chart * local;
+#if IS_PRODUCT
+  tangent.z = local.z;
+#endif
+  return tangent;
 }
 
 vec3 trace(vec2 uv) {
@@ -1507,7 +1538,8 @@ vec3 trace(vec2 uv) {
     // vector and mdot would then be comparing two different things.
     vec4 tangent = rayTangent(dir, s);
 #else
-    vec4 tangent = chartMap(chart, rayTangent(dir, s));
+    // Directions must not receive the product chart's height translation.
+    vec4 tangent = chartDirection(chart, rayTangent(dir, s));
 #endif
     float head = clamp(-mdot(n, tangent), 0.0, 1.0);
     float occ = ambient(p, n, hit);
@@ -1537,7 +1569,7 @@ vec3 trace(vec2 uv) {
     // Blue outlives the other two, so at the range limit it has not quite
     // converged and geometry would pop as it crossed. Close the last quarter
     // by hand; it costs one smoothstep and there is nothing to see out there.
-    col = mix(col, FOG_COL, smoothstep(tCap * 0.72, tCap, hit));
+    if (uFog > 0.0) col = mix(col, FOG_COL, smoothstep(tCap * 0.72, tCap, hit));
   }
 
   // Grazing hits at long range push the normal estimate into cancellation

@@ -43,13 +43,8 @@
 //
 // No DOM and no graphics, so it is testable when something needs it to be.
 //
-// PARKED, 2026-09-07. Written just before the project turned toward an
-// engine/editor, so it is NOT wired into spaces.js, world-motion.js, the
-// shader or the menu, and it has no test file yet. The mathematics below was
-// verified against an independent RK4 integration of the geodesic equations
-// (position 3.7e-11, direction 2.5e-14) and against the group commutator, so
-// it is worth keeping rather than rewriting: TODO.md part 4 has Nil under
-// "where experiments need them". Nothing imports it, so it costs nothing.
+// Integrated as the spiral climb. nil.test.js checks the group and exact
+// flow; geometry-audit.test.js independently checks the metric equation.
 
 import { matMul as multiplyMatrices } from './geom.js';
 
@@ -338,13 +333,13 @@ export function climbRadius(z) {
  *
  *     straight along a horizontal geodesic   exact, to 1e-15
  *     straight up the vertical axis          84% of the true distance
- *     locally, near any surface              at worst 1/sqrt(2) = 71%
+ *     infinitesimally, near the target point at worst 1/sqrt(2) = 71%
  *
  * The local figure is the one the marcher pays for, and it comes from the
- * metric being exactly Euclidean at the origin: the bound is max(rho, |zeta|)
- * there and the truth is hypot(rho, zeta). So a step is never worse than 71%
- * of the honest one, which is 1.4x the steps in the worst direction and
- * nothing at all in the best.
+ * metric being exactly Euclidean at the origin: to first order the bound is
+ * max(rho, |zeta|) and the truth is hypot(rho, zeta). This is NOT a global
+ * step-count guarantee, nor a distance-to-surface result after subtracting
+ * a radius. Decorative beacon level sets are not exact metric spheres.
  *
  * The sharper version of (2) keeps the constraint between the vertical and
  * horizontal budgets instead of bounding each by L, and at rho = 0 it

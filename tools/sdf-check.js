@@ -55,6 +55,7 @@ const E3T = await import(pathToFileURL(join(ROOT, 'e3t.js')).href);
 const S2R = await import(pathToFileURL(join(ROOT, 's2r.js')).href);
 const TRACK = await import(pathToFileURL(join(ROOT, 'race-track.js')).href);
 const NIL = await import(pathToFileURL(join(ROOT, 'nil.js')).href);
+const H2R = await import('../h2r.js');
 const LAB = await import('../engine/world/lie-labs.js');
 const FLOW = await import('../engine/geometry/numerical-flow.js');
 const { lieFragment } = await import('../engine/geometry/lie-shader.js');
@@ -62,6 +63,15 @@ const { lieFragment } = await import('../engine/geometry/lie-shader.js');
 const nilSource = (await import(pathToFileURL(join(ROOT, 'shader.js')).href)).fragFor('nil');
 const nilMath = nilSource.split('#elif IS_NIL\n')[1]?.split('\n#else\n// --- H^3')[0];
 if (!nilMath?.includes('vec3 nilFlow(')) throw new Error('Nil shader extraction needs updating');
+const productDistance = nilSource.split('float hHorizDist(vec4 p, vec4 q) {')[1]?.split('// Distance in H^2 x R')[0];
+if (!productDistance) throw new Error('Product distance extraction needs updating');
+const h2DistanceGLSL = '#define GEOM 2\n#define G_H2R 2\nfloat hHorizDist(vec4 p, vec4 q) {' + productDistance;
+const chartDirectionGLSL = nilSource.match(/vec4 chartDirection\(mat4 chart, vec4 local\) \{[\s\S]*?\n\}/)?.[0];
+const flatCheckerGLSL = nilSource.match(/float flatChecker\(vec2 p\) \{[\s\S]*?\n\}/)?.[0];
+if (!chartDirectionGLSL || !flatCheckerGLSL) throw new Error('Lighting/material extraction needs updating');
+const normalGLSL = nilSource.split('vec4 sceneNormal(vec4 p, float t) {')[1]?.split('// Ambient occlusion:')[0];
+const projectionGLSL = nilSource.match(/vec4 projT\(vec4 G, vec4 p\) \{ return G - uCurv[^\n]+/)?.[0];
+if (!normalGLSL || !projectionGLSL) throw new Error('Normal extraction needs updating');
 
 // Deterministic sample points, so a failure repeats.
 const N = 16 * 16, BATCHES = 12;
@@ -79,6 +89,47 @@ function sample(make) {
 }
 
 const CASES = [
+  ...[-1,1].map(k=>({
+    name:`curvature ${k}: shader normals tangent and unit`,tol:3e-4,vector:true,
+    batches:sample(()=>{const t=.2+rnd()*1.5,a=rnd()*Math.PI*2,z=rnd()-.5;
+      const v=[Math.cos(a),Math.sin(a),z],n=Math.hypot(...v);
+      return [...v.map(x=>x/n*(k<0?Math.sinh(t):Math.sin(t))),k<0?Math.cosh(t):Math.cos(t)];}),
+    js:()=>[0,1],
+    glsl:`#define uCurv (${k}.0)
+float mdot(vec4 a,vec4 b){return dot(a.xyz,b.xyz)+uCurv*a.w*b.w;}
+${projectionGLSL}
+vec4 upAt(vec4 p){return vec4(0.0,0.0,1.0,0.0);}
+int rolled(int n){return n;}
+vec2 sceneMap(vec4 p,float t){return vec2(p.z,0.0);}
+vec4 sceneNormal(vec4 p,float t){${normalGLSL}
+vec2 worldMap(vec4 p){vec4 n=sceneNormal(p,0.0);return vec2(mdot(n,p),mdot(n,n));}`,
+  })),
+  {
+    name:'product tangent height is independent of chart altitude',tol:1e-6,vector:true,
+    batches:sample(()=>[rnd()*2-1,rnd()*2-1,rnd()*2-1,rnd()*88-44]),
+    js:p=>[p[2],p[0]],
+    glsl:'#define IS_PRODUCT 1\n'+chartDirectionGLSL+`\nvec2 worldMap(vec4 p){
+      mat4 chart=mat4(1.0); chart[3].z=p.w;
+      vec4 result=chartDirection(chart,vec4(p.xyz,1.3));
+      return result.zx; }`,
+  },
+  {
+    name:'flat checker invariant under lattice translations',tol:1e-6,vector:true,
+    batches:sample(()=>[rnd()*18-9,rnd()*18-9,0,1]),
+    js:()=>[0,0],
+    glsl:'const vec3 E3T_L=vec3(3.0);\n'+flatCheckerGLSL+`\nvec2 worldMap(vec4 p){
+      return vec2(flatChecker(p.xy)-flatChecker(p.xy+vec2(3.0,0.0)),
+      flatChecker(p.xy)-flatChecker(p.xy-vec2(0.0,3.0))); }`,
+  },
+  {
+    name:'H2R dropper, including distant floor coordinates',tol:2e-4,
+    batches:sample(()=>{
+      const r=rnd()*7, angle=rnd()*Math.PI*2;
+      return [Math.sinh(r)*Math.cos(angle),Math.sinh(r)*Math.sin(angle),rnd()*44,Math.cosh(r)];
+    }),
+    js:H2R.h2rMap,
+    glsl:h2DistanceGLSL+H2R.h2rGLSL()+'\nvec2 worldMap(vec4 p){return h2rWorld(p);}',
+  },
   ...['sol','sl2r'].flatMap(key => {
     const math = lieFragment(key).split('void rhs')[1].split('void main()')[0];
     const glsl = 'void rhs' + math;

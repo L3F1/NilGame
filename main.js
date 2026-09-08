@@ -600,7 +600,7 @@ const opts = {
   // get to choose after the fact.
   holo:       { label: 'Holonomy (Q)', values: ['sign decides', 'dash only', 'blast only'], i: 0 },
   foe:        { label: 'Opponent',     values: ['bot', 'network', 'off'],      i: 0 },
-  fog:        { label: 'Fog',          values: ['normal', 'thin', 'thick'],    i: 0 },
+  fog:        { label: 'Fog',          values: ['normal', 'thin', 'thick', 'off'], i: 0 },
   shading:    { label: 'Shading',      values: ['ambient occlusion', 'flat'],  i: 0 },
   edges:      { label: 'Domain edges', values: ['show', 'hide'],               i: 0 },
   quality:    { label: 'Quality',      values: ['low', 'medium', 'high'],      i: 1 },
@@ -2949,7 +2949,7 @@ function frame(now) {
   const flat = flatWorld();
   const base = (nilWorld() ? 0.025 : product ? 0.030 : sphereFloor ? 0.075 : flat ? 0.055
     : openWorld ? 0.45 : 0.20)
-    * { normal: 1, thin: 0.55, thick: 1.9 }[optVal('fog')];
+    * { normal: 1, thin: 0.55, thick: 1.9, off: 0 }[optVal('fog')];
   gl.uniform1f(U.fog, base / Math.sqrt(zoomed));
   gl.uniform1f(U.ao, optVal('shading') === 'flat' ? 0 : 1);
   gl.uniform1f(U.maxT,
@@ -2991,7 +2991,9 @@ function frame(now) {
   // draw the body somewhere it is not. Worth doing: in S^3 light goes all the
   // way round, so you would see yourself down every sightline without needing
   // a quotient at all.
-  gl.uniform1f(U.selfR, sphericalWorld() ? 0 : PLAYER_R * 1.25);
+  // History/alternate lifts are only maintained by the H3 and flat quotient
+  // paths. Feeding them to other metrics creates phantom green player bodies.
+  gl.uniform1f(U.selfR, geomKey() === 'h3' || flatWorld() ? PLAYER_R * 1.25 : 0);
   // Supersampling is four marches a pixel, so only at high quality.
   gl.uniform1f(U.superSample, optVal('quality') === 'high' ? 1 : 0);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

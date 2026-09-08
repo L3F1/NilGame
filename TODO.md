@@ -7,6 +7,17 @@ The previous backlog is preserved in
 
 ## Immediate priorities after geometry coverage
 
+- [x] Independent geodesic/metric audit across all eight geometries; see
+  [audit and limits](docs/math-audit.md).
+- [x] Fix product tangent lighting, spherical normal signs, unsupported self
+  bodies, and the flat checker wrap; add GPU regressions and distant H2R samples.
+- [x] Add Fog off, including disabling the artificial range fade.
+- [ ] Isolate Nil columns and compare first-hit silhouettes at increasing
+  accuracy to distinguish real multiple images from edge artifacts.
+- [ ] Recheck the reported H2R floor/object banding interactively after these
+  fixes; separate Klein checker patterns from remaining numerical shading noise.
+- [ ] Regenerate Godot comparison fixtures after spherical normal corrections.
+
 1. [x] Fix glancing collisions in Sol/SL2R so walls preserve tangent motion.
 2. [ ] Measure long-ray convergence, exhausted rays and GPU frame cost in those labs.
    Shader link time alone does not establish rendering accuracy or latency.
@@ -87,6 +98,25 @@ A bounded S3 patch is the first target. A complete S3 is a closed space, not
 the inside of an ordinary sphere with an exterior surface to glue on.
 
 ## 4. Broader authoring and geometry coverage
+
+Distinct examples to consider from the [WLU gallery](https://3d.wlu.edu/vr/examples/)
+(feature coverage, not a request to reproduce every scene):
+
+- [ ] S3 quaternion quotient: distinguish intrinsic spherical recurrence from gluing.
+- [ ] H2 x R cusp-times-circle exploration; keep orbifold cone points explicitly
+  separate from smooth manifold experiments.
+- [ ] Nil Dehn-twist mapping torus and visible contact-plane/fibre transport.
+- [ ] SL2R genus-two quotient: expose base-loop and fibre coupling.
+- [ ] Sol compact lattice: demonstrate stretching gluing across height seams.
+- [ ] True metric balls in Nil/Sol, compared with our columns and plane-built boxes.
+- [ ] H3 horoball/cusp exhibit as an optional geometry lesson, not the main floor.
+- [ ] Controlled point lights and multiple light paths in product spaces;
+  reflection/refraction tests as later renderer work.
+
+Flat three-torus recurrence and basic Sol halfspace/box behavior already have
+coverage. VR duplicates, material-only variants and debugging pages add no new
+geometry requirement. Prioritize topology and transport examples after the
+current accuracy/authoring milestones.
 
 - [x] Finish Nil menu, HUD, six-gate climb and collision integration.
 - [x] Verify a climb from rest through all six gates with actual movement/collision.
