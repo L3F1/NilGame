@@ -1,5 +1,12 @@
 # Welcome to Colyseus!
 
+> Project status: this is a separate flat 2D networking experiment. The root
+> NilGame app uses `net.js` and `tools/relay.js`; it does not connect to this
+> simulation. See [the engine architecture](../docs/architecture.md) and
+> [active roadmap](../TODO.md) before extending this prototype as authority
+> for curved or connected regions. The scaffold instructions below apply only
+> to this subproject.
+
 This project was created with [⚔️ `create-colyseus-app`](https://github.com/colyseus/create-colyseus-app/).
 
 [Documentation](https://docs.colyseus.io/)

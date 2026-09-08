@@ -1,8 +1,8 @@
 // Integration contract: selecting an adapter must preserve the old world's
 // trajectory, isolate player state, and keep positions on the right manifold.
 import assert from 'node:assert/strict';
-import { worldMotionFor } from './world-motion.js';
-import { SPACES } from './spaces.js';
+import { worldMotionFor } from './engine/runtime/world-motion.js';
+import { SPACES } from './engine/geometry/registry.js';
 import * as S3 from './s3.js';
 import * as H2R from './h2r.js';
 import * as S2R from './s2r.js';

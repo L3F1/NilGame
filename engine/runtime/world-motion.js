@@ -1,11 +1,11 @@
-// Motion adapters for the worlds without a quotient. No DOM or mutable session
+// Motion adapters for the existing experiments. No DOM or mutable session
 // globals. M and velocity belong to the caller; each step returns new values.
 // A packed product placement must be manipulated by product operations, never
 // by a generic mat4 multiply. Each adapter keeps that choice explicit.
-import { S3G, s3SDF, s3Control, s3Step, s3Collide } from './s3.js';
-import * as H2R from './h2r.js';
-import * as S2R from './s2r.js';
-import * as E3T from './e3t.js';
+import { S3G, s3SDF, s3Control, s3Step, s3Collide } from '../../s3.js';
+import * as H2R from '../../h2r.js';
+import * as S2R from '../../s2r.js';
+import * as E3T from '../../e3t.js';
 
 // Every adapter takes a trailing `env` describing what the OPTIONS have
 // selected inside this geometry, and only the flat one reads it. E^3/Lambda is

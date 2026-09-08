@@ -24,6 +24,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { modulePath } from './module-path.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const out = resolve(process.argv[2] || 'preview.png');
@@ -64,7 +65,7 @@ function visit(file) {
   if (sources.has(file)) return;
   const code = readFileSync(join(ROOT, file), 'utf8');
   sources.set(file, code);
-  for (const m of code.matchAll(/from\s+'\.\/([^']+)'/g)) visit(m[1]);
+  for (const m of code.matchAll(/from\s+'(\.\.?\/[^']+)'/g)) visit(modulePath(file, m[1]));
   order.push(file);          // dependencies first
 }
 visit('main.js');
@@ -79,7 +80,7 @@ function wrap(file, code) {
     /^export\s+(async\s+function|function|const|let|class)\s+([A-Za-z_$][\w$]*)/gm,
     (_, kw, id) => { names.push(id); return `${kw} ${id}`; });
   code = code.replace(
-    /^import\s*\{([^}]*)\}\s*from\s*'\.\/([^']+)';?/gm,
+    /^import\s*\{([^}]*)\}\s*from\s*'(\.\.?\/[^']+)';?/gm,
     // A RENAMED import is translated rather than refused. `import { a as b }`
     // becomes `const { a: b }`, which is the same thing in destructuring - the
     // two syntaxes differ only in the keyword.
@@ -90,7 +91,7 @@ function wrap(file, code) {
     // wrote. The guard never fired because the line HAD been rewritten - just
     // into something broken. A rewrite that cannot be done must fail loudly;
     // one that can be done should just be done.
-    (_, list, from) => `const {${list.replace(/\s+as\s+/g, ': ')}} = __m['${from}'];`);
+    (_, list, from) => `const {${list.replace(/\s+as\s+/g, ': ')}} = __m['${modulePath(file, from)}'];`);
   // A NAMESPACE import is the natural shape of this bundle rather than a
   // problem for it: every module is already an object of its exports, so
   // `import * as ns from './x.js'` is exactly `const ns = __m['x.js']`.
@@ -98,8 +99,8 @@ function wrap(file, code) {
   // imports h2r.js this way, because almost every name in it collides with
   // hyp.js by design.
   code = code.replace(
-    /^import\s*\*\s*as\s+([A-Za-z_$][\w$]*)\s*from\s*'\.\/([^']+)';?/gm,
-    (_, id, from) => `const ${id} = __m['${from}'];`);
+    /^import\s*\*\s*as\s+([A-Za-z_$][\w$]*)\s*from\s*'(\.\.?\/[^']+)';?/gm,
+    (_, id, from) => `const ${id} = __m['${modulePath(file, from)}'];`);
   // SAY SO when the source uses an import form this cannot rewrite, instead of
   // emitting a bundle with a live `import` in it and letting the browser
   // produce an error that points at the wrong thing. Renamed and namespace

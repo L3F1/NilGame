@@ -1,5 +1,23 @@
 # Hyperbolic grapple game, in a 3-manifold
 
+## Current direction (2026-09-07)
+
+Active direction: an engine/editor for connected geometries, with small levels
+as experiments. Follow `TODO.md`, `docs/architecture.md`, `docs/scene-format.md`
+and `docs/decisions/001-runtime-strategy.md`. Historical gameplay priorities
+below do not override that roadmap; numerical and verification rules remain.
+The old README tour is preserved in `docs/playground.md`.
+
+Evaluate Godot as a native host before building the full editor; retain the
+web app as a reference until parity is tested. New portable modules live in
+`engine/`, browser UI in `app/`, presets/fixtures in `levels/`. Scene v1 and
+radial E3/H3/S3 mapping currently run only in tools/tests. Mixed-geometry
+rendering, portal transit and the S3 bubble remain future work.
+
+Separate metric, topology, region ownership and connection policy. Reject
+unsupported document features explicitly. Run `node tools/scene-check.js`
+after document/chart changes, plus the existing regression checks.
+
 ## What this is
 
 A game set in a **hyperbolic 3-manifold**: H^3 of curvature -1, quotiented by
@@ -23,7 +41,7 @@ recursion and OOP; assume no prior JavaScript, WebGL, GLSL or differential
 geometry. Explain graphics and geometry concepts when they come up. Do not
 explain what a for loop is.
 
-README.md carries the tour: what the geometry feels like, why a horosphere
+docs/playground.md carries the tour: what the geometry feels like, why a horosphere
 floor was rejected, how the abilities read in play. This file is the working
 rules — the things that cost hours to find out.
 
@@ -78,13 +96,13 @@ shader; a scene-graph library would hide the parts that matter.
   ones exactly (slab and 3-torus), a floor plan, walking and a course. The
   CONTROL, and the only world where a ported map is the map. **No DOM, no
   graphics.** See "E^3 / Lambda" below.
-- `spaces.js` — the geometry registry: key, option label, shader id, program
+- `engine/geometry/registry.js` — the geometry registry: key, option label, shader id, program
   name. `shader-check`, `link-time` and `world-probe` all iterate it, so
   registering a geometry is most of adding one.
-- `world-motion.js` — the motion adapter per geometry: spawn, input model,
+- `engine/runtime/world-motion.js` — the motion adapter per geometry: spawn, input model,
   course and step. `h3` is null and means "the full physics.js path"; every
   other world's integrator lives behind one of these. **No DOM.**
-- `worlds.js` — the presets, by name. `menu.js` — the DOM for the world
+- `levels/presets.js` — the presets, by name. `app/menu.js` — the DOM for the world
   browser, and nothing else.
 - `port.js` — reading a FLAT map as a map of a curved space. Three classical
   embeddings, each exact in one property and wrong in the others, plus the
@@ -2388,7 +2406,7 @@ round. That corridor is the same corridor in every copy.
     emits one scene program per geometry via `fragFor(key)`, selected by `#if`
     rather than a uniform; `product.js` gives the two products one set of
     formulas the way `geom.js` does for the constant-curvature three; and
-    `spaces.js`, `world-motion.js` and `worlds.js` are the registry, the
+    `engine/geometry/registry.js`, `engine/runtime/world-motion.js` and `levels/presets.js` are the registry, the
     motion adapter table and the presets, so adding a geometry is a
     registration rather than a sweep through main.js.
 12. ~~Porting a flat map into a curved one~~ - `port.js`, `tools/port-map.js`.

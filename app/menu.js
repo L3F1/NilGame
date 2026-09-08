@@ -1,4 +1,4 @@
-// DOM-only view. Geometry, simulation, and option rules stay with the caller.
+// Browser-only view. Geometry, simulation, and option rules stay with the caller.
 export function createWorldMenu({ presets, onPreset, onOption, onClose }) {
   const panel = document.createElement('section');
   panel.id = 'menu';

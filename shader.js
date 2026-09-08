@@ -17,7 +17,7 @@ import { s3GLSL } from './s3.js';
 import { h2rGLSL } from './h2r.js';
 import { s2rGLSL } from './s2r.js';
 import { e3tGLSL } from './e3t.js';
-import { spaceFor } from './spaces.js';
+import { spaceFor } from './engine/geometry/registry.js';
 
 export const VERT = `#version 300 es
 in vec2 aPos;

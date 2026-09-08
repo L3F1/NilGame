@@ -1,0 +1,614 @@
+# Historical gameplay backlog
+
+Archived when the project adopted the connected-geometry engine/editor vision.
+Completion notes are retained; unfinished items are ideas, not the active work
+queue. Follow [the current roadmap](../../TODO.md). Some historical statements
+below describe earlier code and should not be read as current capabilities.
+
+CLAUDE.md item 10 says the next task is "actual game modes — there is now a
+kit; what is missing is a reason to use it". This file is that task, broken up.
+
+The ordering principle: **every mode below needs the same five or six pieces of
+machinery, and none of them exist.** Build the machinery once, cheaply, against
+the easiest mode; then the rest are level authoring and rules rather than
+engineering. Building Rocket League first means building all of it at once,
+badly.
+
+Effort labels are relative: **S** is an evening, **M** is a weekend, **L** is a
+project, **XL** is a rewrite of something load-bearing.
+
+---
+
+Infrastructure review: see [docs/architecture.md](../architecture.md) for
+the current boundaries and recommended expansion order. Shared playable-space
+registration, a root regression runner, clickable world browser, and all-world
+browser checks are implemented. Geometry-correct resets and isolation from
+H3-only inputs/transient markers now cover the existing worlds. Motion adapters
+for S3, H2 x R, and S2 x R now own spawn, movement and course creation in
+`world-motion.js`. Remaining session state/HUD and quotient extraction are the
+next infrastructure steps. **The playable flat 3-torus is DONE** — `e3t.js`,
+two worlds (slab and 3-torus), the torus course, 63 tests, and the cheapest
+scene program in the project at 3.1 s. Run `node tools/page-check.js --worlds`
+after changing the menu, resets, presets, or geometry dispatch.
+
+The remaining Thurston geometries are **Nil, Sol and SL~(2,R)**, and they are
+blocked on the same thing rather than on three different things: none of them
+has a closed-form distance, so sphere tracing needs a distance UNDERESTIMATOR
+and numerically integrated geodesic flow. That changes the marcher's step rule,
+which is the load-bearing loop. Order: Nil first (exact geodesics, inexact
+distance — one thing changes), then SL~(2,R), then Sol. See CLAUDE.md,
+"The three that are left".
+
+## Current gameplay pass
+
+- DONE: lethal H2 x R dropper baffles, swept impact detection, automatic
+  restart, and a visible attempt count. The baffles are now holed on the LINE
+  between consecutive gates rather than over the gate above, and the column
+  field is scenery again -- making it lethal had invalidated the gate search
+  and left the course at 0/5 for every input. Aimed 5/5 in 11.35 s.
+- DONE: S2 x R arcade circuit. The mechanic was already there and undiscoverable:
+  a hurdle cannot be cleared at cruising speed and can be on turbo, so drifting
+  the turns pays for the jumps. 6.81 s a lap boosted against 22.92 s round.
+  Gates resized so they stop overlapping each other and match the road.
+- Both are simulated end to end in `racing.test.js` (44), checked in a real
+  browser by `page-check --worlds`, and the race track is now one of
+  `sdf-check`'s four cases.
+- Done: E^3/Lambda, the flat 3-manifolds. The control the other five are
+  measured against, and the only world where a ported map is the map.
+
+## Part 0 — the machinery every mode needs
+
+Nothing here is interesting on its own. All of it blocks everything else.
+
+### ~~M1. A round system~~ **DONE** — `modes.js`
+
+There is no score, no timer, no phase, no win condition anywhere in the
+codebase. `grep -i "score|round|timer|win"` finds a spawn-clearance heuristic
+and nothing else.
+
+Built as: `modes.js` exporting `{ name, onStart, onTick(dt), onEvent, hud() }`,
+with main.js delegating to whichever is selected. **No DOM**, like physics.js,
+so it is testable — that rule is what makes physics.js testable and it should
+not be broken for game logic.
+
+### ~~M2. Projectiles become lists~~ **DONE**
+
+Was four module-level singletons — `boomerang`, `block`, `decoy`, `cut` — so
+two fighters could not each have one out and a bot that threw a boomerang took
+the player's. All four are now `Map`s keyed by owner id.
+
+Every function grew a trailing `id = 0`, so the local player is owner 0 and
+every existing call site reads as it did; `physics.test.js` went 140 → 160 with
+no change to the original 140. The parts that needed real care were the
+functions acting on all owners at once: `blockSDF` and `cutSDF` now take a
+minimum over every one, the four `carry*` functions move every one through a
+fold, and `boomerangHits` skips each throw's own `b.owner` instead of a `skip`
+argument the caller had to remember. Both of those were confirmed to fail
+against a deliberately single-owner mutation.
+
+**What it cost the shader: nothing.** Markers already go through `uMark[10]` +
+`uMarkN`, built exactly so more objects cost no link time.
+
+**But `MARKS = 10` is now the binding limit**, and it fails silently —
+`marker()` just returns once `markN >= MARKS`, so the eleventh object is not
+drawn and nothing errors. The anchor, beacon, opponent and blast already take
+slots. Raise it in main.js *and* shader.js together and re-run
+`tools/link-time.js` before any mode puts many objects in the world at once.
+
+### ~~M3. Trigger volumes~~ **DONE** — hoops, ordered
+
+"Is this character inside region k, and did they enter regions in order?"
+
+Cheap, because the pieces exist: an SDF for the shape, and `orbitDist` for the
+"on the orbit, not in coordinates" rule that every character interaction here
+already obeys. A checkpoint one cell away must count as reached.
+
+Needs per-player state and ordered activation (checkpoint 3 only counts after
+2), or players will cut the course by wrapping — which in a compact manifold
+they absolutely will, and that is a feature to design around rather than a bug.
+
+### ~~M4. Timer and scoreboard on the HUD~~ **DONE**
+
+Trivial, and nothing exists. Needed by every timed mode.
+
+### M5. Teams and roles  **S**
+
+`makeCharacter` returns `{ id, M, vel, spin, health, hurtFor, deadFor }` — no
+team, no role, no score. Add them there rather than in a parallel structure:
+that struct is what a network packet carries, so anything not in it does not
+survive multiplayer.
+
+### M6. More than two players  **L**
+
+The netcode is deliberately 2-player peer-to-peer, each end authoritative over
+its own body, damage self-assessed at both ends. That model does not extend to
+four — with three peers, "I decide whether their boomerang hit me" stops being
+symmetric and starts being an argument.
+
+**This is where the Colyseus server in `server/` earns its place.** The hard
+part is already solved and CLAUDE.md says why: `reduceToDomain` is canonical, so
+a folded representative is a name every client agrees on. That is exactly what
+makes a server-side `Schema` of positions mean anything. `hyp.js` and
+`physics.js` are DOM-free ES modules, so the server can run the real physics
+rather than a reimplementation of it.
+
+Decide deliberately: Colyseus **replaces** `net.js`, it does not sit alongside
+it. 1v1 stays cheaper peer-to-peer forever.
+
+### M7. A ball — a persistent physical object  **M**
+
+Not a projectile. It lives for the whole round, collides with the level *and*
+with players, and gets pushed rather than aimed.
+
+Most of it exists: the `rolling` movement model is a rigid sphere with a proper
+contact impulse (the `1 + r^2/I` = 3.5 factor for a solid sphere). A ball is
+that, with no input torque. Reuse `rollControl`'s contact solver rather than
+writing a second one.
+
+### M8. Level content that is not an arena  **M**
+
+A maze, a track and a hoop course are three shapes the current primitives do not
+make. Either add primitives (a hoop; a tube that follows a path) or add a path
+authoring helper.
+
+Two constraints that bite immediately, both already documented:
+- **Clearance:** centre distance + thickness must stay under the inradius —
+  1.5286 for the octagon, **0.996 for the dodecahedron**.
+- **Straddling a face gets CUT OFF.** The marcher never leaves the fundamental
+  domain, so the part in the neighbouring copy is simply not drawn, and nothing
+  else notices: both SDFs agree, physics collides correctly, the picture is
+  quietly wrong.
+
+### M9. Ghost replay  **S**
+
+Nearly free. `trail` and `selfHist` already record position history, and
+`plantDecoy` already replays a slice of it as a body. A ghost is a decoy that
+replays a *saved lap* instead of the last three seconds. Racing and every time
+trial want one.
+
+---
+
+## Part 1 — the modes, easiest first
+
+### ~~1. Drone hoops, timed~~ **DONE** — and it built M1, M3 and M4 with it
+
+`modes.js` + `modes.test.js` (56 tests), option `Hoop course`, key K. The round
+system, ordered trigger volumes and the HUD clock all exist now, which is what
+this mode was chosen to pay for.
+
+Two things worth knowing before the next mode uses them:
+
+- **The bounded world's course is FLAT**, measured at altitude 0.0000 for every
+  hoop, and it is forced: every closed geodesic of the octagon group lies in
+  the floor plane. The open world gives an altitude range of 1.315 and is a
+  real 3D course. Any mode built on closed geodesics inherits this.
+- **The crossing test rides on `bankFrom`**, the substep start point already
+  carried through any fold. Racing and the grapple course need the same
+  segment, so reuse it rather than re-deriving one.
+
+The original plan for it, kept because the reasoning is still the argument for
+the next few modes:
+
+**Why first:** almost all of it already exists. `Gravity: none` and
+`Camera up: free` are shipped options; flight works; zoom works. What is missing
+is M1, M3, M4 and a hoop shape.
+
+The hoop: a disc with a hole. `cutSDF` is already a geodesic-plane disc — the
+slab `asinh(<p,N>)` intersected with a ball. A hoop is that same slab
+intersected with a **shell** instead of a ball, which is one `max` and one
+`abs`. Exact, one inner product wide, and it reuses code that is already tested.
+
+**The hook that makes it not a flat game:** put the hoops **along a closed
+geodesic**. The course then returns to its own start with no turning — you fly
+dead straight and arrive where you began. In the dodecahedral world those
+geodesics are the SPOKES, which are already drawn, so the level literally shows
+you the racing line. `closedGeodesicDirs` and `closedGeodesicLength` already
+expose them; the boomerang already flies them.
+
+### ~~2. Grapple course, timed~~ **DONE** — `Course = grapple`, key K
+
+Everything mechanical exists: rope, swing, reel, `anchorSwap`, swing-to-fly
+above `sqrt(G)`. Needs M1, M3, M4 and a reset-to-start.
+
+**The hook, and it is the best unused idea in the codebase:** `sweptArea` is
+**signed**, and it fills by circling — `(cosh(r) - 1) dtheta`, so a wide circle
+is worth exponentially more than a tight one, and going back round the other way
+*empties* it. Right now that meter only feeds the dash and the blast, both
+combat abilities.
+
+Put a gate on the course that opens only at a given charge, and the player has
+to swing **around** something, the right way round, at the right radius, to
+open it. That turns a curvature integral into a puzzle mechanic. Nothing in a
+flat game can do it, because in a flat game the integral is always zero.
+
+### 3. Racing / time trial  **M**
+
+`rolling` is already a car: torque in, friction, slip, rolling resistance,
+`ROLL_TOP` capping spin about the input axis so speed carried in from a slope
+survives. Needs M1, M3 (ordered checkpoints, laps), M4, M9 (ghosts), M8 (track).
+
+**The hook is the racing line itself.** On an H^2 floor the circumference of a
+circle grows like `sinh(r)`, not `r`. So the inside line is not slightly
+shorter, it is *dramatically* shorter, and going wide to overtake is punishingly
+expensive in a way no flat racer can reproduce. Defending the inside is nearly
+free; the whole overtaking economy inverts.
+
+Second hook: a track laid along a closed geodesic means a "lap" is completed by
+driving **straight**. The corner is the manifold, not the tarmac.
+
+### 4. Hide and seek  **M** — the mode the manifold was built for
+
+Needs M1, M3, M4, M5 and a detection rule.
+
+Look at how much of the existing kit is already a hide-and-seek kit that was
+built for something else:
+
+- **Your copies stand down every sightline.** A seeker looking at you is looking
+  at a dozen of you and none of them may be the body.
+- **Decoy** is drawn with the player's own material, on purpose — "not a
+  costume, genuinely the same thing to look at".
+- **Finite light speed** means a distant sighting is *stale by construction*.
+  The copy five cells off shows where you were long before. A seeker chasing
+  what they can see is chasing the past.
+- **The sightline cutter** shuts a corridor with a convex half-space.
+- **Recall** is an escape hatch that leaves no trail forward.
+
+**Reconsider the maze.** A literal maze fits badly — the octagon's inradius is
+1.53 and anything straddling a face is cut off. But the manifold *is* the maze:
+walk straight and you come back to where you started from the other side. Build
+the mode out of sightlines and copies, not out of walls, and it will be better
+and cheaper.
+
+### 5. Rocket League  **L** — needs the most new machinery
+
+Needs M7 (the ball), M5 (teams), M3 (goals as trigger volumes), M2 (lists), M1,
+M4 — and 2v2 needs M6. Build 1v1 first; it needs everything except M6.
+
+Three hooks:
+
+- **There is no "behind the goal".** The arena wraps, so you can score from the
+  far side by going around. Defending means defending a *volume*, not a line.
+- **Aim spreads like `sinh(d)`.** A long shot is far harder to place than in a
+  flat game, which pushes play close — the same reason CLAUDE.md says "a fighter
+  here wants short engagement ranges". Long-range sniping is not a strategy the
+  geometry supports.
+- **A ball launched down a closed geodesic comes back to you.** A pass to
+  nobody, that returns.
+
+---
+
+## Part 2 — other geometries
+
+### ~~Spherical S^3~~ **DONE** — `s3.js`, `s3.test.js` (28), its own program
+
+Not just novelty. Three things change and all three matter:
+
+1. **Compact with no quotient.** S^3 already closes up, so you see the back of
+   your own head with no group at all. Every geodesic closes, at period 2*pi.
+2. **Coordinates are BOUNDED by 1.** The hard range limit that caps this whole
+   project — `<p,p>` cancelling terms of size `e^{2d}`, out of digits at d = 16
+   in float64 and **d = 7 in float32** — simply does not exist. The level could
+   be any size. That is a real payoff, not a curiosity.
+3. **Volume grows and then shrinks.** Past `pi/2` objects get *larger* with
+   distance, and the antipode focuses light so a point there fills the sky. Every
+   design rule here that rests on `e^{2r}` inverts.
+
+**The codebase already names the target.** CLAUDE.md records that the same
+dodecahedron glued with a **1/10** turn instead of 3/10 gives the **Poincare
+homology sphere** — which is spherical — and `hyp.test.js` already asserts that
+1/10 is *not* a valid hyperbolic reduction. Spherical support is what would let
+the game actually contain the thing its own test suite names.
+
+Work: `hyp.js` becomes an interface — `form`, `exp`, `log`, `dist`,
+`translation`, `height` — with H^3 / S^3 / E^3 implementations. The marcher and
+every SDF assume `asinh`/`sinh` and would need the same treatment. This is the
+XL, and it should not start until the mode system exists, or there will be
+nothing to play in the new geometry.
+
+### ~~Euclidean E^3: the math layer~~ **DONE** (the torus quotient is not)
+
+The boring case, and that is exactly its value:
+
+- It **validates the geometry interface** with arithmetic that can be checked by
+  hand. Every bug in the abstraction shows up here first, in numbers a person
+  can verify without trusting `asinh`.
+- It is the **control**. Play the same grapple course flat and hyperbolic and
+  the difference curvature makes stops being a claim and becomes a measurement.
+
+### The flat 3-torus — the CONTROL, and now the most useful one  **M**
+
+E^3 quotiented by a lattice: the oldest video-game space there is, and here it
+is the baseline the other four are measured against. It matters more now than
+it did before `port.js` existed: a map ported into the torus is the SAME map
+with no distortion at all, so playing it there and then in H^3 turns "what does
+curvature do" from a claim into a comparison you can run back to back.
+
+`geom.js` already gives E^3 its geodesics and its isometries; what is missing
+is the group (three translations), the fundamental domain (a box), and a level.
+Everything the hyperbolic marcher does for the octagon — face scan, exit solve,
+fold loop, straddle copies — has a much simpler flat form, and the exit solve
+is a plain ratio rather than a log.
+
+### More H^3 manifolds  **S each, once the group interface is clean**
+
+Same machinery, different group. Cheap and each one feels different:
+
+- **Weeks manifold** — the smallest-volume closed orientable hyperbolic
+  3-manifold (0.9427, against Seifert-Weber's 11.199). A far tighter cell means
+  many more copies in view: the "hall of mirrors" turned up.
+- **Figure-eight knot complement** — **cusped**: finite volume, infinite extent.
+  You can fly up the cusp forever while the cross-section shrinks around you.
+  Visually unlike anything else here, and the most famous manifold in the field.
+- **Higher-genus surface groups** — the octagon machinery generalises; a
+  12-gon gives genus 3. Wider floor, more directions home.
+
+### The other Thurston geometries  **L each**
+
+This project started in **Nil**. The reference already used for the renderer
+(Coulon, Matsumoto, Segerman, Trettel) covers all eight: E^3, S^3, H^3, S^2xR,
+H^2xR, SL2R~, Nil, Sol.
+
+- ~~**H^2 x R**~~ **DONE** — `h2r.js`, `h2r.test.js` (51), its own program,
+  and the DROPPER, which is the mode CLAUDE.md had recorded as impossible.
+  It was impossible in H^3 and that was a fact about H^3: there the level sets
+  of the height are equidistant surfaces that curve away from the floor plane,
+  so horizontal motion CLIMBS. Here `z = const` is totally geodesic and the
+  fall time is exactly independent of the input, measured at every horizontal
+  speed from 0 to 3. "Up" is now honest rather than chosen, in one of the four.
+
+  The traps it turned on, both recorded in CLAUDE.md: the height is AFFINE, so
+  `Isom(H^2 x R)` does not embed in GL(4) and a plain mat4 multiply scales the
+  stored height by the other factor's cosh; and the float32 range limit lands
+  on the HORIZONTAL factor only, with no quotient to fold it back, which drew
+  as speckle across the whole far field until the ray cap became per-ray.
+- ~~**S^2 x R**~~ **DONE** — `s2r.js`, `s2r.test.js` (62), its own program,
+  and the LAP COURSE. `product.js` now holds both products with the surface
+  curvature as a parameter, exactly as `geom.js` does for the
+  constant-curvature three, and `h2r.js`'s existing 51 tests were the
+  regression check for the refactor.
+
+  It is the first world here with a compact floor AND honest gravity, and the
+  first where you cannot escape by running straight: any two geodesics on a
+  sphere meet, twice, always. Three things it taught, all in CLAUDE.md: the
+  `-kS` that turns a boost into a rotation; `p.xy/p.w` is a GNOMONIC
+  projection on a sphere and covers only a hemisphere, so the floor checker
+  moired into noise at pi/2 and mirrored itself beyond; and there are no
+  parallel lines, so an avenue at constant offset from your route sits 60
+  degrees off the sightline at every point of it and is never once on screen.
+- **Sol** is the strangest — exponential stretching along one axis and
+  contraction along another, so navigation is genuinely disorienting rather than
+  merely unfamiliar.
+
+---
+
+## Part 2b — authoring a map once, in more than one geometry
+
+Four geometries now, and **three of them hold their scene as data and emit it
+twice by hand**: `level.js`, `s3.js` and `h2r.js` each carry their own `num()`
+number formatter, their own array emitter and their own copy of the
+"JS SDF here, GLSL SDF there" loop. That duplication is precisely what
+`tools/sdf-check.js` exists to catch drifting apart, which is the sign it
+should stop being written by hand.
+
+### First, the thing that is NOT possible, because it saves a lot of wasted work
+
+**A map cannot be translated between geometries coordinate for coordinate, and
+no amount of engineering changes that.** The constraints are different:
+
+- The octagon has 45 degree interior angles **only at one size**. Scale it and
+  it stops being a genus-2 fundamental domain. Same for the dodecahedron's
+  2*pi/5 dihedral angle. Neither solid exists at all in E^3 or S^3.
+- A wall long enough to hide behind fits the octagon (inradius 1.5286) and
+  straddles a dodecahedral face (0.996) — CLAUDE.md already records that
+  `WALLS` and `TOWERS` are octagon-only for exactly this reason.
+- Distances themselves do not carry over. A ring at radius 1.5 holds
+  `2*pi*sinh(1.5) = 13.4` of arc in H^2, `2*pi*1.5 = 9.4` in E^2 and
+  `2*pi*sin(1.5) = 6.3` in S^2. Placing "eight things evenly" is a different
+  answer in each.
+
+So "import this map into the other geometry" is the wrong goal. What DOES carry
+over is the **layout**: "a ring of n, a pinwheel of four chords at floor radius
+1.0, a spiral of gates turning 150 degrees and dropping 8 each time". Every one
+of those is a parametric description in geodesic polar coordinates, and each
+geometry answers it with its own metric. `s3.js` and `h2r.js` already both have
+a private `ring(n, R, r, mat)` that does this, written twice.
+
+### The proposal, in three pieces, each independently useful
+
+**1. `emit.js` — one emitter, so the JS and GLSL halves cannot drift.  S**
+
+A primitive is `{ kind, args, mat }`. Each geometry registers a backend: a JS
+distance function and a GLSL body for each `kind` it supports. `emit.js` walks
+the list once and produces both the JS `sceneSDF` and the GLSL text, with the
+constant arrays laid out the way `level.js` already does (unrolled, because
+that is what lets the D3D compiler fold the array reads — CLAUDE.md is explicit
+that rolling them cost 74% of the frame time).
+
+The payoff is not tidiness. It is that **adding a primitive type becomes one
+edit instead of two that must agree**, and `sdf-check` then verifies a
+generated pair rather than a hand-written one.
+
+Immediate small win inside this: `num()` is currently byte-identical in `s3.js`
+and `h2r.js`.
+
+**2. `layout.js` — the parametric vocabulary, geometry-free.  S**
+
+`ring(n, R)`, `arc(n, R, from, to)`, `spiral(n, R, turn, rise)`,
+`pinwheel(n, R, chord)`, `stack(n, rise)` — each returning geodesic-polar
+coordinates and nothing else. A geometry turns those into points with its own
+`translation`. This is the honest form of "the same map in another geometry":
+you port the layout, and the metric does what it does.
+
+It is also what makes the searched-not-written-down discipline cheap. Every
+layout this project has needed — the opponent spawn, the grapple gate ring, the
+dropper — was found by sweeping two or three parameters and testing the result.
+A vocabulary of parameterised layouts is a vocabulary of things to sweep.
+
+**3. `tools/layout-check.js` — one validator for any scene, any geometry.  S**
+
+Fold `sdf-check` together with the clearance sweeps that are currently written
+fresh each time, and have it report, for a scene in any geometry:
+
+- clearance of every primitive from every face of the fundamental domain, if
+  there is one (the 1-Lipschitz rule: centre distance + thickness < inradius)
+- clearance at the spawn — "nothing at either spawn" has bitten twice
+- every material below 10, or it glows in every copy
+- the JS and GLSL SDFs agreeing on the GPU
+- the primitive count against the link-time budget, which is the one that
+  actually binds
+
+Anything that fails is a picture that is quietly wrong, which is the worst kind
+here: both SDFs agree, the physics collides correctly, and only the render is
+off.
+
+### What about importing a map from outside?
+
+**A triangle mesh is the wrong input** and it is worth being clear why: the
+marcher steps by exact distance, and a mesh has no closed-form distance
+function. Every primitive in this project is an intersection of slabs whose
+distance is one `asinh` of one inner product. An OBJ importer would have to
+either produce a BVH the shader walks (a different renderer) or convert to
+primitives anyway.
+
+**A 2D floor plan is the right input**, and it is nearly free. A `WALL` is
+already three slabs — distance to its vertical plane, distance along it,
+altitude — and `verticalPlaneNormal` builds one from two floor points. So an
+importer that reads line segments (an SVG path, a Tiled map, an array of
+coordinate pairs) and emits `WALLS` is a small function, and it works unchanged
+in the octagon world and in H^2 x R, which are the two with a floor. Interpret
+the input coordinates as **geodesic polar**, not as a Euclidean grid, and say
+so loudly: the floor is an H^2 and two positions are *not* `|da, db|` apart.
+
+The realistic authoring loop, then, is: draw a floor plan in any vector editor,
+export the paths, run the importer, run `layout-check`, and fix what it names.
+
+### Order
+
+`emit.js` first — it is the one that removes real duplication that is already
+in the tree, and everything else is easier once the JS and GLSL halves come
+from one place. Then `layout.js`, then the validator, then the floor-plan
+importer if it still looks worth it.
+
+---
+
+## Part 3 — modes that could not exist anywhere else
+
+These are the reason to build any of the above. None of them are ports of a flat
+game.
+
+**Which one is real?** Everyone already sees a dozen copies of everyone. Add
+decoys and a copy, a plant and a person are indistinguishable. The core skill is
+reading *which image is the body*. This cannot be built in a flat world, because
+there you have one body on screen to compare against.
+
+**Holonomy race.** Score = swept area banked in ninety seconds. You must circle
+things; wide circles are worth exponentially more (`cosh(r) - 1`); and going
+back round the other way empties the meter, so the map becomes a set of things
+to orbit and a decision about which way. A game whose score is a curvature
+integral.
+
+**Tag your own past.** Finite light speed already draws where you were, indexed
+by distance. Make *that* the target: chase a perfect record of your own
+movement from ten seconds ago. The better you play, the harder your opponent.
+
+**Dropper — TRIED, MEASURED, AND IT DOES NOT WORK HERE.** Kept because the
+reason is a genuine fact about the geometry and the next person will have the
+same idea.
+
+The pitch was good: the bounded world is (genus-2 surface) x R and so is
+already infinite up and down, needing no shaft, no walls and no level built for
+it. What kills it is that **in H^3 steering and descending are antagonistic,
+and nothing separates them.**
+
+A geodesic tangent to an equidistant surface of the floor plane has its LOWEST
+point there and rises away on both sides, so horizontal motion is motion that
+climbs. Gravity pulls down, the geometry pushes up, and above a critical
+horizontal speed the geometry wins outright. That speed collapses with
+altitude — measured, by bisecting on the real integrator:
+
+        altitude          1       2       3       4       5
+        critical speed  1.854   0.924   0.417   0.178   0.073
+
+roughly halving per unit. `WALK_SPEED` is 0.9, so **a player at full walking
+speed stops descending above altitude 2.034**. Ordinary play never notices,
+because the floor is at 0 and the player walks at 0.07 — but a dropper lives
+exactly where it bites.
+
+Holding a steady sideways input while falling from 2.4 is therefore not a dial
+but a **cliff**:
+
+        input      0%     20%    40%    60%    80%   100%
+        time down  1.29s  never  never  never  never  never
+
+("never" is 60 s of simulation without reaching the floor.)
+
+And below the cliff there is no room to play either. A straight drop from 2.4
+reaches the floor in **1.29 s** with the gates only **0.13 s apart**, while
+`WALK_SPEED` buys about **0.12** of lateral movement in that time — against a
+gate radius that has to be 0.42 for the course to be completable at all. So the
+radius does all the work and no-input completes the course; shrink the radius
+and nothing completes it. Swept over gate radius and offset, there is no
+setting where a straight drop fails and a steered one succeeds.
+
+**Lowering gravity makes it worse, not better**, which is the part worth
+remembering: the critical speed scales down with gravity too, so a gentler fall
+is a fall that any sideways input stops completely. Measured at gravity scale
+0.12: still nothing completes.
+
+What the geometry WOULD support is a mode about descent *rate* rather than
+lateral precision — hovering is free and falling is fast, so "arrive at the
+bottom at a chosen moment" is a real skill. That is a different game from a
+dropper and is not obviously a good one; it is not on this list yet.
+
+**Geodesic golf.** Strike a ball down a closed geodesic; par is the number of
+laps to the hole. Only possible because some geodesics close, which is only true
+because the manifold is compact.
+
+---
+
+## Suggested order
+
+1. ~~**M2** (lists)~~ — **done**, 160 tests.
+2. ~~**M1 + M3 + M4**~~ (round system, triggers, HUD) — **done**, built
+   against mode 1 exactly as planned.
+3. ~~**Mode 1, drone hoops.**~~ **done** — 56 tests.
+4. ~~**Mode 2, grapple course.**~~ **done** — charge gates, 78 tests. The
+   signed holonomy meter now has a non-combat use.
+5. **M9 + Mode 3, racing.** The hyperbolic racing line is worth the weekend.
+   **This is the next step.** M9 (ghosts) is nearly free from the existing
+   trail; the checkpoint machinery is already built and tested.
+6. **M5 + Mode 4, hide and seek.** The kit is already 80% there.
+7. **M7 + Mode 5, Rocket League 1v1.**
+8. **M6 (Colyseus)** when a mode actually needs three players.
+9. ~~**The geometry math layer**~~ **done** — `geom.js`, 64 tests, E^3/H^3/S^3
+   from one set of formulas, proven identical to hyp.js at k = -1.
+
+   ~~**Next: the marcher.**~~ **done, renderer half.** The GLSL now carries
+   the curvature: `mdot` takes it as a sign, `cosK/sinK/asinK` replace the
+   hyperbolic trig, and `hDist` needed only `asinh -> asinK` because
+   `<p-q,p-q> = 4 sinK(d/2)^2` holds in both. Curvature is a **#define, not a
+   uniform** - as a uniform it costs 1.6 s of link time in the hyperbolic
+   build, because the D3D compiler cannot fold away the arm the world does not
+   use. Two programs instead: 8.5 s hyperbolic, 4.4 s spherical (S^3 needs no
+   quotient at all, so `domainMap`, `exitDist`, the fold loop and all 39 level
+   primitives are dead code).
+
+   **What is left is the CPU half, and it is the bigger half.** `uPlayer` is a
+   Lorentz matrix and a Lorentz matrix is not an isometry of S^3: the spawn
+   point reads `<p,p> = -1` under the Minkowski form and `+1.81` under the
+   Euclidean one, where a valid S^3 point needs exactly `+1`. The ray starts
+   0.81 off the manifold and the screen comes out 99.3% black. Placement, the
+   integrator and collision all have to move onto geom.js at k = +1 before
+   there is a world to look at. No Curvature option ships until then - a black
+   screen is indistinguishable from a shader that failed to compile.
+
+   Racing then lands in whichever geometry, and the same track at three
+   curvatures with three lap times is the demo.
+
+10. ~~**The dropper.**~~ **Tried and rejected**, with the measurements in
+    Part 3. It looked like the cheapest thing on the list and it turns out the
+    geometry forbids it: steering and descending are antagonistic in H^3, a
+    player at walking speed stops falling above altitude 2.034, and below that
+    the fall is over in 1.29 s with 0.13 s between gates. No gate radius, gate
+    offset or gravity scale gives a course a straight drop fails and a steered
+    run completes.

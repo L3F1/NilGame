@@ -11,10 +11,10 @@ import {
 import { levelSDF, setMode, getMode, MODE } from './level.js';
 import { VERT, fragFor, LINE_VERT, LINE_FRAG } from './shader.js';
 import * as E3T from './e3t.js';
-import { SPACES, spaceFor, spaceForOption } from './spaces.js';
-import { PRESETS, PRESET_KEYS } from './worlds.js';
-import { createWorldMenu } from './menu.js';
-import { worldMotionFor, motionInput } from './world-motion.js';
+import { SPACES, spaceFor, spaceForOption } from './engine/geometry/registry.js';
+import { PRESETS, PRESET_KEYS } from './levels/presets.js';
+import { createWorldMenu } from './app/menu.js';
+import { worldMotionFor, motionInput } from './engine/runtime/world-motion.js';
 import { makeRacer, raceStep, raceCourse, RACE_SPEED, RACE_LAPS, BOOST_COST,
   RACE_GATES } from './racing.js';
 import {

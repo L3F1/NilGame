@@ -1,7 +1,8 @@
 // Playable geometry registration. No DOM, physics state, or shader imports.
 // shaderId values are the existing GLSL #if ABI: keep them stable.
 // A geometry is not a quotient or a game mode. H3's two quotients still share
-// one program; E3 has math support but is not yet a playable scene.
+// one program; e3t is the existing flat-quotient experience, not a metric ID.
+// New scene documents describe the E3 metric separately from topology.
 export const SPACES = Object.freeze([
   Object.freeze({ key: 'h3', option: 'hyperbolic', shaderId: 0,
     programName: 'scene (hyperbolic)', family: 'constant-curvature' }),

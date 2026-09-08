@@ -1,4 +1,5 @@
-// Playable experiences. Preset order preserves the menu digit shortcuts.
+// Existing playable experiments. These option presets are not scene documents.
+// Preset order preserves the menu digit shortcuts.
 export const PRESETS = {
   fight: {
     label: 'Arena fight',

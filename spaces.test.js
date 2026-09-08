@@ -1,6 +1,6 @@
 // Registration must preserve the renderer ABI and saved option order.
 import assert from 'node:assert/strict';
-import { SPACES, spaceFor, spaceForOption } from './spaces.js';
+import { SPACES, spaceFor, spaceForOption } from './engine/geometry/registry.js';
 import { fragFor } from './shader.js';
 
 assert.deepEqual(SPACES.map((s) => [s.key, s.shaderId]),

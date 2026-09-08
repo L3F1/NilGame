@@ -20,7 +20,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { SPACES } from '../spaces.js';
+import { SPACES } from '../engine/geometry/registry.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 

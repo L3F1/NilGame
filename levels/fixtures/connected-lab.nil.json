@@ -1,0 +1,21 @@
+{
+  "format": "nil-scene",
+  "version": 1,
+  "id": "connected-lab",
+  "units": { "name": "design-unit", "playerRadius": 0.07 },
+  "regions": [
+    { "id": "flat-lab", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 2 },
+    { "id": "spherical-lab", "geometry": { "kind": "s3", "curvatureRadius": 1 }, "topology": "cover", "extent": 2 }
+  ],
+  "entities": [
+    { "id": "start", "regionId": "flat-lab", "kind": "spawn", "position": [0, 0, 0] },
+    { "id": "flat-ball", "regionId": "flat-lab", "kind": "ball", "position": [0.5, 0, 0], "radius": 0.1 },
+    { "id": "sphere-ball", "regionId": "spherical-lab", "kind": "ball", "position": [0.5, 0, 0], "radius": 0.1 },
+    { "id": "goal", "regionId": "spherical-lab", "kind": "objective", "position": [1, 0, 0] },
+    { "id": "flat-door", "regionId": "flat-lab", "kind": "anchor", "position": [0, 0.8, 0], "radius": 0.2, "forward": [0, 1, 0], "up": [0, 0, 1] },
+    { "id": "sphere-door", "regionId": "spherical-lab", "kind": "anchor", "position": [0, -0.8, 0], "radius": 0.2, "forward": [0, -1, 0], "up": [0, 0, 1] }
+  ],
+  "connections": [
+    { "id": "lab-door", "kind": "portal", "a": "flat-door", "b": "sphere-door", "velocity": "preserve-speed", "scale": 1 }
+  ]
+}
