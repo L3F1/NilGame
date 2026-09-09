@@ -32,6 +32,14 @@ function validPid(pid) {
 
 const defaultSignal = (target, signal) => process.kill(target, signal);
 
+/** Is this PID still running? EPERM means it exists and is not ours to see. */
+const defaultAlive = (pid) => {
+  try { process.kill(pid, 0); return true; }
+  catch (error) { return error?.code !== 'ESRCH'; }
+};
+
+const wait = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
 /** Resolve true when the child exits within ms, false on timeout. */
 function awaitChildExit(child, ms) {
   return new Promise((resolve) => {
@@ -62,7 +70,7 @@ function awaitChildExit(child, ms) {
  * derived from an arbitrary handle.
  */
 export async function killOwnedChild(child, {
-  platform = process.platform, execFn = null, signalFn = null,
+  platform = process.platform, execFn = null, signalFn = null, aliveFn = null,
   posixProcessGroup = false, termGraceMs = 5000, killWaitMs = 5000,
 } = {}) {
   const pid = child?.pid;
@@ -108,8 +116,29 @@ export async function killOwnedChild(child, {
         });
       });
     });
-    await run('taskkill', ['/PID', String(pid), '/T', '/F']);
-    return { target: pid, method: 'taskkill' };
+    try {
+      await run('taskkill', ['/PID', String(pid), '/T', '/F']);
+      return { target: pid, method: 'taskkill' };
+    } catch (error) {
+      // taskkill /T reports failure when ANY descendant refuses, and Chrome's
+      // GPU, renderer and utility children routinely exit on their own the
+      // instant the browser process does. The message for that race is
+      // "The process with PID <n> (child process of PID <owned>) could not be
+      // terminated. Reason: The operation attempted is not supported." -- a
+      // dead descendant, not a leak, and failing the whole check on it makes
+      // a green run flaky. What this session OWNS is the one PID it spawned,
+      // so that is the only thing worth asserting. Poll briefly, because
+      // termination is asynchronous, and re-throw if it really is still up.
+      const isAlive = aliveFn ?? defaultAlive;
+      for (let i = 0; i < 10; i++) {
+        const exited = (child.exitCode !== null && child.exitCode !== undefined) || child.signalCode;
+        if (exited || !isAlive(pid)) {
+          return { target: pid, method: 'taskkill', descendantsRefused: true };
+        }
+        await wait(50);
+      }
+      throw error;
+    }
   }
   if (typeof child.kill !== 'function') {
     throw new Error(`Refusing cleanup: owned child PID ${pid} has no kill handle`);

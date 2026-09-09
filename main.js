@@ -2582,6 +2582,10 @@ function drawCrosshair() {
 let last = null;
 
 function frame(now) {
+  // Tell the boot panel in index.html that the game really did start, so a
+  // crash three minutes in stops being reported as "THE PAGE DID NOT START"
+  // and sending the reader off to hunt a boot failure that never happened.
+  window.__nilRan = 1;
   // Browsing offline should neither consume a run nor ray-march a covered
   // canvas. Keep connected simulation live; the peer cannot pause with us.
   if (menuBusy || ((optOpen || netOpen || document.hidden) && !netLive())) {

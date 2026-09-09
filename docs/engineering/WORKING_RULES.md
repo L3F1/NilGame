@@ -60,11 +60,17 @@ instructions take precedence. Keep this file small; history belongs in reference
 | --- | --- |
 | JS geometry/physics/rules | Relevant root tests; `node tools/test.js` before integration |
 | Shader | `node tools/shader-check.js`; real `node tools/page-check.js --worlds` |
+| Gameplay / input / carried objects | `node tools/play-check.js` (seeded sustained play; `--switch` for world changes) |
 | Distance fields / GLSL math | `node tools/sdf-check.js` |
 | Marcher / scene complexity | `node tools/march-check.js`; `node tools/link-time.js` |
 | Scene documents / charts | `node tools/scene-check.js`; foundation tests |
 | Network / relay | `node tools/net-check.js` |
 | Reported visual issue | Saved fixture before/after, plus relevant numerical checks |
+
+`page-check --worlds` proves each world STARTS; `play-check` proves one
+SURVIVES BEING PLAYED. A bug needing a face crossing, a carried object and an
+ability to coincide is invisible to the first. A play-check run reporting zero
+face crossings has not exercised the fold path and is not evidence.
 
 Keep test summaries last and exits after them. Never claim unrun checks passed.
 UI/copy-only changes need focused visual verification, not irrelevant math tests.

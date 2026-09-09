@@ -90,20 +90,51 @@
   <script>
     // Plain script, and before the module, so it is already listening when the
     // module fails to parse, fails to link, or throws on its first line.
-    window.addEventListener('error', function (e) {
+    // Report the FIRST error and then only count the rest: a dead frame loop
+    // throws every frame, and the tenth copy overwrites the one that matters.
+    var reported = 0;
+    function showError(message, where, stack) {
       var b = document.getElementById('boot');
       if (!b) return;
-      var where = e.filename ? e.filename + ':' + e.lineno : '';
+      if (++reported > 1) {
+        var more = document.getElementById('boot-more');
+        if (more) more.textContent = '\n(' + (reported - 1) + ' further errors suppressed)';
+        return;
+      }
+      // "did not start" was a lie whenever the game had been running, and it
+      // sent a real crash report off to hunt an imaginary boot failure.
+      var ran = window.__nilRan;
       b.style.display = 'block';
       b.textContent = [
-        'THE PAGE DID NOT START',
+        ran ? 'THE GAME CRASHED WHILE RUNNING' : 'THE PAGE DID NOT START',
         '',
-        e.message || String(e.error) || 'unknown error',
+        message || 'unknown error',
         where,
         '',
-        'A shader that failed to compile and JavaScript that failed to parse',
-        'both draw an identical black canvas. The message above says which.'
+        // The stack is the whole point. Without it a report says only
+        // "geom.js:80", which is apply() - a leaf called from forty places,
+        // and knowing the leaf tells you nothing about which caller broke it.
+        stack ? 'Stack - the top line is where it threw, the lines below are\nwho called it. Copy all of this into a bug report:\n\n' + stack : '',
+        '',
+        ran
+          ? 'The frame loop has stopped, so the picture is frozen on its last\ngood frame. Reload to carry on.'
+          : 'A shader that failed to compile and JavaScript that failed to parse\nboth draw an identical black canvas. The message above says which.'
       ].join('\n');
+      var more = document.createElement('span');
+      more.id = 'boot-more';
+      b.appendChild(more);
+    }
+    window.addEventListener('error', function (e) {
+      showError(e.message || String(e.error),
+        e.filename ? e.filename + ':' + e.lineno + (e.colno ? ':' + e.colno : '') : '',
+        e.error && e.error.stack);
+    });
+    // A throw inside a promise never reaches the 'error' listener, so without
+    // this one an async failure is a silent black canvas again.
+    window.addEventListener('unhandledrejection', function (e) {
+      var r = e.reason;
+      showError('Unhandled promise rejection: ' + ((r && r.message) || String(r)),
+        '', r && r.stack);
     });
   </script>
   <script type="module" src="./main.js"></script>

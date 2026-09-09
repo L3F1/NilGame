@@ -14,7 +14,19 @@ The previous backlog is preserved in
   overnight preparation and menu work are tracked in [MUSE_TASKS.md](MUSE_TASKS.md).
 - [x] Repair Windows browser checks: isolated cold profiles, leased warm reuse,
   prompt startup failures and owned cleanup. Real-GPU world probe: 346 checks.
-- [ ] Complete POSIX owned browser-tree cleanup; Muse's bounded revision is in MUSE_TASKS.md.
+- [x] Complete POSIX owned browser-tree cleanup; verified on a real POSIX host
+  (29/29, grandchild reaped, out-of-group sentinel untouched). Warm profile
+  publication stays Windows-only until a real Chrome run is possible on POSIX.
+- [ ] **Reported crash, NOT reproduced:** `apply()` given an undefined operand
+  (geom.js:80) in arena fight after seconds of play. Every runtime call site was
+  audited and ~40,000 headless frames failed to reproduce it. The boot panel now
+  prints the STACK, which is the one thing the original report lacked, and
+  `tools/play-check.js` closes the coverage gap. See
+  [the investigation](docs/qa/crash-2026-09-09-geom-apply.md); the next
+  occurrence should name its caller.
+- [x] Add sustained-play coverage: `page-check --worlds` proves a world starts,
+  nothing proved one survives being played. `tools/play-check.js` plays a seeded
+  run with the kit and fails on zero face crossings.
 - [ ] Extend the ball lab with a moving collision probe, then a first-person
   edit/play loop. Add curved balls only after checking query/normal contracts.
 - [x] Replace duplicated oversized agent instructions with shared working rules,

@@ -191,6 +191,32 @@ await test('windows tree kill targets the owned PID via structured args', async 
   assert.equal(owned.kills, 0, 'no signal kill alongside taskkill');
 });
 
+await test('taskkill refusing a dead descendant is not a cleanup failure', async () => {
+  // The real message from a live run: Chrome's own child had already exited,
+  // taskkill /T reported that as an error, and a clean 2000-frame run was
+  // failed for it. The owned PID is what this session promised to clean up.
+  const owned = new FakeChild(4300);
+  const result = await killOwnedChild(owned, {
+    platform: 'win32',
+    execFn: async () => {
+      throw new Error('taskkill /PID 4300 failed: ERROR: The process with PID 19068 '
+        + '(child process of PID 4300) could not be terminated. '
+        + 'Reason: The operation attempted is not supported.');
+    },
+    aliveFn: () => false,             // the owned process really is gone
+  });
+  assert.deepEqual(result, { target: 4300, method: 'taskkill', descendantsRefused: true });
+});
+
+await test('taskkill failure with the owned process still alive still fails', async () => {
+  const owned = new FakeChild(4301);
+  await assert.rejects(killOwnedChild(owned, {
+    platform: 'win32',
+    execFn: async () => { throw new Error('taskkill /PID 4301 failed: Access is denied.'); },
+    aliveFn: () => true,              // still up: this is a genuine failure
+  }), /Access is denied/);
+});
+
 await test('report-path rejection is an observable failure, not a hang', async () => {
   const owned = new FakeChild(1008);
   const outcome = await runBrowserSession({
