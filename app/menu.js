@@ -22,7 +22,7 @@ export function createWorldMenu({ presets, onPreset, onOption, onClose }) {
         <div class="settings-grid"></div>
       </details>
       <footer class="menu-footer"><span>WASD move · mouse look · R reset · K restart course</span>
-        <span>1–8 choose a world · O / Esc close</span></footer>
+        <span>1–9 choose a world · O / Esc close</span></footer>
     </div>`;
   document.body.appendChild(panel);
   const grid = panel.querySelector('.world-grid');
@@ -82,6 +82,9 @@ export function createWorldMenu({ presets, onPreset, onOption, onClose }) {
           select.id = label.htmlFor;
           select.dataset.option = key;
           select.setAttribute('aria-describedby', `reason-${key}`);
+          if (key === 'fog') {
+            select.title = 'Off: no distance fade. Every world still has a finite view range.';
+          }
           for (const value of option.values) {
             const choice = document.createElement('option');
             choice.value = value; choice.textContent = value;
@@ -91,6 +94,14 @@ export function createWorldMenu({ presets, onPreset, onOption, onClose }) {
           const reason = document.createElement('small');
           reason.id = `reason-${key}`;
           row.append(label, select, reason);
+          if (key === 'fog') {
+            const hint = document.createElement('small');
+            hint.id = 'hint-fog';
+            hint.className = 'fog-hint';
+            hint.textContent = 'Off: no distance fade. Every world still has a finite view range.';
+            row.append(hint);
+            select.setAttribute('aria-describedby', `reason-${key} hint-fog`);
+          }
           panel.querySelector('.settings-grid').appendChild(row);
           fields.set(key, { select, reason });
         }

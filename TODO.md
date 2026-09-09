@@ -7,6 +7,16 @@ The previous backlog is preserved in
 
 ## Immediate priorities after geometry coverage
 
+- [x] Fix the confirmed Sol/SL2R K-key fallback that creates hidden H3 course
+  state despite Course off; preserve valid lab restart behavior.
+- [x] Build the first scene-data-to-Godot editable ball; see [the ball lab](docs/ball-lab.md) and the scoped
+  [next-session brief](docs/engineering/NEXT_SESSION.md). Muse's bounded
+  overnight preparation and menu work are tracked in [MUSE_TASKS.md](MUSE_TASKS.md).
+- [x] Repair Windows browser checks: isolated cold profiles, leased warm reuse,
+  prompt startup failures and owned cleanup. Real-GPU world probe: 346 checks.
+- [ ] Complete POSIX owned browser-tree cleanup; Muse's bounded revision is in MUSE_TASKS.md.
+- [ ] Extend the ball lab with a moving collision probe, then a first-person
+  edit/play loop. Add curved balls only after checking query/normal contracts.
 - [x] Replace duplicated oversized agent instructions with shared working rules,
   compact Astra/Claude entry points and a bounded Muse handoff queue. See
   [agent setup](docs/engineering/AGENT_SETUP.md) for Ubuntu/WSL instructions.
@@ -65,8 +75,9 @@ H3 agreeing to 0.0005 of 255 per channel, and shader preparation 8444 ms in
 the browser against 721 ms native. It cost one real shader bug, latent in the
 browser build and only findable with a second compiler; see
 [docs/decisions/001-runtime-strategy.md](docs/decisions/001-runtime-strategy.md).
-Authoring and networking are untested, and they are the reason for the
-direction change, so the host decision stays open.
+Basic E3 position/radius editing, undo and persistence are tested in the ball lab.
+Gizmos, playable collision, input latency and networking remain migration gates,
+so the host decision stays open.
 Parity must be refreshed after the latest spherical and Nil renderer changes;
 the earlier result does not establish parity with today's browser build.
 

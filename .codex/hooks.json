@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node 'C:\\Users\\lflyn\\Projects\\NilGame\\.codex\\hooks\\verify.mjs'",
+            "timeout": 180,
+            "statusMessage": "Running the checks this file owns..."
+          }
+        ]
+      }
+    ]
+  }
+}

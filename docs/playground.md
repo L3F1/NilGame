@@ -36,15 +36,22 @@ and no potential.** `d/dz` survives every lattice translation, `z` survives
 none, so you fall through the floor, arrive through the roof, and arrive
 faster than you left. For ever.
 
-Three of the eight Thurston geometries are still missing — Nil, Sol and
-SL~(2,R) — and all three are blocked on the same thing: none has a closed-form
-distance, and this renderer is a sphere tracer.
+Nil, Sol and SL~(2,R) have since arrived as laboratories rather
+than open worlds. The Nil spiral climb threads six gates up a 60-unit rise:
+the finish sits 60 units directly overhead, and the helical travel there is
+shorter, not 60. The Sol stretch chamber and the SL2R twist chamber are
+bounded navigation labs with the course switched off. Each has a dedicated
+shader; their distance bounds, ray hits and shading samples follow the
+contracts in [the rendering guide](rendering-contract.md), not a single
+closed-form sphere-tracing distance.
 
 For the current module map and the path to more geometries and manifolds, see
 [the architecture guide](architecture.md). Playable geometry metadata
-lives in `spaces.js`; the full root regression suite runs with `node tools/test.js`.
+lives in `engine/geometry/registry.js`; the full root regression suite runs
+with `node tools/test.js`.
 The non-hyperbolic worlds share a motion adapter contract in
-`world-motion.js`, keeping spawn and simulation independent of the browser.
+`engine/runtime/world-motion.js`, keeping spawn and simulation independent
+of the browser.
 
 - `hyp.js` — the geometry. Lorentz matrices, geodesics, exp and log. No graphics.
 - `hyp.test.js` — proves `hyp.js` is right. Run this before trusting anything.
@@ -88,10 +95,15 @@ Server*. A browser tab opens. Click the canvas to capture the mouse.
 ## Controls
 
 Click **Explore worlds** or press **O** to open the world browser. Pick one of
-seven experiences, then return to the game and click the view to capture the
-mouse. The cards also work with Tab/Enter and the existing 1–7 shortcuts.
-Expand **Customize world & performance** for settings; required settings show
-their reason and cannot be changed until you leave that world.
+thirteen experiences, then return to the game and click the view to capture the
+mouse. The cards also work with Tab/Enter and the existing 1–9 shortcuts;
+cards 10 and above need click or Tab+Enter. Expand **Customize world &
+performance** for settings; required settings show their reason and cannot
+be changed until you leave that world. A preset only sets what it names —
+anything else stays as you had it. Fog off removes the distance fade, but
+every world still has a finite view range. The Nil spiral climb is a course
+through six gates; Sol and SL2R are navigation laboratories with no course;
+the grapple kit stays H3-only.
 
 Offline movement and course timers pause while browsing, and the covered scene
 stops rendering. A connected game continues. Resolution is separate from march
@@ -103,9 +115,9 @@ the menu shows preparation status before that blocking work starts.
 |---|---|
 | `WASD` | move |
 | mouse | look |
-| `space` | jump |
+| `space` | jump (on foot); rise along your view-up in free-flight worlds |
 | hold left mouse | fire and hold the grapple; release to let go |
-| hold `shift` | reel the rope in — this is how you pull yourself forward |
+| hold `shift` | reel the rope in — this is how you pull yourself forward; sink along your view-up in free-flight worlds |
 | `F` | gravity beacon — plant it and "down" becomes radial |
 | `Q` | holonomy — spend the rotation you banked by circling. **Which way you went round decides what you get**: counter-clockwise is a dash, clockwise is a blast |
 | `B` | boomerang — bounces off things and comes back to where you are *now* |
@@ -124,6 +136,11 @@ the menu shows preparation status before that blocking work starts.
 | `R` | reset in the current geometry; restart an active course |
 | `K` | start/restart a course; reset the spherical flythrough |
 | `Esc` | close the world browser, or release the mouse during play |
+
+In free-flight worlds — the S^3 spherical flythrough, the three-torus, the
+Nil climb and the Sol/SL2R laboratories — there is no floor: `WASD` steer
+along your view including pitch, `space` rises and `shift` sinks along the
+view's own up.
 
 Flat vision used to be on `V` and is gone; the scroll wheel replaced it. It
 scaled the ray fan by `t/sinh(t)`, which converted the hyperbolic `s/sinh(d)`

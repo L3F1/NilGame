@@ -1,7 +1,8 @@
 # Muse Spark 1.3 project profile
 
-Read `docs/engineering/WORKING_RULES.md`, then only your assigned entry in
-`MUSE_TASKS.md`. Do not load the historical reference or whole codebase by default.
+Read `docs/engineering/WORKING_RULES.md`, then the execution policy and your
+assigned entry in `MUSE_TASKS.md`. Do not load historical reviews or the whole
+codebase by default.
 This is a project role profile, not a claim about automatic client discovery.
 
 ## Scope
@@ -29,12 +30,17 @@ This is a project role profile, not a claim about automatic client discovery.
   task branch before its integration review. Never send external messages unless
   the user explicitly authorized them.
 - Keep your report brief; cite exact paths and observed behavior.
+- When a queue explicitly authorizes an unattended batch, continue between its
+  independent tasks after recording results. Reviewer acceptance is still required
+  for integration; lack of a reviewer does not block the next authorized task.
 
 ## Manual launch prompt
 
-“Read MUSE.md and docs/engineering/WORKING_RULES.md. Work only on MUSE-01 in
-MUSE_TASKS.md. Respect its file boundary, record verification, and leave the
-result ready for Astra/Opus review.”
+“Read MUSE.md, the current execution section of MUSE_TASKS.md, and
+docs/qa/astra-review-2026-09-09.md. Complete MUSE-06's POSIX-only revision,
+then MUSE-07's Node-only ball-document QA. Reuse baseline evidence where unchanged; run new
+checks for your changes. Continue independent work when browser access is
+blocked. Leave results ready for review; do not integrate.”
 
 In Ubuntu/WSL, start in `/mnt/c/Users/lflyn/Projects/NilGame`, or a separate
 task worktree. See `docs/engineering/AGENT_SETUP.md` for the launch steps.

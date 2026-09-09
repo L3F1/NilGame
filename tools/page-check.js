@@ -4,6 +4,7 @@
 //   node tools/page-check.js --warm   keep the cache (fast, less thorough)
 //   node tools/page-check.js --sw     SwiftShader instead of the real driver
 //   node tools/page-check.js --worlds all presets, resets, menu and resolution
+//   node tools/page-check.js --ball-lab editable scene-v1 E3 primitive
 //
 // Serves the project over HTTP and loads index.html as a REAL ES module graph,
 // the way Live Server does, then lets the page run twenty frames and report on
@@ -26,11 +27,12 @@
 // cannot reproduce at all.
 
 import { createServer } from 'node:http';
-import { readFileSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import { tmpdir } from 'node:os';
+import { runBrowserSession, killOwnedChild, parseReportTimeoutMs } from './browser-process.js';
+import { acquireBrowserProfile } from './browser-profile.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const PORT = 8771;
@@ -40,6 +42,14 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 const warm = process.argv.includes('--warm');
 const sw = process.argv.includes('--sw');
 const worlds = process.argv.includes('--worlds');
+const ballLab = process.argv.includes('--ball-lab');
+let timeoutMs;
+try {
+  timeoutMs = parseReportTimeoutMs(process.argv);
+} catch (error) {
+  console.error(error.message);
+  process.exit(2);
+}
 
 function findBrowser() {
   const c = [
@@ -50,7 +60,7 @@ function findBrowser() {
     '/usr/bin/google-chrome', '/usr/bin/chromium',
   ];
   const hit = c.find((p) => p && existsSync(p));
-  if (!hit) { console.error('no Chrome found; edit findBrowser()'); process.exit(2); }
+  if (!hit) throw new Error('no Chrome found; install Chrome or use a host where it is available');
   return hit;
 }
 
@@ -97,6 +107,7 @@ const srv = createServer((req, res) => {
   }
   if (url === '/' || url === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html' });
+    if (ballLab) { res.end(readFileSync(join(ROOT, 'tools/ball-lab.html'), 'utf8')); return; }
     res.end(readFileSync(join(ROOT, 'index.html'), 'utf8').replace('</head>', probe + '</head>'));
     return;
   }
@@ -107,45 +118,80 @@ const srv = createServer((req, res) => {
     res.end(readFileSync(f, 'utf8') + '\n' + readFileSync(join(ROOT, 'tools/world-probe.js'), 'utf8'));
   } else res.end(readFileSync(f));
 });
-await new Promise((r) => srv.listen(PORT, r));
+const profile = acquireBrowserProfile({ backend: sw ? 'sw' : 'gpu', warm });
+try {
+  await new Promise((resolve, reject) => {
+    srv.once('error', reject);
+    srv.listen(PORT, '127.0.0.1', resolve);
+  });
+} catch (error) {
+  profile.release(false);
+  throw error;
+}
 
-const profile = join(tmpdir(), `pagecheck-${sw ? 'sw' : 'gpu'}`);
-if (!warm) { try { rmSync(profile, { recursive: true, force: true }); } catch { /* first run */ } }
-
-const child = spawn(findBrowser(), [
-  '--enable-logging=stderr',
-  '--headless=new', `--user-data-dir=${profile}`,
-  '--no-first-run', '--no-default-browser-check', '--disable-background-networking',
-  ...(sw ? ['--enable-unsafe-swiftshader', '--use-angle=swiftshader']
-         : ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist']),
-  '--window-size=640,400', `http://127.0.0.1:${PORT}/`,
-], { stdio: ['ignore','ignore','pipe'], windowsHide: true });
+// One owned session: prompt failure on spawn error or early browser exit,
+// bounded wait otherwise, and cleanup of exactly this run's child plus the
+// HTTP server on every completion path. See tools/browser-process.js.
 let browserErrors = '';
-child.stderr.on('data', chunk => { browserErrors = (browserErrors + chunk).slice(-24000); });
-
 const t0 = Date.now();
-const report = await new Promise((resolve) => {
-  done = resolve;
-  setTimeout(() => resolve(null), 300000);
+const session = await runBrowserSession({
+  launch: () => {
+    const child = spawn(findBrowser(), [
+      '--enable-logging=stderr',
+      '--headless=new', `--user-data-dir=${profile.path}`,
+      '--no-first-run', '--no-default-browser-check', '--disable-background-networking',
+      ...(sw ? ['--enable-unsafe-swiftshader', '--use-angle=swiftshader']
+             : ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist']),
+      ballLab ? '--window-size=960,600' : '--window-size=640,400', `http://127.0.0.1:${PORT}/${ballLab ? '?check=1' : ''}`,
+    ], { stdio: ['ignore','ignore','pipe'], windowsHide: true,
+      // POSIX only: the child becomes its process-group leader, so cleanup
+      // owns the whole tree by construction (PID == PGID). Windows spawn
+      // arguments stay exactly as verified; tree kill stays with taskkill.
+      ...(process.platform === 'win32' ? {} : { detached: true }) });
+    child.stderr.on('data', chunk => { browserErrors = (browserErrors + chunk).slice(-24000); });
+    return child;
+  },
+  waitForReport: () => new Promise((resolve) => { done = resolve; }),
+  timeoutMs,
+  cleanup: async (owned) => {
+    try {
+      if (owned?.pid) {
+        await killOwnedChild(owned, { posixProcessGroup: process.platform !== 'win32' });
+      }
+    } finally {
+      if (typeof srv.closeAllConnections === 'function') srv.closeAllConnections();
+      await new Promise((resolve) => srv.close(resolve));
+    }
+  },
 });
-child.kill();
-srv.close();
+const report = session.status === 'report' ? session.report : null;
+// POSIX group cleanup is now established, but warm publication stays
+// Windows-only until the lead reviews group-exit evidence.
+profile.release(session.status === 'report' && session.cleanup === 'ok' && process.platform === 'win32');
 
-console.log(`backend: ${sw ? 'SwiftShader' : 'real GPU'}, ${warm ? 'warm' : 'COLD'} shader cache`);
+console.log(`backend: ${sw ? 'SwiftShader' : 'real GPU'}, ${profile.reused ? 'warm' : 'COLD'} shader cache`);
+console.log(`test profile: ${profile.path}`);
 if (!report) {
-  console.log('FAIL the page never reported back within 300 s.');
-  console.log('     Either it threw before the frame loop, or the driver is');
-  console.log('     still building the shader - try node tools/link-time.js.');
+  if (session.status === 'timeout') {
+    console.log(`FAIL the page never reported back within ${Math.round(timeoutMs / 1000)} s.`);
+    console.log('     Either it threw before the frame loop, or the driver is');
+    console.log('     still building the shader - try node tools/link-time.js.');
+  } else {
+    console.log(`FAIL the browser stopped before reporting: ${session.reason}`);
+    const tail = browserErrors.trim().split('\n').slice(-15).join('\n');
+    if (tail) console.log(tail);
+  }
+  if (session.cleanup === 'failed') console.log(`     Browser cleanup also failed: ${session.cleanupError}`);
   process.exit(1);
 }
 
 const first = (report.hud || '').split('\n')[0].trim();
-console.log(`${worlds ? 'world suite time' : `time to ${FRAMES} frames`} : ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+console.log(`${ballLab ? 'ball editor checks' : worlds ? 'world suite time' : `time to ${FRAMES} frames`} : ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 console.log('page error        :', report.err || '(none)');
 console.log('boot panel        :', report.boot ? report.boot.split('\n').slice(0, 3).join(' / ') : '(hidden - good)');
 console.log('hud first line    :', first || '(EMPTY - the module never ran)');
 console.log('centre pixel      :', report.px);
-if (report.checks) console.log(`world/input checks : ${report.checks.length} passed`);
+if (report.checks) console.log(`${ballLab ? 'ball editor' : 'world/input'} checks : ${report.checks.length} passed`);
 
 const problems = [];
 if (report.err) problems.push('the page threw');
@@ -155,8 +201,10 @@ if (!first) problems.push('the HUD is empty, so the module never ran');
 // NaN in the HUD means the physics has already destroyed itself, which draws a
 // perfectly normal-looking picture and is completely unplayable.
 if (/NaN/.test(report.hud || '')) problems.push('the HUD reads NaN - the physics blew up');
+// A clean page with a failed cleanup is not a pass: report it, keep exit nonzero.
+if (session.cleanup === 'failed') problems.push(`browser cleanup failed: ${session.cleanupError}`);
 
 console.log(problems.length
   ? `\nFAIL ${problems.join('; ')}`
-  : `\nok   ${worlds ? 'all world transitions and input checks passed' : `the page started, ran ${FRAMES} frames, and its numbers are finite`}`);
+  : `\nok   ${ballLab ? 'ball editor checks passed' : worlds ? 'all world transitions and input checks passed' : `the page started, ran ${FRAMES} frames, and its numbers are finite`}`);
 process.exit(problems.length ? 1 : 0);

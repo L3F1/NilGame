@@ -12,6 +12,9 @@ Implemented in this foundation pass: saved document validation, bounded
 constant-curvature charts, radial point mapping and measured distortion.
 The running game still selects one experiment at a time. Its H3 portals stay
 within H3. New document connections are authoring data only.
+The [ball lab](ball-lab.md) now connects a restricted scene-v1 E3 document to
+browser/native editing, distance queries and uniform-driven rendering. It is
+the first authoring slice, with player collision and curved primitives still pending.
 
 ## Separate five concepts
 
@@ -40,7 +43,7 @@ matrices or calculate distances across two different geometries.
 | Geometry | `geom.js`, `product.js`, `engine/geometry/charts.js` | Extract reference math incrementally. |
 | Registry | `engine/geometry/registry.js` | Keep shader IDs stable; experience keys are not document metric IDs. |
 | Topology | `hyp.js`, `e3t.js` | Remove mutable quotient selection before concurrent regions. |
-| Scene data | `engine/world/document.js`, `levels/fixtures/` | Feed editable renderer/collision adapters; currently tools/tests only. |
+| Scene data | `engine/world/document.js`, `engine/world/ball-scene.js`, `levels/fixtures/` | One E3 ball editor/query adapter runs; general region content and collision remain. |
 | Reference content | `level.js`, `s3.js`, `h2r.js`, `s2r.js`, `e3t.js`, `race-track.js` | Separate authored content from simulation and GLSL emission. |
 | Simulation | `physics.js`, `engine/runtime/world-motion.js`, `racing.js`, `modes.js` | Region-owned state and explicit boundary events. |
 | Browser | `main.js`, `index.html`, `app/menu.js` | Extract rendering, input and session state incrementally. |

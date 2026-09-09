@@ -20,6 +20,7 @@ the research direction, not a shipped feature.
 - [Working rules](docs/engineering/WORKING_RULES.md): numerical pitfalls and required verification.
 - [Agent setup](docs/engineering/AGENT_SETUP.md): shared Astra/Claude rules and Muse's WSL handoff.
 - [Rendering contracts](docs/rendering-contract.md): distance bounds, exact hits and saved review views.
+- [Editable ball lab](docs/ball-lab.md): first scene-driven authoring experiment in Godot and WebGL.
 
 ## What runs today
 
@@ -40,9 +41,10 @@ H3 includes the octagon and Seifert-Weber quotients; E3 includes a slab and a
 own motion and courses. Current H3 portals connect locations in H3; changing
 the world in the menu resets an experiment, rather than crossing a portal.
 
-The new scene document and radial transfer functions run in tools and tests.
-They do **not** yet feed the game's renderer or implement cross-geometry
-traversal. The editor and geometry-sphere ability remain to be built.
+Scene-v1 now feeds a separate E3 ball authoring experiment in Godot and the
+browser, with position/radius edits, undo/redo and JSON save/load. The main
+game still uses its existing authored levels. Connected-region traversal,
+the full editor and the geometry-sphere ability remain to be built.
 
 ## Repository map
 

@@ -1,6 +1,8 @@
 # Scene document v1
 
 Status: implemented authoring-data foundation, not a playable scene loader.
+The separate [ball lab](ball-lab.md) executes a restricted E3 subset with
+editable rendering and distance queries; connected-lab remains tools/tests only.
 Source of truth: `engine/world/document.js`. Example:
 [`connected-lab.nil.json`](../levels/fixtures/connected-lab.nil.json).
 

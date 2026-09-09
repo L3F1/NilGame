@@ -1,0 +1,314 @@
+{
+  "_note": "Language-neutral ball-document cases. general: scene v1 validation (engine/world/document.js). ballHost: the one-E3-cover one-spawn one-ball adapter (engine/world/ball-scene.js). errorContains is a literal substring of the rejecting message. Each document is self-contained for cross-host consumers.",
+  "cases": [
+    {
+      "id": "valid-lab", "general": "accept", "ballHost": "accept",
+      "reason": "Minimal one-spawn one-ball E3 cover lab.",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "unknown-scene-field", "general": "reject", "ballHost": "reject",
+      "reason": "Scene objects allowlist their fields; unknown author intent is rejected, never ignored.",
+      "errorContains": "unknown field",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab", "author": "x",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "version-2", "general": "reject", "ballHost": "reject",
+      "reason": "Only scene v1 is understood; newer versions require migration, not guessing.",
+      "errorContains": "migration required",
+      "document": {
+        "format": "nil-scene", "version": 2, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "entity-id-collides-with-region", "general": "reject", "ballHost": "reject",
+      "reason": "Scene, region, entity and connection IDs share one namespace; a ball named like its region collides.",
+      "errorContains": "duplicate ID",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "room", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "ball-in-unknown-region", "general": "reject", "ballHost": "reject",
+      "reason": "Every entity must belong to an authored region; dangling ownership is rejected.",
+      "errorContains": "unknown region",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "elsewhere", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "negative-radius", "general": "reject", "ballHost": "reject",
+      "reason": "A ball radius must be a positive finite number.",
+      "errorContains": "expected positive finite number",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": -0.5 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "missing-radius", "general": "reject", "ballHost": "reject",
+      "reason": "A ball without a radius is malformed, not a point ball.",
+      "errorContains": "expected positive finite number",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25] }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "ball-straddles-extent", "general": "reject", "ballHost": "reject",
+      "reason": "Center distance 3.8 plus radius 0.6 exceeds the chart extent 4; the ball would cross the authoring bound.",
+      "errorContains": "straddle chart extent",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [3.8, 0, 0], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "spawn-straddles-extent", "general": "reject", "ballHost": "reject",
+      "reason": "Spawns clear by player radius: 3.95 plus 0.07 exceeds the chart extent 4.",
+      "errorContains": "straddle chart extent",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, 0, 3.95] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "no-spawn", "general": "reject", "ballHost": "reject",
+      "reason": "A scene without a spawn has no entry point.",
+      "errorContains": "at least one spawn",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "no-ball", "general": "accept", "ballHost": "reject",
+      "reason": "Schema-valid (a spawn alone is a scene), but the ball host has nothing to edit or render.",
+      "errorContains": "one E3",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "extra-ball", "general": "accept", "ballHost": "reject",
+      "reason": "Schema-valid, but the host edits exactly one ball.",
+      "errorContains": "one E3",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 },
+          { "id": "orb2", "regionId": "room", "kind": "ball", "position": [1, 0, 0.25], "radius": 0.3 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "extra-spawn", "general": "accept", "ballHost": "reject",
+      "reason": "The schema needs at least one spawn; the host needs exactly one.",
+      "errorContains": "one E3",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "start2", "regionId": "room", "kind": "spawn", "position": [0, 2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "h3-region", "general": "accept", "ballHost": "reject",
+      "reason": "Curved regions validate as scenes, but this host implements only the flat control.",
+      "errorContains": "one E3",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "h3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "unknown-kind", "general": "reject", "ballHost": "reject",
+      "reason": "Entity kinds are allowlisted; invented content is rejected, not skipped.",
+      "errorContains": "unsupported kind",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "box", "regionId": "room", "kind": "crate", "position": [0, 0, 0.25] }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "portal-connection", "general": "accept", "ballHost": "reject",
+      "reason": "A well-formed portal validates as a scene, but this host runs connection-free.",
+      "errorContains": "one E3",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 },
+          { "id": "gate-a", "regionId": "room", "kind": "anchor", "position": [1, 0, 0], "radius": 0.2, "forward": [1, 0, 0], "up": [0, 1, 0] },
+          { "id": "gate-b", "regionId": "room", "kind": "anchor", "position": [-1, 0, 0], "radius": 0.2, "forward": [1, 0, 0], "up": [0, 1, 0] }
+        ],
+        "connections": [
+          { "id": "hop", "kind": "portal", "a": "gate-a", "b": "gate-b", "velocity": "preserve-speed", "scale": 1 }
+        ]
+      }
+    },
+    {
+      "id": "position-wrong-length", "general": "reject", "ballHost": "reject",
+      "reason": "Positions are always three numbers; a pair is malformed.",
+      "errorContains": "expected 3 finite numbers",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "position-not-finite", "general": "reject", "ballHost": "reject",
+      "reason": "Coordinates must be finite numbers; text is malformed.",
+      "errorContains": "expected 3 finite numbers",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, "high", 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    }
+  ]
+}

@@ -56,6 +56,10 @@ const S2R = await import(pathToFileURL(join(ROOT, 's2r.js')).href);
 const TRACK = await import(pathToFileURL(join(ROOT, 'race-track.js')).href);
 const NIL = await import(pathToFileURL(join(ROOT, 'nil.js')).href);
 const H2R = await import('../h2r.js');
+const { compileBallScene } = await import('../engine/world/ball-scene.js');
+const { BALL_FIELD_GLSL } = await import('../engine/geometry/ball-shader.js');
+const { readFileSync } = await import('node:fs');
+const ballScene = compileBallScene(JSON.parse(readFileSync(new URL('../levels/fixtures/ball-lab.nil.json', import.meta.url), 'utf8')));
 const CYL = await import('../engine/geometry/nil-cylinder.js');
 const LAB = await import('../engine/world/lie-labs.js');
 const FLOW = await import('../engine/geometry/numerical-flow.js');
@@ -91,6 +95,12 @@ function sample(make) {
 }
 
 const CASES = [
+  {
+    name:'Scene-v1 E3 ball field and first hit',tol:2e-5,vector:true,
+    batches:sample(()=>[rnd()*4-2,rnd()*4-2,rnd()*4-2,1]),
+    js:p=>[ballScene.distance(p.slice(0,3)),Math.min(1000,ballScene.rayHit(p.slice(0,3),[0,1,0]))],
+    glsl:BALL_FIELD_GLSL+`\nvec2 worldMap(vec4 p){vec4 ball=vec4(${ballScene.uniform().map(x=>x.toFixed(8)).join(',')});return vec2(ballDistance(p.xyz,ball),min(1000.0,ballRayHit(p.xyz,vec3(0.0,1.0,0.0),ball)));}`,
+  },
   {
     name:'Nil exact cylinder first hits',tol:.002,vector:true,
     batches:sample(()=>{const v=[rnd()*2-1,rnd()*2-1,rnd()<.3?1e-5:rnd()*2-1],n=Math.hypot(...v);return [...v.map(x=>x/n),1];}),

@@ -1233,6 +1233,7 @@ function applyPreset(name) {
   // course at all - measured: switching from "Hoop course" to "Spherical
   // flight" left the run in PHASE.RUNNING with a live timer.
   if (run) resetRun(run);
+  if (!worldHasCourse()) { course = null; run = null; courseWorld = null; }
   resetForCurvature();
 }
 
@@ -1305,7 +1306,7 @@ addEventListener('keydown', (e) => {
     return;
   }
   if (optOpen && (tag === 'SELECT' || tag === 'BUTTON' || tag === 'SUMMARY')
-      && !/^Digit[1-8]$/.test(e.code)) return;
+      && !/^Digit[1-9]$/.test(e.code)) return;
   if (e.code === 'KeyN') { toggleNetPanel(); return; }
   if (netOpen) { if (e.code === 'Escape') toggleNetPanel(); return; }
   // Zoom back out in one press, because scrolling all the way back is a chore
@@ -1365,7 +1366,7 @@ addEventListener('keydown', (e) => {
   // was unreachable in the shipped build. A key named on screen must always do
   // something when pressed.
   if (e.code === 'KeyK') {
-    if (sphericalWorld()) { restartWorld(); return; }
+    if (!worldHasCourse()) { restartWorld(); return; }
     // A key named on screen must always do something. In H^2 x R the course
     // is forced on, so K is a restart; everywhere else it turns the hoop
     // course on if nothing is running, exactly as before.
@@ -1950,6 +1951,7 @@ function restartWorld() {
   keys.clear();
   grounded = false;
   resetForCurvature();
+  if (!worldHasCourse()) { course = null; run = null; courseWorld = null; }
   if (courseOn()) beginRun();
 }
 
@@ -2028,10 +2030,15 @@ function stepWorldMotion(motion, h, want) {
 
 function racing() { return sphereFloorWorld() && optVal('course') === 'race'; }
 function courseOn() { return optVal('course') !== 'off'; }
+function worldHasCourse() {
+  const motion = worldMotionFor(geomKey());
+  return motion === null || typeof motion.course === 'function';
+}
 function buildCourse() {
   if (racing()) return raceCourse();
   const motion = worldMotionFor(geomKey());
   if (motion && motion.course) return motion.course();
+  if (motion) throw new Error(`No course capability in ${geomKey()}`);
   return optVal('course') === 'grapple' ? grappleCourse() : geodesicCourse(0, 6);
 }
 
@@ -2087,6 +2094,12 @@ function aimAt(q) {
  * like from the outside.
  */
 function beginRun() {
+  // A missing course factory is not permission to build an H3 course. Guard
+  // this entry point as well as K so future callers cannot create hidden runs.
+  if (!worldHasCourse() || !courseOn()) {
+    course = null; run = null; courseWorld = null;
+    return false;
+  }
   // The dropper is its own start: back on the deck at the top of the shaft,
   // stationary, looking down at the first gate. resetForCurvature already
   // does exactly that, so the run and the respawn are the same act.

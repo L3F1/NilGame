@@ -75,6 +75,25 @@
       validPlacement(name);
       key('KeyW'); await frames(6); release('KeyW');
       key('KeyR');
+      if (['sol', 'sl2r'].includes(geomKey())) {
+        const spawn = worldMotionFor(geomKey()).spawn(motionEnv());
+        player = player.slice(); player[12] += .25; yaw += .25;
+        const rawCourse = rawVal('course');
+        key('KeyK'); release('KeyK');
+        check(JSON.stringify(player) === JSON.stringify(spawn.M), `${name}: K resets to lab spawn`);
+        check(yaw === spawn.yaw && pitch === spawn.pitch, `${name}: K preserves canonical spawn heading`);
+        check(rawVal('course') === rawCourse && optVal('course') === 'off', `${name}: K cannot change course option`);
+        check(run === null && course === null, `${name}: K creates no hidden course`);
+        check(beginRun() === false && run === null, `${name}: direct start refuses unsupported course`);
+        let refused = false;
+        try { buildCourse(); } catch (error) { refused = /No course capability/.test(error.message); }
+        check(refused, `${name}: course factory has no H3 fallback`);
+      }
+      if (['nil', 'dropper', 'hoops'].includes(name)) {
+        key('KeyK'); release('KeyK');
+        check(run?.phase === PHASE.RUNNING && run.t === 0 && run.next === 0,
+          `${name}: supported K starts a fresh course`);
+      }
       if (geomKey() === 's3') check(JSON.stringify(player) === JSON.stringify(S3G.IDENTITY), 'S3 reset uses spherical spawn');
       if (geomKey() === 'h2r') check(JSON.stringify(player) === JSON.stringify(H2R.dropperStart()), 'dropper reset uses deck');
       if (geomKey() === 's2r') check(JSON.stringify(player) === JSON.stringify(S2R.lapStart()), 'lap reset uses start line');
@@ -85,6 +104,69 @@
         for (const code of ['KeyQ', 'KeyV', 'KeyH', 'KeyT', 'KeyE', 'KeyF']) key(code);
         check(JSON.stringify(player) === state, `${name}: H3 abilities cannot alter placement`);
       }
+    }
+    // Focused digit shortcuts. Digits 1-9 must select presets 1-9 even when
+    // a menu control has focus. Events are dispatched on the element itself
+    // so the target-tag guard reads the real tag; window-only dispatch
+    // would bypass the bug (Digit9 swallowed on SELECT/BUTTON/SUMMARY).
+    {
+      const ninth = PRESET_KEYS[8], first = PRESET_KEYS[0];
+      // Full digit order, not just a count: presets.js keeps this order
+      // stable because the menu digits index into it. Update both together.
+      check(JSON.stringify(PRESET_KEYS) === JSON.stringify(
+        ['fight', 'hoops', 'grapple', 'sphere', 'light', 'dropper', 'lap',
+          'race', 'street', 'torus', 'nil', 'sol', 'sl2r']),
+        'shortcut: preset order unchanged (13 named presets in digit order)');
+      const details = document.querySelector('.settings');
+      const detailsWasOpen = details.open;
+      details.open = true;
+      await settle();
+      const selectCard = async (name) => {
+        document.querySelector(`[data-preset="${name}"]`).click();
+        await settle();
+      };
+      const foci = [
+        ['button', () => document.querySelector('[data-preset="fight"]')],
+        ['select', () => document.getElementById('option-fog')],
+        ['summary', () => document.querySelector('.settings summary')],
+      ];
+      openMenu();
+      await settle();
+      for (const [label, find] of foci) {
+        // Independence per target: start from a preset Digit9 must move away
+        // from, so a swallowed key press cannot pass on a stale selection.
+        await selectCard(first);
+        check(lastPreset !== ninth, `shortcut: ${label} starts away from ${ninth}`);
+        const el = find();
+        el.focus();
+        check(document.activeElement === el, `shortcut: ${label} takes focus`);
+        el.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit9', bubbles: true }));
+        await settle();
+        check(lastPreset === ninth, `shortcut: Digit9 from ${label} selects ${ninth}`);
+      }
+      await selectCard(ninth);
+      check(lastPreset !== first, `shortcut: Digit1 control starts away from ${first}`);
+      const fogSel = document.getElementById('option-fog');
+      fogSel.focus();
+      check(document.activeElement === fogSel, 'shortcut: select takes focus for Digit1');
+      fogSel.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit1', bubbles: true }));
+      await settle();
+      check(lastPreset === first, `shortcut: Digit1 from select selects ${first}`);
+      openMenu();
+      await settle();
+      const fog = document.getElementById('option-fog');
+      fog.value = 'off';
+      fog.dispatchEvent(new Event('change'));
+      await settle();
+      check(rawVal('fog') === 'off',
+        'shortcut: fog select-change handler still applies (synthetic change event)');
+      const isoBefore = JSON.stringify(player);
+      fog.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', bubbles: true }));
+      await frames(3);
+      check(JSON.stringify(player) === isoBefore, 'shortcut: movement blocked while menu open');
+      details.open = detailsWasOpen;
+      closeMenu();
+      await frames(3);
     }
     openMenu();
     document.querySelector('[data-preset="fight"]').click();
