@@ -1,13 +1,72 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NilGame · Ball lab</title>
+<title>NilGame · Scene lab</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#121c29;color:#dce7eb;font:16px system-ui;display:grid;grid-template-columns:minmax(0,1fr) 300px;height:100dvh}canvas{width:100%;height:100%;min-height:300px}aside{padding:20px;overflow:auto}h1{font-size:24px}label{display:block;margin:10px 0}input[type=number]{width:100%;padding:7px}button{padding:8px;margin:4px 0}p{line-height:1.5}#status{color:#8ee5dc}#boot{color:#ffb9a9;white-space:pre-wrap}@media(max-width:600px){body{height:auto;grid-template-columns:1fr}canvas{height:50dvh}}
+*{box-sizing:border-box}
+body{margin:0;background:#121c29;color:#dce7eb;font:15px system-ui;display:grid;grid-template-columns:minmax(0,1fr) 330px;height:100dvh}
+canvas{width:100%;height:100%;min-height:300px;display:block}
+aside{padding:18px;overflow:auto}
+h1{font-size:21px;margin:0 0 6px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#8fa3b4;margin:18px 0 6px}
+label{display:block;margin:8px 0}
+/* An author rule for `label` outranks the UA rule for [hidden], so the
+   hidden attribute stops hiding and an inspector shows a ball a plane
+   normal. The DOM says hidden; the screen says otherwise. */
+[hidden]{display:none!important}
+input[type=number]{width:100%;padding:6px}
+.row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+button{padding:7px 10px;margin:3px 3px 3px 0;background:#1e2c3d;color:#dce7eb;border:1px solid #3a4d64;border-radius:5px;cursor:pointer}
+button:hover{background:#27384c}
+button:disabled{opacity:.45;cursor:default}
+#entities{list-style:none;padding:0;margin:0;border:1px solid #2b3b4e;border-radius:6px;overflow:hidden}
+#entities li{padding:7px 10px;cursor:pointer;border-bottom:1px solid #22303f;display:flex;justify-content:space-between}
+#entities li:last-child{border-bottom:0}
+#entities li[aria-selected=true]{background:#3d4a2b;color:#fbe6b4}
+#entities .kind{color:#8fa3b4;font-size:12px}
+p{line-height:1.5;margin:8px 0}
+small{color:#8fa3b4}
+#status{color:#8ee5dc;min-height:1.2em}
+#boot{color:#ffb9a9;white-space:pre-wrap}
+@media(max-width:640px){body{height:auto;grid-template-columns:1fr}canvas{height:50dvh}}
 </style>
 <script>window.addEventListener('error',e=>{document.getElementById('boot').textContent=e.message});window.addEventListener('unhandledrejection',e=>{document.getElementById('boot').textContent=String(e.reason)});</script>
-</head><body><canvas id="c" aria-label="Ball preview"></canvas><aside>
-<h1>BALL LAB / E3</h1><p>Scene v1 authoring experiment. Z is up. The floor is an authored plane entity: you stand on the same surface the renderer draws.</p>
-<form id="editor"><label>X <input id="x" type="number" step="0.01" required></label><label>Y <input id="y" type="number" step="0.01" required></label><label>Z <input id="z" type="number" step="0.01" required></label><label>Radius <input id="radius" type="number" step="0.01" min="0.01" required></label><button>Apply edit</button></form>
-<button id="undo">Undo</button> <button id="redo">Redo</button><br><button id="play">Play from spawn</button><label><input id="gravity" type="checkbox" checked> Gravity and ground contact</label><p>Play walks a finite-radius probe through the same field the preview draws. WASD moves, mouse looks, Esc stops. With gravity on, Space jumps; with it off you fly, and Space/Shift go up and down. Editing while playing is allowed - the player is pushed clear, or respawns if there is no way out.</p><button id="save">Save JSON</button><label>Load JSON <input id="load" type="file" accept=".json"></label>
+</head><body><canvas id="c" aria-label="Scene preview"></canvas><aside>
+<h1>SCENE LAB / E3</h1>
+<p><small>Scene v1 authoring. Z is up. Solids are authored entities: you stand on
+the same surfaces the renderer draws.</small></p>
+
+<h2>Entities</h2>
+<ul id="entities" role="listbox" aria-label="Scene entities"></ul>
+<button id="add-ball">Add ball</button><button id="add-plane">Add plane</button>
+<button id="delete">Delete</button>
+
+<h2 id="inspector-title">Inspector</h2>
+<form id="editor">
+  <label>Position <span class="row">
+    <input id="x" type="number" step="any" required aria-label="Position X">
+    <input id="y" type="number" step="any" required aria-label="Position Y">
+    <input id="z" type="number" step="any" required aria-label="Position Z">
+  </span></label>
+  <label id="radius-field">Radius <input id="radius" type="number" step="any" min="0.01" required></label>
+  <label id="up-field">Up (normal) <span class="row">
+    <input id="ux" type="number" step="any" aria-label="Up X">
+    <input id="uy" type="number" step="any" aria-label="Up Y">
+    <input id="uz" type="number" step="any" aria-label="Up Z">
+  </span></label>
+  <button>Apply edit</button>
+</form>
+<button id="undo">Undo</button><button id="redo">Redo</button>
+
+<h2>Play</h2>
+<button id="play">Play from spawn</button>
+<label><input id="gravity" type="checkbox" checked> Gravity and ground contact</label>
+<p><small>WASD moves, mouse looks, Esc stops. With gravity on, Space jumps; with it
+off you fly and Space/Shift go up and down. Editing while playing is allowed:
+the player is pushed clear, or respawns if there is no way out.</small></p>
+
+<h2>File</h2>
+<button id="save">Save JSON</button>
+<label>Load JSON <input id="load" type="file" accept=".json"></label>
+
 <p id="query"></p><p id="status" role="status"></p><pre id="boot" role="alert"></pre>
 </aside><script type="module" src="../app/ball-lab.js"></script></body></html>

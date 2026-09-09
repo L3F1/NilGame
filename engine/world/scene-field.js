@@ -109,9 +109,25 @@ export function compileSceneField(source) {
     capabilities: Object.freeze({ distance: 'exact', intersection: 'exact', normal: 'exact-except-ball-center' }),
     document: () => structuredClone(scene),
     solidCount: solids.length,
-    /** The editable ball, for hosts whose inspector edits one. */
+    /** Every entity, in document order, for an inspector to list. */
+    entities: () => scene.entities.map((e) => structuredClone(e)),
+    /**
+     * All balls and all planes as flat uniform arrays.
+     *
+     * The shader loops over these with a uniform bound rather than branching
+     * per object, which is the lesson CLAUDE.md records at length: separate
+     * branches in a scene function are re-emitted at every place that function
+     * is inlined, and that is what took a link from five seconds to 212. One
+     * loop body, N iterations, and an object costs nothing when it is absent.
+     */
+    ballsUniform: () => solids.filter((x) => x.kind === 'ball')
+      .flatMap((x) => [...x.center, x.radius]),
+    planesUniform: () => solids.filter((x) => x.kind === 'plane')
+      .flatMap((x) => [...x.normal, x.offset]),
+    ballCount: solids.filter((x) => x.kind === 'ball').length,
+    planeCount: solids.filter((x) => x.kind === 'plane').length,
+    /** The FIRST ball/plane, kept for the single-primitive hosts and checks. */
     ballUniform: () => (ball ? [...ball.position, ball.radius] : null),
-    /** vec4(normal, offset) for the drawn floor, or null when there is none. */
     planeUniform: () => (planeSolid ? [...planeSolid.normal, planeSolid.offset] : null),
     hasPlane: !!planeSolid,
     planeId: plane ? plane.id : null,
@@ -148,5 +164,54 @@ export function editScene(source, id, patch) {
     entity[key] = Array.isArray(value) ? value.slice() : value;
   }
   compileSceneField(next);        // throws before anything is handed back
+  return next;
+}
+
+/** A stable, readable, unused ID of the form `ball-3`. */
+function freshId(scene, kind) {
+  const taken = new Set([scene.id, ...scene.regions.map((r) => r.id),
+    ...scene.entities.map((e) => e.id), ...scene.connections.map((c) => c.id)]);
+  for (let n = 1; ; n++) {
+    const id = `${kind}-${n}`;
+    if (!taken.has(id)) return id;
+  }
+}
+
+/**
+ * Add one entity, in the region the scene already has.
+ *
+ * The caller supplies the kind and whatever that kind needs; everything else
+ * is filled from the region. Validation runs before anything is returned, so a
+ * rejected addition leaves the source exactly as it was.
+ */
+export function addEntity(source, kind, props = {}) {
+  const next = compileSceneField(source).document();
+  const entity = { id: props.id || freshId(next, kind), regionId: next.regions[0].id, kind };
+  for (const [key, value] of Object.entries(props)) {
+    if (key === 'id') continue;
+    entity[key] = Array.isArray(value) ? value.slice() : value;
+  }
+  next.entities.push(entity);
+  compileSceneField(next);
+  return next;
+}
+
+/**
+ * Remove one entity by ID.
+ *
+ * Deleting the only spawn is refused HERE rather than leaving an invalid
+ * document for the validator to reject with a message about entity counts:
+ * the author asked to delete a spawn, so that is what the error should be
+ * about.
+ */
+export function removeEntity(source, id) {
+  const next = compileSceneField(source).document();
+  const entity = next.entities.find((e) => e.id === id);
+  if (!entity) throw new Error(`No entity with id ${id}`);
+  if (entity.kind === 'spawn' && next.entities.filter((e) => e.kind === 'spawn').length === 1) {
+    throw new Error('Cannot delete the only spawn: a scene needs somewhere to start');
+  }
+  next.entities = next.entities.filter((e) => e.id !== id);
+  compileSceneField(next);
   return next;
 }

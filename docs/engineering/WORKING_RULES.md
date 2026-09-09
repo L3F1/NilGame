@@ -5,7 +5,9 @@ instructions take precedence. Keep this file small; history belongs in reference
 
 ## Direction and boundaries
 
-- Build a first-person connected-geometry engine/editor. Small levels validate it.
+- Build a first-person connected-geometry KERNEL and editor; small levels validate
+  it. The kernel (metric, transport, distance fields, collision) is the part no
+  host supplies; Godot is a candidate host, not a rival. See docs/what-this-is.md.
   Godot remains under evaluation; retain the browser reference until equivalent.
 - Separate metric, topology, region, connection policy and host. Scene JSON v1
   currently runs in tools/tests; mixed-geometry traversal is not implemented.

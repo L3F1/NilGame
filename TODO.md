@@ -1,4 +1,7 @@
-# Connected-geometry engine and editor roadmap
+# Connected-geometry kernel and editor roadmap
+
+See [what this is](docs/what-this-is.md): a geometry KERNEL plus an authoring
+tool, hosted somewhere. Godot is a candidate host, not a competing engine.
 
 The engine and authoring workflow are the product direction. Build small
 first-person levels to test each capability. Game-mode expansion is secondary.
@@ -44,8 +47,15 @@ The previous backlog is preserved in
 - [ ] Curved balls: an H3/S3 `space` (step, transport, project) plus metric
   distance/normal. The solver is already written against that interface;
   `e3Space().transport` is the identity and curved spaces MUST override it.
-- [ ] Selection, a gizmo and more than one entity, so the editor authors a
-  scene rather than a single ball.
+- [x] Selection and more than one entity, so the editor authors a scene rather
+  than a single ball: entity list, per-kind inspector, add and delete, with
+  balls and planes reaching the shader as arrays under a uniform count rather
+  than a branch each.
+- [ ] A viewport gizmo: drag an entity in the world instead of typing numbers.
+  Needs a ray pick against the same field, which `rayHit` already provides.
+- [ ] Same-geometry authored portal transit: swept crossing, remaining-time
+  integration, blocked-exit policy. `sweep` already returns `travelled`, which
+  is the remaining-time budget a crossing needs.
 - [x] Replace duplicated oversized agent instructions with shared working rules,
   compact Astra/Claude entry points and a bounded Muse handoff queue. See
   [agent setup](docs/engineering/AGENT_SETUP.md) for Ubuntu/WSL instructions.

@@ -117,8 +117,27 @@ Chosen explicitly, because the alternative is choosing it by accident:
 `resolveOverlap` reports `clear` / `pushed` / `trapped` and the host decides.
 The engine supplies the mechanism; the policy above lives in `app/ball-lab.js`.
 
-There is no gizmo, object selection, second region or connected region here
-yet. The preview camera in edit mode does not use the saved spawn.
+## Authoring a scene, not a single ball
+
+The entity list shows every entity with its kind; click one to select it. The
+inspector shows only the fields that kind has -- a radius for a ball, a normal
+for a plane, neither for a spawn -- and the selected ball is tinted gold **in
+the world as well as the list**, so it stays findable while playing.
+
+**Add ball** places one a few units in front of where you are looking, so it
+lands somewhere visible rather than at the origin under the floor. **Add plane**
+adds a ceiling you can then re-aim by editing its normal; the normal is
+normalised for you, since demanding a unit vector by hand would be pedantry.
+**Delete** refuses the only spawn, and says why: a scene needs somewhere to
+start.
+
+Balls and planes reach the shader as ARRAYS with a uniform count, looped over
+once, rather than a branch per object. That is CLAUDE.md's link-time rule --
+a branch inside a scene function is re-emitted everywhere that function is
+inlined, and that multiplication is what once took a link from 5 s to 212 s.
+
+There is no gizmo, no drag-in-the-viewport, no second region and no connected
+region yet. The preview camera in edit mode sits at the spawn.
 Region extent is an authoring bound, not a wall. This experiment does not
 establish native physics, networking or whole-game parity.
 
@@ -186,3 +205,22 @@ Not yet in the native host: `experiments/godot/ball_document.gd` accepts only
 ball and spawn, so it REJECTS a scene containing a plane. That is the intended
 behaviour for an unsupported feature rather than silent divergence, and adding
 planes there is the next native task.
+
+2026-09-09, multiple entities: `scene-field.test.js` is 26 cases -- fresh IDs
+that never collide, additions refused whole, a second plane whose union takes
+the nearer surface with its own normal, deleting the last spawn refused, and a
+scene that loses its floor and is still a scene. The browser check is 35, up
+from 23, and now drives selection, the per-kind inspector, add and delete.
+
+Two bugs this step found, both invisible to the DOM assertions that existed:
+
+- `<input type="number" min="0.01" step="0.05">` makes 0.4 an INVALID value, so
+  the browser silently refused to submit and "Apply edit" did nothing for most
+  radii anyone would type. All numeric inputs are `step="any"` now, and a check
+  asserts the form accepts ordinary typed values.
+- An author rule for `label` outranks the user-agent rule for `[hidden]`, so
+  hiding a field stopped hiding it: a ball's inspector displayed a plane
+  normal. The DOM said hidden and the screen said otherwise. Fixed with an
+  explicit `[hidden]{display:none!important}`, and the checks now assert
+  COMPUTED STYLE rather than the attribute. Only inspecting the render caught
+  this one.

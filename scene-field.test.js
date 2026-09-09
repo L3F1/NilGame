@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validateScene } from './engine/world/document.js';
-import { compileSceneField, editScene } from './engine/world/scene-field.js';
+import { compileSceneField, editScene, addEntity, removeEntity } from './engine/world/scene-field.js';
 import { e3Space, clearance, resolveOverlap } from './engine/world/collision.js';
 import { stepWalker, GROUND_COS } from './engine/world/walker.js';
 
@@ -111,6 +111,71 @@ test('the floor itself can be moved, and the field follows', () => {
   const raised = compileSceneField(editScene(room, 'ground', { position: [0, 0, 1] }));
   near(raised.distance([0, -3, 2]), 1, 1e-12, 'the floor moved up by one');
   assert.deepEqual(raised.planeUniform(), [0, 0, 1, 1]);
+});
+
+// --- adding and removing entities ----------------------------------------
+
+test('addEntity fills in the region and a fresh id', () => {
+  const before = JSON.stringify(room);
+  const next = addEntity(room, 'ball', { position: [3, 0, 1], radius: 0.5 });
+  const added = compileSceneField(next).entities().at(-1);
+  assert.equal(added.kind, 'ball');
+  assert.equal(added.regionId, 'flat-room');
+  assert.match(added.id, /^ball-\d+$/);
+  assert.equal(JSON.stringify(room), before, 'source untouched');
+  // The new solid is in the field, not just in the document.
+  near(compileSceneField(next).distance([3, 0, 1]), -0.5, 1e-12, 'inside the new ball');
+  assert.equal(compileSceneField(next).ballCount, 2);
+});
+
+test('fresh ids never collide with anything already named', () => {
+  let doc = room;
+  for (let i = 0; i < 5; i++) doc = addEntity(doc, 'ball', { position: [i - 2, 4, 1], radius: 0.2 });
+  const ids = compileSceneField(doc).entities().map((e) => e.id);
+  assert.equal(new Set(ids).size, ids.length, 'all ids distinct');
+  // Taking an id by hand and then adding must still not collide.
+  const taken = addEntity(doc, 'ball', { id: 'ball-99', position: [0, 5, 1], radius: 0.2 });
+  const more = addEntity(taken, 'ball', { position: [1, 5, 1], radius: 0.2 });
+  const all = compileSceneField(more).entities().map((e) => e.id);
+  assert.equal(new Set(all).size, all.length);
+});
+
+test('an invalid addition is refused whole', () => {
+  const before = JSON.stringify(room);
+  assert.throws(() => addEntity(room, 'ball', { position: [0, 0, 1], radius: -1 }), /positive/);
+  assert.throws(() => addEntity(room, 'ball', { position: [0, 0, 1] }), /radius/);
+  assert.throws(() => addEntity(room, 'plane', { position: [0, 0, 1] }), /up is required/);
+  assert.throws(() => addEntity(room, 'teapot', { position: [0, 0, 1] }), /unsupported kind/);
+  assert.equal(JSON.stringify(room), before, 'source untouched by any of them');
+});
+
+test('a second plane is a second half-space, and the union takes the nearer', () => {
+  // A ceiling at z = 3 above the floor at z = 0. Halfway up, the floor is
+  // nearer; near the top, the ceiling is, and each brings its own normal.
+  const roofed = compileSceneField(addEntity(room, 'plane', { position: [0, 0, 3], up: [0, 0, -1] }));
+  assert.equal(roofed.planeCount, 2);
+  near(roofed.distance([5, 5, 1]), 1, 1e-12, 'floor is nearer low down');
+  assert.deepEqual(roofed.normal([5, 5, 1]), [0, 0, 1]);
+  near(roofed.distance([5, 5, 2.5]), 0.5, 1e-12, 'ceiling is nearer high up');
+  assert.deepEqual(roofed.normal([5, 5, 2.5]), [0, 0, -1]);
+});
+
+test('removeEntity deletes by id and refuses the last spawn', () => {
+  const before = JSON.stringify(room);
+  const gone = compileSceneField(removeEntity(room, 'editable-ball'));
+  assert.equal(gone.ballCount, 0);
+  assert.equal(gone.solidCount, 1, 'the floor is still there');
+  assert.throws(() => removeEntity(room, 'start'), /only spawn/);
+  assert.throws(() => removeEntity(room, 'nope'), /No entity/);
+  assert.equal(JSON.stringify(room), before, 'source untouched');
+});
+
+test('a scene can lose its floor and still be a scene', () => {
+  const floorless = compileSceneField(removeEntity(room, 'ground'));
+  assert.equal(floorless.hasPlane, false);
+  assert.equal(floorless.planeCount, 0);
+  // The ball is still solid; there is simply nothing to stand on.
+  near(floorless.distance([0, 0, 0.9]), -0.9, 1e-12, 'the ball survives');
 });
 
 // --- gravity and ground contact ------------------------------------------
