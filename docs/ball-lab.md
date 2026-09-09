@@ -44,9 +44,52 @@ The original fixture is never overwritten by the browser download action.
   Scalar document values and full-precision JSON avoid rounding through Godot
   vectors during editing. Vectors are used at the rendering/query boundary.
 
-The origin-distance readout exercises the field needed for collision. There
-is no moving player, collision solver, gizmo, object selection or connected
-region here yet. The fixed preview camera does not use the saved spawn.
+## Play: the moving probe
+
+**Play from spawn** walks a finite-radius probe through the same compiled scene
+the preview draws. WASD moves, Space and Shift go up and down, the mouse looks,
+Esc stops. The probe starts at the authored spawn and its radius is the
+document's `units.playerRadius`.
+
+`engine/world/collision.js` is the solver, and it is host-free: it consumes only
+the two capabilities `docs/rendering-contract.md` already defines -- a distance
+BOUND and a surface NORMAL -- so anything that answers those can be collided
+against, in any geometry. It never reads the document or a host transform.
+
+It advances conservatively: each step moves by a distance it has just proved is
+free, so **it cannot tunnel at any speed or time step**. A single 1000-unit step
+still stops at the ball's surface; a point test at both ends of that step would
+report empty space, because both ends *are* empty space. The cost is the
+sphere-tracer's usual weakness -- a path nearly parallel to a surface converges
+without arriving -- which is bounded and reported as `stalled`. A stall leaves
+the probe SHORT, never inside, which is the safe direction to fail.
+
+`distance` must be a true lower bound (1-Lipschitz). A field that overestimates
+lets a step jump through geometry.
+
+There is no gravity and nothing to stand on. **The grid is a drawing aid, not
+scene content**: the document has no floor entity, so adding one to the
+collision field would make the picture and the physics disagree. The ball is
+the only obstacle. Gravity and ground arrive with an authored floor primitive.
+
+## The edit/play transaction policy
+
+Chosen explicitly, because the alternative is choosing it by accident:
+
+- **An edit is never refused because of where the player stands.** Authoring
+  wins; being unable to grow a ball while standing in it is the worse rule.
+- If the edit leaves the probe overlapping, it is **pushed out** along the
+  surface normal, and the status line says so.
+- If it cannot be pushed -- the dead centre of a ball, where every direction is
+  equally "out" and there is no honest normal -- the probe **respawns**.
+- Undo and redo reconcile the same way. Stepping back to an older, larger ball
+  can swallow the player just as a forward edit can.
+
+`resolveOverlap` reports `clear` / `pushed` / `trapped` and the host decides.
+The engine supplies the mechanism; the policy above lives in `app/ball-lab.js`.
+
+There is no gizmo, object selection, second region or connected region here
+yet. The preview camera in edit mode does not use the saved spawn.
 Region extent is an authoring bound, not a wall. This experiment does not
 establish native physics, networking or whole-game parity.
 
@@ -54,6 +97,7 @@ establish native physics, networking or whole-game parity.
 
 ```sh
 node ball-scene.test.js
+node collision.test.js
 node tools/scene-check.js levels/fixtures/ball-lab.nil.json
 node tools/shader-check.js
 node tools/sdf-check.js
@@ -78,3 +122,15 @@ CPU samples (worst difference 1.47e-7). The WebGL field/first-hit check samples
 These are numerical and functional checks, not pixel-perfect native/browser
 image parity or an input-latency benchmark. Analytic E3 center/surface/ray
 identities provide checks independent of cross-runtime agreement.
+
+2026-09-09, the probe: `collision.test.js` 21 cases, every expectation an
+independent closed form (a probe of radius r meets a ball of radius R at
+|p - c| = R + r, so contact distances are solvable by hand rather than by
+running the solver twice). Covers the analytic contact distance, a 1000-unit
+single step, a grazing stall, resting contact over 200 steps without leaking,
+sliding at an oblique contact, and the three overlap outcomes. The browser
+`--ball-lab` check grew from 9 to 17 and now drives the probe through the real
+DOM controls, including walking into the ball and an edit that swallows the
+player. `BALL_FIRST_PERSON_GLSL` is a separate program from
+`BALL_PREVIEW_GLSL`, which stays the fixed-viewpoint artifact the Godot export
+and the parity fixtures depend on.

@@ -6,8 +6,8 @@
 </style>
 <script>window.addEventListener('error',e=>{document.getElementById('boot').textContent=e.message});window.addEventListener('unhandledrejection',e=>{document.getElementById('boot').textContent=String(e.reason)});</script>
 </head><body><canvas id="c" aria-label="Ball preview"></canvas><aside>
-<h1>BALL LAB / E3</h1><p>Scene v1 authoring experiment. Z is up; the camera stays fixed.</p>
+<h1>BALL LAB / E3</h1><p>Scene v1 authoring experiment. Z is up. The grid is a drawing aid, not scene content: nothing stands on it.</p>
 <form id="editor"><label>X <input id="x" type="number" step="0.01" required></label><label>Y <input id="y" type="number" step="0.01" required></label><label>Z <input id="z" type="number" step="0.01" required></label><label>Radius <input id="radius" type="number" step="0.01" min="0.01" required></label><button>Apply edit</button></form>
-<button id="undo">Undo</button> <button id="redo">Redo</button><br><button id="save">Save JSON</button><label>Load JSON <input id="load" type="file" accept=".json"></label>
+<button id="undo">Undo</button> <button id="redo">Redo</button><br><button id="play">Play from spawn</button><p>Play walks a finite-radius probe through the same field the preview draws: WASD to move, Space/Shift for up and down, mouse to look, Esc to stop. Editing while playing is allowed - the player is pushed clear, or respawns if there is no way out.</p><button id="save">Save JSON</button><label>Load JSON <input id="load" type="file" accept=".json"></label>
 <p id="query"></p><p id="status" role="status"></p><pre id="boot" role="alert"></pre>
 </aside><script type="module" src="../app/ball-lab.js"></script></body></html>

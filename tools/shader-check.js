@@ -21,7 +21,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { SPACES } from '../engine/geometry/registry.js';
-import { BALL_PREVIEW_GLSL } from '../engine/geometry/ball-shader.js';
+import { BALL_PREVIEW_GLSL, BALL_FIRST_PERSON_GLSL } from '../engine/geometry/ball-shader.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -59,6 +59,7 @@ const programs = [
   ...SPACES.map((space) => [space.programName, mod.VERT, mod.fragFor(space.key)]),
   ['lines', mod.LINE_VERT, mod.LINE_FRAG],
   ['editable E3 ball', mod.VERT, BALL_PREVIEW_GLSL],
+  ['editable E3 ball, first person', mod.VERT, BALL_FIRST_PERSON_GLSL],
 ];
 
 const page = `<!DOCTYPE html><meta charset="utf-8"><body><pre id="o"></pre><script>

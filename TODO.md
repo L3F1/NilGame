@@ -27,8 +27,21 @@ The previous backlog is preserved in
 - [x] Add sustained-play coverage: `page-check --worlds` proves a world starts,
   nothing proved one survives being played. `tools/play-check.js` plays a seeded
   run with the kit and fails on zero face crossings.
-- [ ] Extend the ball lab with a moving collision probe, then a first-person
-  edit/play loop. Add curved balls only after checking query/normal contracts.
+- [x] Extend the ball lab with a moving collision probe and a first-person
+  edit/play loop. `engine/world/collision.js` is host-free and consumes only
+  the distance-bound and normal capabilities, so a curved field plugs in
+  without touching the solver. Conservative advancement cannot tunnel at any
+  speed or time step; a stall leaves the probe short, never inside. The
+  edit/play transaction policy is written down in docs/ball-lab.md.
+- [ ] Author a FLOOR primitive, then gravity and ground contact. The lab's grid
+  is a drawing aid and deliberately not in the collision field, because the
+  document has no floor entity and a field that disagrees with the picture is
+  the bug this whole boundary exists to prevent.
+- [ ] Curved balls: an H3/S3 `space` (step, transport, project) plus metric
+  distance/normal. The solver is already written against that interface;
+  `e3Space().transport` is the identity and curved spaces MUST override it.
+- [ ] Selection, a gizmo and more than one entity, so the editor authors a
+  scene rather than a single ball.
 - [x] Replace duplicated oversized agent instructions with shared working rules,
   compact Astra/Claude entry points and a bounded Muse handoff queue. See
   [agent setup](docs/engineering/AGENT_SETUP.md) for Ubuntu/WSL instructions.
@@ -51,7 +64,10 @@ The previous backlog is preserved in
 2. [ ] Measure long-ray convergence, exhausted rays and GPU frame cost in those labs.
    Shader link time alone does not establish rendering accuracy or latency.
 3. [ ] Return to the Godot authoring experiment: one editable primitive with
-   inspector, undo and immediate play, using shared scene data.
+   inspector, undo and immediate play, using shared scene data. The BROWSER
+   half of "immediate play" now exists (probe, swept collision, edit-overlap
+   policy); Godot still has edit/undo/save-load without a moving player, so
+   criterion 4 is met on one host of two.
 4. [ ] Test native networking before deciding whether to migrate the host.
 
 Defer additional geometry content, quotients and elaborate modes until these

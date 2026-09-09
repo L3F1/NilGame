@@ -29,12 +29,31 @@ still run only from Windows while Node suites run on either host.
   distance queries and a shared preview shader; edits, undo/redo, save/load
   and unsupported-input rejection work. See docs/ball-lab.md.
 
-## Main job: validate the first-person query boundary
+## Main job: DONE - the first-person query boundary holds
 
-Add a moving, finite-radius probe to the E3 ball lab, using the same document
-and field as rendering. Establish swept collision (including a large time step),
-contact normals, spawn clearance and behavior when an edit overlaps the player.
-Choose the edit/play transaction policy explicitly before expanding the UI.
+`engine/world/collision.js` is the portable, host-free collision contract:
+swept motion by conservative advancement, contact normals, spawn clearance and
+overlap resolution, consuming only the distance-bound and normal capabilities
+from docs/rendering-contract.md. 21 closed-form tests; the browser ball lab
+plays through it. The edit/play transaction policy is chosen and written down
+in docs/ball-lab.md - an edit is never refused for standing in the way; the
+probe is pushed clear, or respawns when there is no honest push.
+
+Next, in order:
+
+1. An authored FLOOR primitive, then gravity and ground contact. The lab's grid
+   is deliberately NOT in the collision field, because the document has no floor
+   entity; a field that disagrees with the picture is the failure this boundary
+   exists to prevent. This is the first schema addition since v1.
+2. Curved balls behind an H3/S3 `space` (step, transport, project) and metric
+   distance/normal. The solver already takes that interface; `e3Space`'s
+   transport is the identity and a curved space MUST override it or the probe
+   is silently steered.
+3. Selection, a gizmo and more than one entity, so the editor authors a scene.
+4. Then same-geometry authored portal transit, with swept crossing, remaining-
+   time integration and a blocked-exit policy - the sweep already returns
+   travelled distance, which is the remaining-time budget a crossing needs.
+
 Godot's flat physics may serve as an independent E3 control, not as an implicit
 solver for curved geometry. Keep the portable collision contract host-free.
 
