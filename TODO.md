@@ -53,9 +53,14 @@ The previous backlog is preserved in
   than a branch each.
 - [ ] A viewport gizmo: drag an entity in the world instead of typing numbers.
   Needs a ray pick against the same field, which `rayHit` already provides.
-- [ ] Same-geometry authored portal transit: swept crossing, remaining-time
-  integration, blocked-exit policy. `sweep` already returns `travelled`, which
-  is the remaining-time budget a crossing needs.
+- [x] Same-geometry authored portal transit, in the KERNEL: swept crossing
+  mid-step, arclength conserved through the gate, blocked-exit refusal, and an
+  aperture too narrow for the player refused at compile time. 16 tests.
+- [ ] Wire portals into the lab: draw the apertures, and carry the CAMERA
+  through `transit.portal.mapVector` on every transit. Without that last part a
+  walker re-crosses the far gate immediately and ping-pongs.
+- [ ] See through a portal (render the far side). Transit works without it, but
+  an invisible gate is not usable by a person.
 - [x] Replace duplicated oversized agent instructions with shared working rules,
   compact Astra/Claude entry points and a bounded Muse handoff queue. See
   [agent setup](docs/engineering/AGENT_SETUP.md) for Ubuntu/WSL instructions.

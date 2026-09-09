@@ -33,6 +33,8 @@
 // level.js's `levelMap` takes a min over side-neighbours to avoid. An exact
 // distance is ideal; an underestimate is safe and merely slower.
 
+import { firstCrossing } from './portal.js';
+
 const DEFAULT_SKIN = 1e-4;
 const DEFAULT_MAX_STEPS = 96;
 const DEFAULT_CONTACTS = 4;
@@ -140,7 +142,7 @@ export function resolveOverlap(field, space, position, radius, {
  */
 export function sweep(field, space, {
   from, direction, distance, radius,
-  skin = DEFAULT_SKIN, maxSteps = DEFAULT_MAX_STEPS,
+  skin = DEFAULT_SKIN, maxSteps = DEFAULT_MAX_STEPS, portals = [],
 }) {
   requireFinite(from, 3, 'from');
   requireFinite(direction, 3, 'direction');
@@ -149,10 +151,12 @@ export function sweep(field, space, {
   if (Math.abs(space.norm(direction) - 1) > 1e-8) throw new Error('direction must be a unit vector');
 
   let position = from.slice(), travelled = 0, u = direction.slice();
+  const transits = [];
+  let blocked = null;
   for (let step = 0; step < maxSteps; step++) {
     const remaining = distance - travelled;
     if (remaining <= 0) {
-      return { position, travelled, hit: false, normal: null, stalled: false, steps: step };
+      return { position, travelled, hit: false, normal: null, stalled: false, steps: step, transits, blocked };
     }
     const gap = clearance(field, position, radius);
     if (gap <= skin) {
@@ -174,20 +178,61 @@ export function sweep(field, space, {
       // Blocked. Report the surface normal at the contact, which is capability
       // (3) in the rendering contract -- a real normal, not the direction the
       // marcher happened to stop from.
-      return { position, travelled, hit: true, normal: n, stalled: false, steps: step };
+      return { position, travelled, hit: true, normal: n, stalled: false, steps: step, transits, blocked };
     }
     // The only safe advance is one we have proved is free. Stop `skin` short so
     // the probe never lands exactly ON a surface, where the next clearance is
     // zero and the loop makes no progress.
     const advance = Math.min(remaining, gap - skin * 0.5);
     const next = space.step(position, u, advance);
+
+    // PORTAL TRANSIT. Tested on the step the probe is about to take, not on
+    // the whole frame, so a crossing is found at the right point along the
+    // path rather than on a chord through whatever the path actually did.
+    const cross = portals.length ? firstCrossing(portals, position, next) : null;
+    if (cross) {
+      const { portal, t } = cross;
+      const reached = advance * t;
+      const at = space.step(position, u, reached);
+      const carried = space.transport(position, u, at);
+      const exitPoint = portal.mapPoint(at);
+      const exitDir = portal.mapVector(carried);
+
+      // NEVER LAND EXACTLY ON THE APERTURE. The traveller emerges on the exit
+      // plane at height zero, and the next step's sign test can then read
+      // either way and send them straight back. The H3 marcher needs the same
+      // guard at a fundamental-domain face, for the same reason and with the
+      // same failure: an object that teleports for ever without advancing.
+      const eased = space.step(exitPoint, portal.exitNormal, skin * 4);
+
+      // BLOCKED EXIT. Emerging inside geometry would put the probe somewhere
+      // no motion could have taken it, so the transit is refused and the
+      // aperture behaves as the wall it is set in. Reporting it lets a host
+      // say why rather than leaving the player mysteriously stopped.
+      if (clearance(field, eased, radius) < 0) {
+        blocked = { portal, at };
+        return {
+          position: at, travelled: travelled + reached,
+          hit: true, normal: field.normal(at), stalled: false, steps: step,
+          transits, blocked,
+        };
+      }
+      transits.push({ portal, entered: at, exited: eased });
+      position = eased;
+      u = exitDir;
+      // The arclength travelled counts the whole way: a portal is a shortcut
+      // through the manifold, not free distance.
+      travelled += reached;
+      continue;
+    }
+
     u = space.transport(position, u, next);
     position = next;
     travelled += advance;
   }
   return {
     position, travelled, hit: false, normal: null,
-    stalled: travelled < distance, steps: maxSteps,
+    stalled: travelled < distance, steps: maxSteps, transits, blocked,
   };
 }
 
@@ -206,6 +251,7 @@ export function sweep(field, space, {
  */
 export function moveProbe(field, space, { position, velocity, radius }, dt, {
   skin = DEFAULT_SKIN, maxSteps = DEFAULT_MAX_STEPS, maxContacts = DEFAULT_CONTACTS,
+  portals = [],
 } = {}) {
   requireFinite(position, 3, 'position');
   requireFinite(velocity, 3, 'velocity');
@@ -219,15 +265,25 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
   // How far the probe was lifted off its last contact, and along which normal,
   // so the settle at the end knows what to undo. See the LIFT note below.
   let lifted = 0, liftNormal = null;
+  const transits = [];
+  let blocked = null;
 
   for (let bounce = 0; bounce <= maxContacts && budget > 0; bounce++) {
     const speed = space.norm(v);
     if (speed <= 0) break;
     const u = [v[0] / speed, v[1] / speed, v[2] / speed];
     const swept = sweep(field, space, {
-      from: p, direction: u, distance: budget, radius, skin, maxSteps: maxSteps - steps,
+      from: p, direction: u, distance: budget, radius, skin,
+      maxSteps: maxSteps - steps, portals,
     });
     steps += swept.steps;
+    // A transit rotates the frame, so the velocity that comes out the far side
+    // is the mapped one, not the one we set off with.
+    for (const transit of swept.transits) {
+      transits.push(transit);
+      v = transit.portal.mapVector(v);
+    }
+    if (swept.blocked) blocked = swept.blocked;
     // Carry the velocity to where the probe actually ended up before doing
     // anything else with it. In E3 that is a no-op; in a curved space it is
     // not, and getting it wrong steers the probe without anyone asking.
@@ -265,7 +321,7 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
     const lift = Math.min(0.25 * radius, Math.max(8 * skin, budget));
     const up = sweep(field, space, {
       from: p, direction: n, distance: lift, radius, skin, maxSteps: 8,
-    });
+    });   // no portals: a lift is a correction normal to a surface, not travel
     steps += up.steps;
     lifted = up.travelled;
     liftNormal = n.slice();
@@ -286,5 +342,5 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
     steps += back.steps;
     p = back.position;
   }
-  return { position: p, velocity: v, contacts, stalled, steps };
+  return { position: p, velocity: v, contacts, stalled, steps, transits, blocked };
 }

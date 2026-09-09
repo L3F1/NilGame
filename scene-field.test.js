@@ -85,14 +85,18 @@ test('the ball fixture still validates and still has no plane', () => {
   assert.equal(ball.solidCount, 1);
 });
 
-test('a scene with connections is refused rather than half-supported', () => {
+test('a connection becomes apertures, and an aperture is a HOLE not a solid', () => {
   const s = structuredClone(room);
   s.entities.push(
-    { id: 'a1', regionId: 'flat-room', kind: 'anchor', position: [1, 0, 1], radius: 0.5, forward: [1, 0, 0], up: [0, 0, 1] },
-    { id: 'a2', regionId: 'flat-room', kind: 'anchor', position: [-1, 0, 1], radius: 0.5, forward: [-1, 0, 0], up: [0, 0, 1] });
+    { id: 'a1', regionId: 'flat-room', kind: 'anchor', position: [4, 0, 1], radius: 0.8, forward: [1, 0, 0], up: [0, 0, 1] },
+    { id: 'a2', regionId: 'flat-room', kind: 'anchor', position: [-4, 0, 1], radius: 0.8, forward: [-1, 0, 0], up: [0, 0, 1] });
   s.connections.push({ id: 'p1', kind: 'portal', a: 'a1', b: 'a2', velocity: 'preserve-speed', scale: 1 });
-  validateScene(s);                       // the SCHEMA accepts portal intent
-  assert.throws(() => compileSceneField(s), /portal connections/); // the FIELD does not
+  const field = compileSceneField(s);
+  assert.equal(field.portalCount, 2, 'one connection, two one-way apertures');
+  assert.equal(field.solidCount, 2, 'the anchors did not become solids');
+  // Standing in the aperture is standing in open air, not inside geometry.
+  assert.ok(field.distance([4, 0, 1]) > 0);
+  // Portal traversal itself is covered by portal.test.js.
 });
 
 // --- editing --------------------------------------------------------------

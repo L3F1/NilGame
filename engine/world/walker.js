@@ -38,7 +38,7 @@ export const GROUND_COS = 0.5;
  */
 export function stepWalker(field, space, state, dt, {
   up = [0, 0, 1], gravity = DEFAULT_GRAVITY, groundCos = GROUND_COS,
-  jump = false, jumpSpeed = 4.0, want = [0, 0, 0],
+  jump = false, jumpSpeed = 4.0, want = [0, 0, 0], portals = [],
 } = {}) {
   const { position, radius } = state;
   let velocity = state.velocity.slice();
@@ -61,7 +61,7 @@ export function stepWalker(field, space, state, dt, {
     flat[2] + vz * up[2],
   ];
 
-  const moved = moveProbe(field, space, { position, velocity, radius }, dt);
+  const moved = moveProbe(field, space, { position, velocity, radius }, dt, { portals });
 
   // Ground is whatever we touched that faces up enough to stand on.
   let grounded = false;
@@ -94,5 +94,6 @@ export function stepWalker(field, space, state, dt, {
   return {
     position: moved.position, velocity: out, radius,
     grounded, contacts: moved.contacts, stalled: moved.stalled,
+    transits: moved.transits, blocked: moved.blocked,
   };
 }

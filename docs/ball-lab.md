@@ -224,3 +224,30 @@ Two bugs this step found, both invisible to the DOM assertions that existed:
   explicit `[hidden]{display:none!important}`, and the checks now assert
   COMPUTED STYLE rather than the attribute. Only inspecting the render caught
   this one.
+
+2026-09-09, portal transit (kernel only, not yet in the lab UI):
+`engine/world/portal.js` builds aperture descriptors and the transit isometry
+from two anchors; `sweep` crosses them mid-step. `portal.test.js`, 16 cases,
+checks the map as an ISOMETRY -- distances and angles preserved, one aperture
+carried onto its partner -- rather than against a second copy of itself.
+
+Three contracts worth knowing before using it:
+
+- **A transit rotates the world, so the HOST must carry its heading through the
+  same map.** `want` is a world-space direction; a walker that keeps asking for
+  the same one after a transit is asking to walk back the way it came.
+  Measured: 70 transits in 200 steps, ping-ponging between the two gates.
+  `stepWalker` and `moveProbe` return `transits` precisely so a host can map
+  its camera by `transit.portal.mapVector`.
+- **`mapPoint` and `mapVector` are separate on purpose.** Putting a direction
+  through the point map adds the portal's displacement to something with no
+  position -- silent, and wrong by the gate separation.
+- **Never land exactly on the aperture.** The traveller emerges at height zero
+  on the exit plane and the next sign test can read either way, sending them
+  straight back; the exit is eased by a skin, exactly as the H3 marcher does at
+  a fundamental-domain face.
+
+Blocked exits refuse the transit and stop at the near aperture, so the gate
+behaves as the wall it is set in rather than depositing the player inside rock.
+An aperture narrower than the player is refused when the scene compiles, not
+discovered by walking into it.

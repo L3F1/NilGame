@@ -13,6 +13,7 @@
 //
 // No DOM, no graphics, no host transform.
 import { validateScene } from './document.js';
+import { portalPair } from './portal.js';
 
 function vector3(p, name = 'position') {
   if (!Array.isArray(p) || p.length !== 3 || !p.every(Number.isFinite)) {
@@ -74,9 +75,6 @@ export function compileSceneField(source) {
   if (source.regions.length !== 1 || source.regions[0].geometry.kind !== 'e3') {
     throw new Error('Scene field currently supports one E3 cover region');
   }
-  if (source.connections.length) {
-    throw new Error('Scene field does not implement portal connections yet');
-  }
   const scene = structuredClone(source);
   const region = scene.regions[0];
   const solids = scene.entities.filter((e) => SOLID_KINDS.includes(e.kind)).map(solidOf);
@@ -96,6 +94,23 @@ export function compileSceneField(source) {
     return { solid: best, distance: bestD };
   }
 
+  // Connections become one-way aperture descriptors, two per portal. An
+  // aperture is NOT a solid: it is a hole, and the field must not report it as
+  // something to collide with.
+  const byId = new Map(scene.entities.map((e) => [e.id, e]));
+  const portals = scene.connections.flatMap((c) => {
+    const [a, b] = portalPair(byId.get(c.a), byId.get(c.b), { id: c.id });
+    // A traveller has to FIT. The schema pins the two radii equal, so one
+    // check covers both ends; an aperture narrower than the player is a
+    // portal nobody can use, and finding that out by walking into it is
+    // worse than being told when the scene is compiled.
+    if (byId.get(c.a).radius <= scene.units.playerRadius) {
+      throw new Error(`connection ${c.id}: aperture radius ${byId.get(c.a).radius} `
+        + `does not admit a player of radius ${scene.units.playerRadius}`);
+    }
+    return [a, b];
+  });
+
   const ball = scene.entities.find((e) => e.kind === 'ball') || null;
   const plane = scene.entities.find((e) => e.kind === 'plane') || null;
   const planeSolid = solids.find((s) => s.kind === 'plane') || null;
@@ -109,6 +124,12 @@ export function compileSceneField(source) {
     capabilities: Object.freeze({ distance: 'exact', intersection: 'exact', normal: 'exact-except-ball-center' }),
     document: () => structuredClone(scene),
     solidCount: solids.length,
+    /** One-way aperture descriptors, two per connection. Holes, not solids. */
+    portals,
+    portalCount: portals.length,
+    /** vec4(centre, radius) per aperture, for drawing them. */
+    portalDiscs: () => portals.map((x) => [...x.center, x.radius]),
+    portalNormals: () => portals.map((x) => [...x.normal, 0]),
     /** Every entity, in document order, for an inspector to list. */
     entities: () => scene.entities.map((e) => structuredClone(e)),
     /**
