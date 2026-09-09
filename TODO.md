@@ -68,8 +68,31 @@ The previous backlog is preserved in
 - [ ] Roll through a tilted aperture. The lab's camera is yaw/pitch, so
   `aimAlong` silently drops roll; correct for a walker whose up is the world's
   up, wrong the moment a portal is set in a wall.
-- [ ] Author a portal in the lab: add/remove anchors and connections through
-  the inspector. Today a portal can only arrive in a loaded document.
+- [x] Author a portal in the lab: Add portal creates both apertures and the
+  connection as ONE transaction, the inspector edits an anchor's forward and
+  radius, a radius edit moves both ends because the schema pins them equal, and
+  Delete on either end removes the whole portal. `editEntities` is the general
+  form: some edits have no valid intermediate document.
+- [ ] **Booleans in the field** (union, intersection, subtraction). Highest
+  ratio of authoring power to work, and pure kernel -- a doorway is a wall
+  minus a box. `min` of two exact SDFs stays exact; `max` and subtraction are
+  only a BOUND, so the rendering contract's capability table must say which is
+  which rather than letting `clearance()` quietly stop being exact.
+- [ ] **A viewport gizmo, in the browser.** Ours in either host -- Godot's
+  `_set_handle` hands you a screen position and expects your own projection --
+  so building it now costs nothing against a future migration and settles
+  decision 001's criterion 4 on the host we already have.
+- [ ] **One Godot experiment: can its 3D editor host a curved viewport?** March
+  the world in a sky shader (which receives a per-pixel eye direction and draws
+  behind everything), and place gizmo geometry by back-projecting the screen
+  position we want through the editor camera. Untested design; one afternoon;
+  the only cheap question whose answer moves the host decision. See
+  [host capability map](docs/host-capability-map.md).
+- [ ] **Feature references** for snapping -- a named, addressable part of a
+  primitive with a point, a frame and an extent ("the +z face of that wall").
+  This is what we actually want from CAD topology, and it is far less than a
+  B-rep, which does not transfer to H3 anyway: NURBS are affine combinations
+  and H3 has no affine structure.
 - [x] Replace duplicated oversized agent instructions with shared working rules,
   compact Astra/Claude entry points and a bounded Muse handoff queue. See
   [agent setup](docs/engineering/AGENT_SETUP.md) for Ubuntu/WSL instructions.

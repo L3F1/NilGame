@@ -6,7 +6,10 @@
 // can still be the wrong portal.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { compileSceneField, addEntity, editScene } from './engine/world/scene-field.js';
+import {
+  compileSceneField, addEntity, editScene, editEntities,
+  addPortal, removePortal, removeEntity,
+} from './engine/world/scene-field.js';
 import { portalPair, apertureCrossing, firstCrossing } from './engine/world/portal.js';
 import { e3Space, sweep, moveProbe, clearance } from './engine/world/collision.js';
 import { stepWalker } from './engine/world/walker.js';
@@ -222,6 +225,81 @@ test('a scene with no connections has no portals and still works', () => {
     { portals: plain.portals });
   assert.deepEqual(out.transits, []);
   assert.equal(out.blocked, null);
+});
+
+// --- authoring a portal ---------------------------------------------------
+
+test('a portal is added as ONE thing: two apertures and the connection', () => {
+  const plain = load('room.nil.json');
+  const built = compileSceneField(addPortal(plain));
+  assert.equal(built.portalCount, 2, 'two one-way apertures');
+  assert.equal(built.connections().length, 1);
+  assert.equal(built.entities().filter((e) => e.kind === 'anchor').length, 2);
+  // And the source is untouched: an author who adds a portal to a scene has
+  // not modified the scene they started from.
+  assert.equal(plain.connections.length, 0);
+});
+
+test('a portal you cannot fit through is refused, and nothing is left behind', () => {
+  const plain = load('room.nil.json');
+  assert.throws(() => addPortal(plain, { radius: 0.1 }), /does not admit a player/);
+  assert.equal(plain.entities.filter((e) => e.kind === 'anchor').length, 0,
+    'the refused addition left no orphan anchors');
+});
+
+test('removePortal takes both ends with it', () => {
+  const built = addPortal(load('room.nil.json'));
+  const gone = compileSceneField(removePortal(built, compileSceneField(built).connections()[0].id));
+  assert.equal(gone.portalCount, 0);
+  assert.equal(gone.entities().filter((e) => e.kind === 'anchor').length, 0,
+    'no anchor is left pointing at nothing');
+});
+
+test('deleting ONE end is refused, and the message names the portal', () => {
+  // The validator would say "unknown anchor", which is true and useless: it
+  // describes the wreckage rather than what the author did.
+  assert.throws(() => removeEntity(room, 'gate-a'),
+    /one end of portal gate[\s\S]*Delete the portal/);
+});
+
+test('a portal is WIDENED at both ends at once, or not at all', () => {
+  // The schema pins the radii equal, so there is no valid halfway document.
+  // One end alone must fail; both together must work. This is the whole
+  // reason editEntities exists.
+  assert.throws(() => editScene(room, 'gate-a', { radius: 2.0 }), /radii must match/);
+  const wider = compileSceneField(editEntities(room, [
+    { id: 'gate-a', patch: { radius: 2.0 } },
+    { id: 'gate-b', patch: { radius: 2.0 } },
+  ]));
+  assert.equal(wider.portals[0].radius, 2.0);
+  assert.equal(wider.portals[1].radius, 2.0);
+});
+
+test('a REFUSED transaction changes nothing', () => {
+  const before = JSON.stringify(room);
+  assert.throws(() => editEntities(room, [
+    { id: 'gate-a', patch: { radius: 0.1 } },
+    { id: 'gate-b', patch: { radius: 0.1 } },
+  ]), /does not admit a player/);
+  assert.equal(JSON.stringify(room), before, 'the source document is untouched');
+});
+
+test('an authored portal is walkable, not just well formed', () => {
+  // Built by addPortal rather than loaded from the fixture, so this covers the
+  // defaults it chose -- a portal an author makes has to work like one they
+  // were given, or the editor produces scenes the engine cannot play.
+  // Clear of the room's ball, which is a 0.9 sphere at the origin and would
+  // otherwise stop the probe before it ever reached the gate -- an aperture
+  // buried inside a solid is a legitimate thing to author (that is what a
+  // portal in a WALL is), so the field does not refuse it and the test must
+  // not rely on it being refused.
+  const field = compileSceneField(addPortal(load('room.nil.json'),
+    { a: [0, 0, 2.4], b: [6, 4, 2.4] }));
+  const out = sweep(field, space, {
+    from: [0, -2, 2.4], direction: [0, 1, 0], distance: 3, radius: field.playerRadius,
+    portals: field.portals,
+  });
+  assert.equal(out.transits.length, 1, 'walked through the portal we just made');
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

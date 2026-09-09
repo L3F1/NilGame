@@ -5,7 +5,12 @@ and docs/engineering/WORKING_RULES.md. Current overnight authorization is below.
 
 ## Overnight execution
 
-Current batch: MUSE-08 -> MUSE-09 -> MUSE-10. MUSE-01 through MUSE-07 are all
+Current batch: MUSE-08 -> MUSE-09 -> MUSE-10, then MUSE-11 -> MUSE-15.
+MUSE-11 through MUSE-15 were added 2026-09-09 by the lead and are INDEPENDENT
+of each other and of 08-10: a blocker in one does not stall the rest. Two of
+them need the Windows host with a real GPU and cannot run from WSL (MUSE-14,
+MUSE-15); the other three are Node-only and run anywhere. Take the Node-only
+ones first if you are unsure which host you have. MUSE-01 through MUSE-07 are all
 accepted and integrated; do not reopen them. Read
 docs/qa/opus-integration-2026-09-09.md for the current verdicts and the one
 defect found at integration; docs/qa/astra-review-2026-09-09.md and the older
@@ -461,6 +466,179 @@ squarely in scope.
 - Acceptance: a new contributor can tell, without asking, which checks their
   machine can run and which need the Windows host.
 
+## MUSE-11 - Every declared uniform is located and set
+
+Status: OPEN | Owner: Muse | Reviewer: Opus
+
+A uniform declared in GLSL but never set by its host module is SILENT: the
+value is zero, the shader compiles, the program links, and the picture is
+merely wrong. This session added five uniforms to `BALL_FIRST_PERSON_GLSL`
+(`uPortals`, `uPortalNml`, `uPortalExit`, `uPortalMap`, `uPortalN`) and nothing
+in the repository would have complained if one had been forgotten. Build the
+check that would. Node-only, no Chrome, no GPU.
+
+- Allowed writes: a new `uniform-coverage.test.js` at the repository root, its
+  registration in `tools/test.js`, `docs/qa/overnight-results.md`, this task's
+  status and report. Do NOT edit any `.js` under `engine/`, `app/`, or the
+  shader sources themselves; if the check finds a real gap, REPORT it, do not
+  fix it.
+- Parse each exported GLSL string for `uniform <type> <name>` declarations,
+  including array forms like `uniform vec4 uBalls[MAX_BALLS];`. Cover at least
+  `engine/geometry/ball-shader.js` (both programs) and whatever other modules
+  export GLSL; find them, do not assume the list.
+- For each declaration, assert the host module that compiles that program both
+  LOOKS IT UP and SETS IT. A name appearing only in a `getUniformLocation` list
+  is not set; a name appearing only in a `gl.uniform*` call was never located.
+  Both halves are required.
+- Report the two failure directions separately: declared-but-never-set, and
+  set-but-never-declared. The second catches a rename that left a dead call.
+- Known acceptable exceptions must be listed explicitly in the test with a
+  reason each, not silently skipped by a loose regex.
+- Checks: `node uniform-coverage.test.js` and `node tools/test.js` (expect
+  24/24 once yours is registered; say the number you actually saw).
+- Acceptance: the check FAILS when you temporarily delete one
+  `gl.uniform4fv(U.uPortals, ...)` line in your own working copy, and passes
+  with it restored. Show both outputs. A check that cannot fail is not a check.
+
+## MUSE-12 - Stale-claim sweep across the documentation
+
+Status: OPEN | Owner: Muse | Reviewer: Opus
+
+Documentation decays silently. `tools/scene-check.js` printed "portal traversal
+is not implemented" for a whole session after traversal was implemented and
+tested, and it was found by eye rather than by anything that runs. There are
+almost certainly more. This is a reading-and-verifying task, which is exactly
+the shape of work that is wasted on a model doing design.
+
+- Allowed writes: `docs/qa/stale-claims-2026-09.md` (new), `docs/qa/overnight-results.md`,
+  this task's status and report. Do NOT edit the documents themselves in this
+  task - the report is the deliverable, and the lead decides what to correct,
+  because some "stale" claims are deliberate scope statements.
+- Sweep every `.md` under `docs/`, plus `AGENTS.md`, `MUSE.md`, `TODO.md` and
+  `README*`. For every FACTUAL claim about what the code does or does not do -
+  counts, capabilities, "not implemented", "only supports", file paths, function
+  names, measured numbers - verify it against the current tree.
+- Record each finding as: file and line, the claim as written, what is actually
+  true, and the EVIDENCE (a command you ran and its output, or a file and line
+  number). A finding without evidence is not a finding.
+- Separate three categories, because they need different responses: FALSE (the
+  claim is wrong now), STALE-BUT-HARMLESS (understated, e.g. a test count that
+  has grown), and UNVERIFIABLE (you could not check it - say why).
+- Do not report prose style, wording preferences, or missing documentation.
+  Only claims that are checkable and checked.
+- Checks: no code changes, so no suite to run; instead include the command
+  transcript for every FALSE finding.
+- Acceptance: at least the whole of `docs/` swept with a per-file line saying it
+  was read, findings evidenced, and no edits to the swept documents.
+
+## MUSE-13 - An invalid-document corpus for the scene validator
+
+Status: OPEN | Owner: Muse | Reviewer: Opus
+
+`engine/world/document.js` refuses a lot of things, and we do not know how much
+of that is covered. A validator with an untested branch is a validator that
+will one day accept a broken scene. This is high-volume, low-judgement work:
+write many small bad documents and assert each is refused for the RIGHT reason.
+Node-only.
+
+- Allowed writes: a new `document-invalid.test.js` at the repository root, new
+  files under `levels/fixtures/invalid/`, registration in `tools/test.js`,
+  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
+  `engine/world/document.js` or `engine/world/scene-field.js`. If a refusal is
+  missing or its message is wrong, REPORT it and hand it back.
+- One defect per document, built by mutating a VALID fixture so the only
+  difference is the defect under test. Do not hand-write whole invalid files:
+  a document that is broken in three ways proves nothing about any one of them.
+- Cover at minimum, from a reading of `document.js` rather than from this list:
+  every `kind`-specific field rule (radius on a spawn, forward on a ball, up on
+  something that may not have it), the orthonormality rules on an anchor,
+  duplicate ids across entities/connections/regions, an unknown `regionId`, an
+  entity outside its region's extent, every connection rule (unknown anchor,
+  an anchor already connected, endpoints equal, mismatched radii, a `scale`
+  other than 1, a `velocity` other than preserve-speed), and the missing/extra
+  top-level field cases.
+- Assert on the MESSAGE, not just that it threw. Each assertion must check that
+  the message names the offending id or field. "Throws" passing for the wrong
+  reason is the standard way this kind of test rots.
+- Also assert the refusal is ATOMIC where an API is involved: after a rejected
+  `addEntity`/`addPortal`/`editEntities`, the source document must be
+  byte-identical to what it was.
+- Checks: `node document-invalid.test.js` and `node tools/test.js`. Report both
+  numbers.
+- Acceptance: every rule you found in `document.js` is either covered by a case
+  or listed in the report as deliberately not covered with a reason. Say how
+  many rules you found and how many you covered - a bare pass count does not
+  show coverage.
+
+## MUSE-14 - Long seeded play sweep for the unreproduced geom.js crash
+
+Status: OPEN | Owner: Muse | Reviewer: Opus
+
+The reported crash - `Cannot read properties of undefined (reading '0')` at
+`geom.js:80` during arena play - has never been reproduced. About 40,000
+headless frames and a full call-site audit did not trigger it, so
+`tools/play-check.js` was built and the diagnostics were shipped instead. This
+is now a MACHINE-TIME problem, not a thinking problem: run far more play than a
+person would sit through, and record everything. Requires the Windows host with
+headless Chrome; it CANNOT run from WSL (the socketpair block is unchanged).
+
+- Allowed writes: `docs/qa/play-sweep-2026-09.md` (new),
+  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
+  `tools/play-check.js`, `tools/play-probe.js`, `main.js`, `geom.js` or any
+  engine file. If you believe the probe needs a new capability to reach a mode,
+  say so in the report and stop; do not add it.
+- Run `tools/play-check.js` across many seeds and long durations. Vary the seed
+  widely rather than repeating a few, and cover every game mode the probe can
+  reach, not just the default. Record the exact command for each run.
+- Record for EVERY run, pass or fail: seed, mode, frames, wall time, exit code,
+  and any error with its full stack. A clean run is data - the point is the
+  total volume of play that produced no crash, which is the number that makes
+  "not reproduced" mean something.
+- If a crash reproduces: capture the full stack, the seed, and the exact
+  command, and STOP the sweep. A reproducible seed is worth more than more
+  sweeping, and diagnosis is the lead's.
+- Keep the total bounded and say what you chose: report the total frames and
+  total wall time, and stop at a limit you state up front rather than running
+  until interrupted.
+- No blanket Chrome or headless process killing. Only a run's own process tree
+  may be cleaned up, and only if `play-check` leaves one behind - if it does,
+  that is itself a finding worth reporting.
+- Acceptance: a table of every run with the fields above, a stated total, and
+  an explicit verdict sentence of the form "N frames of play across M seeds and
+  K modes produced no geom.js error" - or a reproducing seed.
+
+## MUSE-15 - Shader link time per geometry, tabulated
+
+Status: OPEN | Owner: Muse | Reviewer: Opus
+
+`docs/host-capability-map.md` argues that the 8.4 s browser link time that
+drives the host decision belongs to the ARENA's hyperbolic program, and that the
+editor's own program links in 0.7 s on the same machine - so link time is not
+currently an argument about the editor. That argument rests on two numbers and
+deserves a table. Pure measurement; the analysis is not yours. Requires the
+Windows host with a real GPU; say which GPU and which browser build.
+
+- Allowed writes: `docs/qa/link-time-2026-09.md` (new),
+  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
+  `tools/link-time.js`, any shader source, or `docs/host-capability-map.md`.
+  If `tools/link-time.js` cannot measure a case you need, report that and
+  measure what you can.
+- Measure COLD-cache link time for every geometry's program - all eight, plus
+  `BALL_PREVIEW_GLSL` and `BALL_FIRST_PERSON_GLSL`. Cold means cold: state
+  exactly how you guaranteed the shader cache was empty for each measurement,
+  because a warm cache silently reports a tenth of the truth.
+- Three runs per program, reporting min, median and max, not one sample.
+- Record alongside each: the program's source length in characters, and any
+  obvious structural figure you can get cheaply (number of primitives or
+  branches in the scene function). The interesting question is what link time
+  scales with, and a table of times alone cannot answer it.
+- Do NOT conclude anything about the host decision. Report numbers and note
+  which measurements you could not take and why.
+- Checks: include the raw command output for at least one program in full, so a
+  reviewer can see the shape of what you are summarising.
+- Acceptance: a table with every program, three samples each, an explicit
+  statement of the cold-cache method, and the machine and browser identified.
+
 ## Lead-owned next work
 
 See docs/engineering/NEXT_SESSION.md. F4 and the first E3 ball slice are done.
@@ -473,3 +651,13 @@ do not invent more tasks or wait indefinitely for the lead to return.
 Note on the batch above: MUSE-08 is the highest value of the three, because it
 closes a defect that reached integration. MUSE-09 and MUSE-10 are independent of
 it and of each other, so a blocked prerequisite in one does not stall the rest.
+
+Note on MUSE-11 to MUSE-15: these are deliberately mechanical - static analysis,
+reading and verifying, high-volume case writing, and machine time. That is not a
+comment on their value. MUSE-11 closes a whole class of silent bug (a uniform
+that is declared and never set draws a wrong picture without any error), and
+MUSE-13 is the difference between a validator we hope is complete and one we
+know is. Three rules for all five: report defects rather than fixing them, show
+the command output rather than asserting the result, and say which host you ran
+on. Every one of them is a check on work the lead has already shipped, so
+finding something is the SUCCESS case, not an embarrassment to soften.

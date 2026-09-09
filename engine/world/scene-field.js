@@ -133,6 +133,11 @@ export function compileSceneField(source) {
     /** Where each aperture lets out, and the linear part of the map to it. */
     portalExits: () => portals.map((x) => [...x.exitCenter, 0]),
     portalMaps: () => portals.map((x) => x.matrix),
+    /** The connections themselves, so an editor can talk about portals. */
+    connections: () => scene.connections.map((c) => structuredClone(c)),
+    /** The connection an anchor belongs to, or null. */
+    connectionOf: (entityId) =>
+      structuredClone(scene.connections.find((c) => c.a === entityId || c.b === entityId) || null),
     /** Every entity, in document order, for an inspector to list. */
     entities: () => scene.entities.map((e) => structuredClone(e)),
     /**
@@ -181,11 +186,28 @@ export function compileSceneField(source) {
  * makes an editor's undo stack trustworthy.
  */
 export function editScene(source, id, patch) {
+  return editEntities(source, [{ id, patch }]);
+}
+
+/**
+ * Edit SEVERAL entities as one transaction.
+ *
+ * Some edits have no valid intermediate. A portal's two apertures must have
+ * equal radii, so widening one and then the other passes through a document
+ * the validator refuses -- an author who types a new radius would be told
+ * their scene is broken by the halfway state of their own edit. The fix is not
+ * to relax the rule; it is to stop pretending a two-ended thing is edited one
+ * end at a time. Every patch applies, then the whole document is validated
+ * once, so a rejected transaction leaves the source exactly as it was.
+ */
+export function editEntities(source, patches) {
   const next = compileSceneField(source).document();
-  const entity = next.entities.find((e) => e.id === id);
-  if (!entity) throw new Error(`No entity with id ${id}`);
-  for (const [key, value] of Object.entries(patch)) {
-    entity[key] = Array.isArray(value) ? value.slice() : value;
+  for (const { id, patch } of patches) {
+    const entity = next.entities.find((e) => e.id === id);
+    if (!entity) throw new Error(`No entity with id ${id}`);
+    for (const [key, value] of Object.entries(patch)) {
+      entity[key] = Array.isArray(value) ? value.slice() : value;
+    }
   }
   compileSceneField(next);        // throws before anything is handed back
   return next;
@@ -199,6 +221,53 @@ function freshId(scene, kind) {
     const id = `${kind}-${n}`;
     if (!taken.has(id)) return id;
   }
+}
+
+/**
+ * Add a portal: two apertures and the connection between them, in one step.
+ *
+ * ATOMIC BECAUSE A HALF-BUILT PORTAL IS NOT A PORTAL. The pieces could be
+ * added separately -- two loose anchors validate fine -- but then an undo
+ * leaves one end behind and the author has to know that a portal is three
+ * objects. It is one object to them, so it is one transaction here.
+ *
+ * `forward` points OUT of each aperture, into the space it serves; that is the
+ * convention portal.js depends on and the reason the two defaults face
+ * opposite ways.
+ */
+export function addPortal(source, {
+  a = [0, 0, 1.2], b = [6, 4, 1.2], radius = 1.1,
+  forwardA = [0, -1, 0], forwardB = [0, -1, 0], up = [0, 0, 1], id,
+} = {}) {
+  const next = compileSceneField(source).document();
+  const connectionId = id || freshId(next, 'portal');
+  const end = (position, forward) => {
+    const anchor = {
+      id: freshId(next, 'gate'), regionId: next.regions[0].id, kind: 'anchor',
+      position: position.slice(), radius, forward: forward.slice(), up: up.slice(),
+    };
+    next.entities.push(anchor);   // pushed as we go, so freshId sees the first one
+    return anchor.id;
+  };
+  const idA = end(a, forwardA), idB = end(b, forwardB);
+  next.connections.push({
+    id: connectionId, kind: 'portal', a: idA, b: idB,
+    velocity: 'preserve-speed', scale: 1,
+  });
+  compileSceneField(next);
+  return next;
+}
+
+/** Remove a portal and both of its apertures. The inverse of `addPortal`. */
+export function removePortal(source, id) {
+  const next = compileSceneField(source).document();
+  const connection = next.connections.find((c) => c.id === id);
+  if (!connection) throw new Error(`No portal with id ${id}`);
+  const ends = new Set([connection.a, connection.b]);
+  next.connections = next.connections.filter((c) => c.id !== id);
+  next.entities = next.entities.filter((e) => !ends.has(e.id));
+  compileSceneField(next);
+  return next;
 }
 
 /**
@@ -234,6 +303,16 @@ export function removeEntity(source, id) {
   if (!entity) throw new Error(`No entity with id ${id}`);
   if (entity.kind === 'spawn' && next.entities.filter((e) => e.kind === 'spawn').length === 1) {
     throw new Error('Cannot delete the only spawn: a scene needs somewhere to start');
+  }
+  // An aperture is one END of something. Deleting it alone leaves a connection
+  // pointing at nothing, and the validator would then complain about an
+  // unknown anchor -- true, but about the wreckage rather than about what the
+  // author actually did. Say what is in the way and name the operation that
+  // does what they meant.
+  const holder = next.connections.find((c) => c.a === id || c.b === id);
+  if (holder) {
+    throw new Error(`Cannot delete ${id} on its own: it is one end of portal `
+      + `${holder.id}. Delete the portal, which removes both ends.`);
   }
   next.entities = next.entities.filter((e) => e.id !== id);
   compileSceneField(next);

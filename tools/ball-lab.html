@@ -45,7 +45,7 @@ map that carries you through it.</small></p>
 <h2>Entities</h2>
 <ul id="entities" role="listbox" aria-label="Scene entities"></ul>
 <button id="add-ball">Add ball</button><button id="add-plane">Add plane</button>
-<button id="delete">Delete</button>
+<button id="add-portal">Add portal</button><button id="delete">Delete</button>
 
 <h2 id="inspector-title">Inspector</h2>
 <form id="editor">
@@ -55,6 +55,11 @@ map that carries you through it.</small></p>
     <input id="z" type="number" step="any" required aria-label="Position Z">
   </span></label>
   <label id="radius-field">Radius <input id="radius" type="number" step="any" min="0.01" required></label>
+  <label id="forward-field">Forward (out of the aperture) <span class="row">
+    <input id="fx" type="number" step="any" aria-label="Forward X">
+    <input id="fy" type="number" step="any" aria-label="Forward Y">
+    <input id="fz" type="number" step="any" aria-label="Forward Z">
+  </span></label>
   <label id="up-field">Up (normal) <span class="row">
     <input id="ux" type="number" step="any" aria-label="Up X">
     <input id="uy" type="number" step="any" aria-label="Up Y">

@@ -90,6 +90,10 @@ says the same thing from the other side.
 
 ## What a host is for, honestly
 
+The systematic version of this section -- every need the project has, every
+Godot feature checked against current documentation, and a verdict on each --
+is [the host capability map](host-capability-map.md). The summary:
+
 A host supplies **editor infrastructure** (docking panels, gizmos, file
 dialogs, an undo framework), an **asset pipeline**, faster **shader
 compilation** (measured: 8.4 s browser link against 0.7 s Godot first frame),

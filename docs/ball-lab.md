@@ -177,6 +177,32 @@ geometry, the transit does not happen: the aperture behaves as the wall it is
 set in, the walker stops at the near face, and `blocked` says which portal
 refused so the lab can print why.
 
+### Authoring one
+
+**Add portal** creates both apertures and the connection in one step, in front
+of where you are looking. A portal is one thing to an author, so it is one
+transaction here: the pieces could be added separately -- two loose anchors
+validate fine -- but then an undo leaves one end behind and the author has to
+know that a portal is three objects.
+
+Editing an aperture's **radius moves both ends**, because the schema pins them
+equal and there is therefore no valid document in between. That is what
+`editEntities` is for: apply every patch, then validate once. Widening one end
+and then the other would reject the author's own halfway state, and the fix is
+not to relax the rule -- it is to stop pretending a two-ended thing is edited
+one end at a time. Position and forward stay local to the end being edited;
+only the radius travels.
+
+`up` is re-derived from `forward` rather than typed, since the schema requires
+them orthonormal and handing an author two vectors to keep consistent by hand
+is a trap. The one chosen is the up nearest world up, so a wall portal's up
+still points up.
+
+**Delete** on either end removes the whole portal. `removeEntity` refuses a
+connected anchor and says which portal is in the way -- the validator would
+otherwise report an unknown anchor, which is true and useless, because it
+describes the wreckage rather than what the author did.
+
 Known limit: `aimAlong` recovers yaw and pitch and therefore **drops roll**.
 That is correct for a walker whose up is the world's up and wrong the moment an
 aperture is tilted, so it is a limit of this camera and not of `mapVector`.
@@ -319,3 +345,17 @@ have no inspector, so a portal can only arrive in a loaded document. The
 apertures are E3 only, and the map is an isometry of one space; a portal
 between two different geometries is the same shape of object with a map that is
 a correspondence rather than an isometry, and `portal.js` is where that goes.
+
+2026-09-09, authoring: `portal.test.js` 24 cases, the browser check 45 -> 57.
+The added cases are about transactions rather than geometry -- a refused
+`addPortal` leaves no orphan anchor, a refused `editEntities` leaves the source
+byte-identical, deleting one end is refused by name, and a portal built by
+`addPortal` is WALKED through rather than merely validated, because an editor
+that produces scenes the engine cannot play is worse than one that refuses the
+edit.
+
+One thing the tests taught, worth keeping: `addPortal`'s defaults put an
+aperture at the origin, which in `room.nil.json` is inside a 0.9 ball. The
+field does not refuse that -- an aperture buried in a solid is exactly what a
+portal in a WALL is -- so the test places its gate in clear space rather than
+relying on a refusal that would be wrong to add.

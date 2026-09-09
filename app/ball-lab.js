@@ -4,9 +4,12 @@
 // uniforms and the collision field are built from the same entities, so the
 // picture and the physics cannot drift apart -- which is the entire point of
 // the query boundary this experiment exists to validate.
-import { compileSceneField, editScene, addEntity, removeEntity } from '../engine/world/scene-field.js';
+import {
+  compileSceneField, editScene, editEntities, addEntity, removeEntity,
+  addPortal, removePortal,
+} from '../engine/world/scene-field.js';
 import { BALL_FIRST_PERSON_GLSL } from '../engine/geometry/ball-shader.js';
-import { e3Space, clearance, resolveOverlap } from '../engine/world/collision.js';
+import { e3Space, clearance, resolveOverlap, sweep } from '../engine/world/collision.js';
 import { stepWalker } from '../engine/world/walker.js';
 
 const $ = (id) => document.getElementById(id), canvas = $('c');
@@ -137,13 +140,21 @@ function drawList(field) {
   // cannot offer a radius for a spawn or a normal for a ball.
   $('radius-field').hidden = !e || e.radius === undefined;
   $('up-field').hidden = !e || e.kind !== 'plane';
+  $('forward-field').hidden = !e || e.kind !== 'anchor';
   $('editor').hidden = !e;
-  $('inspector-title').textContent = e ? `Inspector — ${e.id} (${e.kind})` : 'Inspector';
+  // An anchor is one END of something, so say which -- an author looking at
+  // "gate-3" has no way to tell which portal it belongs to otherwise, and the
+  // radius they type will silently move the other end too.
+  const holder = e ? compileSceneField(scene).connectionOf(e.id) : null;
+  $('inspector-title').textContent = e
+    ? `Inspector — ${e.id} (${e.kind}${holder ? `, end of ${holder.id}` : ''})`
+    : 'Inspector';
   $('delete').disabled = !e;
   if (e) {
     ['x', 'y', 'z'].forEach((id, i) => { $(id).value = e.position[i]; });
     if (e.radius !== undefined) $('radius').value = e.radius;
     if (e.kind === 'plane') ['ux', 'uy', 'uz'].forEach((id, i) => { $(id).value = e.up[i]; });
+    if (e.kind === 'anchor') ['fx', 'fy', 'fz'].forEach((id, i) => { $(id).value = e.forward[i]; });
   }
 }
 
@@ -259,6 +270,21 @@ $('editor').onsubmit = (e) => {
     if (!entity) throw new Error('Nothing selected');
     const patch = { position: ['x', 'y', 'z'].map((k) => Number($(k).value)) };
     if (entity.radius !== undefined) patch.radius = Number($('radius').value);
+    if (entity.kind === 'anchor') {
+      const fwd = ['fx', 'fy', 'fz'].map((k) => Number($(k).value));
+      const n = Math.hypot(...fwd);
+      if (!(n > 1e-9)) throw new Error('An aperture forward cannot be zero length');
+      patch.forward = fwd.map((x) => x / n);
+      // `up` must stay orthonormal to `forward`, so re-derive it rather than
+      // handing the author two vectors to keep consistent by hand. Any up
+      // perpendicular to forward will do; this picks the one nearest world up,
+      // which keeps a wall portal's "up" pointing up.
+      const a = Math.abs(patch.forward[2]) > 0.9 ? [1, 0, 0] : [0, 0, 1];
+      const dot = a.reduce((sum, x, i) => sum + x * patch.forward[i], 0);
+      const up = a.map((x, i) => x - dot * patch.forward[i]);
+      const un = Math.hypot(...up);
+      patch.up = up.map((x) => x / un);
+    }
     if (entity.kind === 'plane') {
       const up = ['ux', 'uy', 'uz'].map((k) => Number($(k).value));
       const n = Math.hypot(...up);
@@ -267,8 +293,22 @@ $('editor').onsubmit = (e) => {
       // rejecting "0,0,2" for not being unit length would be pedantry.
       patch.up = up.map((x) => x / n);
     }
-    commit(editScene(scene, entity.id, patch));
-    $('status').textContent = `${entity.id} updated`;
+    // A PORTAL IS EDITED AT BOTH ENDS AT ONCE. The schema pins the two radii
+    // equal, so there is no valid document in between: widening one end and
+    // then the other would reject the author's own halfway state. Position and
+    // forward stay local to the end being edited; only radius travels.
+    const holder = compileSceneField(scene).connectionOf(entity.id);
+    if (holder && patch.radius !== undefined) {
+      const far = holder.a === entity.id ? holder.b : holder.a;
+      commit(editEntities(scene, [
+        { id: entity.id, patch },
+        { id: far, patch: { radius: patch.radius } },
+      ]));
+      $('status').textContent = `${entity.id} updated (${far} matched its radius)`;
+    } else {
+      commit(editScene(scene, entity.id, patch));
+      $('status').textContent = `${entity.id} updated`;
+    }
   } catch (error) { $('status').textContent = error.message; draw(); }
 };
 $('add-ball').onclick = () => {
@@ -293,12 +333,35 @@ $('add-plane').onclick = () => {
     $('status').textContent = `added ${selected} (a ceiling; edit its normal to re-aim it)`;
   } catch (error) { $('status').textContent = error.message; }
 };
+$('add-portal').onclick = () => {
+  try {
+    // Both gates in front of the player and level, so a new portal is one you
+    // can walk into rather than one buried in the floor. Forward points OUT of
+    // an aperture, so each gate faces back at the room it serves.
+    const { f } = basis();
+    const flat = [f[0], f[1], 0], n = Math.hypot(...flat) || 1;
+    const dir = [flat[0] / n, flat[1] / n, 0];
+    const side = [-dir[1], dir[0], 0];
+    const at = (k, s) => [probe.position[0] + dir[0] * k + side[0] * s,
+      probe.position[1] + dir[1] * k + side[1] * s, 1.2];
+    const back = dir.map((x) => -x);
+    const next = addPortal(scene, { a: at(3, 0), b: at(3, 8), forwardA: back, forwardB: back });
+    commit(next);
+    const made = compileSceneField(next).connections().at(-1);
+    selected = made.a; draw();
+    $('status').textContent = `added ${made.id} — walk into ${made.a}`;
+  } catch (error) { $('status').textContent = error.message; }
+};
 $('delete').onclick = () => {
   try {
     const id = selected;
-    commit(removeEntity(scene, id));
+    // Deleting one end of a portal is not what an author means; they mean the
+    // portal. removeEntity refuses it and says so, but doing the right thing
+    // is better than explaining why we did not.
+    const holder = compileSceneField(scene).connectionOf(id);
+    commit(holder ? removePortal(scene, holder.id) : removeEntity(scene, id));
     selected = null; draw();
-    $('status').textContent = `deleted ${id}`;
+    $('status').textContent = holder ? `deleted portal ${holder.id} and both ends` : `deleted ${id}`;
   } catch (error) { $('status').textContent = error.message; }
 };
 $('fixture').value = startName;
@@ -486,6 +549,52 @@ if (new URLSearchParams(location.search).has('check')) {
     const byMap = gated.portals[0].mapVector(v);
     check('the drawn map is the walked map',
       byMatrix.every((x, i) => Math.abs(x - byMap[i]) < 1e-9));
+
+
+    // --- authoring a portal through the DOM -------------------------------
+    const c0 = gated.connections().length;
+    $('add-portal').click();
+    const made = compileSceneField(scene);
+    check('add-portal adds one connection', made.connections().length === c0 + 1);
+    check('and two apertures with it', made.portalCount === (c0 + 1) * 2);
+    check('the near gate is selected', made.entities().some((e) => e.id === selected));
+    check('the inspector shows forward for an anchor', shownField('forward-field'));
+    check('and radius', shownField('radius-field'));
+    check('and really hides the plane normal', !shownField('up-field'));
+    check('the inspector names the portal the anchor belongs to',
+      /end of /.test($('inspector-title').textContent));
+
+    // A portal is edited at BOTH ends. The schema pins the radii equal, so an
+    // author who types one radius must not be told their scene is broken by
+    // the halfway state of their own edit.
+    const madeConn = made.connections().at(-1);
+    selected = madeConn.a; draw();
+    $('radius').value = 1.4; $('editor').requestSubmit();
+    const widened = compileSceneField(scene);
+    const radiusOf = (id) => widened.entities().find((e) => e.id === id).radius;
+    check('editing one aperture radius moves both ends',
+      radiusOf(madeConn.a) === 1.4 && radiusOf(madeConn.b) === 1.4);
+    check('and says so', /matched its radius/.test($('status').textContent));
+
+    // Aim the new gate at the player and check it is walkable, not merely
+    // well formed: an editor that produces scenes the engine cannot play is
+    // worse than one that refuses the edit.
+    const authored = compileSceneField(scene);
+    const gate = authored.portals.find((p) => p.fromId === madeConn.a);
+    const approach = gate.center.map((x, i) => x + gate.normal[i] * 2);
+    const into = gate.normal.map((x) => -x);
+    check('a portal authored in the editor can be walked through',
+      sweep(authored, space, {
+        from: approach, direction: into, distance: 3,
+        radius: authored.playerRadius, portals: authored.portals,
+      }).transits.length === 1);
+
+    selected = madeConn.a; draw();
+    $('delete').click();
+    check('deleting one end deletes the whole portal',
+      compileSceneField(scene).connections().length === c0);
+    check('and leaves no orphan anchor', !compileSceneField(scene)
+      .entities().some((e) => e.id === madeConn.a || e.id === madeConn.b));
 
     setPlaying(true);
     // Aim at the gate, which stands between the spawn and the far room, and
