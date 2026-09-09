@@ -13,7 +13,7 @@ label{display:block;margin:8px 0}
    hidden attribute stops hiding and an inspector shows a ball a plane
    normal. The DOM says hidden; the screen says otherwise. */
 [hidden]{display:none!important}
-input[type=number]{width:100%;padding:6px}
+input[type=number],select{width:100%;padding:6px}
 .row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 button{padding:7px 10px;margin:3px 3px 3px 0;background:#1e2c3d;color:#dce7eb;border:1px solid #3a4d64;border-radius:5px;cursor:pointer}
 button:hover{background:#27384c}
@@ -33,7 +33,14 @@ small{color:#8fa3b4}
 </head><body><canvas id="c" aria-label="Scene preview"></canvas><aside>
 <h1>SCENE LAB / E3</h1>
 <p><small>Scene v1 authoring. Z is up. Solids are authored entities: you stand on
-the same surfaces the renderer draws.</small></p>
+the same surfaces the renderer draws, and you see through a portal with the same
+map that carries you through it.</small></p>
+
+<h2>Scene</h2>
+<label>Fixture <select id="fixture">
+  <option value="room">room — a floor and a ball</option>
+  <option value="portal-room">portal-room — two gates, walk through one</option>
+</select></label>
 
 <h2>Entities</h2>
 <ul id="entities" role="listbox" aria-label="Scene entities"></ul>
@@ -62,7 +69,9 @@ the same surfaces the renderer draws.</small></p>
 <label><input id="gravity" type="checkbox" checked> Gravity and ground contact</label>
 <p><small>WASD moves, mouse looks, Esc stops. With gravity on, Space jumps; with it
 off you fly and Space/Shift go up and down. Editing while playing is allowed:
-the player is pushed clear, or respawns if there is no way out.</small></p>
+the player is pushed clear, or respawns if there is no way out. In portal-room a
+gate stands 4 units ahead of the spawn: walk into it, and the camera is carried
+through with you.</small></p>
 
 <h2>File</h2>
 <button id="save">Save JSON</button>

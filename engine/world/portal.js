@@ -73,6 +73,16 @@ export function portalPair(anchorA, anchorB, meta = {}) {
         return [world[0] + to.position[0], world[1] + to.position[1], world[2] + to.position[2]];
       },
       mapVector: (v) => fromFrame(G, turn(toFrame(F, v))),
+      // The same linear part as a flat 3x3, COLUMN-MAJOR, which is what a
+      // renderer needs: a shader cannot call mapVector, and a portal drawn by
+      // a second, hand-written copy of the map is a portal whose picture can
+      // disagree with its physics. Column j is the image of basis vector j, so
+      // this is mapVector applied to e0, e1, e2 and nothing else.
+      matrix: [
+        ...fromFrame(G, turn(toFrame(F, [1, 0, 0]))),
+        ...fromFrame(G, turn(toFrame(F, [0, 1, 0]))),
+        ...fromFrame(G, turn(toFrame(F, [0, 0, 1]))),
+      ],
     });
   };
   return [one(anchorA, anchorB), one(anchorB, anchorA)];

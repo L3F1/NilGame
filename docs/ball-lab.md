@@ -21,7 +21,9 @@ box also accepts an absolute path. Load is undoable. Invalid loads/edits retain
 the previous valid scene.
 
 For the browser reference, serve the repository as usual and open
-`tools/ball-lab.html`. Use Apply edit, Undo/Redo, Save JSON and the file picker.
+`tools/ball-lab.html`. The **Fixture** menu picks the scene: `room` is a floor
+and a ball, `portal-room` is a floor and two gates. `?scene=portal-room` in the
+URL does the same thing, so a check or a bookmark can open straight into it. Use Apply edit, Undo/Redo, Save JSON and the file picker.
 Files saved by Godot use the same format and can be loaded here and vice versa.
 The original fixture is never overwritten by the browser download action.
 
@@ -141,6 +143,44 @@ region yet. The preview camera in edit mode sits at the spawn.
 Region extent is an authoring bound, not a wall. This experiment does not
 establish native physics, networking or whole-game parity.
 
+## Portals
+
+A connection between two anchors compiles to two one-way apertures. An aperture
+is a **hole, not a solid**: the field must not report it as something to
+collide with, and a scene with an aperture narrower than the player is refused
+when it is compiled rather than when somebody walks into it.
+
+Walk into `portal-room`'s gate and three things happen together, all from one
+map:
+
+- the **probe** crosses mid-step, inside `sweep`, so the crossing is found at
+  the right point along the path rather than on a chord through the frame;
+- the **velocity** is carried through by `portal.mapVector`, and the arclength
+  travelled counts the whole way -- a portal is a shortcut through the
+  manifold, not free distance;
+- the **camera** is carried through by the host, because the camera belongs to
+  the host and the engine does not have one. `stepWalker` returns `transits` so
+  the host can do it; the lab's `aimAlong` is that host code. Skipping it is
+  not subtle: the walker emerges facing back the way they came and re-crosses
+  immediately, measured at 70 transits in 200 steps.
+
+Seeing through a portal uses the SAME map, as numbers: `portal.matrix` is the
+linear part as a column-major 3x3, uploaded as `uPortalMap`, and the shader
+reconstructs `mapPoint` as `exitCenter + M * (p - center)`. A second,
+hand-written derivation in the shader would let the picture show one room while
+the walker arrived in another -- the worst kind of portal bug, because both
+halves look right on their own. `portal.test.js` asserts the matrix against
+`mapVector`, and the browser check asserts it again in the page.
+
+Refusals are reported, not hidden. If emerging would put the probe inside
+geometry, the transit does not happen: the aperture behaves as the wall it is
+set in, the walker stops at the near face, and `blocked` says which portal
+refused so the lab can print why.
+
+Known limit: `aimAlong` recovers yaw and pitch and therefore **drops roll**.
+That is correct for a walker whose up is the world's up and wrong the moment an
+aperture is tilted, so it is a limit of this camera and not of `mapVector`.
+
 ## Checks and measured limits
 
 ```sh
@@ -151,8 +191,15 @@ node tools/scene-check.js levels/fixtures/room.nil.json
 node tools/scene-check.js levels/fixtures/ball-lab.nil.json
 node tools/shader-check.js
 node tools/sdf-check.js
+node tools/scene-check.js levels/fixtures/portal-room.nil.json
+node portal.test.js
 node tools/page-check.js --ball-lab --timeout=60
 ```
+
+`page-check` writes a PNG whenever the page returns one, to `$SHOT` or
+`page-check-shot.png`. Every numeric check above passes happily on a view that
+is upside down or that draws the near room twice; only looking catches that,
+and it already had to once.
 
 Windows native rendering check (replace the executable path):
 
@@ -251,3 +298,24 @@ Blocked exits refuse the transit and stop at the near aperture, so the gate
 behaves as the wall it is set in rather than depositing the player inside rock.
 An aperture narrower than the player is refused when the scene compiles, not
 discovered by walking into it.
+
+2026-09-09, portals in the lab: `portal.test.js` 17 cases, the map checked as
+an ISOMETRY -- distances and angles preserved, one aperture centre carried onto
+the other -- rather than against a second implementation of itself, because a
+portal that agrees with its own inverse can still be the wrong portal. The
+browser `--ball-lab` check grew from 35 to 45 and now walks a portal room
+end to end: one transit, out at the far gate, camera turned, still grounded,
+never sunk. Real GPU, cold shader cache, 0.7 s.
+
+One defect this step found in code shipped before it. Pointer lock is a
+REQUEST, not a right -- the browser refuses it outside a user gesture, and in
+newer Chrome that refusal is a rejected promise rather than a thrown error, so
+`canvas.requestPointerLock?.()` left it unhandled and the page reported itself
+as broken when nothing was wrong. Play worked the whole time; only the mouse
+stayed free.
+
+Not done: a portal cannot be AUTHORED in the lab yet -- anchors and connections
+have no inspector, so a portal can only arrive in a loaded document. The
+apertures are E3 only, and the map is an isometry of one space; a portal
+between two different geometries is the same shape of object with a map that is
+a correspondence rather than an isometry, and `portal.js` is where that goes.

@@ -130,6 +130,9 @@ export function compileSceneField(source) {
     /** vec4(centre, radius) per aperture, for drawing them. */
     portalDiscs: () => portals.map((x) => [...x.center, x.radius]),
     portalNormals: () => portals.map((x) => [...x.normal, 0]),
+    /** Where each aperture lets out, and the linear part of the map to it. */
+    portalExits: () => portals.map((x) => [...x.exitCenter, 0]),
+    portalMaps: () => portals.map((x) => x.matrix),
     /** Every entity, in document order, for an inspector to list. */
     entities: () => scene.entities.map((e) => structuredClone(e)),
     /**

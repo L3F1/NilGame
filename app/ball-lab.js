@@ -24,12 +24,18 @@ gl.attachShader(program, shader(gl.FRAGMENT_SHADER, BALL_FIRST_PERSON_GLSL));
 gl.linkProgram(program);
 if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
 const U = Object.fromEntries(['uBalls', 'uBallN', 'uPlanes', 'uPlaneN', 'uRes',
-  'uEye', 'uFwd', 'uRight', 'uUp', 'uExtent', 'uSelected']
+  'uEye', 'uFwd', 'uRight', 'uUp', 'uExtent', 'uSelected',
+  'uPortals', 'uPortalNml', 'uPortalExit', 'uPortalMap', 'uPortalN']
   .map((n) => [n, gl.getUniformLocation(program, n)]));
 
-const response = await fetch('../levels/fixtures/room.nil.json');
-if (!response.ok) throw new Error('Cannot load the room fixture');
-let scene = compileSceneField(await response.json()).document(), undo = [], redo = [];
+const params = new URLSearchParams(location.search);
+async function fetchFixture(name) {
+  const r = await fetch(`../levels/fixtures/${name}.nil.json`);
+  if (!r.ok) throw new Error(`Cannot load the ${name} fixture`);
+  return compileSceneField(await r.json()).document();
+}
+const startName = params.get('scene') || 'room';
+let scene = await fetchFixture(startName), undo = [], redo = [];
 let selected = compileSceneField(scene).entities().find((e) => e.kind === 'ball')?.id || null;
 
 // --- the player ------------------------------------------------------------
@@ -40,6 +46,7 @@ const probe = {
   radius: scene.units.playerRadius, grounded: false,
 };
 let yaw = Math.PI / 2, pitch = -0.15, playing = false, last = null, note = '';
+let transited = 0;
 const keys = new Set();
 const SPEED = 3.2;
 const gravityOn = () => $('gravity').checked;
@@ -54,6 +61,26 @@ function basis() {
   const r = [Math.sin(yaw), -Math.cos(yaw), 0];
   return { f, r, u: [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]] };
 }
+/**
+ * Point the camera along a world direction.
+ *
+ * A TRANSIT ROTATES THE WORLD, and the camera is the host's, not the engine's,
+ * so nothing carries it through unless this does. Skipping it is not a subtle
+ * visual error: the walker emerges facing back the way they came, walks
+ * straight into the far aperture again, and the portal reads as broken.
+ *
+ * Yaw and pitch are recovered rather than a full frame kept, which silently
+ * drops ROLL. That is right for a walker whose up is the world's up and wrong
+ * the moment an aperture is tilted -- so it is a limit of this camera, not of
+ * `portal.mapVector`, and the place to fix it when a wall portal exists.
+ */
+function aimAlong(f) {
+  const n = Math.hypot(...f);
+  if (!(n > 1e-9)) return;
+  yaw = Math.atan2(f[1], f[0]);
+  pitch = Math.asin(Math.max(-1, Math.min(1, f[2] / n)));
+}
+
 function want() {
   const { f, r } = basis(), v = [0, 0, 0];
   const add = (d, k) => { for (let i = 0; i < 3; i++) v[i] += d[i] * k; };
@@ -136,6 +163,15 @@ function draw() {
   gl.uniform3fv(U.uEye, probe.position); gl.uniform3fv(U.uFwd, f);
   gl.uniform3fv(U.uRight, r); gl.uniform3fv(U.uUp, u);
   gl.uniform1f(U.uExtent, field.extent);
+  // The apertures. The shader re-aims the ray with the SAME matrix the walker
+  // is carried by, so the far side you see is the far side you arrive in.
+  const discs = field.portalDiscs().flat(), nml = field.portalNormals().flat();
+  const exits = field.portalExits().flat(), maps = field.portalMaps().flat();
+  gl.uniform4fv(U.uPortals, discs.length ? discs : [0, 0, 0, 0]);
+  gl.uniform4fv(U.uPortalNml, nml.length ? nml : [0, 0, 1, 0]);
+  gl.uniform4fv(U.uPortalExit, exits.length ? exits : [0, 0, 0, 0]);
+  gl.uniformMatrix3fv(U.uPortalMap, false, maps.length ? maps : new Array(9).fill(0));
+  gl.uniform1i(U.uPortalN, field.portalCount);
   // Which BALL is selected, as an index into the ball array the shader loops
   // over -- not the entity index, which counts spawns and planes too.
   const ballIds = field.entities().filter((e) => e.kind === 'ball').map((e) => e.id);
@@ -144,9 +180,12 @@ function draw() {
 
   drawList(field);
   const gap = clearance(field, probe.position, probe.radius);
-  $('query').textContent = `${field.solidCount} solid${field.solidCount === 1 ? '' : 's'}.`
+  const gates = field.portalCount ? `, ${field.portalCount / 2} portal${field.portalCount === 2 ? '' : 's'}` : '';
+  $('query').textContent = `${field.solidCount} solid${field.solidCount === 1 ? '' : 's'}${gates}.`
     + ` Player clearance ${gap.toFixed(3)}${gap < 0 ? ' — OVERLAPPING' : ''}`
-    + `${probe.grounded ? ', on the ground' : ''}.${note ? ' ' + note : ''}`;
+    + `${probe.grounded ? ', on the ground' : ''}`
+    + `${transited ? `, ${transited} transit${transited === 1 ? '' : 's'}` : ''}`
+    + `.${note ? ' ' + note : ''}`;
   $('undo').disabled = !undo.length; $('redo').disabled = !redo.length;
 }
 
@@ -176,19 +215,22 @@ function frame(now) {
   const field = compileSceneField(scene);
   const target = want();
   let out;
+  const portals = field.portals;
   if (gravityOn()) {
-    out = stepWalker(field, space, probe, dt, { want: target, jump: keys.has('Space') });
+    out = stepWalker(field, space, probe, dt, { want: target, jump: keys.has('Space'), portals });
     probe.grounded = out.grounded;
   } else {
     // Free flight: the control IS the velocity, so nothing accumulates.
     out = stepWalker(field, space, { ...probe, velocity: target }, dt,
-      { gravity: 0, want: target, jump: false });
+      { gravity: 0, want: target, jump: false, portals });
     probe.grounded = false;
   }
   probe.position = out.position; probe.velocity = out.velocity;
+  for (const transit of out.transits) { aimAlong(transit.portal.mapVector(basis().f)); transited++; }
   note = out.contacts.length
     ? `Contact normal ${out.contacts[0].map((n) => n.toFixed(2)).join(', ')}.`
-    : out.stalled ? 'Solver stalled — grazing a surface.' : '';
+    : out.blocked ? `Portal ${out.blocked.portal.id} refused: the far side is blocked.`
+      : out.stalled ? 'Solver stalled — grazing a surface.' : '';
   draw();
   requestAnimationFrame(frame);
 }
@@ -198,8 +240,14 @@ function setPlaying(on) {
   canvas.style.cursor = on ? 'crosshair' : 'default';
   if (on) {
     probe.position = spawnOf(scene); probe.velocity = [0, 0, 0];
-    probe.grounded = false; note = '';
-    canvas.requestPointerLock?.(); requestAnimationFrame(frame);
+    probe.grounded = false; note = ''; transited = 0;
+    // POINTER LOCK IS A REQUEST, NOT A RIGHT. The browser refuses it outside a
+    // user gesture and for a few seconds after Esc, and in newer Chrome that
+    // refusal is a REJECTED PROMISE rather than a thrown error -- so `?.()`
+    // alone leaves it unhandled and the page reports itself as broken when
+    // nothing is wrong. Play still works; only the mouse stays free.
+    try { canvas.requestPointerLock?.()?.catch?.(() => {}); } catch { /* refused */ }
+    requestAnimationFrame(frame);
   } else { document.exitPointerLock?.(); keys.clear(); draw(); }
 }
 
@@ -253,6 +301,16 @@ $('delete').onclick = () => {
     $('status').textContent = `deleted ${id}`;
   } catch (error) { $('status').textContent = error.message; }
 };
+$('fixture').value = startName;
+$('fixture').onchange = async () => {
+  try {
+    setPlaying(false);
+    commit(await fetchFixture($('fixture').value));
+    selected = compileSceneField(scene).entities()[0]?.id || null;
+    draw();
+    $('status').textContent = `Loaded ${$('fixture').value}`;
+  } catch (error) { $('status').textContent = error.message; }
+};
 $('undo').onclick = () => stepHistory(undo, redo);
 $('redo').onclick = () => stepHistory(redo, undo);
 $('play').onclick = () => setPlaying(!playing);
@@ -288,7 +346,7 @@ draw();
 if (new URLSearchParams(location.search).has('check')) {
   const checks = [];
   const check = (name, ok) => { if (!ok) throw new Error(name); checks.push(name); };
-  let err = '';
+  let err = '', shot = '';
   try {
     const initial = JSON.stringify(scene);
     const pixels = () => {
@@ -408,10 +466,66 @@ if (new URLSearchParams(location.search).has('check')) {
       shown.some((v, i) => i % 4 < 3 && v !== shown[i % 4]));
     setPlaying(false);
     check('stopping play leaves the document untouched', JSON.stringify(scene) === roundtrip);
+
+    // --- portals ----------------------------------------------------------
+    const flat = pixels();
+    commit(await fetchFixture('portal-room'));
+    const gated = compileSceneField(scene);
+    check('the portal fixture compiles two one-way apertures', gated.portalCount === 2);
+    check('an aperture is a hole, not a solid', gated.distance(gated.portals[0].center) > 0);
+    check('the renderer gets a map for each aperture',
+      gated.portalMaps().length === 2 && gated.portalMaps()[0].length === 9);
+
+    // The picture must come from the SAME map as the physics. Compare the
+    // matrix the shader is handed against mapVector, because a portal drawn
+    // from a second derivation can show a room you do not arrive in.
+    const M = gated.portalMaps()[0], v = [0.3, -0.7, 0.65];
+    const byMatrix = [M[0] * v[0] + M[3] * v[1] + M[6] * v[2],
+      M[1] * v[0] + M[4] * v[1] + M[7] * v[2],
+      M[2] * v[0] + M[5] * v[1] + M[8] * v[2]];
+    const byMap = gated.portals[0].mapVector(v);
+    check('the drawn map is the walked map',
+      byMatrix.every((x, i) => Math.abs(x - byMap[i]) < 1e-9));
+
+    setPlaying(true);
+    // Aim at the gate, which stands between the spawn and the far room, and
+    // walk. One transit, and the camera must come out facing the way the
+    // walker now moves -- without that it faces back at the aperture it left
+    // and ping-pongs, which is the failure the kernel test measures at 70.
+    aimAlong([0, 1, 0]);
+    const beforeYaw = yaw;
+    let saw = 0, sankThroughGate = false;
+    for (let i = 0; i < 240; i++) {
+      const f2 = compileSceneField(scene);
+      const out = stepWalker(f2, space, probe, 1 / 60,
+        { want: [Math.cos(yaw) * 3, Math.sin(yaw) * 3, 0], portals: f2.portals });
+      for (const transit of out.transits) { aimAlong(transit.portal.mapVector(basis().f)); saw++; }
+      probe.position = out.position; probe.velocity = out.velocity; probe.grounded = out.grounded;
+      if (clearance(f2, probe.position, probe.radius) < -1e-3) sankThroughGate = true;
+    }
+    check('never sank while walking a portal room', !sankThroughGate);
+    check('walking into the gate transits exactly once', saw === 1);
+    check('and comes out at the far gate', probe.position[0] > 4);
+    check('the camera turned with the walker', Math.abs(yaw - beforeYaw) > 0.1);
+    check('still standing after the transit', probe.grounded);
+    draw();
+    check('a portal room does not render the same picture as a flat one',
+      pixels().some((x, i) => x !== flat[i]));
+    // A PICTURE OF A PORTAL, for a human to look at. Every check above can
+    // pass on a view that is upside down or shows the near room twice; only
+    // looking catches that. Stand back from gate-a, put a ball where gate-b
+    // lets out, and the shot should show the teal ball THROUGH the rimmed
+    // aperture while the near room has none.
+    commit(addEntity(scene, 'ball', { position: [6, 1.6, 0.7], radius: 0.7 }));
+    probe.position = [0, -3.2, 1.2]; selected = null;
+    yaw = Math.PI / 2; pitch = 0;
+    draw();
+    shot = canvas.toDataURL('image/png');
+    setPlaying(false);
     check('no GL errors', gl.getError() === gl.NO_ERROR);
   } catch (error) { err = error.stack; }
   await fetch('/__report', {
     method: 'POST',
-    body: JSON.stringify({ err, boot: $('boot').textContent, hud: 'E3 scene authoring lab', px: 'render compared', checks }),
+    body: JSON.stringify({ err, boot: $('boot').textContent, hud: 'E3 scene authoring lab', px: 'render compared', checks, shot }),
   });
 }

@@ -27,8 +27,8 @@
 // cannot reproduce at all.
 
 import { createServer } from 'node:http';
-import { readFileSync, existsSync } from 'node:fs';
-import { join, extname, dirname } from 'node:path';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { join, extname, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { runBrowserSession, killOwnedChild, parseReportTimeoutMs } from './browser-process.js';
@@ -192,6 +192,15 @@ console.log('boot panel        :', report.boot ? report.boot.split('\n').slice(0
 console.log('hud first line    :', first || '(EMPTY - the module never ran)');
 console.log('centre pixel      :', report.px);
 if (report.checks) console.log(`${ballLab ? 'ball editor' : 'world/input'} checks : ${report.checks.length} passed`);
+// A SCREENSHOT, when the page offers one. Numeric checks pass happily on a
+// view that is upside down or drawing the floor above the horizon -- that is
+// not hypothetical, it happened here and only a picture caught it. So a page
+// may return `shot` as a data URL and this writes it out to be looked at.
+if (report.shot) {
+  const at = resolve(process.env.SHOT || 'page-check-shot.png');
+  writeFileSync(at, Buffer.from(report.shot.split(',')[1], 'base64'));
+  console.log('screenshot        :', at);
+}
 
 const problems = [];
 if (report.err) problems.push('the page threw');

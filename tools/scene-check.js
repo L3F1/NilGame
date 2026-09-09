@@ -18,7 +18,12 @@ try {
     const stretch = transferStretch(source, target, distance);
     console.log(`${a.regionId} -> ${b.regionId}: radial ${target.distance(target.decode([0, 0, 0]), mapped).toFixed(4)}, transverse stretch ${stretch.transverse.toFixed(4)}`);
   }
-  console.log('Scene data and origin-centered transfer samples passed; portal traversal is not implemented.');
+  // What this tool checks and what it does NOT. Traversal is implemented and
+  // tested (portal.test.js, and the lab walks one), but it is not tested HERE:
+  // this checks the document and the transfer samples, so saying "passed"
+  // without saying what was not looked at would overclaim.
+  console.log('Scene data and origin-centered transfer samples passed; '
+    + 'traversal is covered by portal.test.js, not by this tool.');
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

@@ -56,11 +56,20 @@ The previous backlog is preserved in
 - [x] Same-geometry authored portal transit, in the KERNEL: swept crossing
   mid-step, arclength conserved through the gate, blocked-exit refusal, and an
   aperture too narrow for the player refused at compile time. 16 tests.
-- [ ] Wire portals into the lab: draw the apertures, and carry the CAMERA
+- [x] Wire portals into the lab: apertures drawn, and the CAMERA carried
   through `transit.portal.mapVector` on every transit. Without that last part a
   walker re-crosses the far gate immediately and ping-pongs.
-- [ ] See through a portal (render the far side). Transit works without it, but
-  an invisible gate is not usable by a person.
+- [x] See through a portal. The ray is re-aimed by the SAME matrix the walker
+  is carried by (`portal.matrix`, the linear part as a column-major mat3), so
+  the far side you see is the far side you arrive in -- a second, hand-written
+  copy of the map would let the picture and the physics disagree while each
+  looked right alone. Up to four apertures per ray, so a portal seen through a
+  portal works. Browser check 35 -> 45, and it now returns a PNG to look at.
+- [ ] Roll through a tilted aperture. The lab's camera is yaw/pitch, so
+  `aimAlong` silently drops roll; correct for a walker whose up is the world's
+  up, wrong the moment a portal is set in a wall.
+- [ ] Author a portal in the lab: add/remove anchors and connections through
+  the inspector. Today a portal can only arrive in a loaded document.
 - [x] Replace duplicated oversized agent instructions with shared working rules,
   compact Astra/Claude entry points and a bounded Muse handoff queue. See
   [agent setup](docs/engineering/AGENT_SETUP.md) for Ubuntu/WSL instructions.

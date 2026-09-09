@@ -82,6 +82,30 @@ test('mapPoint and mapVector are different operations', () => {
   near(Math.hypot(...A.mapVector(dir)), 1, 1e-12, 'mapVector keeps it a unit vector');
 });
 
+test('the MATRIX the renderer uses is the same map the walker uses', () => {
+  // This is the whole reason `matrix` exists. The shader cannot call
+  // mapVector, so it gets the linear part as numbers -- and if those numbers
+  // came from a second hand-written derivation, the picture could show one
+  // room while the walker arrived in another, which is the single worst bug a
+  // portal can have because both halves look right on their own.
+  const M = A.matrix;
+  assert.equal(M.length, 9);
+  const applyM = (v) => [
+    M[0] * v[0] + M[3] * v[1] + M[6] * v[2],   // column-major, as GL wants it
+    M[1] * v[0] + M[4] * v[1] + M[7] * v[2],
+    M[2] * v[0] + M[5] * v[1] + M[8] * v[2],
+  ];
+  for (const v of [[1, 0, 0], [0, 1, 0], [0, 0, 1], [0.3, -0.7, 0.65]]) {
+    near(dist(applyM(v), A.mapVector(v)), 0, 1e-12, 'matrix equals mapVector');
+  }
+  // And the point map is that same matrix about the centres, which is what the
+  // shader reconstructs: exitCenter + M * (p - center).
+  const p = [0.4, -0.2, 1.5];
+  const rebuilt = applyM([p[0] - A.center[0], p[1] - A.center[1], p[2] - A.center[2]])
+    .map((x, i) => x + A.exitCenter[i]);
+  near(dist(rebuilt, A.mapPoint(p)), 0, 1e-12, 'matrix plus centres equals mapPoint');
+});
+
 // --- crossing the aperture ------------------------------------------------
 
 test('a segment through the disc crosses; one outside it does not', () => {
