@@ -8,9 +8,15 @@ that table lacks: **which machine it runs on and how long it takes**.
 
 ## The two platform restrictions
 
-1. **Browser/GPU checks run ONLY on Windows.** WSL's Linux node cannot
-   spawn Chrome (socketpair block: `UtilBindVsockAnyPort: socket failed`),
-   so every check needing a page, ANGLE or a real GPU is Windows-only.
+1. ~~**Browser/GPU checks run ONLY on Windows.**~~ **SUPERSEDED 2026-09-09.**
+   The LINUX Chrome still cannot start in WSL -- the sandbox denies
+   `socketpair(2)` and no flag avoids it -- but that was never the only
+   Chrome available. `tools/browser-host.js` launches the WINDOWS Chrome
+   through WSL interop, which runs outside the Linux sandbox entirely.
+   Measured from WSL on this machine: `page-check --ball-lab` 57 checks,
+   `page-check --worlds` **346 checks in 31.6 s**, both on a real GPU with
+   a cold shader cache. See "Running browser checks from WSL" below,
+   including the one thing that will bite you if you write this yourself.
 2. **`browser-process.test.js` real-worker cases run ONLY on POSIX.**
    Windows has no process groups: `process.kill(-pid)` throws ESRCH even
    for a live child. The suite skips those cases before spawning on
@@ -44,3 +50,41 @@ exit 0 ([integration](opus-integration-2026-09-09.md)). Old
 `--timeout=` only bounds the report wait (default 300 s); it never
 changes what is checked. Run browser/GPU checks sequentially; concurrent
 Chrome runs distort timings and caches.
+
+## Running browser checks from WSL
+
+Nothing to configure. `page-check` finds the Windows Chrome by itself and
+prints `browser : Windows Chrome via WSL interop` when it takes that route.
+
+What makes it work, all measured rather than assumed:
+
+- `/mnt/c/Program Files/Google/Chrome/Application/chrome.exe` launches from
+  WSL and exits 0. The earlier reading of EPERM on `chrome.exe` was an
+  artifact: `timeout(1)` is itself broken in that sandbox (`timeout 10 echo
+  hi` -> Operation not permitted, exit 126) and the probe ran through it.
+  Interop was never actually tested.
+- Windows Chrome reaches a server bound to **127.0.0.1 inside WSL**, which is
+  what `page-check` binds. Tested explicitly rather than inferred from
+  `localhost` working.
+- `taskkill.exe` and `wslpath` are both on PATH from WSL.
+- `--user-data-dir` is translated to a Windows path. Handing Chrome `/tmp/x`
+  makes it create that relative to the Windows drive root, silently.
+
+**The thing that will bite you.** Killing the WSL-side child does NOT reap the
+Windows Chrome: measured, 11 processes from one run survived both SIGTERM and
+SIGKILL to the Linux child, because that child is an interop stub and the real
+tree is on the Windows side. A naive port leaks a browser tree per run on the
+user's own desktop. So each run stamps a unique inert switch
+(`--nilgame-run-id=<uuid>`) onto Chrome's command line, resolves the root of
+the tree carrying that stamp, and kills it by PID with `taskkill /T /F`.
+Nothing is ever matched by image name, so a run cannot see another run's
+browser, let alone the user's own -- which is the standing rule that only a
+test's own process tree may be cleaned up. If anything survives, `page-check`
+prints a WARNING naming the count rather than widening the match.
+
+**Not yet verified in the sandboxed agent shell.** The measurements above were
+taken in a plain WSL shell on this machine. Whether the agent sandbox permits
+`execve` of a Windows binary at all is a separate question from whether it
+permits `socketpair`, and it has not been tested. Run
+`node tools/page-check.js --ball-lab` there first; if it fails, record the
+exact error, because it is a different block from the one this routes around.

@@ -49,12 +49,16 @@ const sw = argv.includes('--sw');
 const warm = argv.includes('--warm');
 const doSwitch = argv.includes('--switch');
 const preset = flag('preset', 'fight');
+// This world has no fundamental domain, so a run without a face crossing is
+// a complete run rather than an inconclusive one. Opt in explicitly: guessing
+// it per preset in here is how a check quietly stops checking.
+const noFolds = process.argv.includes('--no-folds');
 const frames = flag('frames', '3000');
 const seed0 = flag('seed', '1');
 const seedCount = flag('seeds', '3');
 if (!/^[a-z0-9]+$/i.test(preset) || !/^\d+$/.test(frames)
     || !/^\d+$/.test(seed0) || !/^\d+$/.test(seedCount) || Number(seedCount) < 1) {
-  console.error('Usage: --preset=NAME --frames=N --seed=N --seeds=N [--switch] [--sw] [--warm] [--timeout=SECONDS]');
+  console.error('Usage: --preset=NAME --frames=N --seed=N --seeds=N [--switch] [--no-folds] [--sw] [--warm] [--timeout=SECONDS]');
   process.exit(2);
 }
 let timeoutMs;
@@ -192,11 +196,23 @@ const folds = results.reduce((n, r) => n + (r.report.crossings || 0), 0);
 const problems = [];
 if (hardFailure) problems.push(hardFailure);
 // Across the whole invocation, not per seed: see the note at the top.
-if (!hardFailure && folds === 0) {
+// NOT EVERY WORLD HAS FACES TO CROSS. Only the quotients do: the spherical,
+// product and Lie-group worlds have no fundamental domain at all, and e3t
+// folds inside its distance function rather than at a face. Demanding a
+// crossing there reported FAIL on runs where the game was fine, which is worse
+// than not running them -- a check that cries wolf gets ignored, and the H3
+// case it protects is the one that matters.
+//
+// The expectation is the CALLER'S to state rather than a table in here that
+// would silently rot as worlds are added. Without --no-folds the demand
+// stands, so the default still protects the quotient worlds.
+if (!hardFailure && folds === 0 && !noFolds) {
   problems.push(`no face crossings in any of ${count} seeds: the fold path was never `
-    + 'exercised, so this run proves little - try more seeds or more frames');
+    + 'exercised, so this run proves little - try more seeds or more frames. '
+    + 'If this world has no fundamental domain (spherical, the products, the '
+    + 'Lie-group labs), pass --no-folds and say so');
 }
 console.log(problems.length
   ? `\nFAIL ${problems.join('; ')}`
-  : `\nok   played ${count} x ${frames} frames of ${preset} across ${folds} face crossings, and nothing broke`);
+  : `\nok   played ${count} x ${frames} frames of ${preset} ${noFolds ? '(no fundamental domain; no crossings expected)' : `across ${folds} face crossings`}, and nothing broke`);
 process.exit(problems.length ? 1 : 0);

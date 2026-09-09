@@ -33,6 +33,9 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { runBrowserSession, killOwnedChild, parseReportTimeoutMs } from './browser-process.js';
 import { acquireBrowserProfile } from './browser-profile.js';
+import {
+  findBrowser, isWindowsExe, hostPathForBrowser, runStamp, killWindowsBrowserTree,
+} from './browser-host.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const PORT = 8771;
@@ -51,18 +54,9 @@ try {
   process.exit(2);
 }
 
-function findBrowser() {
-  const c = [
-    `${process.env.ProgramFiles}\\Google\\Chrome\\Application\\chrome.exe`,
-    `${process.env['ProgramFiles(x86)']}\\Google\\Chrome\\Application\\chrome.exe`,
-    `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/usr/bin/google-chrome', '/usr/bin/chromium',
-  ];
-  const hit = c.find((p) => p && existsSync(p));
-  if (!hit) throw new Error('no Chrome found; install Chrome or use a host where it is available');
-  return hit;
-}
+// Browser discovery, path translation and the WSL interop route now live in
+// tools/browser-host.js, which documents why a Windows Chrome is preferred
+// from WSL and why its cleanup has to cross back to the Windows side.
 
 // Everything below runs in the page. It waits FRAMES frames so the loop has
 // really been round, not just started.
@@ -134,11 +128,22 @@ try {
 // HTTP server on every completion path. See tools/browser-process.js.
 let browserErrors = '';
 const t0 = Date.now();
+// INTEROP. On WSL the Linux Chrome cannot start at all (seccomp denies
+// socketpair), so we launch the WINDOWS Chrome, which runs outside that
+// sandbox. Two consequences, both handled rather than hoped over: the profile
+// path has to be handed over in Windows form, and the process tree that needs
+// cleaning up is on the Windows side, where a Linux signal cannot reach it.
+const browser = findBrowser();
+const crossHost = isWindowsExe(browser) && process.platform !== 'win32';
+const stamp = crossHost ? runStamp() : null;
+if (crossHost) console.log('browser           : Windows Chrome via WSL interop');
+
 const session = await runBrowserSession({
   launch: () => {
-    const child = spawn(findBrowser(), [
+    const child = spawn(browser, [
       '--enable-logging=stderr',
-      '--headless=new', `--user-data-dir=${profile.path}`,
+      ...(stamp ? [stamp] : []),
+      '--headless=new', `--user-data-dir=${hostPathForBrowser(profile.path, browser)}`,
       '--no-first-run', '--no-default-browser-check', '--disable-background-networking',
       ...(sw ? ['--enable-unsafe-swiftshader', '--use-angle=swiftshader']
              : ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist']),
@@ -157,6 +162,18 @@ const session = await runBrowserSession({
     try {
       if (owned?.pid) {
         await killOwnedChild(owned, { posixProcessGroup: process.platform !== 'win32' });
+      }
+      // Killing the interop stub does NOT reap the Windows tree -- measured,
+      // 11 processes survived both SIGTERM and SIGKILL to the Linux child. So
+      // cross back and kill exactly the tree carrying this run's stamp. The
+      // result is REPORTED rather than escalated: if something survives, say
+      // so, do not widen the match until it dies.
+      if (stamp) {
+        const swept = killWindowsBrowserTree(stamp);
+        if (!swept.killed && swept.remaining !== 0) {
+          console.error(`WARNING: ${swept.remaining} browser process(es) from this run `
+            + `survived cleanup (${swept.reason || `root pid ${swept.root}`}).`);
+        }
       }
     } finally {
       if (typeof srv.closeAllConnections === 'function') srv.closeAllConnections();

@@ -5,7 +5,10 @@ and docs/engineering/WORKING_RULES.md. Current overnight authorization is below.
 
 ## Overnight execution
 
-Current batch: MUSE-08 -> MUSE-09 -> MUSE-10, then MUSE-11 -> MUSE-15.
+Current batch: MUSE-16 FIRST (one command, everything else depends on it),
+then MUSE-17 if it passes, then MUSE-18 which needs no browser.
+MUSE-08..13 are accepted and integrated; MUSE-14 and MUSE-15 were closed by the
+lead on the Windows host. Do not reopen any of them.
 MUSE-11 through MUSE-15 were added 2026-09-09 by the lead and are INDEPENDENT
 of each other and of 08-10: a blocker in one does not stall the rest. Two of
 them need the Windows host with a real GPU and cannot run from WSL (MUSE-14,
@@ -646,6 +649,142 @@ Windows host with a real GPU; say which GPU and which browser build.
   reviewer can see the shape of what you are summarising.
 - Acceptance: a table with every program, three samples each, an explicit
   statement of the cold-cache method, and the machine and browser identified.
+
+## MUSE-14 and MUSE-15: CLOSED by the lead, 2026-09-09
+
+Both needed the Windows host. Run here rather than left blocked:
+
+- **MUSE-15 done** — `docs/qa/link-time-2026-09.md`. Three cold runs of all
+  nine programs on an RTX 5070 Ti. The finding: cost is concentrated in ONE
+  program and tracks the QUOTIENT, not the curvature. Hyperbolic ~9.0 s median;
+  Nil, Sol and SL2R 0.2–0.3 s; the editor's own program 0.7 s. Two orders of
+  magnitude across eight geometries, so "the browser is slow to compile
+  shaders" is too coarse a statement to plan with. Run 1 was consistently
+  slowest, so a single sample would have overstated it by 20%. Left open: per
+  program source length and primitive counts, which MUSE-15 also asked for --
+  see MUSE-18.
+- **MUSE-14 done** — `docs/qa/play-sweep-2026-09.md`. 201,000 frames across 11
+  presets and 38 seeds, 112 face crossings, 36,000 frames of mid-run world
+  switching. No `geom.js` error, no crash, every run exit 0. Roughly five times
+  the earlier volume and eleven presets rather than one. It does not clear
+  `geom.js:80`; it narrows what is left to the things the probe does not do.
+  One real defect found in the TOOL: `play-check` failed four presets on a rule
+  that does not apply to them, demanding a face crossing in worlds that have no
+  fundamental domain. Fixed with an opt-in `--no-folds`; the default still
+  demands a crossing, verified both ways.
+
+## THE WSL BROWSER BLOCK IS ROUTED AROUND
+
+Read this before planning: the constraint that shaped the last several batches
+is mostly gone.
+
+The LINUX Chrome still cannot start in the sandbox — `socketpair(2)` is denied
+and no flag avoids it — but it was never the only Chrome on the machine.
+`tools/browser-host.js` launches the WINDOWS Chrome through WSL interop, which
+runs outside the Linux sandbox entirely. `page-check` uses it automatically and
+prints `browser : Windows Chrome via WSL interop` when it does.
+
+Measured from a WSL shell on this machine: `--ball-lab` 57 checks, `--worlds`
+**346 checks in 31.6 s**, both real GPU, cold shader cache.
+
+**But verify it in YOUR shell first, because mine was not sandboxed.** Whether
+the agent sandbox permits `execve` of a Windows binary is a different question
+from whether it permits `socketpair`, and it is untested. MUSE-16 is exactly
+that check and nothing else should be planned around browser access until it
+comes back.
+
+The earlier "interop is EPERM" reading was an artifact: `timeout(1)` is itself
+broken in that sandbox (`timeout 10 echo hi` -> Operation not permitted, exit
+126) and the probe ran through it. Interop was never actually tested. Worth
+remembering as a pattern — a broken instrument reported a blocked capability,
+and that reading stood for weeks.
+
+## MUSE-16 - Does the interop route work in the sandboxed shell?
+
+Status: OPEN | Owner: Muse | Reviewer: Opus | **Do this one first**
+
+Everything else about browser access depends on the answer, and the answer is
+one command. Do not plan other browser work until this is recorded.
+
+- Allowed writes: `docs/qa/overnight-results.md`, this task's status and report.
+  Change no code. If it fails, the fix is the lead's.
+- Run `node tools/page-check.js --ball-lab` in your normal sandboxed shell from
+  the repository root. Record the FULL output, exit code and wall time.
+- If it prints `browser : Windows Chrome via WSL interop` and passes: say so,
+  give the check count, and then run `node tools/page-check.js --worlds` and
+  record that too. Browser checks are now available to you.
+- If it fails, the exact error is the deliverable and it matters which kind:
+  - a `socketpair` error means it found the LINUX Chrome. Report which path
+    `findBrowser` returned (`node -e "import('./tools/browser-host.js').then(m
+    => console.log(m.findBrowser(), m.isWsl()))"`).
+  - an EPERM/EACCES on the `.exe` means the sandbox blocks Windows interop
+    itself, which is a different block from the one this routes around. Say so
+    plainly; that is a real finding, not a failure.
+  - anything else: quote it verbatim.
+- Also record, either way: `cat /proc/version`, whether
+  `/mnt/c/Program Files/Google/Chrome/Application/chrome.exe` is readable, and
+  whether `command -v taskkill.exe` and `command -v wslpath` resolve.
+- Do NOT retry more than twice, and do not attempt workarounds. One clean
+  reading is worth more than an afternoon of flags.
+- Acceptance: a verdict sentence of the form "browser checks ARE / ARE NOT
+  available in the sandboxed shell", with the command output that shows it.
+
+## MUSE-17 - Run everything that was blocked, now that it may not be
+
+Status: OPEN | Owner: Muse | Reviewer: Opus | Blocked on MUSE-16 passing
+
+If MUSE-16 says browser checks are unavailable, STOP and skip this task; do not
+attempt it from a host that cannot run it.
+
+Several check families have been cited rather than run for weeks, which means
+nobody has actually confirmed them against current `main`. Run them.
+
+- Allowed writes: `docs/qa/overnight-results.md`, `docs/qa/check-runbook.md`
+  (the timing column only, for rows you personally ran), this task's status and
+  report. No code changes.
+- Run and record, each with command, exit code, wall time and the count it
+  reports: `page-check --worlds`, `page-check --ball-lab`, `page-check --sw
+  --worlds`, `tools/net-check.js` (the peer half that needed Chrome),
+  `tools/play-check.js` default, `tools/link-time.js`.
+- For every row in `check-runbook.md` currently marked "cited", either replace
+  it with a measured figure you ran, or say why you could not.
+- Watch for the WARNING `page-check` prints when a browser process from its own
+  run survives cleanup. If you ever see it, that is a leak and it is the most
+  important thing in your report -- quote it and say how many runs you did.
+- Do NOT kill browser processes yourself under any circumstances. The cleanup
+  is by unique per-run stamp; a manual sweep would hit the user's own Chrome.
+- Acceptance: a table of every check family with a measured number from THIS
+  host, and an explicit statement of any that still cannot run.
+
+## MUSE-18 - What does shader link time scale with?
+
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+
+`docs/qa/link-time-2026-09.md` shows two orders of magnitude between programs
+and observes that the fast ones are the ones with no quotient. That is one
+binary variable across nine points, which is suggestive and not a cause. This
+task supplies the other columns so the question can be answered. No browser
+needed: the shader SOURCES are all reachable from Node.
+
+- Allowed writes: `docs/qa/link-time-inputs-2026-09.md` (new),
+  `docs/qa/overnight-results.md`, this task's status and report. Change no
+  shader, no tool logic, and do not edit `link-time-2026-09.md`.
+- For each of the nine programs `tools/link-time.js` measures, plus both ball
+  programs, record from the generated source: total characters, non-comment
+  lines, number of function definitions, number of CALLS to each function
+  (this is the inlining multiplier that CLAUDE.md's rule is about), the number
+  of `for` loops and whether each has a compile-time-constant bound, and the
+  count of `#define`d primitives actually reachable.
+- Do this by PARSING the emitted source, not by reading the modules that build
+  it. The whole point of the inlining rule is that the source the compiler sees
+  differs from the source a human reads.
+- Put the measured link times from `link-time-2026-09.md` in the same table as
+  a final column so the correlation can be eyeballed. Do NOT compute a
+  correlation coefficient over nine points and present it as a finding.
+- State plainly which single column, if any, orders the programs the same way
+  link time does -- and say so even if none of them does.
+- Acceptance: one table, eleven rows, every column measured by a command you
+  show. An honest "no column explains it" is a complete answer.
 
 ## Verdicts, 2026-09-09 (lead: Opus)
 
