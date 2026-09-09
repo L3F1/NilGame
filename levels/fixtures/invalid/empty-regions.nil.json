@@ -1,0 +1,34 @@
+{
+  "format": "nil-scene",
+  "version": 1,
+  "id": "ball-lab",
+  "units": {
+    "name": "design-unit",
+    "playerRadius": 0.07
+  },
+  "regions": [],
+  "entities": [
+    {
+      "id": "start",
+      "regionId": "flat-room",
+      "kind": "spawn",
+      "position": [
+        0,
+        -2,
+        1
+      ]
+    },
+    {
+      "id": "editable-ball",
+      "regionId": "flat-room",
+      "kind": "ball",
+      "position": [
+        0,
+        0,
+        0.25
+      ],
+      "radius": 0.6
+    }
+  ],
+  "connections": []
+}

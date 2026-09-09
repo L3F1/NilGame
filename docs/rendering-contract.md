@@ -41,8 +41,12 @@ coordinate conventions. Run `node tools/render-fixture.js nil-close-column`,
 `nil-horizon`, or `dropper-ceiling` to reproduce them. These are review images,
 not an automated image-difference assertion or scene-document v1 levels.
 
-Next engine step: give authored primitives explicit distance/intersection/
-normal capabilities, then consume the same scene data in Godot. Avoid forcing
+Done, 2026-09-09: authored primitives carry explicit distance/intersection/
+normal capabilities, `engine/world/collision.js` consumes a distance bound plus
+a normal, and Godot reads the same ball documents. Next: BOOLEANS, where `min`
+of two exact SDFs stays exact but `max` and subtraction return only a bound --
+so the capability a compiled solid advertises has to change with the operation
+that built it, or `clearance()` quietly stops meaning what it says. Avoid forcing
 every geometry through a constant-curvature exponential/logarithm interface.
 
 Validation on 2026-09-08: 18 Node suites, nine shader programs, 20 GPU field/math

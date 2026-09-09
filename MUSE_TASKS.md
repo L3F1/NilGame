@@ -365,7 +365,8 @@ Report: 18 self-contained cases in `levels/fixtures/ball-document-cases.json` wi
 
 ## MUSE-08 - Cross-platform guard for the browser-test lifecycle
 
-Status: OPEN | Owner: Muse | Reviewer: Opus
+Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@9356527, WSL node v22.23.2) | Reviewer: Opus
+Report: docs/qa/overnight-results.md (MUSE-08). browser-process.test.js +4 tests (injected-platform zero-spawn guard, win32-no-group-branch pin, closing no-stray self-check); suite 35/35-prompt-exit 0, full 23/23. POSIX live-child ESRCH seam handed back with /tmp repro; module untouched.
 
 Integration found that the MUSE-06 real-worker block ran its POSIX probe on
 Windows, hung `node browser-process.test.js` and leaked a detached worker (full
@@ -399,7 +400,8 @@ missing is the regression that would have caught it. Node-only, no Chrome.
 
 ## MUSE-09 - Shared validator conformance cases for the two ball runtimes
 
-Status: OPEN | Owner: Muse | Reviewer: Opus
+Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@9356527, WSL node v22.23.2) | Reviewer: Opus
+Report: docs/qa/overnight-results.md (MUSE-09). 22 cases with reasonKind + declared native verdicts; reporter green (exit 0), drift demo exit 1; full 23/23. No engine/.gd edits; Godot half left for the lead.
 
 `docs/engineering/NEXT_SESSION.md` asks for shared conformance cases before
 either ball runtime is extended, because `engine/world/ball-scene.js` (JS) and
@@ -438,7 +440,8 @@ design, no geometry, no GDScript logic changes.
 
 ## MUSE-10 - Which checks run on which host
 
-Status: OPEN | Owner: Muse | Reviewer: Opus
+Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@9356527, WSL node v22.23.2) | Reviewer: Opus
+Report: docs/qa/overnight-results.md (MUSE-10). New docs/qa/check-runbook.md (46 lines): host/runtime table for all 12 check families, both platform restrictions, Chrome-fixed note; Node rows timed here, rest cited with sources.
 
 The repository's checks are now split across two hosts in a way nothing states
 plainly, and integration lost time rediscovering it: Node suites run anywhere,
@@ -468,7 +471,8 @@ squarely in scope.
 
 ## MUSE-11 - Every declared uniform is located and set
 
-Status: OPEN | Owner: Muse | Reviewer: Opus
+Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@9356527, WSL node v22.23.2) | Reviewer: Opus
+Report: docs/qa/overnight-results.md (MUSE-11). New uniform-coverage.test.js: 10 programs, 57 names, both directions; fail demo on deleted uPortals set + pass restored; full 24/24. One pinned preview-program exception; no defect found.
 
 A uniform declared in GLSL but never set by its host module is SILENT: the
 value is zero, the shader compiles, the program links, and the picture is
@@ -502,7 +506,8 @@ check that would. Node-only, no Chrome, no GPU.
 
 ## MUSE-12 - Stale-claim sweep across the documentation
 
-Status: OPEN | Owner: Muse | Reviewer: Opus
+Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@9356527, WSL node v22.23.2) | Reviewer: Opus
+Report: docs/qa/overnight-results.md (MUSE-12). New docs/qa/stale-claims-2026-09.md: 14 FALSE (incl. --ball-lab 9-vs-57, program counts, AGENTS.md pointers) + 11 stale-harmless + 3 unverifiable, all evidenced with per-file read log.
 
 Documentation decays silently. `tools/scene-check.js` printed "portal traversal
 is not implemented" for a whole session after traversal was implemented and
@@ -533,7 +538,8 @@ the shape of work that is wasted on a model doing design.
 
 ## MUSE-13 - An invalid-document corpus for the scene validator
 
-Status: OPEN | Owner: Muse | Reviewer: Opus
+Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@9356527, WSL node v22.23.2) | Reviewer: Opus
+Report: docs/qa/overnight-results.md (MUSE-13). New document-invalid.test.js + 60-file corpus under levels/fixtures/invalid/ (single-defect audited); 60 message-checked refusals + 4 atomicity; full 25/25. No engine edits; 2 diagnostic observations handed back.
 
 `engine/world/document.js` refuses a lot of things, and we do not know how much
 of that is covered. A validator with an untested branch is a validator that
@@ -572,7 +578,8 @@ Node-only.
 
 ## MUSE-14 - Long seeded play sweep for the unreproduced geom.js crash
 
-Status: OPEN | Owner: Muse | Reviewer: Opus
+Status: VERIFICATION BLOCKED (WSL: no browser/GPU host) | Owner: Muse (2026-09-09) | Reviewer: Opus
+Note: requires the Windows host with headless Chrome (MUSE-14) — cannot run from WSL (socketpair block unchanged; see overnight-results MUSE-14/15 entry). Left for a Windows run; no files written.
 
 The reported crash - `Cannot read properties of undefined (reading '0')` at
 `geom.js:80` during arena play - has never been reproduced. About 40,000
@@ -609,7 +616,8 @@ headless Chrome; it CANNOT run from WSL (the socketpair block is unchanged).
 
 ## MUSE-15 - Shader link time per geometry, tabulated
 
-Status: OPEN | Owner: Muse | Reviewer: Opus
+Status: VERIFICATION BLOCKED (WSL: no browser/GPU host) | Owner: Muse (2026-09-09) | Reviewer: Opus
+Note: requires the Windows host with a real GPU (MUSE-15) — cannot run from WSL (same block; see overnight-results MUSE-14/15 entry). Left for a Windows run; no files written.
 
 `docs/host-capability-map.md` argues that the 8.4 s browser link time that
 drives the host decision belongs to the ARENA's hyperbolic program, and that the
@@ -638,6 +646,59 @@ Windows host with a real GPU; say which GPU and which browser build.
   reviewer can see the shape of what you are summarising.
 - Acceptance: a table with every program, three samples each, an explicit
   statement of the cold-cache method, and the machine and browser identified.
+
+## Verdicts, 2026-09-09 (lead: Opus)
+
+Batch MUSE-08..13 reviewed on the Windows host at `9356527` + the working tree.
+`node tools/test.js` 26/26 including the two new suites. Every acceptance below
+was re-run by the lead, not taken from the report: an agent asserting its own
+check can fail is exactly the claim that needs independent execution.
+
+- **MUSE-08 ACCEPTED.** Windows leg run here: 31 passed, 5 honest skips, prompt
+  exit, `owned real-child PIDs this run: (none)`. The diff LOOKS like it
+  deletes the `POSIX_HOST` gate; it does not -- the gate is now
+  `isPosixPlatform(platform)` with the platform injected, and it still skips
+  BEFORE anything spawns (`browser-process.test.js:510-514`), which is what the
+  task asked for. Handed-back finding accepted as real: `killOwnedChild` reads
+  a group-signal ESRCH as `already-exited` on the strength of the launch flag,
+  so a live child plus a throwing group signal reports a clean cleanup. That is
+  a genuine defect in module behaviour, correctly NOT fixed under a task that
+  forbade touching the module. Lead-owned follow-up.
+- **MUSE-09 ACCEPTED.** The `ball-scene.test.js` additions STRENGTHEN the
+  contract rather than relax it: every case must now declare a `reasonKind`
+  slug, a native verdict and the clause that answers it. 22 cases, new
+  `tools/ball-conformance.js` reporter. The five open questions for the Godot
+  run are the right shape -- they are questions, not assumptions.
+- **MUSE-10 ACCEPTED with one correction applied by the lead.** The runbook's
+  `--ball-lab` row cited 9 checks; it is 57, confirmed by three browser runs
+  here. Muse found this itself in MUSE-12 and correctly did not edit its own
+  runbook under a no-edit rule. Row fixed.
+- **MUSE-11 ACCEPTED.** Acceptance re-run by the lead rather than trusted:
+  deleting the `gl.uniform4fv(U.uPortals, ...)` line reports
+  `declared-but-never-set: ball-first-person uPortals (app/ball-lab.js)` and
+  the file restored green. 10 programs, 57 names, both directions, one
+  documented exception. This closes a class of bug nothing here could catch.
+- **MUSE-12 ACCEPTED, and the highest-value item in the batch.** 14 FALSE
+  claims with file:line and command evidence. F9 is an error in a document the
+  lead wrote the same day -- `host-capability-map.md` claimed exact ray hits in
+  eight geometries when they exist for the E3 ball and Nil columns only. An
+  agent auditing the reviewer's own fresh work and finding a real overclaim is
+  the batch working as intended. Corrections applied to `architecture.md`,
+  `playground.md`, `scene-format.md`, `README.md`, `rendering-contract.md`,
+  `host-capability-map.md`, `ball-lab.md` and this runbook.
+- **MUSE-13 ACCEPTED.** Acceptance re-run by the lead: removing the "radius
+  only applies to balls and anchors" clause from `document.js` fails with
+  `spawn-with-radius.nil.json: accepted, expected refusal (spawn.radius 0.5)`,
+  naming both the fixture and the field. 60 message-checked refusals plus 4
+  atomicity checks; 54 of ~59 rules covered with the remainder listed and
+  reasoned. Two diagnostic observations handed back, correctly unfixed.
+- **MUSE-14 and MUSE-15 remain OPEN.** Both need the Windows host with a real
+  GPU. Not attempting them from WSL, and spending no retries on a known block,
+  was the right call.
+
+One process note worth keeping: three of these six tasks were checks on work
+the lead had just shipped, and two of them found something. Queue more of that
+shape.
 
 ## Lead-owned next work
 

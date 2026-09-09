@@ -33,6 +33,9 @@ for (const c of cases) {
   try { validateScene(doc); } catch (error) { generalError=error.message; }
   if (!generalError) { try { host=compileBallScene(doc); } catch (error) { hostError=error.message; } }
   assert.equal(JSON.stringify(doc),before, `doc-case ${c.id}: validation never mutates the source`);
+  assert.match(c.reasonKind || '', /^[a-z0-9-]+$/, `doc-case ${c.id}: reasonKind must be a stable slug`);
+  assert.ok(c.native === 'accept' || c.native === 'reject', `doc-case ${c.id}: native verdict must be declared`);
+  assert.ok(c.nativeRule, `doc-case ${c.id}: nativeRule must cite the answering clause`);
   if (c.general==='accept') assert.equal(generalError,null, `doc-case ${c.id}: general rejected: ${generalError}`);
   else assert.ok(generalError, `doc-case ${c.id}: general accepted, expected rejection`);
   if (c.ballHost==='accept') assert.ok(host, `doc-case ${c.id}: ball host rejected: ${hostError}`);

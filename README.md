@@ -80,7 +80,8 @@ The scene check validates data and reports sample-transfer distortion; it
 cannot establish that a level is traversable. Run `tools/link-time.js` after
 scene complexity changes, `tools/sdf-check.js` after distance-field changes,
 `tools/march-check.js` after marcher changes, and `tools/net-check.js` after
-network changes. See AGENTS.md for the reasons and GPU requirements.
+network changes. See docs/engineering/WORKING_RULES.md for the reasons and
+GPU requirements; AGENTS.md is a router and holds neither.
 
 Reproduce the reported Nil/dropper views with `node tools/render-fixture.js`
 followed by `nil-close-column`, `nil-horizon`, or `dropper-ceiling`. These save

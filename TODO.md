@@ -88,6 +88,19 @@ The previous backlog is preserved in
   position we want through the editor camera. Untested design; one afternoon;
   the only cheap question whose answer moves the host decision. See
   [host capability map](docs/host-capability-map.md).
+- [x] **Measure whether imported assets can work in curved space**, since that
+  is the condition on the host decision. `tools/mesh-probe.js` +
+  `mesh-approx.test.js`: in the projective model geodesics are straight to
+  6e-15, so a rasterizer draws exact geodesic EDGES for free; only triangle
+  interiors approximate, at 0.114% of radius in E3 and 1.62% in H3 at radius
+  2.5 with 5120 triangles. Small props are free anywhere; large hyperbolic
+  objects cost ~14x. Nil/Sol/SL~(2,R) are NOT covered -- no projective model
+  makes their geodesics straight.
+- [ ] **A curved-space rasterizer**, if assets are wanted: projective vertex
+  shader, subdivision by object size in curvature radii, and depth interop with
+  the ray marcher so meshes and fields agree on what is in front. This is the
+  hard part of assets and it is ours in EITHER host -- Godot supplies the
+  importer, which is the cheap part.
 - [ ] **Feature references** for snapping -- a named, addressable part of a
   primitive with a point, a frame and an extent ("the +z face of that wall").
   This is what we actually want from CAD topology, and it is far less than a

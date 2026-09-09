@@ -487,3 +487,292 @@ than edited above:
 
 Verdicts, measurements and the full verification table:
 docs/qa/opus-integration-2026-09-09.md.
+
+## Continuation baseline (Muse, 2026-09-09, overnight batch 08-15)
+
+- Branch/hash: `main` at `9356527` (post-integration HEAD; earlier entries
+  in this file were recorded against `b9b42e7`).
+- OS: Linux LeoPC 6.18.33.2-microsoft-standard-WSL2 (WSL2, x86_64).
+- Node: `/usr/bin/node`, v22.23.2 (WSL Linux executable).
+- Browser/backend from WSL node: none runnable. The WSL socketpair block is
+  unchanged, so browser/GPU checks still run only from the Windows host;
+  per the queue, Linux Chrome presence was not re-investigated and no
+  browser launches, installs, or user-run requests were made.
+- Baseline (real executions, this host, new HEAD, before MUSE-08 edits):
+  `node tools/test.js` → 23/23 suites, exit 0 (includes
+  `browser-process.test.js` at 31 passed, 0 failed, 0 skipped);
+  `node tools/scene-check.js` → connected-lab 2 regions, 6 entities,
+  1 portal definition, exit 0. Prior suite/test counts of 20/20 and 29/29
+  in older queue text are stale; the numbers above are what this HEAD gives.
+- Pre-existing tree state: clean (`git status --short` empty at start).
+
+## MUSE-08 — Cross-platform guard for the browser-test lifecycle
+
+- Changed files: `browser-process.test.js` only (+4 tests, helper
+  refactor); `MUSE_TASKS.md` (this task's status line only).
+  `tools/browser-process.js`, `tools/page-check.js`,
+  `tools/browser-profile.js`, GPU flags untouched, as ordered.
+- What was added:
+  1. `isPosixPlatform(platform)` pure gate + `realTestWith(state, opts,
+     name, fn)` with INJECTED platform/spawn and explicit per-call state;
+     `realTest` is now a thin wrapper over shared state, behavior on this
+     host unchanged. `supportProbe(spawnFn)` takes the spawner as a
+     parameter so a stub can observe it.
+  2. `simulated win32 host: real-worker path spawns nothing` — counting
+     spawn stub must see zero calls and the worker body must not run;
+     uses fresh state so it cannot pollute the shared probe.
+  3. `win32 never takes the posix-group branch, even when flagged` — live
+     fake child + ESRCH-throwing group signal + `posixProcessGroup: true`
+     on injected win32 must take the structured taskkill path with zero
+     group signals (module-side pin for the integration defect).
+  4. `suite leaves no owned child alive` (runs last) — every PID the
+     suite really spawns is recorded in `spawnWorker`; asserts each is
+     gone via `kill(pid, 0)`, with EPERM/uncheckable counted as live
+     (fail, never silent pass). On non-POSIX it additionally asserts zero
+     real spawns. No sweeps, no process-name matching.
+- Bullet 3, second half — HANDED BACK, module deliberately unchanged: a
+  scratch probe (`/tmp/muse08-esrch-probe.mjs`, not in the repo) gave a
+  demonstrably LIVE child (`exitCode null`) + throwing POSIX group
+  signal to `killOwnedChild` and got back
+  `{"target":99991,"method":"already-exited"}` (probe exit 1). The
+  group-ESRCH reading trusts the launch-established `posixProcessGroup`
+  flag; it cannot distinguish "group reaped" from "no group ever
+  existed" (e.g. flag passed for a non-detached child). Suite safety
+  therefore rests on the caller-side gate + detached spawn, which guards
+  1-3 pin — not on the module detecting a wrong flag. Minimal repro is
+  the probe file above; `tools/browser-process.js:86-94` is the seam.
+- Fail-against-pre-fix demonstration: with the gate temporarily forced to
+  `if (false)` in the working copy, the new win32-simulation test FAILS
+  (`'skipped-nosupport' == 'skipped-platform'`, probe spawned once via
+  the stub), suite still exits promptly (1 s wall). Gate restored from a
+  byte copy; `diff` confirms restoration; re-run green. Pre-fix code
+  would have hung/leaked only on Windows; this simulation shows the
+  regression is caught on either host.
+- Commands (WSL node v22.23.2, repo root):
+  `node --check browser-process.test.js` → OK;
+  `node browser-process.test.js` → 35 passed, 0 failed, 1 skipped
+  (the skip is the simulated-win32 case's own SKIP line), exit 0,
+  2 s wall — prompt exit, no hang;
+  `node tools/test.js` → 23/23 suites, exit 0.
+  Stray check: suite's own PID list (6 PIDs this run, all gone) plus
+  `ps -ef | grep -F browser-worker` → no lines. (Bare `pgrep -f` in this
+  sandbox matches its own wrapper PIDs 1-2; not a signal — the PID-list
+  check and the ps grep are the evidence.)
+- Host: WSL only. The Windows leg (25 + skips + additions) is left for a
+  Windows run; nothing in the change is Windows-specific beyond the
+  injected-platform simulation, which runs anywhere.
+  Status: READY FOR REVIEW.
+
+## MUSE-09 — Shared validator conformance cases for the two ball runtimes
+
+- Changed files: `levels/fixtures/ball-document-cases.json` (18 cases
+  annotated + 4 added = 22), `ball-scene.test.js` (slug/native shape
+  asserts in the case loop), new `tools/ball-conformance.js` reporter,
+  new `levels/fixtures/ball-conformance-expectations.json` (reporter
+  output). `engine/world/ball-scene.js`, `engine/world/document.js`,
+  `tools/scene-check.js`, no `.gd` file touched, as ordered.
+- Code reading (no Godot run, none claimed): `ball_document.gd _valid`
+  accepts exactly one E3 cover + one spawn + one ball + no connections,
+  with the same field/shape/positivity/bounds rules as the JS side and a
+  SINGLE generic rejection literal for every document refusal — so no
+  `errorContains` wording can ever match natively. Hence per case:
+  `reasonKind` slug (both runtimes can match; JS `errorContains` kept),
+  `native` declared verdict, `nativeRule` citing the answering `_valid`
+  clause by line (L33 scene-shape … L63 bounds). Native answers: accept
+  only valid-lab + tangent-ball; reject the other 20.
+- Boundary finding, from the code (marked OBSERVATION in the case):
+  tangent equality is LEGAL in both adapters — JS `<=`
+  (`document.js:62`), GDScript `not >` (`ball_document.gd:63`) — with the
+  tangent case constructed exactly representable (hypot 3.5 + 0.5 === 4,
+  verified by execution). Whether the native float path lands exactly on
+  4.0 is open question 2 below, for the Godot run.
+- New cases: non-`cover` topology (`topology-not-cover`), extent zero and
+  negative (`extent-not-positive` × 2), exactly-tangent ball (`ok`,
+  accept/accept/accept). Each new reject differs from valid-lab by one
+  defect; JS messages re-verified by execution, not copied.
+- Reporter behavior: shape checks (slug format, verdict enums, nativeRule
+  line in range, errorContains iff ballHost-reject, source non-mutation),
+  runs all 22 through the JS validators, pins tangent exactness, extracts
+  the native generic literal textually (anchored lone-literal pattern;
+  the 3 file-I/O concatenations excluded — the first draft of that regex
+  over-matched 4 literals and the reporter refused to run, which is the
+  loud failure working as designed), writes the expectations file, exit 1
+  on any mismatch. Drift demo: one broken `errorContains` in a scratch
+  copy → `FAIL case non-cover-topology: wrong JS rejection`, exit 1;
+  fixture restored byte-identical (`diff` clean).
+- Commands (WSL node v22.23.2): `node tools/ball-conformance.js` → 22
+  cases, 2 ball-host accepts, no drift, exit 0;
+  `node ball-scene.test.js` → 22 document cases passed, exit 0;
+  `node tools/scene-check.js levels/fixtures/ball-lab.nil.json` → 1
+  region, 2 entities, exit 0; `node tools/test.js` → 23/23, exit 0.
+- Questions only a Godot run can answer (also in the expectations file):
+  the 20 reject + 2 accept native verdicts as declared; native sqrt at
+  the tangent boundary; decimal fidelity through parse_string/save_file;
+  duplicate-kind rule firing; generic literal unchanged.
+  Status: READY FOR REVIEW.
+
+## MUSE-10 — Which checks run on which host
+
+- Deliverable: new `docs/qa/check-runbook.md` (46 lines, at most 90).
+  No tool, rule, or doc edits besides this file, the results entry, and
+  the task status line.
+- One table covering every required command: test.js, scene-check,
+  shader-check, sdf-check, march-check, link-time, net-check,
+  render-fixture, world-probe, browser-process.test.js, page-check
+  --worlds/--ball-lab/--sw/--warm/--timeout=. Each row: what it proves,
+  host, rough time, usual failure meaning. Links to (not copies of)
+  WORKING_RULES' required-checks table; all 4 file links verified to
+  resolve. Both platform restrictions stated with reasons (WSL
+  socketpair block; no Windows process groups + measured ESRCH), plus
+  the headless-Chrome fixed note so old BLOCKED notes read as history.
+- Ran here (WSL node v22.23.2, exit codes): `node tools/test.js` → 23/23,
+  exit 0, 6 s; `node tools/scene-check.js` → exit 0, <1 s;
+  `node tools/march-check.js` → 0 exhausted everywhere, exit 0, 3 s;
+  `node browser-process.test.js` → 35/0/1, exit 0, 2 s (MUSE-08);
+  `node tools/ball-conformance.js` → exit 0, <1 s.
+  `node tools/net-check.js` is SPLIT: relay half passes here ONLY with
+  the sandbox proxy vars stripped (6/6 socket checks; with them, even
+  localhost fetch fails — environment artifact, diagnosed once, not a
+  repo verdict); peer half FAILs without Chrome as expected (exit 1,
+  42 s). Cited, with sources: shader-check 10/10, sdf-check 21 cases,
+  page-check --worlds 346 checks/28.5 s cold real-GPU, --ball-lab 9
+  checks (all opus-integration-2026-09-09); link-time 0.7 s editor vs
+  8.4 s arena (host-capability-map.md:102,149); --sw 158.8 s cold and
+  warm-346 (MUSE-04 evidence + integration). render-fixture and
+  world-probe marked browser-only with their guide/task pointers; no
+  runtime invented where none was measured.
+  Status: READY FOR REVIEW.
+
+## MUSE-11 — Every declared uniform is located and set
+
+- Changed files: new `uniform-coverage.test.js` (root; auto-discovered
+  by tools/test.js, so no runner edit needed). No `engine/`, `app/`, or
+  shader-source edits. No defect found: coverage is complete, so nothing
+  to hand back.
+- Scope found, not assumed: 10 compiled programs — 8 world programs
+  (`VERT` + `fragFor(key)` per SPACES entry: h3 s3 h2r s2r e3t nil sol
+  sl2r), `lines` (LINE_VERT + LINE_FRAG), ball-first-person
+  (BALL_FIRST_PERSON_GLSL, host app/ball-lab.js). Chunks without their
+  own host (NIL_CYLINDER_GLSL via nil.js, lie/nil fragments, level and
+  geometry GLSL helpers) ride inside the assembled world sources, so
+  they are covered through them.
+- Method: comment-stripped parse of `uniform <type> <a>[N], <b>, ...;`
+  — comma groups matter (nil/sol/sl2r pack 5–8 names per declaration; a
+  first-name-only parse drops most of them). main.js hosts by alias
+  (`U.<short>` via the sceneUniforms table + `UL.color`; aliases mapped
+  through the table, unknown aliases fail); ball-lab.js hosts by GLSL
+  name directly. Both directions asserted: declared-but-never-located,
+  declared-but-never-set (per program), set-but-never-declared plus
+  set-through-unknown-alias (per host over its program union — main.js
+  sets all scene uniforms every frame, so per-program set-checks would
+  false-positive on geometry-specific names).
+- One documented exception: BALL_PREVIEW_GLSL (uBall, uRes) has NO WebGL
+  host in-repo — nothing compiles it in a page; its string is consumed
+  by shader-check, SDF/parity fixtures and the Godot text exporter.
+  Pinned executably two ways: the declared set must stay exactly
+  {uBall, uRes}, and a `'uBall'` literal appearing in main.js/app
+  sources fails with "register the host". (uRes is intentionally not
+  pinned; it is hosted under other pairs.)
+- Fail/pass demo: deleted the `gl.uniform4fv(U.uPortals, …)` line in a
+  working copy → exit 1 with exactly
+  `declared-but-never-set: ball-first-person uPortals (app/ball-lab.js)`
+  (the location-table entry alone does not satisfy it — the task's
+  list-is-not-set case). Restored byte-identical (`diff` clean) → pass.
+- Commands (WSL node v22.23.2): `node uniform-coverage.test.js` → 10
+  programs, 57 declared names, 1 exception, exit 0;
+  `node tools/test.js` → 24/24 suites, exit 0.
+- Limitation: textual source contract, not driver behavior — a uniform
+  the compiler optimizes out still needs both halves here. Stated in
+  the test header.
+  Status: READY FOR REVIEW.
+
+## MUSE-12 — Stale-claim sweep across the documentation
+
+- Deliverable: new `docs/qa/stale-claims-2026-09.md` (14 FALSE, 11
+  STALE-BUT-HARMLESS, 3 UNVERIFIABLE, each with file:line + evidence
+  command). No swept document edited, per the task rule.
+- Heaviest findings: `--ball-lab: 9 checks` in two lead reviews, the
+  checklist, and (by citation) this batch's own runbook + MUSE-10 entry
+  is contradicted by the tree — `app/ball-lab.js` runs one linear flow
+  of 57 `check(` sites and `page-check.js` prints `checks.length`, so a
+  green run reports ~57. CORRECTION to the MUSE-10 entry above: replace
+  "cited: 9 checks" with "57 check sites in code; 9 in integration —
+  conflict, needs one browser run". `check-runbook.md` itself is left
+  untouched (MUSE-12 no-edit rule); the stale-claims report is its
+  correction pointer. Other FALSEs: architecture "connections authoring
+  data only" / "collision still pending" / "six programs"; playground
+  "both shader programs" / "twelve thousand rays"; scene-format "no
+  traversal/visibility"; capability-map "exact ray hit, eight
+  geometries"; README + architecture pointers to AGENTS.md (an 18-line
+  router — the table is WORKING_RULES); controls-review 1–8/F1/F4-open
+  superseded by MUSE-04/F4-closure; ball-lab "portals not authorable"
+  contradicted in-file; rendering-contract "next step" already done;
+  "10 programs" in both reviews vs 11-entry array.
+- Method: 28 docs + 4 roots covered (full reads except archive/targeted
+  ones noted with depth in the report's per-file log; legacy reference
+  headings-only by WORKING_RULES design). Verified-true spot list
+  included (Nil 60, shaft 44, inradii, 13 presets × 8 geometries, chart
+  bounds, 13 Godot views, lie-lab numbers, crash-doc lines incl. the
+  still-open `remote.cut.N` hole at `main.js:2893`).
+- Commands: all evidence commands in the report (node evals, greps,
+  suite runs); no suite run needed (no code changes).
+  Status: READY FOR REVIEW.
+
+## MUSE-13 — An invalid-document corpus for the scene validator
+
+- Changed files: new `document-invalid.test.js` (root; auto-discovered,
+  no runner edit), 60 files under `levels/fixtures/invalid/` (59 mutated
+  docs + `manifest.json` with base/change/errorContains per case).
+  `engine/world/document.js`, `scene-field.js` untouched, as ordered.
+- Construction: `/tmp/muse13-gen.mjs` (scratch, stays out of the repo)
+  clones a valid fixture and applies exactly one defect; single-defect
+  audited mechanically — all 59 based files touch exactly ONE field
+  (57 differ in one leaf; 4 replace one array field: two ball positions,
+  two anchor forwards). No hand-written broken-in-three-ways docs.
+- The test asserts the MESSAGE per file (must contain the manifest's
+  literal, which names the offending id/field), that validation never
+  mutates its input, and that the untouched BASE validates — proving the
+  defect, not the base, refuses. Plus 4 atomicity checks: rejected
+  addEntity / editEntities ×2 / addPortal leave the source
+  byte-identical.
+- Rule census from reading `document.js` (+ `charts.js` bounds it calls
+  into): ~59 distinct refusal rules; 54 covered by a case each.
+  Deliberately not covered, with reasons: H3 chart budget (no h3 region
+  in any fixture — covering it needs two simultaneous mutations);
+  same-line single-samples (units-shape, arrays-non-array variants,
+  connection-missing-field, entity-missing-position, objective-with-
+  radius, anchor-forward-non-array — same message, one sample each).
+- Two findings from building it (no engine fix attempted — both are
+  refusal-path observations, refusals exist in all cases):
+  1. `chart.decode` (document.js:57) runs BEFORE the straddle pre-check
+     (:62): a far-outside point is refused with "Point lies outside
+     chart extent", which names neither id nor field (new fixture
+     ball-far-outside-extent + the addPortal atomicity case). My first
+     draft expected the straddle message and failed — the suite caught
+     my assumption, kept as the pinned expectation.
+  2. charts.js value messages ("Unsupported chart geometry: e4", "E3 has
+     no curvature radius; use 1") name the constraint/value, not the
+     document path. Pinned as stable substrings; a path-naming message
+     would be friendlier but that is the lead's call.
+- Commands (WSL node v22.23.2): `node document-invalid.test.js` → 60
+  refusal cases + 4 atomicity, exit 0; `node tools/test.js` → 25/25,
+  exit 0. No missing/wrong refusal found: every rule sampled refuses,
+  for the right reason, atomically.
+  Status: READY FOR REVIEW.
+
+## MUSE-14 / MUSE-15 — VERIFICATION BLOCKED (no Windows host this session)
+
+- Both require the Windows host with headless Chrome + real GPU
+  (play sweep; cold-cache link-time table) and cannot run from WSL:
+  the socketpair block is unchanged — reconfirmed this session by
+  `node tools/net-check.js` (peer half: "nothing within 40 s", exit 1)
+  and the standing `no Chrome found` / `socketpair: Operation not
+  permitted` evidence cited in the queue. No setup retries spent (the
+  prerequisite failure is already diagnosed and recorded); no tool,
+  engine, or doc files touched for either task.
+- Concrete cause (one, per queue): WSL Linux node cannot spawn Chrome
+  (seccomp-level socketpair denial), so `play-check`/`link-time` have
+  no browser to drive. Remedy exists only on the other host.
+- Left for a Windows run with the exact commands in MUSE_TASKS.md.
+  Status: VERIFICATION BLOCKED for both; nothing else in the queue
+  depends on them.

@@ -1,0 +1,171 @@
+{
+  "_note": "JS-executed conformance expectations for the shared ball-document cases. general/ballHost were RUN here; native verdicts are DECLARED from reading ball_document.gd and need a Godot run (see openQuestions).",
+  "generatedBy": "tools/ball-conformance.js",
+  "sourceFixture": "levels/fixtures/ball-document-cases.json",
+  "nativeAdapter": "experiments/godot/ball_document.gd",
+  "nativeEvidence": "code reading only; Godot never executed by this tool",
+  "nativeGenericRejection": "Expected scene v1: one E3 cover, one spawn, one ball within its extent; no extra fields or connections.",
+  "openQuestions": [
+    "Does replace() accept valid-lab and tangent-ball and reject the other 20 cases?",
+    "Tangent float path: does the native sqrt arrive at exactly extent (accept) on real Godot floats?",
+    "Do full-precision decimals survive Godot JSON.parse_string / save_file round trips?",
+    "Does the duplicate-kind rule (extra-ball, extra-spawn) fire as read, once executed?",
+    "Is the generic rejection literal still exactly nativeGenericRejection above?"
+  ],
+  "cases": [
+    {
+      "id": "valid-lab",
+      "reasonKind": "ok",
+      "general": "accept",
+      "ballHost": "accept",
+      "native": "accept"
+    },
+    {
+      "id": "unknown-scene-field",
+      "reasonKind": "unknown-field",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "version-2",
+      "reasonKind": "unsupported-version",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "entity-id-collides-with-region",
+      "reasonKind": "duplicate-id",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "ball-in-unknown-region",
+      "reasonKind": "unknown-region",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "negative-radius",
+      "reasonKind": "radius-not-positive",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "missing-radius",
+      "reasonKind": "radius-not-positive",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "ball-straddles-extent",
+      "reasonKind": "straddles-extent",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "spawn-straddles-extent",
+      "reasonKind": "straddles-extent",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "no-spawn",
+      "reasonKind": "missing-spawn",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "no-ball",
+      "reasonKind": "host-requires-ball",
+      "general": "accept",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "extra-ball",
+      "reasonKind": "host-single-ball",
+      "general": "accept",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "extra-spawn",
+      "reasonKind": "host-single-spawn",
+      "general": "accept",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "h3-region",
+      "reasonKind": "host-e3-only",
+      "general": "accept",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "unknown-kind",
+      "reasonKind": "unsupported-kind",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "portal-connection",
+      "reasonKind": "host-no-connections",
+      "general": "accept",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "position-wrong-length",
+      "reasonKind": "position-not-3-finite",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "position-not-finite",
+      "reasonKind": "position-not-3-finite",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "non-cover-topology",
+      "reasonKind": "topology-not-cover",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "extent-zero",
+      "reasonKind": "extent-not-positive",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "extent-negative",
+      "reasonKind": "extent-not-positive",
+      "general": "reject",
+      "ballHost": "reject",
+      "native": "reject"
+    },
+    {
+      "id": "tangent-ball",
+      "reasonKind": "ok",
+      "general": "accept",
+      "ballHost": "accept",
+      "native": "accept"
+    }
+  ]
+}

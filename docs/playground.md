@@ -336,7 +336,7 @@ guessing between them wastes hours. Run this first:
 node tools/shader-check.js
 ```
 
-It compiles both shader programs in headless Chrome — the same ANGLE compiler
+It compiles all eleven shader programs in headless Chrome — the same ANGLE compiler
 the browser uses — and prints the error.
 
 - **It reports a GLSL error.** The shader is wrong. Fix and rerun.
@@ -357,7 +357,7 @@ node physics.test.js         # is energy conserved, is the rope still a rope?
 ```
 
 `march-check` is the one to run after touching the renderer. It replays the
-marching loop over twelve thousand rays fired from faces, edges and corners,
+marching loop over thirty thousand rays fired from faces, edges and corners,
 and counts the two failures you cannot tell apart by looking: rays that use
 their whole step budget, which come out as background — a grey wedge along a
 seam — and samples the fold loop could not bring back inside the fundamental

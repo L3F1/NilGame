@@ -340,8 +340,8 @@ newer Chrome that refusal is a rejected promise rather than a thrown error, so
 as broken when nothing was wrong. Play worked the whole time; only the mouse
 stayed free.
 
-Not done: a portal cannot be AUTHORED in the lab yet -- anchors and connections
-have no inspector, so a portal can only arrive in a loaded document. The
+Not done AT THAT DATE, and superseded by the authoring section above and the
+later entry: a portal could not then be authored in the lab. It can now. The
 apertures are E3 only, and the map is an isometry of one space; a portal
 between two different geometries is the same shape of object with a map that is
 a correspondence rather than an isometry, and `portal.js` is where that goes.

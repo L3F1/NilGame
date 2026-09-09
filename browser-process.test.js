@@ -378,13 +378,34 @@ await test('posix without group flag still signals only the single child', async
   assert.equal(owned.kills, 1);
 });
 
+await test('win32 never takes the posix-group branch, even when flagged', async () => {
+  // Module-side pin for the integration defect: the probe called
+  // killOwnedChild with posix semantics on a win32 host, where
+  // process.kill(-pid) throws ESRCH for a LIVE child and the group-ESRCH
+  // reading then misreported it as already-exited. Whatever the flag says,
+  // an injected win32 platform must take the taskkill path and never send
+  // a group signal, so the ESRCH reading stays POSIX-only in its effect.
+  const live = new FakeChild(2010);
+  const groupSignals = [];
+  const esrchSignal = (target, signal) => {
+    groupSignals.push([target, signal]);
+    const error = new Error('no such process'); error.code = 'ESRCH'; throw error;
+  };
+  const result = await killOwnedChild(live, {
+    platform: 'win32', posixProcessGroup: true, signalFn: esrchSignal,
+    execFn: async (exe, args) => {
+      assert.deepEqual([exe, args], ['taskkill', ['/PID', '2010', '/T', '/F']]);
+    },
+  });
+  assert.deepEqual(groupSignals, [], 'no group signal may be sent on win32');
+  assert.equal(result.method, 'taskkill');
+});
+
 // Real POSIX workers (tools/fixtures/browser-worker.js): no sockets, no
 // Chrome. EPERM-style environment failures SKIP explicitly — never a mock
 // pass. After two environment failures the rest skip too.
 const workerScript = fileURLToPath(new URL('./tools/fixtures/browser-worker.js', import.meta.url));
 let skipped = 0;
-let envFailures = 0;
-let posixWorkerSupport = null;
 function skipReal(name, reason) {
   skipped++;
   console.log(`SKIP ${name}: ${reason}`);
@@ -393,9 +414,15 @@ const ENV_CODES = new Set(['EPERM', 'EACCES', 'EAGAIN', 'ENOMEM']);
 function isEnvError(error) {
   return !!error && (ENV_CODES.has(error.code) || /not permitted|permission denied/i.test(error.message || ''));
 }
+// Every REAL child this suite creates, by PID. FakeChild substitutes never
+// enter this list. The closing self-check asserts each recorded PID is gone:
+// no sweeps, no process-name matching, only PIDs this suite created.
+const suiteSpawnedPids = [];
 function spawnWorker(mode, args = [], opts = {}) {
-  return spawn(process.execPath, [workerScript, mode, ...args],
+  const child = spawn(process.execPath, [workerScript, mode, ...args],
     { detached: false, stdio: ['ignore', 'pipe', 'ignore'], ...opts });
+  if (Number.isInteger(child?.pid)) suiteSpawnedPids.push(child.pid);
+  return child;
 }
 function alive(pid) {
   try { process.kill(pid, 0); return true; }
@@ -444,8 +471,8 @@ function reapStray(child, grouped) {
   }
   try { child.kill('SIGKILL'); } catch { /* best effort only */ }
 }
-async function supportProbe() {
-  const worker = spawnWorker('linger', [], { detached: true });
+async function supportProbe(spawnFn = spawnWorker) {
+  const worker = spawnFn('linger', [], { detached: true });
   try {
     await readWorkerLines(worker, ['READY']);
     const result = await killOwnedChild(worker, {
@@ -462,34 +489,72 @@ async function supportProbe() {
 }
 // POSIX process groups are the subject of these tests, and Windows has no
 // equivalent: process.kill(-pid) throws ESRCH there, which killOwnedChild
-// correctly reads as 'already-exited' for a still-running child. Probing it
-// anyway spawned a detached worker that outlived the failed probe. Skip
-// before spawning anything; the Windows termination path has its own tests.
-const POSIX_HOST = process.platform !== 'win32';
+// reads as 'already-exited' even for a still-running child. Probing it
+// anyway spawned a detached worker that outlived the failed probe, hung the
+// suite and leaked the process (see MUSE-08). Skip before spawning anything;
+// the Windows termination path has its own tests.
+//
+// The platform is INJECTED (default: this host) so the win32 path is testable
+// anywhere: a counting spawn stub must observe zero spawns. State is carried
+// in an explicit object so the simulated-platform test cannot pollute the
+// shared probe state used by the real tests below.
+function isPosixPlatform(platform = process.platform) {
+  return platform !== 'win32';
+}
+function createRealWorkerState() {
+  return { support: null, envFailures: 0 };
+}
+const POSIX_HOST = isPosixPlatform();
+const sharedRealWorkerState = createRealWorkerState();
 
-async function realTest(name, fn) {
-  if (!POSIX_HOST) {
-    skipReal(name, `POSIX-only process-group semantics; host is ${process.platform}`);
-    return;
+async function realTestWith(state, { platform = process.platform, spawnFn = spawnWorker } = {}, name, fn) {
+  if (!isPosixPlatform(platform)) {
+    skipReal(name, `POSIX-only process-group semantics; host is ${platform}`);
+    return 'skipped-platform';
   }
-  if (posixWorkerSupport === null) {
+  if (state.support === null) {
     try {
-      posixWorkerSupport = await supportProbe();
+      state.support = await supportProbe(spawnFn);
     } catch (error) {
-      envFailures++;
-      posixWorkerSupport = { ok: false, reason: `support probe failed: ${error.message || error}` };
+      state.envFailures++;
+      state.support = { ok: false, reason: `support probe failed: ${error.message || error}` };
     }
   }
-  if (!posixWorkerSupport.ok) { skipReal(name, posixWorkerSupport.reason); return; }
-  if (envFailures >= 2) { skipReal(name, 'two environment failures already recorded'); return; }
-  try { await fn(); passed++; }
+  if (!state.support.ok) { skipReal(name, state.support.reason); return 'skipped-nosupport'; }
+  if (state.envFailures >= 2) { skipReal(name, 'two environment failures already recorded'); return 'skipped-env'; }
+  try { await fn(); passed++; return 'ran'; }
   catch (error) {
     if (isEnvError(error)) {
-      envFailures++;
+      state.envFailures++;
       skipReal(name, `${error.code || ''} ${error.message || error}`.trim());
-    } else { failed++; console.error(`FAIL ${name}: ${error.stack}`); }
+      return 'skipped-env';
+    } else { failed++; console.error(`FAIL ${name}: ${error.stack}`); return 'failed'; }
   }
 }
+async function realTest(name, fn) {
+  return realTestWith(sharedRealWorkerState, undefined, name, fn);
+}
+
+// MUSE-08 guard 1: on a simulated win32 host the real-worker path must SPAWN
+// NOTHING. Fails against the pre-fix behavior (no platform gate), where the
+// support probe spawned a detached worker before the POSIX-only kill failed.
+await test('platform gate is a pure function of the injected platform', () => {
+  assert.equal(isPosixPlatform('win32'), false);
+  assert.equal(isPosixPlatform('linux'), true);
+  assert.equal(isPosixPlatform('darwin'), true);
+  assert.equal(isPosixPlatform(process.platform), process.platform !== 'win32');
+});
+
+await test('simulated win32 host: real-worker path spawns nothing', async () => {
+  let spawns = 0;
+  const stubSpawn = () => { spawns++; throw new Error('real-worker path must not spawn on win32'); };
+  let bodyRan = false;
+  const outcome = await realTestWith(createRealWorkerState(), { platform: 'win32', spawnFn: stubSpawn },
+    'simulated win32 real-worker case', async () => { bodyRan = true; });
+  assert.equal(outcome, 'skipped-platform');
+  assert.equal(spawns, 0, 'the support probe must not spawn on a simulated win32 host');
+  assert.equal(bodyRan, false, 'the worker body must not run on a simulated win32 host');
+});
 
 await realTest('real worker: group TERM exits worker and grandchild', async () => {
   const worker = spawnWorker('linger', ['1'], { detached: true });
@@ -560,6 +625,22 @@ await realTest('real worker: natural exit needs no signal', async () => {
   } finally {
     reapStray(worker, true);
   }
+});
+
+// MUSE-08 guard 2: the suite leaves no child of its own alive. Only PIDs
+// this suite really spawned are recorded (FakeChild substitutes never enter
+// the list), so there is no sweep and no process-name matching. Runs last:
+// file order is execution order.
+await test('suite leaves no owned child alive', async () => {
+  console.log(`owned real-child PIDs this run: ${suiteSpawnedPids.length ? suiteSpawnedPids.join(',') : '(none)'}`);
+  if (!POSIX_HOST) {
+    assert.equal(suiteSpawnedPids.length, 0, 'a win32 run must not spawn real workers at all');
+  }
+  const live = suiteSpawnedPids.filter((pid) => {
+    try { return alive(pid); }
+    catch { return true; } // EPERM or similar: cannot prove it gone, so report it, never pass silently
+  });
+  assert.deepEqual(live, [], `these suite-spawned PIDs are still alive: ${live.join(',')}`);
 });
 
 console.log(`${passed} passed, ${failed} failed, ${skipped} skipped`);

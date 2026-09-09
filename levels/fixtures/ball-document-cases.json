@@ -1,9 +1,11 @@
 {
-  "_note": "Language-neutral ball-document cases. general: scene v1 validation (engine/world/document.js). ballHost: the one-E3-cover one-spawn one-ball adapter (engine/world/ball-scene.js). errorContains is a literal substring of the rejecting message. Each document is self-contained for cross-host consumers.",
+  "_note": "Language-neutral ball-document cases. general: scene v1 validation (engine/world/document.js). ballHost: the one-E3-cover one-spawn one-ball adapter (engine/world/ball-scene.js). native: the DECLARED answer of the Godot adapter (experiments/godot/ball_document.gd _valid), from code reading only — never executed, see nativeRule for the clause. errorContains is a literal substring of the JS rejecting message. reasonKind is a stable slug both runtimes can match; the native adapter currently reports one generic message for every rejection (see tools/ball-conformance.js). Each document is self-contained for cross-host consumers; each differs from valid-lab by exactly one defect except the two accepts.",
   "cases": [
     {
       "id": "valid-lab", "general": "accept", "ballHost": "accept",
       "reason": "Minimal one-spawn one-ball E3 cover lab.",
+      "reasonKind": "ok", "native": "accept",
+      "nativeRule": "L32-L64 accepts every _valid clause",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
         "units": { "name": "design-unit", "playerRadius": 0.07 },
@@ -20,6 +22,8 @@
     {
       "id": "unknown-scene-field", "general": "reject", "ballHost": "reject",
       "reason": "Scene objects allowlist their fields; unknown author intent is rejected, never ignored.",
+      "reasonKind": "unknown-field", "native": "reject",
+      "nativeRule": "L33 scene-shape (exact field set)",
       "errorContains": "unknown field",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab", "author": "x",
@@ -37,6 +41,8 @@
     {
       "id": "version-2", "general": "reject", "ballHost": "reject",
       "reason": "Only scene v1 is understood; newer versions require migration, not guessing.",
+      "reasonKind": "unsupported-version", "native": "reject",
+      "nativeRule": "L34 format-version",
       "errorContains": "migration required",
       "document": {
         "format": "nil-scene", "version": 2, "id": "lab",
@@ -54,6 +60,8 @@
     {
       "id": "entity-id-collides-with-region", "general": "reject", "ballHost": "reject",
       "reason": "Scene, region, entity and connection IDs share one namespace; a ball named like its region collides.",
+      "reasonKind": "duplicate-id", "native": "reject",
+      "nativeRule": "L55 entity-id (shared namespace)",
       "errorContains": "duplicate ID",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -71,6 +79,8 @@
     {
       "id": "ball-in-unknown-region", "general": "reject", "ballHost": "reject",
       "reason": "Every entity must belong to an authored region; dangling ownership is rejected.",
+      "reasonKind": "unknown-region", "native": "reject",
+      "nativeRule": "L56 region-ownership",
       "errorContains": "unknown region",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -88,6 +98,8 @@
     {
       "id": "negative-radius", "general": "reject", "ballHost": "reject",
       "reason": "A ball radius must be a positive finite number.",
+      "reasonKind": "radius-not-positive", "native": "reject",
+      "nativeRule": "L59 radius-positive",
       "errorContains": "expected positive finite number",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -105,6 +117,8 @@
     {
       "id": "missing-radius", "general": "reject", "ballHost": "reject",
       "reason": "A ball without a radius is malformed, not a point ball.",
+      "reasonKind": "radius-not-positive", "native": "reject",
+      "nativeRule": "L59 radius-positive (absent radius is not positive)",
       "errorContains": "expected positive finite number",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -122,6 +136,8 @@
     {
       "id": "ball-straddles-extent", "general": "reject", "ballHost": "reject",
       "reason": "Center distance 3.8 plus radius 0.6 exceeds the chart extent 4; the ball would cross the authoring bound.",
+      "reasonKind": "straddles-extent", "native": "reject",
+      "nativeRule": "L63 bounds",
       "errorContains": "straddle chart extent",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -139,6 +155,8 @@
     {
       "id": "spawn-straddles-extent", "general": "reject", "ballHost": "reject",
       "reason": "Spawns clear by player radius: 3.95 plus 0.07 exceeds the chart extent 4.",
+      "reasonKind": "straddles-extent", "native": "reject",
+      "nativeRule": "L63 bounds (spawn clears by playerRadius)",
       "errorContains": "straddle chart extent",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -156,6 +174,8 @@
     {
       "id": "no-spawn", "general": "reject", "ballHost": "reject",
       "reason": "A scene without a spawn has no entry point.",
+      "reasonKind": "missing-spawn", "native": "reject",
+      "nativeRule": "L40 entities.size (1 is not 2)",
       "errorContains": "at least one spawn",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -172,6 +192,8 @@
     {
       "id": "no-ball", "general": "accept", "ballHost": "reject",
       "reason": "Schema-valid (a spawn alone is a scene), but the ball host has nothing to edit or render.",
+      "reasonKind": "host-requires-ball", "native": "reject",
+      "nativeRule": "L40 entities.size (1 is not 2); the native subset needs the ball too",
       "errorContains": "one E3",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -188,6 +210,8 @@
     {
       "id": "extra-ball", "general": "accept", "ballHost": "reject",
       "reason": "Schema-valid, but the host edits exactly one ball.",
+      "reasonKind": "host-single-ball", "native": "reject",
+      "nativeRule": "L40 entities.size (3 is not 2)",
       "errorContains": "one E3",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -206,6 +230,8 @@
     {
       "id": "extra-spawn", "general": "accept", "ballHost": "reject",
       "reason": "The schema needs at least one spawn; the host needs exactly one.",
+      "reasonKind": "host-single-spawn", "native": "reject",
+      "nativeRule": "L40 entities.size (3 is not 2)",
       "errorContains": "one E3",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -224,6 +250,8 @@
     {
       "id": "h3-region", "general": "accept", "ballHost": "reject",
       "reason": "Curved regions validate as scenes, but this host implements only the flat control.",
+      "reasonKind": "host-e3-only", "native": "reject",
+      "nativeRule": "L46 geometry-kind (e3 only)",
       "errorContains": "one E3",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -241,6 +269,8 @@
     {
       "id": "unknown-kind", "general": "reject", "ballHost": "reject",
       "reason": "Entity kinds are allowlisted; invented content is rejected, not skipped.",
+      "reasonKind": "unsupported-kind", "native": "reject",
+      "nativeRule": "L51 entity-kind allowlist",
       "errorContains": "unsupported kind",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -258,6 +288,8 @@
     {
       "id": "portal-connection", "general": "accept", "ballHost": "reject",
       "reason": "A well-formed portal validates as a scene, but this host runs connection-free.",
+      "reasonKind": "host-no-connections", "native": "reject",
+      "nativeRule": "L40 entities.size; L41 connections non-empty",
       "errorContains": "one E3",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -279,6 +311,8 @@
     {
       "id": "position-wrong-length", "general": "reject", "ballHost": "reject",
       "reason": "Positions are always three numbers; a pair is malformed.",
+      "reasonKind": "position-not-3-finite", "native": "reject",
+      "nativeRule": "L56 position-vector",
       "errorContains": "expected 3 finite numbers",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -296,6 +330,8 @@
     {
       "id": "position-not-finite", "general": "reject", "ballHost": "reject",
       "reason": "Coordinates must be finite numbers; text is malformed.",
+      "reasonKind": "position-not-3-finite", "native": "reject",
+      "nativeRule": "L56 position-vector",
       "errorContains": "expected 3 finite numbers",
       "document": {
         "format": "nil-scene", "version": 1, "id": "lab",
@@ -306,6 +342,81 @@
         "entities": [
           { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
           { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, "high", 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "non-cover-topology", "general": "reject", "ballHost": "reject",
+      "reason": "Scene v1 describes bounded covers only; a quotient topology is not a cover.",
+      "reasonKind": "topology-not-cover", "native": "reject",
+      "nativeRule": "L44 topology",
+      "errorContains": "cover regions only",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "quotient", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "extent-zero", "general": "reject", "ballHost": "reject",
+      "reason": "A chart with no room in it cannot hold a spawn and a ball; extent must be positive.",
+      "reasonKind": "extent-not-positive", "native": "reject",
+      "nativeRule": "L44 extent-positive",
+      "errorContains": "expected positive finite number",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 0 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "extent-negative", "general": "reject", "ballHost": "reject",
+      "reason": "A negative chart extent is meaningless; extent must be positive.",
+      "reasonKind": "extent-not-positive", "native": "reject",
+      "nativeRule": "L44 extent-positive",
+      "errorContains": "expected positive finite number",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": -2 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [0, 0, 0.25], "radius": 0.6 }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "id": "tangent-ball", "general": "accept", "ballHost": "accept",
+      "reason": "Center distance 3.5 plus radius 0.5 equals the chart extent 4 exactly; touching the authoring bound is legal, crossing it is not. OBSERVATION: both adapters treat equality as legal (JS `<=`, GDScript `not >`), so they agree here; a boundary computed in float32 or by a different sqrt could disagree — only a Godot run can confirm the native side.",
+      "reasonKind": "ok", "native": "accept",
+      "nativeRule": "L63 bounds (equality legal: not >)",
+      "document": {
+        "format": "nil-scene", "version": 1, "id": "lab",
+        "units": { "name": "design-unit", "playerRadius": 0.07 },
+        "regions": [
+          { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }
+        ],
+        "entities": [
+          { "id": "start", "regionId": "room", "kind": "spawn", "position": [0, -2, 1] },
+          { "id": "orb", "regionId": "room", "kind": "ball", "position": [3.5, 0, 0], "radius": 0.5 }
         ],
         "connections": []
       }

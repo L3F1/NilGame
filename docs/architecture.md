@@ -11,10 +11,11 @@ single flagship mode. Runtime selection is covered by
 Implemented in this foundation pass: saved document validation, bounded
 constant-curvature charts, radial point mapping and measured distortion.
 The running game still selects one experiment at a time. Its H3 portals stay
-within H3. New document connections are authoring data only.
+within H3. Document connections are TRAVERSED: swept crossing, blocked-exit
+refusal, and the far side rendered through the same map. E3 only.
 The [ball lab](ball-lab.md) now connects a restricted scene-v1 E3 document to
 browser/native editing, distance queries and uniform-driven rendering. It is
-the first authoring slice, with player collision and curved primitives still pending.
+the first authoring slice. Player collision is done; curved primitives are still pending.
 
 ## Separate five concepts
 
@@ -119,10 +120,11 @@ rendering and retain numerical agreement checks.
 it does not test traversal or rendering.
 
 `tools/page-check.js --worlds` covers real app loading and world transitions.
-Compile all six programs with `tools/shader-check.js` after shader edits;
+Compile all eleven programs with `tools/shader-check.js` after shader edits;
 measure driver linking with `tools/link-time.js` after complexity changes.
 `tools/sdf-check.js` covers H3, both flat worlds and the S2 x R race track.
-Marcher and networking changes have dedicated checks in `AGENTS.md`.
+Marcher and networking changes have dedicated checks in the required-checks
+table in `docs/engineering/WORKING_RULES.md`.
 
 The [WLU examples](https://3d.wlu.edu/vr/examples/) include quotients and covers.
 Orbifold examples may have singularities and should not be assumed smooth.

@@ -1,0 +1,60 @@
+{
+  "format": "nil-scene",
+  "version": 1,
+  "id": "room",
+  "units": {
+    "name": "design-unit",
+    "playerRadius": 0.25
+  },
+  "regions": [
+    {
+      "id": "flat-room",
+      "geometry": {
+        "kind": "e3",
+        "curvatureRadius": 1
+      },
+      "topology": "cover",
+      "extent": 12
+    }
+  ],
+  "entities": [
+    {
+      "id": "ground",
+      "regionId": "flat-room",
+      "kind": "plane",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1
+    },
+    {
+      "id": "start",
+      "regionId": "flat-room",
+      "kind": "spawn",
+      "position": [
+        0,
+        -3,
+        0.3
+      ]
+    },
+    {
+      "id": "editable-ball",
+      "regionId": "flat-room",
+      "kind": "ball",
+      "position": [
+        0,
+        0,
+        0.9
+      ],
+      "radius": 0.9
+    }
+  ],
+  "connections": []
+}

@@ -70,7 +70,7 @@ Each connection has `kind: portal`, `a` and `b` anchor IDs,
 aperture radii and belong to at most one connection each. Same-region portals
 are allowed. Both endpoints can belong to different geometry kinds.
 
-These fields express author intent. There is no traversal, visibility or
+These fields are TRAVERSED and rendered through. There is no
 velocity implementation yet. Equal aperture radius does not assert isometric
 matching of entire discs across different curvatures. The runtime must define
 aperture coordinate mapping, side/orientation conventions and exit placement.

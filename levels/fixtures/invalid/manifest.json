@@ -1,0 +1,365 @@
+{
+  "_note": "One defect per document, each mutated from a valid fixture (see base+change). errorContains is a literal substring of the refusal, naming the offending id or field except where noted in the MUSE-13 report.",
+  "cases": [
+    {
+      "file": "scene-not-object.nil.json",
+      "base": null,
+      "change": "document is an array, not an object",
+      "errorContains": "scene: expected object"
+    },
+    {
+      "file": "extra-top-level-field.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "added scene.author",
+      "errorContains": "scene.author: unknown field"
+    },
+    {
+      "file": "units-extra-field.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "added units.foo",
+      "errorContains": "units.foo: unknown field"
+    },
+    {
+      "file": "missing-connections.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "deleted scene.connections",
+      "errorContains": "connections: expected array"
+    },
+    {
+      "file": "missing-version.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "deleted scene.version",
+      "errorContains": "migration required"
+    },
+    {
+      "file": "bad-format.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "format nil-city",
+      "errorContains": "scene.format: expected nil-scene"
+    },
+    {
+      "file": "bad-version.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "version 2",
+      "errorContains": "migration required"
+    },
+    {
+      "file": "bad-scene-id.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "id Ball-Lab",
+      "errorContains": "scene.id: use a lowercase stable ID"
+    },
+    {
+      "file": "bad-units-name.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "units.name meters",
+      "errorContains": "units.name: expected design-unit"
+    },
+    {
+      "file": "bad-player-radius.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "playerRadius 0",
+      "errorContains": "units.playerRadius: expected positive finite number"
+    },
+    {
+      "file": "empty-regions.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "regions []",
+      "errorContains": "regions: at least one region required"
+    },
+    {
+      "file": "region-unknown-field.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "added region.foo",
+      "errorContains": "region.foo: unknown field"
+    },
+    {
+      "file": "region-missing-geometry.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "deleted region.geometry",
+      "errorContains": "region flat-room.geometry: expected object"
+    },
+    {
+      "file": "region-bad-id.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "region.id Room",
+      "errorContains": "region.id: use a lowercase stable ID"
+    },
+    {
+      "file": "duplicate-region-id.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "pushed a copy of the region",
+      "errorContains": "region.id: duplicate ID flat-room"
+    },
+    {
+      "file": "geometry-unknown-field.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "added geometry.foo",
+      "errorContains": "region flat-room.geometry.foo: unknown field"
+    },
+    {
+      "file": "geometry-bad-kind.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "geometry.kind e4",
+      "errorContains": "Unsupported chart geometry: e4"
+    },
+    {
+      "file": "curvature-radius-zero.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "curvatureRadius 0",
+      "errorContains": "region flat-room.curvatureRadius: expected positive finite number"
+    },
+    {
+      "file": "e3-radius-not-one.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "e3 curvatureRadius 2",
+      "errorContains": "E3 has no curvature radius; use 1"
+    },
+    {
+      "file": "topology-quotient.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "topology quotient",
+      "errorContains": "region flat-room: v1 supports cover regions only"
+    },
+    {
+      "file": "extent-zero.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "extent 0",
+      "errorContains": "region flat-room.extent: expected positive finite number"
+    },
+    {
+      "file": "s3-antipode.nil.json",
+      "base": "connected-lab.nil.json",
+      "change": "spherical-lab extent 2 -> 3.2",
+      "errorContains": "S3 chart must stop before its antipode"
+    },
+    {
+      "file": "entity-unknown-field.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "added ball.foo",
+      "errorContains": "entity.foo: unknown field"
+    },
+    {
+      "file": "entity-bad-id.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "ball.id Orb!",
+      "errorContains": "entity.id: use a lowercase stable ID"
+    },
+    {
+      "file": "duplicate-entity-id.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "pushed a copy of the ball",
+      "errorContains": "entity.id: duplicate ID editable-ball"
+    },
+    {
+      "file": "entity-id-collides-with-region.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "ball.id flat-room",
+      "errorContains": "entity.id: duplicate ID flat-room"
+    },
+    {
+      "file": "entity-unknown-region.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "ball.regionId elsewhere",
+      "errorContains": "entity editable-ball: unknown region elsewhere"
+    },
+    {
+      "file": "entity-unknown-kind.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "ball.kind crate",
+      "errorContains": "entity editable-ball: unsupported kind"
+    },
+    {
+      "file": "entity-missing-kind.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "deleted ball.kind",
+      "errorContains": "entity editable-ball: unsupported kind"
+    },
+    {
+      "file": "position-pair.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "ball.position [0,0]",
+      "errorContains": "entity editable-ball.position: expected 3 finite numbers"
+    },
+    {
+      "file": "position-string.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "ball.position [0,high,0.25]",
+      "errorContains": "entity editable-ball.position: expected 3 finite numbers"
+    },
+    {
+      "file": "spawn-with-radius.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "spawn.radius 0.5",
+      "errorContains": "entity start: radius only applies to balls and anchors"
+    },
+    {
+      "file": "ball-with-forward.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "ball.forward [1,0,0]",
+      "errorContains": "entity editable-ball: forward only applies to anchors"
+    },
+    {
+      "file": "spawn-with-up.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "spawn.up [0,0,1]",
+      "errorContains": "entity start: up applies to anchors and planes"
+    },
+    {
+      "file": "ball-negative-radius.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "ball.radius -0.5",
+      "errorContains": "entity editable-ball.radius: expected positive finite number"
+    },
+    {
+      "file": "ball-missing-radius.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "deleted ball.radius",
+      "errorContains": "entity editable-ball.radius: expected positive finite number"
+    },
+    {
+      "file": "ball-outside-extent.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "ball at [3.8,0,0]",
+      "errorContains": "entity editable-ball: bounds straddle chart extent"
+    },
+    {
+      "file": "ball-far-outside-extent.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "ball at [30,0,0]",
+      "errorContains": "Point lies outside chart extent"
+    },
+    {
+      "file": "no-spawn.nil.json",
+      "base": "ball-lab.nil.json",
+      "change": "deleted the spawn",
+      "errorContains": "entities: at least one spawn required"
+    },
+    {
+      "file": "anchor-missing-forward.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "gate-a without forward",
+      "errorContains": "anchor gate-a.forward: expected 3 finite numbers"
+    },
+    {
+      "file": "anchor-forward-nonunit.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "gate-a forward [2,0,0]",
+      "errorContains": "anchor gate-a: forward and up must be orthonormal"
+    },
+    {
+      "file": "anchor-nonorthogonal.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "gate-a forward [0,0,1] (= up)",
+      "errorContains": "anchor gate-a: forward and up must be orthonormal"
+    },
+    {
+      "file": "anchor-missing-up.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "gate-a without up",
+      "errorContains": "anchor gate-a.up: expected 3 finite numbers"
+    },
+    {
+      "file": "anchor-up-nonunit.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "gate-a up [0,0,2]",
+      "errorContains": "anchor gate-a: forward and up must be orthonormal"
+    },
+    {
+      "file": "anchor-missing-radius.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "gate-a without radius",
+      "errorContains": "entity gate-a.radius: expected positive finite number"
+    },
+    {
+      "file": "plane-missing-up.nil.json",
+      "base": "room.nil.json",
+      "change": "ground without up",
+      "errorContains": "plane ground: up is required"
+    },
+    {
+      "file": "plane-up-nonunit.nil.json",
+      "base": "room.nil.json",
+      "change": "ground up [0,0,2]",
+      "errorContains": "plane ground.up: expected a unit normal"
+    },
+    {
+      "file": "plane-with-radius.nil.json",
+      "base": "room.nil.json",
+      "change": "ground.radius 1",
+      "errorContains": "entity ground: radius only applies to balls and anchors"
+    },
+    {
+      "file": "plane-with-forward.nil.json",
+      "base": "room.nil.json",
+      "change": "ground.forward",
+      "errorContains": "entity ground: forward only applies to anchors"
+    },
+    {
+      "file": "connection-unknown-field.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "added connection.foo",
+      "errorContains": "connection.foo: unknown field"
+    },
+    {
+      "file": "connection-bad-id.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "connection.id Gate!",
+      "errorContains": "connection.id: use a lowercase stable ID"
+    },
+    {
+      "file": "connection-id-collides-with-entity.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "connection.id gate-a",
+      "errorContains": "connection.id: duplicate ID gate-a"
+    },
+    {
+      "file": "duplicate-connection.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "pushed a copy of the connection",
+      "errorContains": "connection.id: duplicate ID gate"
+    },
+    {
+      "file": "connection-bad-kind.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "connection.kind wormhole",
+      "errorContains": "connection gate: only portal intent supported"
+    },
+    {
+      "file": "connection-unknown-anchor.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "connection.b gate-x",
+      "errorContains": "connection gate: unknown anchor gate-x"
+    },
+    {
+      "file": "anchor-already-connected.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "added a second connection over gate-a/gate-b",
+      "errorContains": "anchor gate-a: already connected"
+    },
+    {
+      "file": "connection-equal-endpoints.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "connection.b gate-a",
+      "errorContains": "connection gate: endpoints must differ"
+    },
+    {
+      "file": "connection-radius-mismatch.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "gate-b radius 0.5",
+      "errorContains": "connection gate: aperture radii must match"
+    },
+    {
+      "file": "connection-scale-2.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "connection.scale 2",
+      "errorContains": "connection gate: v1 requires preserve-speed and scale 1"
+    },
+    {
+      "file": "connection-velocity-other.nil.json",
+      "base": "portal-room.nil.json",
+      "change": "connection.velocity drift",
+      "errorContains": "connection gate: v1 requires preserve-speed and scale 1"
+    }
+  ]
+}

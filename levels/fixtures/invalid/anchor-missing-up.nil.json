@@ -1,0 +1,105 @@
+{
+  "format": "nil-scene",
+  "version": 1,
+  "id": "portal-room",
+  "units": {
+    "name": "design-unit",
+    "playerRadius": 0.25
+  },
+  "regions": [
+    {
+      "id": "flat-room",
+      "geometry": {
+        "kind": "e3",
+        "curvatureRadius": 1
+      },
+      "topology": "cover",
+      "extent": 20
+    }
+  ],
+  "entities": [
+    {
+      "id": "ground",
+      "regionId": "flat-room",
+      "kind": "plane",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "start",
+      "regionId": "flat-room",
+      "kind": "spawn",
+      "position": [
+        0,
+        -4,
+        0.3
+      ]
+    },
+    {
+      "id": "marker",
+      "regionId": "flat-room",
+      "kind": "ball",
+      "position": [
+        6,
+        6,
+        0.6
+      ],
+      "radius": 0.6
+    },
+    {
+      "id": "gate-a",
+      "regionId": "flat-room",
+      "kind": "anchor",
+      "position": [
+        0,
+        0,
+        1.2
+      ],
+      "radius": 1.1,
+      "forward": [
+        0,
+        -1,
+        0
+      ]
+    },
+    {
+      "id": "gate-b",
+      "regionId": "flat-room",
+      "kind": "anchor",
+      "position": [
+        6,
+        4,
+        1.2
+      ],
+      "radius": 1.1,
+      "forward": [
+        0,
+        -1,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "gate",
+      "kind": "portal",
+      "a": "gate-a",
+      "b": "gate-b",
+      "velocity": "preserve-speed",
+      "scale": 1
+    }
+  ]
+}

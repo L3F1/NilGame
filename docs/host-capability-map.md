@@ -19,7 +19,8 @@ part of it is the thing nobody can supply.
 
 | # | Need | Status |
 | --- | --- | --- |
-| 1 | Distance, normal, exact ray hit in a parameterised metric | done, eight geometries |
+| 1 | Distance and normal in a parameterised metric | done, eight geometries |
+| 1b | **Exact** ray hits (not just a marched bound) | E3 ball and Nil columns only; H3/S3 metric balls are future work |
 | 2 | Swept collision, contact normals, depenetration | done, E3; portable by design |
 | 3 | Walking, gravity, ground contact with `up` as a parameter | done, E3 |
 | 4 | A scene document that is host-neutral and validated | done, v1 |
@@ -30,7 +31,7 @@ part of it is the thing nobody can supply.
 | 9 | **Carve: a doorway in a wall, a room out of a block** | not done |
 | 10 | **More than one region, with different metrics, at once** | not done |
 | 11 | **A portal between two different geometries** | designed for, not built |
-| 12 | Assets: meshes, textures, audio | not needed yet, nothing is authored art |
+| 12 | Assets: meshes, textures, audio | not needed yet, nothing is authored art; feasibility MEASURED, see 4b |
 | 13 | Packaging and distribution | the browser gives a URL |
 
 Items 7-11 are the whole remaining editor. Keep them in view, because the host
@@ -154,6 +155,80 @@ So: **the compile-time argument does not currently apply to the editor.** It
 applies to the arena, and it will apply to the editor on the day the editor
 authors H3. That is a trigger to watch for, not a reason to move now.
 
+## 4b. Can imported assets work in non-Euclidean space? Measured, not argued
+
+This is the question that would settle the host decision, so it was measured
+against this repository's own kernel rather than recalled from the literature.
+`node tools/mesh-probe.js` prints the table; `mesh-approx.test.js` pins the
+properties so the answer cannot rot.
+
+**The technique.** In the projective model of a constant-curvature space --
+`p |-> (p0/p3, p1/p3, p2/p3)`, Klein for k<0 and gnomonic for k>0 -- geodesics
+are straight lines. A GPU rasterizer interpolates linearly between projected
+vertices, so if that is true it draws exact geodesic EDGES for nothing, and
+only the triangle's INTERIOR is wrong.
+
+**It is true.** Worst deviation of a projected edge midpoint from the geodesic
+midpoint, over H3, E3 and S3 at several radii: **6e-15**. That is not an
+approximation, it is exact to floating point. So a mesh's wireframe is correct
+in curved space by construction.
+
+**The interiors cost triangles, and the price depends on size.** Worst radius
+error as a fraction of the radius, sphere meshed as a subdivided icosahedron:
+
+| tris | E3, any r | H3, r=0.3 | H3, r=1.5 | H3, r=2.5 |
+| --- | --- | --- | --- | --- |
+| 20 | 20.5% | 21.4% | 39.6% | 57.8% |
+| 320 | 1.78% | 1.88% | 5.50% | 16.9% |
+| 5120 | 0.114% | 0.121% | 0.378% | 1.62% |
+
+Three things follow, and they are the actual answer:
+
+1. **A small object is free.** At r=0.3 curvature radii, H3 and S3 cost the
+   same as flat space to within a tenth. A chair does not care about the
+   curvature of the universe. Ordinary props import and place normally.
+2. **A large object is expensive, in H3 specifically.** Hyperbolic area grows
+   exponentially with radius, so a fixed triangle budget covers proportionally
+   less of a big thing: at 5120 triangles a radius-2.5 sphere is **14x** worse
+   than the same sphere in flat space. Subdivision buys it back -- it is a
+   budget, not a wall -- but the budget is **per object and size-dependent**,
+   not a global quality setting.
+3. **In E3 the relative error does not depend on radius at all** (20.535%,
+   6.583%, 1.775%, 0.453%, 0.114% for every radius tested), because flat space
+   is scale-invariant. That the numbers come out identical across radii is a
+   check on the probe as much as a result.
+
+**What is NOT covered, and it matters here.** Nil, Sol and SL~(2,R) have no
+projective model in which geodesics are straight -- Sol's geodesics are not
+even planar. So none of the above transfers to them. A mesh in Sol would need
+heavy subdivision plus a per-vertex exponential map, and its edges would still
+be chords rather than geodesics at every scale. **The three geometries where
+meshes work worst are exactly the three that are most distinctive to this
+project.**
+
+### So does this argue for Godot?
+
+Less than it looks, and this is the important part.
+
+A mesh is a list of vertices and triangles. **That data is geometry-agnostic**
+-- nothing in a glTF file assumes flat space. What turns it into a curved-space
+mesh is a projection matrix and a vertex shader, plus depth interop with the
+existing ray marcher so the two agree on what is in front. **All of that is
+ours to write, and it is identical work in either host.** WebGL2 rasterizes
+triangles.
+
+What Godot would actually supply is the **importer and the asset browser**:
+glTF/FBX parsing, texture and material handling, a preview. Real work, but
+Godot's import produces `MeshInstance3D` under an affine `Transform3D`
+hierarchy, which we would bypass -- extracting the vertex buffers to feed our
+own pipeline. That is using Godot as an **asset converter**, and glTF is an
+open format with Node loaders.
+
+So the honest scoring: assets are **feasible**, the hard part is **ours in
+either host**, and Godot's specific contribution is the **cheapest part of the
+job**. That is a much weaker argument for migrating than "we need assets, Godot
+has assets" sounds like.
+
 ## 5. So: are we rebuilding anything Godot would give us?
 
 Almost nothing.
@@ -170,8 +245,11 @@ Almost nothing.
 - Needs 4 and 5 -- documents, validation, undo, save and load -- are done, and
   the parts Godot would have supplied (an undo stack, a file dialog) are the
   cheapest lines in the file.
-- Need 12, assets, is where a host would genuinely save months. We have no
-  assets. **That is the honest trigger to revisit.**
+- Need 12, assets, is where a host would save the most -- but section 4b
+  measures how much, and it is less than it sounds: the curved-space rasterizer
+  is ours in either host, and Godot supplies the importer, which is the cheap
+  part. We also have no assets. **The trigger to revisit is acquiring art that
+  needs importing, not the possibility of importing art.**
 
 The one thing we are plausibly rebuilding is **editor chrome** -- panels,
 inspector widgets, a list. HTML is a good UI toolkit, so that trade is not
