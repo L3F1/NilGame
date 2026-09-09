@@ -41,3 +41,7 @@ experiments/godot/results/
 # the shared permission list and the verification hooks. This one is yours
 # alone, so it stays out of the repository.
 .claude/settings.local.json
+
+# The cross-host check queue (tools/check-queue.js). Requests and results are
+# transient handoffs between two machines, not project state.
+.check-queue/

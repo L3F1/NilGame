@@ -5,8 +5,10 @@ and docs/engineering/WORKING_RULES.md. Current overnight authorization is below.
 
 ## Overnight execution
 
-Current batch: MUSE-16 FIRST (one command, everything else depends on it),
-then MUSE-17 if it passes, then MUSE-18 which needs no browser.
+Current batch: MUSE-19 FIRST (one command, everything else depends on it),
+then MUSE-20 if it passes. MUSE-16, 17 and 18 are closed: the interop route is
+DEAD in the sandbox and must not be retried, and browser checks now go through
+ instead.
 MUSE-08..13 are accepted and integrated; MUSE-14 and MUSE-15 were closed by the
 lead on the Windows host. Do not reopen any of them.
 MUSE-11 through MUSE-15 were added 2026-09-09 by the lead and are INDEPENDENT
@@ -650,6 +652,114 @@ Windows host with a real GPU; say which GPU and which browser build.
 - Acceptance: a table with every program, three samples each, an explicit
   statement of the cold-cache method, and the machine and browser identified.
 
+## Verdicts on MUSE-16..18, 2026-09-09 (lead: Opus)
+
+- **MUSE-16 ACCEPTED, and the answer was no.** `UtilBindVsockAnyPort:309:
+  socket failed`, exit 1, 0 s wall, twice. That is exactly the reading the task
+  asked for and it is worth more than a workaround would have been: it is
+  neither "found the Linux Chrome" nor "EPERM on the .exe", it is WSL's own
+  `/init` interop transport failing to open an AF_VSOCK socket before Chrome is
+  reached. Stopping at two attempts was right. Together with the earlier
+  AF_UNIX `socketpair` denial and the AF_INET success in `net-check`, the
+  sandbox's shape is now known: **TCP yes, unix sockets no, vsock no.** No
+  Chrome flag participates in a failure inside `/init`, so there is nothing
+  left to tune and nobody should spend another session on it.
+- **MUSE-17 correctly SKIPPED.** Its precondition failed and it was not
+  attempted. Annotating the status and touching nothing was the right call; a
+  half-run of browser checks from a host that cannot run them would have
+  produced noise that outlived the session.
+- **MUSE-18 ACCEPTED, and it is the best finding of the three.** The five slow
+  programs are TEXTUALLY THE SAME PROGRAM -- h3 and e3t differ in exactly one
+  line, `#define GEOM (0)` against `(4)` -- so no column parsed from the source
+  can possibly separate a 9.0 s link from a 3.3 s one, and saying so plainly is
+  a better answer than a correlation over nine points. It also settles the
+  mechanism: link time is decided by what the PREPROCESSOR leaves reachable,
+  not by anything measurable in the emitted text. Reporting that no column
+  orders all eleven, and naming which ones invert, is exactly the honest
+  negative result the task asked for.
+
+## THE INTEROP ROUTE IS DEAD IN THE SANDBOX. USE THE QUEUE.
+
+Do not try to start a browser in your shell again, by any route. MUSE-16
+settled it and the runbook records the evidence.
+
+`tools/check-queue.js` runs a check on a host that CAN start Chrome, requested
+from one that cannot, using nothing but files on the disk both hosts already
+share. No sockets of any family, no interop, no proxy variables -- because
+every more capable mechanism tried so far has been denied by something.
+
+```sh
+node tools/check-queue.js --list                  # who is serving, and what may be run
+node tools/check-queue.js page-check --ball-lab
+node tools/check-queue.js play-check --preset=fight --seeds=10 --frames=6000
+```
+
+It prints the check's own output and exits with the check's own exit code, so
+it substitutes for running the check directly. If nobody is serving it tells
+you so at once rather than waiting out a timeout, and the answer is to ask the
+user to run `node tools/check-queue.js --serve` on the Windows machine.
+
+Measured end to end from a WSL shell: `page-check --ball-lab` returned its 57
+checks and exit 0 from the Windows host; a failing check returned exit 1; a
+refused request returns 2. **Not yet measured from the SANDBOXED shell** -- it
+needs only file reads and writes, which you demonstrably have, but that is an
+argument and not a measurement. MUSE-19 is the measurement.
+
+## MUSE-19 - Does the check queue work from the sandbox?
+
+Status: OPEN | Owner: Muse | Reviewer: Opus | **Do this one first**
+
+One command decides whether browser checks are available to you at all. Do not
+plan other browser work until it is recorded.
+
+- Allowed writes: `docs/qa/overnight-results.md`, this task's status and
+  report. Change no code. If it fails, the fix is the lead's.
+- FIRST ask the user to run `node tools/check-queue.js --serve` on the Windows
+  machine, and say plainly in your report if nobody did -- an unserved queue is
+  not a failure of the queue.
+- Run `node tools/check-queue.js --list`. Record whether it names a worker.
+- Then `node tools/check-queue.js page-check --ball-lab`. Record the full
+  output, the exit code and the wall time.
+- Record the exit codes of a refused request too, because a refusal that looked
+  like success would be the worst failure this thing could have:
+  `node tools/check-queue.js rm-rf --all` (expect 2) and
+  `node tools/check-queue.js page-check /etc/passwd` (expect 2). Capture the
+  code with `echo $?` on its own line; a pipeline reports the LAST command's
+  code, which is how the lead briefly mis-read these as 0.
+- Do NOT attempt to start Chrome, and do not retry more than twice.
+- Acceptance: a verdict sentence of the form "the check queue DOES / DOES NOT
+  work from the sandboxed shell", with the command output that shows it, and
+  the three exit codes.
+
+## MUSE-20 - Run the cited checks through the queue
+
+Status: OPEN | Owner: Muse | Reviewer: Opus | Blocked on MUSE-19 passing
+
+This is MUSE-17 again, by the route that works. If MUSE-19 says the queue does
+not work, STOP and skip this task.
+
+Several check families have been CITED rather than run for weeks, so nobody has
+confirmed them against current `main`.
+
+- Allowed writes: `docs/qa/overnight-results.md`, `docs/qa/check-runbook.md`
+  (the timing column only, for rows you personally ran), this task's status and
+  report. No code changes.
+- Through the queue, run and record each with its command, exit code, wall time
+  and reported count: `page-check --worlds`, `page-check --ball-lab`,
+  `page-check --sw --worlds`, `net-check`, `play-check` (default),
+  `link-time`, `march-check`, `shader-check`, `sdf-check`.
+- For every row in `check-runbook.md` currently marked "cited", either replace
+  it with a figure you ran or say why you could not.
+- The queue runs one job at a time by design. If a request waits a long time,
+  that is another job ahead of it, not a hang -- say so rather than retrying.
+- Watch for the WARNING `page-check` prints when a browser process from its own
+  run survives cleanup. If you ever see it, quote it; that is a leak and it is
+  the most important thing in your report.
+- Do NOT kill browser processes under any circumstances; you are not on the
+  host they are running on.
+- Acceptance: a table of every check family with a measured number, and an
+  explicit statement of any that still cannot run.
+
 ## MUSE-14 and MUSE-15: CLOSED by the lead, 2026-09-09
 
 Both needed the Windows host. Run here rather than left blocked:
@@ -701,7 +811,8 @@ and that reading stood for weeks.
 
 ## MUSE-16 - Does the interop route work in the sandboxed shell?
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | **Do this one first**
+Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@76ed138, WSL node v22.23.2) | Reviewer: Opus | **Do this one first**
+Verdict: browser checks ARE NOT available in the sandboxed shell (interop route launches Windows Chrome, which dies instantly on the same socketpair denial; 2/2 identical). Full output in docs/qa/overnight-results.md (MUSE-16). MUSE-17 stops here.
 
 Everything else about browser access depends on the answer, and the answer is
 one command. Do not plan other browser work until this is recorded.
@@ -731,7 +842,7 @@ one command. Do not plan other browser work until this is recorded.
 
 ## MUSE-17 - Run everything that was blocked, now that it may not be
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | Blocked on MUSE-16 passing
+Status: SKIPPED per its own precondition (MUSE-16: browser checks ARE NOT available in the sandboxed shell) | Owner: Muse (2026-09-09) | Reviewer: Opus | Blocked on MUSE-16 passing
 
 If MUSE-16 says browser checks are unavailable, STOP and skip this task; do not
 attempt it from a host that cannot run it.
@@ -758,7 +869,8 @@ nobody has actually confirmed them against current `main`. Run them.
 
 ## MUSE-18 - What does shader link time scale with?
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@76ed138, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Report: docs/qa/overnight-results.md (MUSE-18). New docs/qa/link-time-inputs-2026-09.md: 11-row parsed-source table; headline is the five slow programs are one text (GEOM selector only) so no column separates them, and no column orders all eleven; full 27/27.
 
 `docs/qa/link-time-2026-09.md` shows two orders of magnitude between programs
 and observes that the fast ones are the ones with no quotient. That is one

@@ -82,9 +82,53 @@ browser, let alone the user's own -- which is the standing rule that only a
 test's own process tree may be cleaned up. If anything survives, `page-check`
 prints a WARNING naming the count rather than widening the match.
 
-**Not yet verified in the sandboxed agent shell.** The measurements above were
-taken in a plain WSL shell on this machine. Whether the agent sandbox permits
-`execve` of a Windows binary at all is a separate question from whether it
-permits `socketpair`, and it has not been tested. Run
-`node tools/page-check.js --ball-lab` there first; if it fails, record the
-exact error, because it is a different block from the one this routes around.
+**AND IT DOES NOT WORK IN THE SANDBOXED AGENT SHELL.** Tested there (MUSE-16,
+2026-09-09) and it fails: `UtilBindVsockAnyPort:309: socket failed`, exit 1,
+0 s wall, identical on both attempts. That is WSL's own `/init` interop
+transport failing to open an AF_VSOCK socket, before Chrome is reached at all.
+So the sandbox denies AF_UNIX (`socketpair`, which kills the Linux Chrome) AND
+AF_VSOCK (which kills interop). It permits AF_INET, which is why `net-check`'s
+relay half passes there.
+
+There is nothing left to tune: no Chrome flag is involved in a failure that
+happens in `/init`. **The interop route works from a plain WSL shell and not
+from the sandbox**, so it is useful to a person and not to the agent. For the
+agent, use the check queue below.
+
+## The check queue: browser checks without a browser
+
+`tools/check-queue.js` runs a check on a host that CAN start Chrome, requested
+from one that cannot. It uses nothing but files on the disk both hosts already
+share -- no sockets of any family, no interop, no proxy variables -- because
+every more capable mechanism tried so far has been denied by something.
+
+On the Windows machine, once, from the repository root:
+
+```sh
+node tools/check-queue.js --serve
+```
+
+Then from anywhere, including the sandboxed shell:
+
+```sh
+node tools/check-queue.js --list                     # what may be run, and who is serving
+node tools/check-queue.js page-check --ball-lab
+node tools/check-queue.js play-check --preset=fight --seeds=10 --frames=6000
+```
+
+The requester prints the check's own output and exits with the check's own exit
+code, so it substitutes for running the check directly. Measured end to end
+from WSL: `page-check --ball-lab` returned its 57 checks and `exit 0` from the
+Windows host; a failing check returned `exit 1`; a refused request returns 2.
+
+If no worker is serving, the requester says so immediately and tells you what
+to ask for, rather than waiting out its timeout.
+
+**It is an allowlist, not a shell.** Only the checks listed by `--list` can be
+run, and their flags are validated against a schema: a request cannot name a
+path, cannot pass a flag the schema does not describe, and cannot pass an
+out-of-range value. `check-queue.test.js` holds that boundary, including the
+cases that matter most -- `/etc/passwd` as a bare argument, `--user-data-dir`
+as a flag, and a path smuggled through a numeric flag. Whoever runs `--serve`
+is lending their machine and is entitled to know exactly what it can be asked
+to do.

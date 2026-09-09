@@ -776,3 +776,74 @@ docs/qa/opus-integration-2026-09-09.md.
 - Left for a Windows run with the exact commands in MUSE_TASKS.md.
   Status: VERIFICATION BLOCKED for both; nothing else in the queue
   depends on them.
+  (Update: the lead has since closed both — see MUSE_TASKS.md
+  "MUSE-14 and MUSE-15: CLOSED by the lead".)
+
+## MUSE-16 — Interop route in the sandboxed shell: NOT available
+
+Verdict: **browser checks ARE NOT available in the sandboxed shell.**
+
+- Environment (this shell, repo root, node v22.23.2):
+  `findBrowser()` → `/mnt/c/Program Files/Google/Chrome/Application/chrome.exe`,
+  `isWsl()` → true. `/proc/version`: WSL2 kernel 6.18.33.2-microsoft-standard.
+  chrome.exe readable + executable (`-r-xr-xr-x`). `taskkill.exe` resolves;
+  `wslpath` does NOT resolve. Linux Chrome still dead as documented
+  (`socketpair: Operation not permitted`, `Trace/breakpoint trap`).
+- Command (twice, identical, no workarounds): `node tools/page-check.js
+  --ball-lab` → exit 1, wall 0 s both times. Full output (run 1; run 2
+  identical apart from the run id and profile suffix):
+  `browser           : Windows Chrome via WSL interop`
+  `<3>WSL (15 - ) ERROR: UtilBindVsockAnyPort:309: socket failed 1`
+  `WARNING: undefined browser process(es) from this run survived cleanup
+  (could not resolve: Command failed: .../powershell.exe -NoProfile
+  -Command $all = @(Get-CimInstance Win32_Process -Filter
+  'Name="chrome.exe"' | Where-Object { $_.CommandLine -like
+  '*--nilgame-run-id=98228c7d-...*' }); ...)`.
+  `<3>WSL (15 - ) ERROR: UtilBindVsockAnyPort:309: socket failed 1`
+  `backend: real GPU, COLD shader cache`
+  `test profile: /tmp/nilgame-pagecheck/gpu-OfnFoH`
+  `FAIL the browser stopped before reporting: browser exited before
+  report (code 1, signal null)`
+- Reading: this is the task's "anything else" kind, but precise. It is
+  NOT finding the Linux Chrome (findBrowser returns the Windows path)
+  and NOT EPERM on the .exe (it launches — the backend line prints and
+  it exits code 1). The Windows Chrome starts via interop and dies
+  instantly on the same socketpair denial, so the sandbox's syscall
+  denial follows the launch (or breaks the channel Chrome needs). Two
+  identical runs; no third attempt per the task's retry budget.
+- Note for MUSE-17's watch item: the survived-cleanup WARNING fired on
+  both runs, but as "could not resolve" — the powershell CIM query
+  itself fails from this sandbox, so this is an UNRESOLVED check, not a
+  confirmed leak. No processes were killed or touched (read-only
+  observation; the task forbids cleanup action).
+- Consequence: MUSE-17 stops here (its precondition fails). Node-only
+  work (MUSE-18) is unaffected.
+  Status: READY FOR REVIEW.
+
+## MUSE-18 — What shader link time scales with
+
+- Deliverable: new `docs/qa/link-time-inputs-2026-09.md` (11-row table).
+  No shader, tool, or prior-doc edits. Link medians copied from
+  `link-time-2026-09.md` (lead, RTX 5070 Ti), not re-measured; no
+  browser ran here.
+- Method: `/tmp/muse18-analyze.mjs` (scratch) parses the EMITTED
+  program texts (`VERT` + `fragFor(key)` etc., what the compiler links):
+  chars, non-comment non-blank lines, `name(` function definitions
+  (control keywords excluded), call sites of defined functions,
+  `for` bounds classified const iff only numbers/operators/ALL_CAPS
+  remain after removing the loop variable, `#define` directives present
+  in the emission.
+- Headline: the five slow programs are TEXTUALLY ONE program — h3 vs
+  e3t emissions differ in exactly one line (`#define GEOM (0)` vs
+  `(4)`; 2213 lines each). Every parsed column ties across the
+  9.0 → 3.3 s spread by construction; the difference lives in
+  preprocessor-kept branches, which this parse does not evaluate.
+  Across groups size comes closest but inverts Nil (12386 chars, 0.3 s)
+  vs ball-FP (6638 chars, 0.7 s, other tool) — and fn-defs inverts
+  worse (FP 2 fns at 0.7 s vs Sol 5 at 0.2 s). Verdict as tasked:
+  NO single column orders all eleven rows.
+- Non-const loop bounds observed: `uMarkN`, `uCutN`, locals, `rolled()`,
+  `depth`. Define sets listed per program in the doc.
+- Commands: analyzer + h3/e3t diff shown in the doc; `node
+  tools/test.js` → 27/27 suites, exit 0 (WSL node v22.23.2).
+  Status: READY FOR REVIEW.
