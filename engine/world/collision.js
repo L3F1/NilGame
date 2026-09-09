@@ -45,6 +45,7 @@ function requireFinite(v, n, name) {
 function requirePositive(x, name) {
   if (!Number.isFinite(x) || x <= 0) throw new Error(`${name} must be a positive finite number`);
 }
+const dotv = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 /**
  * The motion primitives a geometry has to supply. Everything above is written
@@ -155,13 +156,25 @@ export function sweep(field, space, {
     }
     const gap = clearance(field, position, radius);
     if (gap <= skin) {
-      // Touching. Report the surface normal at the contact, which is capability
+      const n = field.normal(position);
+      // TOUCHING BUT LEAVING IS NOT A COLLISION. A probe resting on the floor
+      // and jumping starts its step in contact, and reporting that as a hit
+      // cancels the jump on the very frame it begins -- the velocity is
+      // projected onto the floor plane and the player never leaves the ground.
+      // Moving away from the surface raises the clearance immediately, so one
+      // nudge is enough to get the normal advancement going again.
+      if (n && dotv(u, n) > 1e-9) {
+        const nudge = Math.min(remaining, Math.max(skin * 4, 1e-4));
+        const next = space.step(position, u, nudge);
+        u = space.transport(position, u, next);
+        position = next;
+        travelled += nudge;
+        continue;
+      }
+      // Blocked. Report the surface normal at the contact, which is capability
       // (3) in the rendering contract -- a real normal, not the direction the
       // marcher happened to stop from.
-      return {
-        position, travelled, hit: true, normal: field.normal(position),
-        stalled: false, steps: step,
-      };
+      return { position, travelled, hit: true, normal: n, stalled: false, steps: step };
     }
     // The only safe advance is one we have proved is free. Stop `skin` short so
     // the probe never lands exactly ON a surface, where the next clearance is
@@ -203,6 +216,9 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
   const contacts = [];
   let budget = space.norm(v) * dt;
   let stalled = false, steps = 0;
+  // How far the probe was lifted off its last contact, and along which normal,
+  // so the settle at the end knows what to undo. See the LIFT note below.
+  let lifted = 0, liftNormal = null;
 
   for (let bounce = 0; bounce <= maxContacts && budget > 0; bounce++) {
     const speed = space.norm(v);
@@ -233,10 +249,42 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
     // Straight into the surface: all of the motion was normal to it, so there
     // is no tangent left and the probe simply stops.
     if (slidSpeed <= 1e-12) { v = [0, 0, 0]; break; }
+
+    // LIFT BEFORE SLIDING, AND THIS IS THE ONE THAT MAKES WALKING POSSIBLE.
+    //
+    // Conservative advancement steps by an ISOTROPIC distance bound, and a
+    // probe resting on a floor has a clearance of zero -- so the safe step
+    // along the floor is also zero, and the probe cannot walk at all. It is
+    // the renderer's grazing-ray problem in another costume: sphere tracing
+    // approaches a surface it is parallel to without ever arriving.
+    //
+    // The distance field alone cannot express "the floor does not block
+    // sideways motion", so lift clear of the contact first, slide there, and
+    // settle back afterwards. The lift is itself a SWEPT query, so lifting
+    // into a ceiling stops at the ceiling instead of tunnelling through it.
+    const lift = Math.min(0.25 * radius, Math.max(8 * skin, budget));
+    const up = sweep(field, space, {
+      from: p, direction: n, distance: lift, radius, skin, maxSteps: 8,
+    });
+    steps += up.steps;
+    lifted = up.travelled;
+    liftNormal = n.slice();
+    p = up.position;
+
     v = slid;
     // The remaining budget is the tangent part. Keeping the whole of it would
     // let a probe skim a wall faster than it was travelling.
     budget *= slidSpeed / speed;
+  }
+  // Settle back onto whatever was lifted off, so the probe ends resting on the
+  // surface rather than hovering a fraction above it. Swept again, so it stops
+  // at the first thing it meets rather than being teleported down.
+  if (lifted > 0 && liftNormal) {
+    const back = sweep(field, space, {
+      from: p, direction: liftNormal.map((x) => -x), distance: lifted, radius, skin, maxSteps: 16,
+    });
+    steps += back.steps;
+    p = back.position;
   }
   return { position: p, velocity: v, contacts, stalled, steps };
 }

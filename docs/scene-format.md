@@ -90,3 +90,16 @@ distance within the cover, not an obstacle-avoiding or quotient path.
 transverse and volume scaling. It is a distortion diagnostic, not a collision
 bound over a whole object. The map respects chart origins; it does not consult
 document portal anchors or implement portal transit.
+
+## `plane` entities (added 2026-09-09)
+
+A half-space. `position` is any point on the plane and `up` is its unit normal;
+the solid side is the one the normal points AWAY from, so a floor points up.
+`radius` and `forward` are refused on a plane.
+
+A plane is unbounded inside its region, so the extent check applies to its
+anchor `position` only -- unlike a ball, whose surface must fit. Region extent
+remains an authoring bound, not a wall: the field answers for points outside it.
+
+`experiments/godot/ball_document.gd` does not implement planes yet and rejects
+documents containing them.

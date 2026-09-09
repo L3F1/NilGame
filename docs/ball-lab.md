@@ -67,10 +67,33 @@ the probe SHORT, never inside, which is the safe direction to fail.
 `distance` must be a true lower bound (1-Lipschitz). A field that overestimates
 lets a step jump through geometry.
 
-There is no gravity and nothing to stand on. **The grid is a drawing aid, not
-scene content**: the document has no floor entity, so adding one to the
-collision field would make the picture and the physics disagree. The ball is
-the only obstacle. Gravity and ground arrive with an authored floor primitive.
+### The floor is authored, and gravity stands on it
+
+`levels/fixtures/room.nil.json` adds a **plane** entity: a half-space with a
+unit `up` normal, solid on the side the normal points away from. The renderer
+draws that entity and the collision field is built from it, so **what you see
+and what you stand on are the same half-space**. A scene with no plane draws no
+floor. `ball-lab.nil.json` is unchanged and still has none -- it is what the
+Godot parity artifacts are built from.
+
+`engine/world/walker.js` adds gravity and ground contact on top of the
+collision contract. It is separate from `collision.js` on purpose: which way is
+down, what counts as ground and whether you may jump are gameplay policy, not
+facts about the metric.
+
+- **Down is a parameter**, always. E3's obvious answer is -z and that is the
+  default, but H3 admits no invariant unit-gradient height function at all, so
+  `up` is passed in and a test drives the whole walker upside down against a
+  ceiling to keep that honest.
+- **Grounded is a contact test, not a height test.** Asking "is z small" needs a
+  floor in a known place; asking "did I touch something facing up" works for a
+  ramp, the top of a ball, or a ceiling you stand under in another geometry.
+- A resting probe stops accumulating downward speed. Without that, `vz` grows
+  the whole time you stand still and the first step off a ledge fires you down
+  at the speed banked over those seconds.
+
+Gravity is a checkbox. With it off the probe flies, which is still the only
+sensible mode in a scene with no plane to stand on.
 
 ## The edit/play transaction policy
 
@@ -80,8 +103,14 @@ Chosen explicitly, because the alternative is choosing it by accident:
   wins; being unable to grow a ball while standing in it is the worse rule.
 - If the edit leaves the probe overlapping, it is **pushed out** along the
   surface normal, and the status line says so.
-- If it cannot be pushed -- the dead centre of a ball, where every direction is
-  equally "out" and there is no honest normal -- the probe **respawns**.
+- If it cannot be pushed, the probe **respawns**. Two configurations reach
+  this: the dead centre of a ball, where every direction is equally "out" and
+  there is no honest normal; and a **wedge** between two solids, where the
+  nearest surface's normal points into the other one. Standing on the floor
+  directly under a ball that is then grown over you is the second case -- the
+  ball's normal points straight down into the floor, whose normal points
+  straight back up, and a gradient push alternates for ever. `resolveOverlap`
+  reports `trapped` rather than shoving the player through the floor.
 - Undo and redo reconcile the same way. Stepping back to an older, larger ball
   can swallow the player just as a forward edit can.
 
@@ -98,6 +127,8 @@ establish native physics, networking or whole-game parity.
 ```sh
 node ball-scene.test.js
 node collision.test.js
+node scene-field.test.js
+node tools/scene-check.js levels/fixtures/room.nil.json
 node tools/scene-check.js levels/fixtures/ball-lab.nil.json
 node tools/shader-check.js
 node tools/sdf-check.js
@@ -134,3 +165,24 @@ DOM controls, including walking into the ball and an edit that swallows the
 player. `BALL_FIRST_PERSON_GLSL` is a separate program from
 `BALL_PREVIEW_GLSL`, which stays the fixed-viewpoint artifact the Godot export
 and the parity fixtures depend on.
+
+2026-09-09, the floor and gravity: `scene-field.test.js` 20 cases -- the plane's
+signed distance and exact ray hit, the union taking the nearest solid WITH its
+own normal, a probe that lands and rests exactly its radius above the floor,
+walking without sinking, a jump that is refused in mid-air, a ceiling walked
+upside down to prove `up` is a parameter, and the wedge that is honestly
+reported as trapped. The browser check is 23, up from 17.
+
+Two bugs this step found in the code shipped just before it. Conservative
+advancement stalls dead on a resting contact -- the safe step along a floor you
+are touching is zero, so the probe could not walk at all; `moveProbe` now lifts
+off the contact, slides, and settles back, all swept. And the lab's camera had
+`right` negated, which negates `up` with it and rotated the view a half turn:
+the floor drew ABOVE the horizon, which reads as a plane-equation bug rather
+than a camera one. Both are covered by tests now, the second by an assertion on
+the basis rather than by looking at a picture.
+
+Not yet in the native host: `experiments/godot/ball_document.gd` accepts only
+ball and spawn, so it REJECTS a scene containing a plane. That is the intended
+behaviour for an unsupported feature rather than silent divergence, and adding
+planes there is the next native task.

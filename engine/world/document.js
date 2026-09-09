@@ -52,7 +52,7 @@ export function validateScene(scene) {
     identify(entity.id, ids, 'entity.id');
     const chart = charts.get(entity.regionId);
     requireValue(chart, `entity ${entity.id}: unknown region ${entity.regionId}`);
-    requireValue(['ball', 'spawn', 'objective', 'anchor'].includes(entity.kind), `entity ${entity.id}: unsupported kind`);
+    requireValue(['ball', 'plane', 'spawn', 'objective', 'anchor'].includes(entity.kind), `entity ${entity.id}: unsupported kind`);
     vector(entity.position, `entity ${entity.id}.position`);
     chart.decode(entity.position);
     if (entity.kind === 'ball' || entity.kind === 'anchor') {
@@ -61,6 +61,16 @@ export function validateScene(scene) {
     const clearance = entity.kind === 'spawn' ? scene.units.playerRadius : (entity.radius || 0);
     requireValue(Math.hypot(...entity.position) + clearance <= chart.maxDistance,
       `entity ${entity.id}: bounds straddle chart extent`);
+    // A PLANE is unbounded inside its region, so `position` is a point ON it
+    // rather than an extent: only that anchor point has to lie in the chart.
+    // `up` is the outward normal -- the side with room on it. The solid half
+    // is the other one, which is why a floor points up rather than down.
+    if (entity.kind === 'plane') {
+      requireValue(entity.up !== undefined, `plane ${entity.id}: up is required`);
+      vector(entity.up, `plane ${entity.id}.up`);
+      requireValue(Math.abs(Math.hypot(...entity.up) - 1) < 1e-8,
+        `plane ${entity.id}.up: expected a unit normal`);
+    }
     if (entity.kind === 'anchor') {
       vector(entity.forward, `anchor ${entity.id}.forward`);
       vector(entity.up, `anchor ${entity.id}.up`);
@@ -68,8 +78,13 @@ export function validateScene(scene) {
       requireValue(Math.abs(Math.hypot(...entity.forward) - 1) < 1e-8
         && Math.abs(Math.hypot(...entity.up) - 1) < 1e-8 && Math.abs(dot) < 1e-8,
       `anchor ${entity.id}: forward and up must be orthonormal`);
-    } else requireValue(entity.forward === undefined && entity.up === undefined,
-      `entity ${entity.id}: orientation only applies to anchors`);
+    } else {
+      requireValue(entity.forward === undefined, `entity ${entity.id}: forward only applies to anchors`);
+      requireValue(entity.up === undefined || entity.kind === 'plane',
+        `entity ${entity.id}: up applies to anchors and planes`);
+      requireValue(entity.kind !== 'plane' || entity.up !== undefined,
+        `plane ${entity.id}: up is required`);
+    }
     entities.set(entity.id, entity);
   }
   requireValue(scene.entities.some((entity) => entity.kind === 'spawn'), 'entities: at least one spawn required');

@@ -38,10 +38,9 @@ void main(){
 // change what those compare. Same field, so the thing you walk into is still
 // the thing the preview draws.
 //
-// The floor is a rendering AID, not scene content: it is drawn here so that
-// moving through the region reads as movement, and it is deliberately absent
-// from the collision field, because the document has no floor entity. Nothing
-// stands on it, and it must not grow into one by accident.
+// The plane it draws is an AUTHORED ENTITY, taken from the same document the
+// collision field is built from, so what you see and what you stand on are the
+// same half-space. A scene with no plane draws none.
 export const BALL_FIRST_PERSON_GLSL = `#version 300 es
 precision highp float;
 uniform vec4 uBall;
@@ -51,26 +50,48 @@ uniform vec3 uFwd;
 uniform vec3 uRight;
 uniform vec3 uUp;
 uniform float uExtent;
+// vec4(normal, offset) of the authored plane, and 0/1 for whether there is
+// one. The drawn floor IS the collidable floor: it comes from the same entity
+// the field builds its half-space from, so the picture cannot disagree with
+// what you walk on.
+uniform vec4 uPlane;
+uniform float uHasPlane;
 out vec4 fragColor;
 ${BALL_FIELD_GLSL}
 void main(){
   vec2 uv=(2.0*gl_FragCoord.xy-uRes)/uRes.y;
   vec3 u=normalize(uFwd+uv.x*uRight+uv.y*uUp);
   float tBall=ballRayHit(uEye,u,uBall);
-  // The authoring floor: a plane at z = 0, faded out at the region extent so
-  // the bound the document declares is visible rather than implied.
+  // The authored plane. Faded out at the region extent so the bound the
+  // document declares is visible rather than implied -- the plane itself is
+  // unbounded, and the fade must not be mistaken for an edge you can fall off.
   float tFloor=1e20;
-  if(u.z<-1e-4){
-    float tf=-uEye.z/u.z;
-    if(tf>0.0&&length((uEye+tf*u).xy)<uExtent) tFloor=tf;
+  if(uHasPlane>0.5){
+    float denom=dot(u,uPlane.xyz), height=dot(uEye,uPlane.xyz)-uPlane.w;
+    if(denom<-1e-6&&height>0.0){
+      float tf=-height/denom;
+      if(tf>0.0) tFloor=tf;
+    }
   }
   vec3 color=mix(vec3(.025,.04,.07),vec3(.09,.13,.19),clamp(.5+.25*uv.y,0.0,1.0));
   if(tFloor<tBall){
     vec3 p=uEye+tFloor*u;
-    float rr=length(p.xy);
-    vec2 g=abs(fract(p.xy)-0.5);
-    float grid=smoothstep(0.0,0.03,min(g.x,g.y));
-    color=mix(mix(vec3(.16,.20,.26),vec3(.06,.08,.11),grid),color,clamp(rr/uExtent,0.0,1.0));
+    // A grid in the plane's OWN two directions, so it stays a grid whatever
+    // the normal is -- a ceiling and a ramp are the same primitive here.
+    vec3 a=abs(uPlane.xyz.x)<0.9?vec3(1,0,0):vec3(0,1,0);
+    vec3 e1=normalize(cross(uPlane.xyz,a)),e2=cross(uPlane.xyz,e1);
+    vec2 g=abs(fract(vec2(dot(p,e1),dot(p,e2)))-0.5);
+    float line=smoothstep(0.0,0.03,min(g.x,g.y));
+    // FADE THE GRID WITH DISTANCE. One cell falls far under a pixel out near
+    // the horizon, and below a pixel the right answer is the average, not
+    // whichever line the sample happened to land on -- otherwise the floor
+    // aliases into moire rings. Same rule as the H^2 x R floor checker.
+    float sharp=1.0/(1.0+tFloor*tFloor*0.03);
+    vec3 floorColor=mix(vec3(.42,.50,.58),vec3(.13,.17,.23),mix(1.0,line,sharp));
+    // Haze toward the sky over the region extent, so the authoring bound is
+    // visible without pretending to be an edge you could fall off.
+    float far=clamp(tFloor/max(uExtent,1e-6),0.0,1.0);
+    color=mix(floorColor,color,far*far);
   } else if(tBall<1e10){
     vec3 p=uEye+tBall*u,n=normalize(p-uBall.xyz);
     float light=.2+.65*max(dot(n,normalize(vec3(-.5,-1.0,1.0))),0.0);

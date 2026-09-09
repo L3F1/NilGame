@@ -33,10 +33,14 @@ The previous backlog is preserved in
   without touching the solver. Conservative advancement cannot tunnel at any
   speed or time step; a stall leaves the probe short, never inside. The
   edit/play transaction policy is written down in docs/ball-lab.md.
-- [ ] Author a FLOOR primitive, then gravity and ground contact. The lab's grid
-  is a drawing aid and deliberately not in the collision field, because the
-  document has no floor entity and a field that disagrees with the picture is
-  the bug this whole boundary exists to prevent.
+- [x] Author a FLOOR primitive, then gravity and ground contact. `plane` is a
+  scene-v1 entity kind; `engine/world/scene-field.js` unions balls and planes
+  with the nearest solid's own normal; `engine/world/walker.js` adds gravity
+  where DOWN IS A PARAMETER, because H3 has no canonical one. The drawn floor
+  is the authored entity, so the picture and the collision field cannot
+  disagree. Godot's adapter rejects planes until it implements them.
+- [ ] Teach `experiments/godot/ball_document.gd` about planes, so both hosts
+  accept the same documents again. Shared conformance cases first (MUSE-09).
 - [ ] Curved balls: an H3/S3 `space` (step, transport, project) plus metric
   distance/normal. The solver is already written against that interface;
   `e3Space().transport` is the identity and curved spaces MUST override it.
