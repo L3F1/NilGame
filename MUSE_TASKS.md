@@ -67,109 +67,119 @@ once, and move on to the others rather than waiting.
 Order: **MUSE-26 first**, then 27 and 28, which are independent of it and of
 each other. All three are Node-only; none needs a browser or a worker.
 
-## MUSE-26 - A corpus for intersection
+Order: **MUSE-31 first** -- it is the one with a decision waiting on it. 29
+and 30 are independent of it and of each other. All three are Node-only; none
+needs a browser or a worker.
 
-Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@d08307e, WSL node v22.23.2) | Reviewer: Opus | Node-only
-Report: docs/qa/overnight-results.md (MUSE-26). 6 rules found, all covered: 9 message-checked invalid docs (global with WHY asserted, kinds x3, self, missing, subtract/intersect targets, misspelled clip) + 7 valid clip docs with caps pinned; normals agree exactly ([0,0,-1] both ways); commute bitwise; fail-demo exit 1 without rule, 16/16 + suite 32/32 restored. Observation handed back: self-target message says carve for intersects. No engine edits.
+Context you need for all three: `kind: 'box'` landed in `319ca88`. It is an
+axis-aligned box with three half-extents, and unlike every other way of
+building a box it is EXACT -- exact distance, exact normal, exact slab ray hit
+-- so a scene made of boxes still renders down the closed-form path. Six
+clipped planes describe the same solid and can only promise a bound, and one
+bound anywhere makes the whole scene marched. `box.test.js` has the argument
+in full.
 
-`op: 'intersect'` landed in `aaa8015` with seven tests, all written by the
-person who wrote the feature. MUSE-21 did this for subtraction and the pattern
-worked; do it again for clipping. The interesting part is that intersection is
-the SAME code path as subtraction with the sign flipped, so the cases that
-matter are the ones where the two differ.
+## MUSE-31 - Coincident faces: find the threshold
 
-- Allowed writes: new files under `levels/fixtures/invalid/` and
-  `levels/fixtures/carve/` (or a new `levels/fixtures/clip/`), a new
-  `intersect-corpus.test.js`, `docs/qa/overnight-results.md`, this task's
-  status and report. Do NOT edit `engine/world/document.js`,
-  `engine/world/scene-field.js`, `boolean.test.js` or `boolean-corpus.test.js`.
-- Invalid cases, one defect each: a global intersect (no target), an intersect
-  on a spawn / anchor / objective, an intersect targeting itself, targeting a
-  missing id, targeting a subtract, targeting another intersect. Assert on the
-  MESSAGE, and for the global case assert it explains WHY rather than just
-  refusing -- that message is doing real work.
-- Valid cases worth pinning: a clip that removes its target entirely, a clip
-  that removes nothing (target wholly inside it -- assert the field is
-  bitwise what it would be with no clip at all), two clips on one target,
-  a clip and a carve on the SAME target in both document orders (the result
-  must not depend on the order, since both are a max), and a clip whose
-  boundary exactly touches its target.
-- THE ONE THAT MATTERS MOST: for a face produced by a clip and the
-  corresponding face produced by a carve, assert the normals agree. The sign
-  that distinguishes the two operations also decides which way a surface
-  faces, and getting it backwards is a one-character bug that looks like a
-  collision problem.
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+
+The `box-room` fixture first drew a SPECKLED LINE across its doorway sill.
+The carving box's bottom face sat at exactly z = 0, in the same place as the
+ground plane; two surfaces occupy one location and the marcher cannot say
+which it is on. Sinking the cutter 0.2 below the floor fixed it. Nothing
+numeric caught this -- only the picture did.
+
+There is a TODO to have the editor WARN about this, and that warning needs a
+number: how close is too close. Nobody knows it. You are finding it.
+
+- Allowed writes: a new `coincident.test.js`, `docs/qa/overnight-results.md`,
+  this task's status and report. Do NOT edit anything under `engine/` or
+  `app/`.
+- Reproduce it in Node FIRST, without a browser. The symptom on screen is a
+  ray that cannot decide which surface it hit, so the CPU analogue is
+  `rayCast` disagreeing with itself: march a fan of rays across the seam and
+  look at whether `t`, the owner, or the normal flips between neighbouring
+  rays that should agree. State what signal you chose to be the defect and
+  why, BEFORE you sweep -- a threshold found by looking for one is not a
+  measurement.
+- Then sweep the separation: carving box bottom at exactly the plane, and at
+  a decreasing series of offsets above and below. Report where the signal
+  appears and disappears, in both directions. Coincident and NEARLY coincident
+  may not behave the same way, and if so that is the finding.
+- Vary the thing that should matter and check whether it does: the distance
+  from the camera to the seam, the grazing angle, the size of the solids, and
+  `hitEpsilon`. A threshold that is really a function of one of those is not a
+  constant the editor can warn on, and saying so is a better answer than a
+  number that only holds for one scene.
+- Report the threshold as a RANGE with the sweep that produced it, not a
+  single value. If it turns out to depend on the view rather than the
+  geometry, say that plainly -- it would mean the editor cannot warn from the
+  document alone, which changes what gets built.
+- Acceptance: the chosen defect signal stated as a sentence, the sweep, the
+  range, and a fail-demo showing the check catching a scene it should.
+
+## MUSE-29 - A corpus for boxes
+
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+
+MUSE-21 did this for subtraction and MUSE-26 for intersection, and both found
+things. Same pattern, new kind. The interesting part this time is that a box
+is the FIRST solid to arrive after modifiers existed, so it lands in code that
+was written without it.
+
+- Allowed writes: new files under `levels/fixtures/invalid/` and a new
+  `levels/fixtures/box/`, a new `box-corpus.test.js`,
+  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
+  `engine/world/document.js`, `engine/world/scene-field.js`, `box.test.js` or
+  any existing test.
+- Invalid cases, one defect each: `halfExtent` missing, wrong length, zero,
+  negative, non-finite; `halfExtent` on a ball, a plane, a spawn; `radius` on
+  a box; a frame (`up` or `forward`) on a box; a box whose CORNER leaves the
+  chart while every half-extent on its own is inside it. Assert on the
+  message, and confirm each refusal leaves the document byte-identical.
+- THE ONE THAT MATTERS MOST: owner indices now span three bands -- ball i,
+  plane 100+i, box 200+i -- and a modifier names its target by that index.
+  Build scenes with several of each kind, in several document orders, and
+  assert every modifier applies to the solid it names AND to nothing else. An
+  off-by-one in a band carves the wrong object, which looks like a rendering
+  bug and is a bookkeeping one. Cover a box carving a ball, a ball carving a
+  box, a box clipping a plane, and a box modified by two different kinds.
+- Also worth pinning: that a scene of boxes with no modifier still advertises
+  `distance: 'exact'`, and that adding one modifier of any kind drops it to
+  `bound`. That is the capability the whole primitive exists to protect.
 - Checks: your new file plus `node tools/test.js`. Report both numbers.
-- Acceptance: a stated count of rules found around `intersect` and how many are
+- Acceptance: a stated count of rules found around `box` and how many are
   covered, plus a fail-demo on one of them.
 
-## MUSE-27 - The modifier algebra, tested rather than asserted
+## MUSE-30 - Is the box really exact?
 
-Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@d08307e, WSL node v22.23.2) | Reviewer: Opus | Node-only
-Report: docs/qa/overnight-results.md (MUSE-27). Identity holds BITWISE (worst deviation exactly 0, distance+normal, 206 seam-including points, both signs); order/idempotence/isolation likewise exact. Fail-demo (global to first solid only): only the 2 identity checks fail, exit 1; restored, diff empty, 5/5 + suite 33/33. No engine edits.
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
 
-`engine/world/scene-field.js` justifies its design in a comment:
+`box.test.js` brackets the distance from both sides -- nothing within `d` is
+inside, and stepping past `d` is not outside -- which pins it to about 1e-7.
+That is the lead checking their own formula with a cleverer version of the
+same idea, and MUSE-25 is the reason that is not enough: an independent
+reference caught a defect in code the lead had written and was confident in.
 
-    A modifier with no target applies to every solid, and that is EQUIVALENT
-    to applying it to the union afterwards, because max distributes over min:
-        max(min(a, b), k) = min(max(a, k), max(b, k))
+Build the independent reference.
 
-That identity is the reason scoped modifiers are called a strict
-generalisation rather than a different operation. It has never been tested. A
-comment asserting an algebraic law is exactly the kind of claim that is true
-when written and false after a refactor.
-
-- Allowed writes: a new `modifier-algebra.test.js`,
-  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
-  anything under `engine/`.
-- Test the identity AS THE FIELD COMPUTES IT, not as arithmetic: build a scene
-  with a global modifier, build the same scene with that modifier duplicated
-  and explicitly targeted at each solid, and assert the two fields agree at
-  many deterministic sample points -- distance AND normal.
-- Then the properties that follow, each of which could break independently:
-  order-independence (two modifiers on one target, both document orders),
-  idempotence (the same modifier twice is the same as once), and that a
-  modifier targeting a solid has NO effect on any other solid's surface.
-- Sample points must include places near the seams, not just open space. A
-  property that holds everywhere except where two surfaces meet is a property
-  that does not hold, and the seams are where `max` is not exact.
-- Where an identity does NOT hold exactly, say so with the worst deviation and
-  where it happens, rather than loosening a tolerance until it passes. A
-  measured near-miss is a finding; a passing test with a mystery tolerance is
-  not.
-- Fail-demo: break the identity in your own copy (make the global modifier
-  apply to only the first solid, say), show the check catching it, restore,
-  show `git diff engine/` empty.
-- Acceptance: each property stated as a sentence, tested, and either confirmed
-  with its worst deviation or reported as not holding.
-
-## MUSE-28 - Walking on a bound
-
-Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@d08307e, WSL node v22.23.2) | Reviewer: Opus | Node-only
-Report: docs/qa/overnight-results.md (MUSE-28). 13 scenes (9 hand + 4 seeded), 20,800 steps: zero sinks, positions finite, max stall run 2 vs N=60; stall fraction exact 0.0014 vs bound 0.0006 (noise scale, bound not worse). Sensitivity demo: inside-geometry start trips SINK branch step 0. Suite 34/34. No engine edits.
-
-The collision solver was built against an EXACT distance field. Carving and
-clipping made the distance a lower bound, and the walker has not been exercised
-on one in any systematic way -- `boolean.test.js` walks through one doorway.
-Conservative advancement should be safe on a bound by construction, since a
-lower bound only makes steps shorter. "Should be" is the part this task
-replaces.
-
-- Allowed writes: a new `walk-bound.test.js`, `docs/qa/overnight-results.md`,
+- Allowed writes: a new `box-truth.test.js`, `docs/qa/overnight-results.md`,
   this task's status and report. Do NOT edit anything under `engine/`.
-- Generate scenes deterministically -- no RNG, or a seeded generator whose seed
-  is printed on failure. Vary: number of solids, number and kind of modifiers,
-  whether modifiers are targeted or global, and include configurations that
-  produce thin walls, narrow gaps and concave corners.
-- For each scene, walk a probe from several starts along several headings for
-  several hundred steps, and assert on every step: it never sinks below
-  `-1e-3` clearance, it never reports `stalled` for more than N consecutive
-  steps (state your N and why), and its position stays finite.
-- Report separately how often the solver STALLS on a bound versus on an exact
-  field, at matched scene complexity. A bound makes steps shorter, so more
-  stalling is expected -- the question is how much, and nobody knows.
-- If you find a scene where the probe sinks, that is the deliverable: the seed,
-  the scene as JSON, the step it happened on, and the clearance. Stop and
-  report rather than characterising further.
-- Acceptance: the number of scenes and total steps walked, the stall comparison
-  with its method, and either a clean verdict sentence or a reproducing case.
+- The reference is the NEAREST POINT ON THE SURFACE, found without the box
+  formula: sample the six faces densely, take the best, then refine locally
+  until it stops improving. State your refinement and its convergence, and
+  report the resolution you actually achieved rather than assuming it.
+- Compare across many boxes and many query points -- inside, outside, on a
+  face, off an edge, off a corner, very close to the surface, and far away --
+  and include boxes with extreme aspect ratios, where a formula that is
+  secretly assuming a cube shows it.
+- Do the same for the NORMAL against a numeric gradient, and for `rayHit`
+  against bisection on the sign, at a much finer resolution than `box.test.js`
+  uses. Report worst deviations with the query that produced them.
+- If everything agrees, say so with the numbers and the resolution -- that IS
+  the deliverable, and it is what lets the rest of the project rely on the
+  primitive. If anything disagrees, stop and report the case: the box, the
+  query, both answers, and the difference.
+- Acceptance: the reference described well enough that someone could rebuild
+  it, the comparison, and either a clean verdict with worst deviations or a
+  reproducing case.
