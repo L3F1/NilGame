@@ -95,15 +95,35 @@ far face, with the field reporting 0.2505 against a player radius of 0.25. It
 is not curvature-specific -- the same construction in E3 dips to 0.4 where the
 truth is 0.9, and only escapes because the cutter there happens to be deeper.
 
-The condition is derivable and was then confirmed by sweep. A probe travelling
-toward the carver's far face is stopped one radius short of it, and escapes
-only if the TARGET's own distance already exceeds a radius there. So
+MUSE-33 swept it, and the overhang rule turned out to be one case of
+something simpler. Approaching a doorway, the target's own distance `d` falls
+to zero, so the walker is released only where `-m` -- the distance to the
+CUTTER's boundary, which is the void's inradius at that point -- already
+exceeds the player radius. That is the whole condition, and it is checkable
+from the document alone:
 
-    a cutter must overhang its target by MORE THAN TWICE the player radius.
+    a walk passes iff, everywhere the target is within r,
+    the cutter's boundary is farther than r from the path.
 
-Measured with radius 0.25: an overhang of 0.5 blocks the player in mid-air, and
-0.7 walks through. Derived for an axis-aligned cutter meeting a flat face; the
-general shape of the rule is MUSE-33.
+Both halves of the observed behaviour fall out of it. Walk in centred and
+square, and the nearest cutter face is the MOUTH, at `o - r` when the target
+is `r` away; requiring that to exceed `r` gives the familiar
+
+    a cutter must overhang its target by MORE THAN TWICE the player radius
+
+which is why 0.5 blocks and 0.7 walks at radius 0.25. But walk in at an angle,
+or tilt the cutter, and a SIDE face can be the nearest one instead -- and no
+overhang moves a side face. MUSE-33 found configurations with no safe overhang
+at all: a 0.5-radius probe crossing a 1.7-wide doorway at 30 degrees is halted
+at every overhang out to 3.0, because its lateral offset leaves it 0.388 from
+the jamb where it needs 0.5. Checked against exact truth (wall-minus-cutter
+decomposes into axis-aligned boxes, whose distances are closed forms), the
+probe genuinely fits, with 0.086 to spare the whole way through.
+
+The predicate was tested against the solver over 372 configurations -- three
+radii, four approaches, overhangs 0 to 3.0 -- and agreed on every one, the
+only apparent misses being exact ties at `o = 2r`, where "farther than r"
+decides the case. An editor can evaluate it before the player ever walks.
 
 **COINCIDENT FACES.** Two flat surfaces in exactly the same plane are the one
 configuration the field will not resolve, and it says so rather than picking:

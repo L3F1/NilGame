@@ -172,15 +172,23 @@ belongs to. The next items are its work item 3.
   finds the opening and reaches the back wall, one meets the wall beside it and
   stops outside. The solver is unchanged from E3 -- this is what the metric
   seam bought.
-- [ ] **THE PHANTOM SURFACE OF A CARVE.** Found by walking the S3 room, and it
-  is not curvature-specific. Where a carving solid extends past the solid it
-  cuts, `max(d, -m)` reports the distance to the CARVER's boundary -- a surface
-  in open air belonging to nothing. Still a valid bound, still invisible, but a
-  walker reads a clearance from it and stops dead. Derived rule, confirmed by
-  sweep: a cutter must overhang its target by more than TWICE the player
-  radius (0.5 blocks, 0.7 walks, at radius 0.25). The general shape of the rule
-  across primitives is MUSE-33; then the editor should refuse or warn, the way
-  it now does for coincident faces.
+- [x] **THE PHANTOM SURFACE OF A CARVE: the rule is known.** Where a carving
+  solid extends past the solid it cuts, `max(d, -m)` reports the distance to
+  the CARVER's boundary -- a surface in open air belonging to nothing. Still a
+  valid bound, still invisible, but a walker reads a clearance from it and
+  stops dead. MUSE-33 swept it and the overhang rule turned out to be one case
+  of something simpler: **a walk passes iff, everywhere the target is within
+  r, the cutter's boundary is farther than r from the path.** Walk in centred
+  and square and the mouth is nearest, which reproduces "overhang by more than
+  2r" (0.5 blocks, 0.7 walks, at r = 0.25). Walk in at an angle and a SIDE
+  face is nearest instead -- and no overhang moves a side face, so some
+  doorways have no safe overhang at all. 372 configurations, predicate and
+  solver agreeing on every one. See the rendering contract.
+- [ ] **The editor should check that predicate** before the player walks, and
+  say which face is the binding one -- the way it now names coincident faces.
+  Refuse when no overhang can clear the walk; warn when the mouth is merely
+  short. Wants a path to check against, so it lands with the room in the
+  editor.
 - [ ] **The S3 subset remainder**: oriented great-sphere half-spaces, the
   `geodesic-cell` construction, distances scaled by curvature radius, gravity
   from a chosen floor's signed-height field, transported camera frames with
