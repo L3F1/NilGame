@@ -1,977 +1,169 @@
 # Muse task queue
 
-Prepared assignments, not automatically running jobs. Shared rules: MUSE.md
-and docs/engineering/WORKING_RULES.md. Current overnight authorization is below.
-
-## Overnight execution
-
-Current batch: MUSE-19 FIRST (one command, everything else depends on it),
-then MUSE-20 if it passes. MUSE-16, 17 and 18 are closed: the interop route is
-DEAD in the sandbox and must not be retried, and browser checks now go through
- instead.
-MUSE-08..13 are accepted and integrated; MUSE-14 and MUSE-15 were closed by the
-lead on the Windows host. Do not reopen any of them.
-MUSE-11 through MUSE-15 were added 2026-09-09 by the lead and are INDEPENDENT
-of each other and of 08-10: a blocker in one does not stall the rest. Two of
-them need the Windows host with a real GPU and cannot run from WSL (MUSE-14,
-MUSE-15); the other three are Node-only and run anywhere. Take the Node-only
-ones first if you are unsure which host you have. MUSE-01 through MUSE-07 are all
-accepted and integrated; do not reopen them. Read
-docs/qa/opus-integration-2026-09-09.md for the current verdicts and the one
-defect found at integration; docs/qa/astra-review-2026-09-09.md and the older
-batch review are history.
-
-Baseline has moved: this queue's work is committed and pushed to origin/main.
-Start from a pull and the new HEAD, not from b9b42e7. Two environment facts
-changed and are worth knowing before you plan: headless Chrome now WORKS on the
-Windows host (real-GPU cold page-check --worlds gave 346 checks, exit 0), and
-the WSL socketpair block is unchanged, so browser checks still cannot run from
-WSL. Node-only work still runs anywhere.
-The user authorizes
-these bounded tasks while Astra is unavailable. Mark each READY FOR REVIEW
-with evidence, then continue to the next independent task without waiting for
-acceptance. Do not self-accept or expand the queue.
-
-Use this checkout serially while the lead is idle. Inspect status first and
-preserve pre-existing edits, the accepted report and .codex/. If another agent
-is editing an assigned file, stop that task and move to an independent one.
-Do not stage, commit, merge, push, switch branches or reset this shared tree
-during this overnight batch. Integration remains with the reviewer.
-
-Before substantive work, record branch/hash, OS, Node executable/version and
-available browser/backend in docs/qa/overnight-results.md. Run
-`node tools/test.js` and `node tools/scene-check.js` once for a baseline.
-For this continuation, reuse the already recorded unchanged baseline; do not
-restart the earlier environment investigation. The reported WSL socketpair
-block remains a prerequisite failure even though Linux Chrome is now installed.
-Do not use the broken timeout(1) utility or repeatedly ask for cold host runs.
-Attribute any Windows output supplied by the user as user-executed. No blanket
-Chrome/headless-process killing. Only a test's own process tree may be cleaned up.
-These are real executions, not string-presence checks. Do not install packages
-or modify system/browser configuration to get a green result. WSL and Windows
-executables can have different paths and browser discovery; record which ran.
-
-For every task, record changed files, exact commands, exit codes, summary,
-artifact paths and limitations in that results file. A process exiting zero
-does not override PAGE_ERROR, a boot error, failed assertions or a missing image.
-Inspect generated images. Label code reading, synthetic browser events, manual
-play and software versus hardware rendering separately. Never copy Astra's
-previous results as your own. Keep logs concise; no secrets or full environment dumps.
-
-Run browser/GPU checks sequentially. If a prerequisite is unavailable, diagnose
-one concrete cause and try a reasonable existing-tool remedy. After two failed
-setup attempts, mark VERIFICATION BLOCKED with the error and continue independent
-work. Do not weaken tests, disable failures or spend the night installing tools.
-Failures in your in-scope code should be debugged and fixed, then retested.
-
-## MUSE-01 — Controls/menu QA
-
-Status: ACCEPTED rev 2 | Owner: Muse | Reviewer: Astra
-Baseline: main at b9b42e7; report SHA256:
-385C93CE2977F75A1861680E2E3FB5C4B0F234D9A49AAE3D3F4183CAA9D680C0
-
-Accepted report: docs/qa/controls-review.md. Rev 2 correctly separates Muse's
-static inspection from Astra's executable K/fog probe and resolves the requested
-F1/F2/F4/F5 corrections. F1/F3 remain valid; F4 is a confirmed lead-owned defect;
-F5's unconditional-normal hypothesis is closed. Acceptance is of the QA report,
-not of fixes to the application. No integration has occurred.
-
-Rev 2 review: re-read the report and spot-checked the menu guard, preset
-preservation, Nil renderer limits, flight controls and prior runtime evidence.
-Application code is unchanged from b9b42e7, so no duplicate runtime suite was run.
-First-review details: docs/qa/muse01-review-history.md.
-
-Nonblocking erratum: the dropper paragraph calls it a 60-unit shaft; actual
-height is 44 (h2r.js H2R_TOP_Z), while 60 is its renderer ray range. Correct that
-sentence in MUSE-03. No third review round is required for this wording alone.
-MUSE-02 is explicitly UNBLOCKED.
-
-## MUSE-02 — Render-fixture guide
-
-Status: ACCEPTED | Owner: Muse | Reviewer: Astra (2026-09-09)
-Acceptance: main b9b42e7 + working tree; corrected guide inspected and
-nil-close-column rendered/viewed on Windows. See astra-review-2026-09-09.md.
-Review: docs/qa/astra-batch-review.md, MUSE-02. Correct the standalone probe
-command, viewport example and current environment description. Image verification
-may remain explicitly blocked; do not keep retrying the known sandbox failure.
-Report: revised per review — literal /tmp commands, fitting CW=400/CH=300 example with the VW/VH pin stated, probe noted inject-only, env paragraph updated to the socket block. Fixture names verified against JSON (exit 0). Image verification still blocked, left for a capable host. Evidence: `docs/qa/overnight-results.md` (MUSE-02 revision). No shader/coordinate/tolerance/tool changes.
-
-- Read docs/rendering-contract.md, tools/render-fixture.js, tools/preview.js
-  and levels/fixtures/render-regressions.json; use the existing scratch draft
-  only after checking it against these current sources.
-- Allowed writes: docs/qa/render-fixture-guide.md, overnight-results.md in the
-  same directory, and this task's status/report.
-- Document the three actual fixture commands, output locations, resolution
-  overrides supported by the tool and what each image is meant to reveal.
-  Explain software previews versus real-driver checks without claiming pixel tests.
-- Execute at least one fixture and inspect its image. Attempt the remaining
-  views if that works; record missing rendering/image access honestly.
-- Acceptance: another contributor can reproduce a view from the guide.
-  No shader, coordinate, tolerance or tool changes.
-
-## MUSE-03 — Player-facing documentation and Fog help
-
-Status: ACCEPTED | Owner: Muse | Reviewer: Astra (2026-09-09)
-Acceptance: main b9b42e7 + working tree; controls and hint checked, real-GPU
-world probe green, desktop 1200x900 and narrow 500x844 images inspected.
-390px phone emulation remains unverified. See astra-review-2026-09-09.md.
-Review: docs/qa/astra-batch-review.md, MUSE-03. Finish flight controls, visible
-Fog description and final 1-9 wording. All edits stay within this task's files.
-Report: revised per review — free-flight Space/Shift rows + paragraph (facts re-verified in s3Want/adapters), 1–9/cards-10+ wording, Nil 60-unit rise with Sol/SL2R bounded chambers, visible `hint-fog` element tied to the select's accessible description (title kept; survives re-renders). Syntax OK; no stale 1–8. `page-check --worlds` and narrow/desktop inspection VERIFICATION BLOCKED (known socket block, not retried). Evidence: `docs/qa/overnight-results.md` (MUSE-03 revision). No option/callback/gameplay changes.
-
-- Read accepted MUSE-01, current preset data, flight controls and relevant
-  playground sections. Reconfirm facts rather than copying numeric claims.
-- Allowed writes: docs/playground.md; app/menu.js (Fog help/accessible hint
-  only); docs/qa/controls-review.md (44-unit shaft erratum only);
-  docs/qa/overnight-results.md; this task's status/report.
-- Update the stale seven-world and missing-geometries statements. Distinguish
-  Nil's climb from Sol/SL2R's bounded labs and the H3-only kit. Repair moved
-  module links in the sections touched. Preserve historical mathematical discussion.
-- Explain Fog off in one short player-facing sentence: fog disappears but
-  finite view limits remain. Keep renderer internals out of the menu.
-- Correct flight controls and preset setting-preservation wording where needed.
-  Leave the shortcut footer/handler for MUSE-04; do not advertise a fix early.
-- Verify current file links and controls; check the Fog hint and menu at narrow
-  and desktop widths if a browser is available. Record actual viewport sizes.
-  Run node tools/page-check.js --worlds after the UI change. No math/shader suites
-  are needed again for prose alone.
-- Acceptance: current, readable controls; accessible Fog explanation; no changes
-  to options, preset order, callbacks, focus handling or gameplay.
-
-## MUSE-04 — Focused menu digit shortcut fix and behavioral regression
-
-Status: ACCEPTED | Owner: Muse | Reviewer: Astra (2026-09-09)
-Acceptance: main b9b42e7 + working tree; strengthened probe fails with original
-guard and passes 346/346 after restoring fix. See astra-review-2026-09-09.md.
-Review: docs/qa/astra-batch-review.md, MUSE-04. The guard fix is reasonable;
-reset the starting preset for every test target and verify actual focus. The
-reported passes cannot establish select/summary coverage while their expected
-preset is already selected. Do not repeat all backend runs after the revision.
-Report: 1-line guard fix + truthful footer + focused-shortcut probe block written; syntax OK, `test.js` 18/18 on fixed code. Behavioral fail-before/pass-after runs need `page-check --worlds`, blocked here (no browser; interop probe fails) — evidence and pending runs recorded in `docs/qa/overnight-results.md`. Report: fail-before + pass-after captured on Windows (PowerShell, node v24.20.0, real Chrome). Reverted guard, realGPU warm: 2.0 s, `FAIL` on `shortcut: Digit9 from button selects street` (301 checks green before it). Fixed guard: realGPU COLD 26.8 s + 30.5 s, SwiftShader COLD 158.8 s — 323/323 each, clean page, hidden boot, live HUD. Preset order (13) and native/menu-isolation controls unchanged. `test.js` 18/18 (WSL). Full evidence in `docs/qa/overnight-results.md`; reviewer note there on headless-orphan cleanup between cold runs. Revision: per-target start-away reset, activeElement focus asserts, details open/restore, full 13-name order check, Digit1/menu-isolation controls kept, change-event check relabeled — probe syntax OK, order replayed against presets.js (match, ninth = street). Strengthened fail-before/pass-after left for one healthy reviewer-host run; no retry series run here.
-
-This is an explicitly delegated, narrow runtime subtask. F4 and other course
-behavior remain lead-owned.
-
-- Allowed writes: main.js (menu-open digit guard/selection block only);
-  app/menu.js (shortcut footer only); tools/world-probe.js (focused shortcut
-  regression checks only); docs/qa/overnight-results.md; this task's status/report.
-- Product policy: while the world menu is open, digits 1-9 select presets 1-9
-  consistently from a focused button, select or summary. Presets 10-13 remain
-  available through cards/Tab+Enter; do not introduce 0 or multi-key shortcuts.
-  Keep native arrows, Tab, Enter, Space, O/Esc and closed-menu kit input intact.
-- Fix the guard mismatch and make the footer truthful. Preserve input/textarea
-  exclusions and busy/network behavior. No broad input refactor.
-- Add behavioral tests to the existing real-page probe: Digit9 from each of
-  button/select/summary focus must select the ninth preset. Include one existing
-  digit and native select-change/menu-isolation controls. Dispatch on the actual
-  focused element so the target-tag guard is exercised; window-only events would
-  bypass the bug. Do not use source-string checks or assert only labels.
-- Run the new regression on the original handler and record its expected failure
-  before applying your fix. Restore only your own small edit if needed; never
-  reset someone else's working tree. Then run node tools/page-check.js --worlds
-  and node tools/test.js on the fixed code. Check output for errors as well as
-  exit status. If browser verification is blocked, leave the change unaccepted.
-- Acceptance: evidence that the behavioral check catches the original defect
-  and passes with the fix, with unchanged preset ordering and other input behavior.
-
-## MUSE-05 — Facts needed for the first native editable primitive
-
-Status: ACCEPTED (baseline inventory) | Owner: Muse | Reviewer: Astra (2026-09-09)
-Acceptance: main b9b42e7 + reviewed working tree. The corrected trace informed
-the now-working ball lab; docs/ball-lab.md supersedes its implementation status.
-Review: docs/qa/astra-batch-review.md, MUSE-05. Include the test consumer and
-existing ORBS primitive path; distinguish fixture uniforms from scene entities;
-capture scene-check's actual exit status. No native implementation requested.
-Report: `docs/qa/editor-readiness.md` (77 lines, ≤ 100) revised per review — engine-foundation.test.js consumer added, ORBS→ORB_POINTS CPU/GPU path traced as the authored pattern, views.json narrowed to no scene-v1 entity feed, scene-check run directly with SCENE_CHECK_EXIT=0. Evidence in `docs/qa/overnight-results.md` (MUSE-05 revision). No native/schema work.
-
-- Allowed writes: docs/qa/editor-readiness.md (maximum 100 lines),
-  docs/qa/overnight-results.md and this task's status/report.
-- Read docs/scene-format.md, engine/world/document.js, tools/scene-check.js,
-  tools/godot-export.js, experiments/godot/main.gd and relevant ball-field code.
-- Produce a small source-linked inventory tracing a scene-v1 ball: validation,
-  prepared coordinates, CPU distance evaluation, browser shader data, Godot
-  export and runtime uniform upload. Mark missing connections explicitly;
-  do not invent a working scene loader or claim Godot physics parity.
-- Identify which ball position/radius values are authored data, emitted shader
-  constants or editable uniforms today. List factual blockers to editing one
-  ball and seeing both its render and collision field update without relinking.
-- Reuse the baseline scene-check results only if the inputs are unchanged;
-  say so. Record actual native export coverage from code, not the eight-world
-  browser list. No Godot implementation, new schemas or architecture decisions.
-- Acceptance: a concise evidence map Astra can use to build the vertical slice;
-  distinguish measured facts from suggestions and unresolved questions.
-
-## MUSE-06 — Bounded browser-test process lifecycle
-
-Status: ACCEPTED WITH LEAD FIX (POSIX design accepted; Windows regression
-fixed during integration) | Owner: Muse (2026-09-09) | Reviewer: Opus (2026-09-09)
-
-Opus verdict: the POSIX group design is right and is now verified on a real
-POSIX host — WSL Ubuntu, node v22.23.2, `node browser-process.test.js` →
-**29 passed, 0 failed, 0 skipped, exit 0**, with the grandchild reaped and the
-out-of-group sentinel surviving. `killOwnedChild`'s ESRCH-means-already-exited
-reading is correct on POSIX and was left alone.
-
-**Defect found on Windows, and it blocked integration.** The real-worker block
-was not gated by platform: `supportProbe()` spawned a `detached: true` worker
-and then called `killOwnedChild(..., platform: 'posix', posixProcessGroup: true)`
-on a **win32 host**, where `process.kill(-pid, ...)` throws ESRCH (measured
-directly). `killOwnedChild` correctly read that as `already-exited` for a child
-that was still running, the probe assert failed, and `reapStray(worker, true)`
-then tried the same negative-PID kill and swallowed its ESRCH. Consequences,
-all measured on this host:
-
-- the live detached worker held the suite's stdout pipe open, so
-  `node browser-process.test.js` **never exited** (killed at 180 s);
-- `node tools/test.js` reported `spawnSync ... ETIMEDOUT` and **19/20 suites**,
-  breaking the existing green contract;
-- every run **leaked an orphaned `browser-worker.js` node process** — two were
-  found still resident from two suite runs and had to be cleaned up by hand.
-
-Lead fix, inside this task's allowed file `browser-process.test.js` only:
-(1) a `POSIX_HOST` gate so the four real-worker tests skip with an explicit
-reason **before spawning anything** on win32, and (2) `reapStray` now falls back
-to a direct `child.kill('SIGKILL')` when the group address fails, so a stray can
-never be orphaned. `tools/browser-process.js`, `tools/page-check.js` and the
-worker fixture were not touched. After the fix: Windows **25 passed, 0 failed,
-4 honest skips, exit 0 in 0.34 s**; WSL still **29/29, 0 skips**; full suite back
-to **20/20**; no orphaned worker processes remain.
-
-POSIX warm-profile publication stays **off**, deliberately. The group-exit
-evidence you were asked for now exists, but warm reuse also needs one real
-Chrome run on POSIX to prove the profile is safe to republish, and WSL's
-socketpair block still prevents that. Not a defect in your change.
-
-Regression guard for the platform split is assigned as MUSE-08.
-
-Lead verdict: docs/qa/astra-review-2026-09-09.md. Successful Windows reports,
-owned taskkill cleanup and profile isolation now work. The headless-host-health
-diagnosis was incorrect for Windows; do not restart that investigation.
-
-**Current revision scope, superseding the historical task wording below:**
-- POSIX cleanup currently sends child.kill() and immediately returns success.
-  It neither awaits exit nor owns/terminates the descendant tree. Correct this
-  with an explicitly owned POSIX process group (or return an honest cleanup
-  failure when ownership cannot be established). Never guess a group from an
-  arbitrary PID, sweep process names, or change Windows termination behavior.
-- Allowed files: tools/browser-process.js, tools/page-check.js (POSIX launch
-  and cleanup plumbing only), browser-process.test.js, new
-  tools/fixtures/browser-worker.js if needed, this task's status/report and
-  docs/qa/overnight-results.md. Leave tools/browser-profile.js and GPU flags
-  unchanged. Do not enable POSIX warm publication in this revision; the lead
-  will do so after reviewing actual group-exit evidence.
-- Tests must cover normal exit, bounded forced termination, signal failure,
-  descendants and an unrelated sentinel. Use Node child workers without
-  sockets/Chrome. Include a real POSIX worker check where sandbox permissions
-  permit; report an EPERM skip explicitly rather than substituting a mock pass.
-- Run node browser-process.test.js and node tools/test.js. Preserve Windows
-  assertions and exactly-once cleanup. Stop after two environment setup failures
-  and continue MUSE-07; no installs, security changes or user-run Chrome requests.
-
-Historical assignment and evidence follow for context; the revision above is
-the active scope.
-
-Concrete tool-engineering assignment; no application or geometry changes.
-The current page-check only calls child.kill(), waits the full report timeout
-on early browser failure, and lacks a spawn-error handler. Make these failure
-paths explicit and limit cleanup to resources created by this invocation.
-
-- Allowed writes: tools/page-check.js (startup/report/cleanup lifecycle only),
-  new tools/browser-process.js if a helper is useful, new browser-process.test.js,
-  docs/qa/overnight-results.md, this task's status/report. Do not change other
-  browser tools, world-probe assertions, driver flags or shader-cache policy.
-- Preserve --worlds, --sw, --warm, the normal report fields, and nonzero exits
-  on page/assertion/startup/timeout failures. Add an optional bounded timeout
-  argument only if useful for reproducible failure tests; retain the default.
-- On spawn error or browser exit before a report, fail promptly with the actual
-  reason. On every completion path clear timers, close the HTTP server, and
-  clean up the owned browser process tree before returning. Preserve failure
-  diagnostics and report cleanup failure rather than silently claiming success.
-- Track the exact child PID/handle created by this run. Windows tree termination
-  must target that owned child, never process names or 'all headless' matches.
-  Validate identifiers; use structured executable arguments, not a shell-built
-  command. If ownership cannot be established after an early exit, report the
-  limitation instead of killing guessed/reused PIDs. Do not kill user browsers
-  or another test's children. No global process sweeps or recursive profile deletes.
-- Separate lifecycle decisions from launching Chrome so tests can run under
-  WSL without browser sockets. Use controlled child/event substitutes or small
-  Node workers, not real Chrome. Cover normal report, spawn failure, early exit,
-  timeout, cleanup failure and exactly-once completion during racing events.
-  Verify a cleanup target is the owned PID and an unrelated sentinel remains
-  untouched. Test observable completion/error results, not source strings.
-- Run node browser-process.test.js and node tools/test.js. Do not use timeout(1)
-  or a trailing pipe that hides the producer's exit status. Leave Windows-specific
-  process-tree termination explicitly unverified if it cannot execute here;
-  mocked Windows calls alone are not Windows integration evidence.
-- Acceptance: Node tests exercise success/failure lifecycle and resource release;
-  no 300-second wait after an immediate spawn error; unchanged successful browser
-  report semantics. One host smoke test may be supplied later by the reviewer.
-  Do not demand a new matrix of cold Chrome runs from the user overnight.
-Report: owned-session helper (`tools/browser-process.js`) + `--timeout=SECONDS` (default 300 s) wired into `page-check.js`; lifecycle tests in root `browser-process.test.js` (fakes only) 14/14; full suite 19/19; `--timeout=8` smoke fails in 0.37 s with the real reason (was: 300 s wait), invalid flag exits 2. Same flags/report fields/exits otherwise. Windows user runs: warm code-0 / cold code-21 instant exits, no report either way (environmental); already-exited cleanup tolerance added from that evidence. Windows taskkill path mocked-args only. Evidence: `docs/qa/overnight-results.md` (MUSE-06). POSIX revision: owned group cleanup (SIGTERM/await/bounded SIGKILL) via launch-established flag, detached POSIX spawn, 6 fake + 4 real-worker tests — `browser-process.test.js` 29/29, full suite 20/20, 0 EPERM skips. POSIX warm publication stays off for lead review.
-
-## MUSE-07 — Ball document rejection and persistence QA
-
-Status: ACCEPTED | Owner: Muse (2026-09-09) | Reviewer: Opus (2026-09-09)
-
-Opus verdict: accepted as delivered, with no changes requested. The 18 cases are
-self-contained documents carrying separate `general` / `ballHost` verdicts and
-literal `errorContains` substrings, which is the right shape — it records where
-the general schema and the deliberately narrower ball host disagree instead of
-flattening them into one pass/fail. The runner also asserts that validation never
-mutates its source document, which is the check most likely to catch a real
-adapter bug later.
-
-**The cases were mutation-tested rather than taken on trust**, since a test set
-that cannot fail is worse than none:
-
-- dropped the host's one-ball / entity-count restriction in
-  `engine/world/ball-scene.js` → `doc-case no-ball` failed, exit 1;
-- made `uniform()` return its internal array instead of a copy →
-  `uniform results are copies` failed, exit 1.
-
-`engine/world/ball-scene.js` was restored from a byte copy taken before the
-mutations and re-verified green; no engine file is changed by this task.
-
-Verified on Windows, node v24.20.0: `node ball-scene.test.js` → 18 cases pass,
-exit 0; `node tools/scene-check.js levels/fixtures/ball-lab.nil.json` → 1 region,
-2 entities, exit 0; `node tools/test.js` → 20/20, exit 0. The checklist's
-separation of executed Node steps from cited lead browser/Godot evidence is
-accurate — it claims no run it did not make.
-
-An explicitly delegated test-only task that runs under Node without Chrome.
-Read docs/ball-lab.md, engine/world/ball-scene.js, engine/world/document.js
-and ball-scene.test.js. The new adapter deliberately accepts only one E3 cover,
-one spawn, one ball and no connections; the general schema accepts more.
-
-- Allowed writes: ball-scene.test.js; new
-  levels/fixtures/ball-document-cases.json; new docs/qa/ball-editor-checklist.md
-  (at most 80 lines); docs/qa/overnight-results.md; this task's status/report.
-- Add a small language-neutral set of valid and invalid document cases with
-  expected acceptance and plain-language reasons. Exercise these in Node.
-  Include unknown fields/version, duplicate IDs, wrong region ownership,
-  unsupported geometry/content, absent/extra balls or spawns, invalid radius,
-  chart-boundary clearance and malformed coordinates. Use representative cases,
-  not hundreds of near-identical permutations. Keep the original fixture intact.
-- Check that rejected edits leave the source unchanged, compiled snapshots
-  cannot be mutated through document()/uniform() results, and JSON round trips
-  preserve nontrivial decimal coordinates, radius and IDs. Do not alter tolerances
-  or add a second geometry implementation. If a real adapter bug appears, record
-  the minimal case and hand back the core fix; do not silently change expectation.
-- Run node ball-scene.test.js and node tools/test.js directly and record exit
-  codes. Run node tools/scene-check.js levels/fixtures/ball-lab.nil.json.
-  Mark general-schema acceptance separately from ball-host acceptance.
-- Checklist: exact browser/Godot launch commands, edit/undo/redo, rejected edit,
-  save/load and cross-host file checks. Distinguish executable Node evidence
-  from unexecuted native/browser steps. Use the current lead evidence by citation,
-  never as your own run. No Chrome retries are needed for this assignment.
-- Acceptance: useful independent cases, green unchanged regressions, honest
-  evidence, and no engine/shader/schema/architecture/UI implementation edits.
-Report: 18 self-contained cases in `levels/fixtures/ball-document-cases.json` with separate general/ballHost verdicts; runner + immutability + round-trip checks appended to `ball-scene.test.js`; 43-line checklist citing lead browser/Godot evidence without re-running it. `ball-scene.test.js` exit 0, `scene-check` on the fixture exit 0, full suite 20/20. Evidence: `docs/qa/overnight-results.md` (MUSE-07).
-
-## MUSE-08 - Cross-platform guard for the browser-test lifecycle
-
-Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@9356527, WSL node v22.23.2) | Reviewer: Opus
-Report: docs/qa/overnight-results.md (MUSE-08). browser-process.test.js +4 tests (injected-platform zero-spawn guard, win32-no-group-branch pin, closing no-stray self-check); suite 35/35-prompt-exit 0, full 23/23. POSIX live-child ESRCH seam handed back with /tmp repro; module untouched.
-
-Integration found that the MUSE-06 real-worker block ran its POSIX probe on
-Windows, hung `node browser-process.test.js` and leaked a detached worker (full
-detail in the MUSE-06 verdict above). The lead fixed the behavior; what is
-missing is the regression that would have caught it. Node-only, no Chrome.
-
-- Allowed writes: `browser-process.test.js`, new `tools/fixtures/` helpers if
-  genuinely needed, `docs/qa/overnight-results.md`, this task's status/report.
-  Do not change `tools/browser-process.js`, `tools/browser-profile.js`,
-  `tools/page-check.js` or GPU flags.
-- Add a test asserting that on a simulated win32 host the real-worker path
-  SPAWNS NOTHING. Inject the platform rather than reading `process.platform`
-  again: a counting spawn stub that must be called zero times is the assertion,
-  not a string check for the skip message.
-- Add a self-check that the suite leaves no child process of its own alive when
-  it finishes, on whichever platform it runs. Record each PID the suite spawns
-  and assert each is gone at the end. Keep it bounded - no sweeps, no
-  process-name matching, only PIDs this suite created.
-- Confirm `killOwnedChild`'s ESRCH -> `already-exited` reading stays POSIX-only
-  in its effect: a test that a LIVE child plus a throwing group signal is never
-  reported as a clean cleanup. Do not change the module to make this pass; if it
-  genuinely cannot hold, record the minimal case and hand it back.
-- Checks: `node browser-process.test.js` (expect the current 29 on POSIX, or 25
-  plus honest skips on Windows, plus your additions) and `node tools/test.js`
-  (must stay 20/20). Run on whichever host you have and SAY WHICH; if you can
-  reach both WSL and Windows, run both, because this task is precisely about the
-  platform split.
-- Acceptance: the new guard fails against the pre-fix behavior (demonstrate it
-  by temporarily removing the `POSIX_HOST` gate in your own working copy, then
-  restoring it), the suite exits promptly, and no process outlives it.
-
-## MUSE-09 - Shared validator conformance cases for the two ball runtimes
-
-Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@9356527, WSL node v22.23.2) | Reviewer: Opus
-Report: docs/qa/overnight-results.md (MUSE-09). 22 cases with reasonKind + declared native verdicts; reporter green (exit 0), drift demo exit 1; full 23/23. No engine/.gd edits; Godot half left for the lead.
-
-`docs/engineering/NEXT_SESSION.md` asks for shared conformance cases before
-either ball runtime is extended, because `engine/world/ball-scene.js` (JS) and
-`experiments/godot/ball_document.gd` (GDScript) are two implementations of the
-same small subset and will drift. MUSE-07's case file is the right seed; this
-task makes it consumable by both hosts. Fixture and test work only - no schema
-design, no geometry, no GDScript logic changes.
-
-- Allowed writes: `levels/fixtures/ball-document-cases.json` (additions and a
-  documented shape only), `ball-scene.test.js`, a new `tools/ball-conformance.js`
-  REPORTER, `docs/qa/overnight-results.md`, this task's status/report. Do not
-  edit `engine/world/ball-scene.js`, `engine/world/document.js`,
-  `tools/scene-check.js` or any `.gd` file.
-- Read `experiments/godot/ball_document.gd` and record, per existing case, what
-  its validator would have to answer. Where its rejection reason differs in
-  wording from the JS one, do NOT force either string: add a `reasonKind` field
-  (a short stable slug such as `radius-not-positive`) that both runtimes can
-  match, and keep the existing literal `errorContains` for the JS side.
-- `tools/ball-conformance.js` runs every case through the JS validators and
-  writes a language-neutral expectations file the native adapter can later be
-  checked against. It reports, it does not mutate fixtures. Exit nonzero on any
-  JS mismatch.
-- Add cases for anything MUSE-07 left uncovered that the native subset can
-  express - at minimum a non-`cover` topology, a region `extent` of zero or
-  negative, and a ball exactly tangent to the extent boundary (state which side
-  of the boundary the adapter treats as legal, from the code, and mark it as an
-  observation if the two runtimes could disagree).
-- Do NOT run Godot or claim native results. This task produces the shared cases
-  and the JS half of the evidence; the lead runs the native half.
-- Checks: `node ball-scene.test.js`, `node tools/ball-conformance.js`,
-  `node tools/scene-check.js levels/fixtures/ball-lab.nil.json`,
-  `node tools/test.js` (20/20). Record exit codes.
-- Acceptance: one case set, two declared verdicts per case plus a stable reason
-  slug, a reporter that fails loudly on JS drift, and an explicit list of the
-  questions only a Godot run can answer.
-
-## MUSE-10 - Which checks run on which host
-
-Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@9356527, WSL node v22.23.2) | Reviewer: Opus
-Report: docs/qa/overnight-results.md (MUSE-10). New docs/qa/check-runbook.md (46 lines): host/runtime table for all 12 check families, both platform restrictions, Chrome-fixed note; Node rows timed here, rest cited with sources.
-
-The repository's checks are now split across two hosts in a way nothing states
-plainly, and integration lost time rediscovering it: Node suites run anywhere,
-GPU/browser checks run ONLY on Windows (WSL's socketpair block), and one test
-suite's real-worker cases run ONLY on POSIX. Documentation and reproducible QA -
-squarely in scope.
-
-- Allowed writes: new `docs/qa/check-runbook.md` (at most 90 lines),
-  `docs/qa/overnight-results.md`, this task's status/report. Do not edit
-  `WORKING_RULES.md`, `AGENTS.md`, `CLAUDE.md` or any tool.
-- One table: each check command, what it proves, which host it runs on, rough
-  runtime, and what a failure usually means. Take the runtimes from your own
-  runs or cite the run you took them from - do not invent numbers.
-- Cover `tools/test.js`, `scene-check`, `shader-check`, `sdf-check`,
-  `march-check`, `link-time`, `page-check` (`--worlds`, `--ball-lab`, `--sw`,
-  `--warm`, `--timeout=`), `net-check`, `render-fixture`, `world-probe` and
-  `browser-process.test.js`.
-- State the two platform restrictions explicitly, with the reason for each, and
-  note that headless Chrome on the Windows host was broken and is now working -
-  so a past "browser verification blocked" note is not evidence about today.
-- Do not duplicate `WORKING_RULES.md`'s required-checks table; link to it and
-  add only the host/runtime dimension it does not carry.
-- Checks: run at least the Node-only commands you document and record exit
-  codes. Mark any command you did not run as cited, with its source.
-- Acceptance: a new contributor can tell, without asking, which checks their
-  machine can run and which need the Windows host.
-
-## MUSE-11 - Every declared uniform is located and set
-
-Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@9356527, WSL node v22.23.2) | Reviewer: Opus
-Report: docs/qa/overnight-results.md (MUSE-11). New uniform-coverage.test.js: 10 programs, 57 names, both directions; fail demo on deleted uPortals set + pass restored; full 24/24. One pinned preview-program exception; no defect found.
-
-A uniform declared in GLSL but never set by its host module is SILENT: the
-value is zero, the shader compiles, the program links, and the picture is
-merely wrong. This session added five uniforms to `BALL_FIRST_PERSON_GLSL`
-(`uPortals`, `uPortalNml`, `uPortalExit`, `uPortalMap`, `uPortalN`) and nothing
-in the repository would have complained if one had been forgotten. Build the
-check that would. Node-only, no Chrome, no GPU.
-
-- Allowed writes: a new `uniform-coverage.test.js` at the repository root, its
-  registration in `tools/test.js`, `docs/qa/overnight-results.md`, this task's
-  status and report. Do NOT edit any `.js` under `engine/`, `app/`, or the
-  shader sources themselves; if the check finds a real gap, REPORT it, do not
-  fix it.
-- Parse each exported GLSL string for `uniform <type> <name>` declarations,
-  including array forms like `uniform vec4 uBalls[MAX_BALLS];`. Cover at least
-  `engine/geometry/ball-shader.js` (both programs) and whatever other modules
-  export GLSL; find them, do not assume the list.
-- For each declaration, assert the host module that compiles that program both
-  LOOKS IT UP and SETS IT. A name appearing only in a `getUniformLocation` list
-  is not set; a name appearing only in a `gl.uniform*` call was never located.
-  Both halves are required.
-- Report the two failure directions separately: declared-but-never-set, and
-  set-but-never-declared. The second catches a rename that left a dead call.
-- Known acceptable exceptions must be listed explicitly in the test with a
-  reason each, not silently skipped by a loose regex.
-- Checks: `node uniform-coverage.test.js` and `node tools/test.js` (expect
-  24/24 once yours is registered; say the number you actually saw).
-- Acceptance: the check FAILS when you temporarily delete one
-  `gl.uniform4fv(U.uPortals, ...)` line in your own working copy, and passes
-  with it restored. Show both outputs. A check that cannot fail is not a check.
-
-## MUSE-12 - Stale-claim sweep across the documentation
-
-Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@9356527, WSL node v22.23.2) | Reviewer: Opus
-Report: docs/qa/overnight-results.md (MUSE-12). New docs/qa/stale-claims-2026-09.md: 14 FALSE (incl. --ball-lab 9-vs-57, program counts, AGENTS.md pointers) + 11 stale-harmless + 3 unverifiable, all evidenced with per-file read log.
-
-Documentation decays silently. `tools/scene-check.js` printed "portal traversal
-is not implemented" for a whole session after traversal was implemented and
-tested, and it was found by eye rather than by anything that runs. There are
-almost certainly more. This is a reading-and-verifying task, which is exactly
-the shape of work that is wasted on a model doing design.
-
-- Allowed writes: `docs/qa/stale-claims-2026-09.md` (new), `docs/qa/overnight-results.md`,
-  this task's status and report. Do NOT edit the documents themselves in this
-  task - the report is the deliverable, and the lead decides what to correct,
-  because some "stale" claims are deliberate scope statements.
-- Sweep every `.md` under `docs/`, plus `AGENTS.md`, `MUSE.md`, `TODO.md` and
-  `README*`. For every FACTUAL claim about what the code does or does not do -
-  counts, capabilities, "not implemented", "only supports", file paths, function
-  names, measured numbers - verify it against the current tree.
-- Record each finding as: file and line, the claim as written, what is actually
-  true, and the EVIDENCE (a command you ran and its output, or a file and line
-  number). A finding without evidence is not a finding.
-- Separate three categories, because they need different responses: FALSE (the
-  claim is wrong now), STALE-BUT-HARMLESS (understated, e.g. a test count that
-  has grown), and UNVERIFIABLE (you could not check it - say why).
-- Do not report prose style, wording preferences, or missing documentation.
-  Only claims that are checkable and checked.
-- Checks: no code changes, so no suite to run; instead include the command
-  transcript for every FALSE finding.
-- Acceptance: at least the whole of `docs/` swept with a per-file line saying it
-  was read, findings evidenced, and no edits to the swept documents.
-
-## MUSE-13 - An invalid-document corpus for the scene validator
-
-Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@9356527, WSL node v22.23.2) | Reviewer: Opus
-Report: docs/qa/overnight-results.md (MUSE-13). New document-invalid.test.js + 60-file corpus under levels/fixtures/invalid/ (single-defect audited); 60 message-checked refusals + 4 atomicity; full 25/25. No engine edits; 2 diagnostic observations handed back.
-
-`engine/world/document.js` refuses a lot of things, and we do not know how much
-of that is covered. A validator with an untested branch is a validator that
-will one day accept a broken scene. This is high-volume, low-judgement work:
-write many small bad documents and assert each is refused for the RIGHT reason.
-Node-only.
-
-- Allowed writes: a new `document-invalid.test.js` at the repository root, new
-  files under `levels/fixtures/invalid/`, registration in `tools/test.js`,
-  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
-  `engine/world/document.js` or `engine/world/scene-field.js`. If a refusal is
-  missing or its message is wrong, REPORT it and hand it back.
-- One defect per document, built by mutating a VALID fixture so the only
-  difference is the defect under test. Do not hand-write whole invalid files:
-  a document that is broken in three ways proves nothing about any one of them.
-- Cover at minimum, from a reading of `document.js` rather than from this list:
-  every `kind`-specific field rule (radius on a spawn, forward on a ball, up on
-  something that may not have it), the orthonormality rules on an anchor,
-  duplicate ids across entities/connections/regions, an unknown `regionId`, an
-  entity outside its region's extent, every connection rule (unknown anchor,
-  an anchor already connected, endpoints equal, mismatched radii, a `scale`
-  other than 1, a `velocity` other than preserve-speed), and the missing/extra
-  top-level field cases.
-- Assert on the MESSAGE, not just that it threw. Each assertion must check that
-  the message names the offending id or field. "Throws" passing for the wrong
-  reason is the standard way this kind of test rots.
-- Also assert the refusal is ATOMIC where an API is involved: after a rejected
-  `addEntity`/`addPortal`/`editEntities`, the source document must be
-  byte-identical to what it was.
-- Checks: `node document-invalid.test.js` and `node tools/test.js`. Report both
-  numbers.
-- Acceptance: every rule you found in `document.js` is either covered by a case
-  or listed in the report as deliberately not covered with a reason. Say how
-  many rules you found and how many you covered - a bare pass count does not
-  show coverage.
-
-## MUSE-14 - Long seeded play sweep for the unreproduced geom.js crash
-
-Status: VERIFICATION BLOCKED (WSL: no browser/GPU host) | Owner: Muse (2026-09-09) | Reviewer: Opus
-Note: requires the Windows host with headless Chrome (MUSE-14) — cannot run from WSL (socketpair block unchanged; see overnight-results MUSE-14/15 entry). Left for a Windows run; no files written.
-
-The reported crash - `Cannot read properties of undefined (reading '0')` at
-`geom.js:80` during arena play - has never been reproduced. About 40,000
-headless frames and a full call-site audit did not trigger it, so
-`tools/play-check.js` was built and the diagnostics were shipped instead. This
-is now a MACHINE-TIME problem, not a thinking problem: run far more play than a
-person would sit through, and record everything. Requires the Windows host with
-headless Chrome; it CANNOT run from WSL (the socketpair block is unchanged).
-
-- Allowed writes: `docs/qa/play-sweep-2026-09.md` (new),
-  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
-  `tools/play-check.js`, `tools/play-probe.js`, `main.js`, `geom.js` or any
-  engine file. If you believe the probe needs a new capability to reach a mode,
-  say so in the report and stop; do not add it.
-- Run `tools/play-check.js` across many seeds and long durations. Vary the seed
-  widely rather than repeating a few, and cover every game mode the probe can
-  reach, not just the default. Record the exact command for each run.
-- Record for EVERY run, pass or fail: seed, mode, frames, wall time, exit code,
-  and any error with its full stack. A clean run is data - the point is the
-  total volume of play that produced no crash, which is the number that makes
-  "not reproduced" mean something.
-- If a crash reproduces: capture the full stack, the seed, and the exact
-  command, and STOP the sweep. A reproducible seed is worth more than more
-  sweeping, and diagnosis is the lead's.
-- Keep the total bounded and say what you chose: report the total frames and
-  total wall time, and stop at a limit you state up front rather than running
-  until interrupted.
-- No blanket Chrome or headless process killing. Only a run's own process tree
-  may be cleaned up, and only if `play-check` leaves one behind - if it does,
-  that is itself a finding worth reporting.
-- Acceptance: a table of every run with the fields above, a stated total, and
-  an explicit verdict sentence of the form "N frames of play across M seeds and
-  K modes produced no geom.js error" - or a reproducing seed.
-
-## MUSE-15 - Shader link time per geometry, tabulated
-
-Status: VERIFICATION BLOCKED (WSL: no browser/GPU host) | Owner: Muse (2026-09-09) | Reviewer: Opus
-Note: requires the Windows host with a real GPU (MUSE-15) — cannot run from WSL (same block; see overnight-results MUSE-14/15 entry). Left for a Windows run; no files written.
-
-`docs/host-capability-map.md` argues that the 8.4 s browser link time that
-drives the host decision belongs to the ARENA's hyperbolic program, and that the
-editor's own program links in 0.7 s on the same machine - so link time is not
-currently an argument about the editor. That argument rests on two numbers and
-deserves a table. Pure measurement; the analysis is not yours. Requires the
-Windows host with a real GPU; say which GPU and which browser build.
-
-- Allowed writes: `docs/qa/link-time-2026-09.md` (new),
-  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
-  `tools/link-time.js`, any shader source, or `docs/host-capability-map.md`.
-  If `tools/link-time.js` cannot measure a case you need, report that and
-  measure what you can.
-- Measure COLD-cache link time for every geometry's program - all eight, plus
-  `BALL_PREVIEW_GLSL` and `BALL_FIRST_PERSON_GLSL`. Cold means cold: state
-  exactly how you guaranteed the shader cache was empty for each measurement,
-  because a warm cache silently reports a tenth of the truth.
-- Three runs per program, reporting min, median and max, not one sample.
-- Record alongside each: the program's source length in characters, and any
-  obvious structural figure you can get cheaply (number of primitives or
-  branches in the scene function). The interesting question is what link time
-  scales with, and a table of times alone cannot answer it.
-- Do NOT conclude anything about the host decision. Report numbers and note
-  which measurements you could not take and why.
-- Checks: include the raw command output for at least one program in full, so a
-  reviewer can see the shape of what you are summarising.
-- Acceptance: a table with every program, three samples each, an explicit
-  statement of the cold-cache method, and the machine and browser identified.
-
-## Verdicts on MUSE-16..18, 2026-09-09 (lead: Opus)
-
-- **MUSE-16 ACCEPTED, and the answer was no.** `UtilBindVsockAnyPort:309:
-  socket failed`, exit 1, 0 s wall, twice. That is exactly the reading the task
-  asked for and it is worth more than a workaround would have been: it is
-  neither "found the Linux Chrome" nor "EPERM on the .exe", it is WSL's own
-  `/init` interop transport failing to open an AF_VSOCK socket before Chrome is
-  reached. Stopping at two attempts was right. Together with the earlier
-  AF_UNIX `socketpair` denial and the AF_INET success in `net-check`, the
-  sandbox's shape is now known: **TCP yes, unix sockets no, vsock no.** No
-  Chrome flag participates in a failure inside `/init`, so there is nothing
-  left to tune and nobody should spend another session on it.
-- **MUSE-17 correctly SKIPPED.** Its precondition failed and it was not
-  attempted. Annotating the status and touching nothing was the right call; a
-  half-run of browser checks from a host that cannot run them would have
-  produced noise that outlived the session.
-- **MUSE-18 ACCEPTED, and it is the best finding of the three.** The five slow
-  programs are TEXTUALLY THE SAME PROGRAM -- h3 and e3t differ in exactly one
-  line, `#define GEOM (0)` against `(4)` -- so no column parsed from the source
-  can possibly separate a 9.0 s link from a 3.3 s one, and saying so plainly is
-  a better answer than a correlation over nine points. It also settles the
-  mechanism: link time is decided by what the PREPROCESSOR leaves reachable,
-  not by anything measurable in the emitted text. Reporting that no column
-  orders all eleven, and naming which ones invert, is exactly the honest
-  negative result the task asked for.
-
-## THE INTEROP ROUTE IS DEAD IN THE SANDBOX. USE THE QUEUE.
-
-Do not try to start a browser in your shell again, by any route. MUSE-16
-settled it and the runbook records the evidence.
-
-`tools/check-queue.js` runs a check on a host that CAN start Chrome, requested
-from one that cannot, using nothing but files on the disk both hosts already
-share. No sockets of any family, no interop, no proxy variables -- because
-every more capable mechanism tried so far has been denied by something.
+Only OPEN work lives here. Closed assignments and their verdicts moved to
+[docs/qa/muse-log.md](docs/qa/muse-log.md) — read that only when you need to
+know why a past decision went the way it did. Shared rules: MUSE.md and
+docs/engineering/WORKING_RULES.md.
+
+## Start every session with these two commands
 
 ```sh
-node tools/check-queue.js --list                  # who is serving, and what may be run
-node tools/check-queue.js page-check --ball-lab
-node tools/check-queue.js play-check --preset=fight --seeds=10 --frames=6000
+node tools/host-probe.js       # what THIS machine can do
+node tools/test.js             # the baseline you are working from
 ```
 
-It prints the check's own output and exits with the check's own exit code, so
-it substitutes for running the check directly. If nobody is serving it tells
-you so at once rather than waiting out a timeout, and the answer is to ask the
-user to run `node tools/check-queue.js --serve` on the Windows machine.
+`host-probe` replaces environment diagnosis. It reports platform, whether each
+of its own tools actually works, sockets by family, whether Chrome starts here
+and why not, whether a check-queue worker is serving, and a one-line verdict on
+how you get browser checks. **Paste its output into your report and do not
+investigate the environment further.** Three separate sessions have rediscovered
+the same block, one of them recorded the wrong reason, and that wrong reason
+then shaped a queue of work for weeks.
 
-Measured end to end from a WSL shell: `page-check --ball-lab` returned its 57
-checks and exit 0 from the Windows host; a failing check returned exit 1; a
-refused request returns 2. **Not yet measured from the SANDBOXED shell** -- it
-needs only file reads and writes, which you demonstrably have, but that is an
-argument and not a measurement. MUSE-19 is the measurement.
+If the verdict says browser checks go through the queue, use
+`node tools/check-queue.js <check> [flags]` and ask the user to run
+`node tools/check-queue.js --serve` if no worker is up. **Do not try to start a
+browser yourself.** That question is settled: the sandbox denies AF_UNIX
+(Chrome's socketpair) and AF_VSOCK (WSL interop), and no flag reaches either.
 
-## MUSE-19 - Does the check queue work from the sandbox?
+## How a task is accepted, so nobody has to negotiate it
 
-Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@dccbff0, WSL node v22.23.2) | Reviewer: Opus | **Do this one first**
-Report: docs/qa/overnight-results.md (MUSE-19). Queue DOES work from the sandboxed shell: --list exit 0 (LeoPC linux worker, pid 22617), page-check --ball-lab exit 0 (57 passed, real GPU, 4 s wall), both refusals exit 2 with reasons. No code changed.
+Three rules, and they exist because the batches that followed them went
+straight through review while the ones that did not cost a round trip.
 
-One command decides whether browser checks are available to you at all. Do not
-plan other browser work until it is recorded.
+1. **Ship a check that fails without your change.** Then acceptance is one
+   command instead of a conversation. Demonstrate the failure: break the thing
+   in your own working copy, paste the failing output, restore, paste the
+   passing output. A check that cannot fail is not a check, and "I verified it"
+   is not evidence.
+2. **Measure, never cite.** A number in a report must carry the command that
+   produced it and the host it ran on. If you are repeating a number from a
+   document, say so and say it is unverified. Fourteen false claims were found
+   in one sweep and nearly all of them were numbers that had been true once.
+3. **Report defects, do not fix them.** If a task forbids touching a file and
+   the file is wrong, that is a finding and it is the deliverable. Two of the
+   most valuable results so far were handed back unfixed.
 
-- Allowed writes: `docs/qa/overnight-results.md`, this task's status and
-  report. Change no code. If it fails, the fix is the lead's.
-- FIRST ask the user to run `node tools/check-queue.js --serve` on the Windows
-  machine, and say plainly in your report if nobody did -- an unserved queue is
-  not a failure of the queue.
-- Run `node tools/check-queue.js --list`. Record whether it names a worker.
-- Then `node tools/check-queue.js page-check --ball-lab`. Record the full
-  output, the exit code and the wall time.
-- Record the exit codes of a refused request too, because a refusal that looked
-  like success would be the worst failure this thing could have:
-  `node tools/check-queue.js rm-rf --all` (expect 2) and
-  `node tools/check-queue.js page-check /etc/passwd` (expect 2). Capture the
-  code with `echo $?` on its own line; a pipeline reports the LAST command's
-  code, which is how the lead briefly mis-read these as 0.
-- Do NOT attempt to start Chrome, and do not retry more than twice.
-- Acceptance: a verdict sentence of the form "the check queue DOES / DOES NOT
-  work from the sandboxed shell", with the command output that shows it, and
-  the three exit codes.
+## Where the line is between you and the lead
 
-## MUSE-20 - Run the cited checks through the queue
+Not seniority — the shape of the problem.
 
-Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@dccbff0, WSL node v22.23.2) | Reviewer: Opus | Unblocked: MUSE-19 passes (queue DOES work)
-Report: docs/qa/overnight-results.md (MUSE-20). 7 of 9 families green through the queue (worlds 346, ball-lab 57, sw-worlds 346, net 9 incl peer, march/sdf/shader exit 0; no survivor WARNING). play-check default + link-time blocked by a worker-host GPU dropout (no webgl2, measured twice); remedy is a Chrome restart on the worker host, then re-run those two.
+- **Yours** if it can be stated as *"make this check exist, and make it fail
+  without X"*: corpora, static analysis, sweeps, measurement, audits of claims
+  against the tree, running things many times and tabulating.
+- **The lead's** if the hard part is deciding what the answer should BE:
+  contracts, formats, what a capability promises, what an error should say.
 
-This is MUSE-17 again, by the route that works. If MUSE-19 says the queue does
-not work, STOP and skip this task.
+If a task looks like the second kind, stop and say so rather than guessing at
+a design. That is a useful report, not a failure.
 
-Several check families have been CITED rather than run for weeks, so nobody has
-confirmed them against current `main`.
+---
 
-- Allowed writes: `docs/qa/overnight-results.md`, `docs/qa/check-runbook.md`
-  (the timing column only, for rows you personally ran), this task's status and
-  report. No code changes.
-- Through the queue, run and record each with its command, exit code, wall time
-  and reported count: `page-check --worlds`, `page-check --ball-lab`,
-  `page-check --sw --worlds`, `net-check`, `play-check` (default),
-  `link-time`, `march-check`, `shader-check`, `sdf-check`.
-- For every row in `check-runbook.md` currently marked "cited", either replace
-  it with a figure you ran or say why you could not.
-- The queue runs one job at a time by design. If a request waits a long time,
-  that is another job ahead of it, not a hang -- say so rather than retrying.
-- Watch for the WARNING `page-check` prints when a browser process from its own
-  run survives cleanup. If you ever see it, quote it; that is a leak and it is
-  the most important thing in your report.
-- Do NOT kill browser processes under any circumstances; you are not on the
-  host they are running on.
-- Acceptance: a table of every check family with a measured number, and an
-  explicit statement of any that still cannot run.
+## MUSE-21 - A corpus for booleans
 
-## MUSE-14 and MUSE-15: CLOSED by the lead, 2026-09-09
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
 
-Both needed the Windows host. Run here rather than left blocked:
+`op: add | subtract` and `target` landed in `e348791` with 14 tests. Those
+tests were written by the person who wrote the feature, which is the weakest
+kind of coverage there is. MUSE-13 built exactly this for the base schema and
+found the shape of the validator; do the same here.
 
-- **MUSE-15 done** — `docs/qa/link-time-2026-09.md`. Three cold runs of all
-  nine programs on an RTX 5070 Ti. The finding: cost is concentrated in ONE
-  program and tracks the QUOTIENT, not the curvature. Hyperbolic ~9.0 s median;
-  Nil, Sol and SL2R 0.2–0.3 s; the editor's own program 0.7 s. Two orders of
-  magnitude across eight geometries, so "the browser is slow to compile
-  shaders" is too coarse a statement to plan with. Run 1 was consistently
-  slowest, so a single sample would have overstated it by 20%. Left open: per
-  program source length and primitive counts, which MUSE-15 also asked for --
-  see MUSE-18.
-- **MUSE-14 done** — `docs/qa/play-sweep-2026-09.md`. 201,000 frames across 11
-  presets and 38 seeds, 112 face crossings, 36,000 frames of mid-run world
-  switching. No `geom.js` error, no crash, every run exit 0. Roughly five times
-  the earlier volume and eleven presets rather than one. It does not clear
-  `geom.js:80`; it narrows what is left to the things the probe does not do.
-  One real defect found in the TOOL: `play-check` failed four presets on a rule
-  that does not apply to them, demanding a face crossing in worlds that have no
-  fundamental domain. Fixed with an opt-in `--no-folds`; the default still
-  demands a crossing, verified both ways.
+- Allowed writes: new files under `levels/fixtures/invalid/` and
+  `levels/fixtures/carve/`, a new `boolean-corpus.test.js`, registration in
+  `tools/test.js` if it needs it, `docs/qa/overnight-results.md`, this task's
+  status and report. Do NOT edit `engine/world/document.js`,
+  `engine/world/scene-field.js` or `boolean.test.js`.
+- Invalid cases, one defect each, built by mutating a VALID document: `op` on
+  a spawn / objective / anchor, `op` misspelled, `target` on an `add`, `target`
+  naming itself, `target` naming a non-existent id, `target` naming a
+  non-solid (a spawn), `target` naming another SUBTRACT rather than an added
+  solid. Assert on the message, not just that it threw.
+- Valid cases worth pinning because they are easy to break: a carve that
+  removes a solid entirely (is the field empty space, or does something worse
+  happen?), two carves targeting the same solid, one carve targeting a solid
+  that a second carve has already removed, a carve entirely outside the solid
+  it targets (no effect), and a carve exactly tangent to its target.
+- For every valid case also assert the CAPABILITY the field advertises, since
+  that is the part a solver trusts.
+- Checks: your new file plus `node tools/test.js`. Report both numbers.
+- Acceptance: a stated count of how many validator rules you found around `op`
+  and `target`, how many you covered, and the rest listed with reasons. Plus
+  the fail-demo required above, on one rule of your choosing.
 
-## THE WSL BROWSER BLOCK IS ROUTED AROUND
+## MUSE-22 - The two checks the GPU dropout blocked
 
-Read this before planning: the constraint that shaped the last several batches
-is mostly gone.
+Status: OPEN | Owner: Muse | Reviewer: Opus | Needs a queue worker
 
-The LINUX Chrome still cannot start in the sandbox — `socketpair(2)` is denied
-and no flag avoids it — but it was never the only Chrome on the machine.
-`tools/browser-host.js` launches the WINDOWS Chrome through WSL interop, which
-runs outside the Linux sandbox entirely. `page-check` uses it automatically and
-prints `browser : Windows Chrome via WSL interop` when it does.
-
-Measured from a WSL shell on this machine: `--ball-lab` 57 checks, `--worlds`
-**346 checks in 31.6 s**, both real GPU, cold shader cache.
-
-**But verify it in YOUR shell first, because mine was not sandboxed.** Whether
-the agent sandbox permits `execve` of a Windows binary is a different question
-from whether it permits `socketpair`, and it is untested. MUSE-16 is exactly
-that check and nothing else should be planned around browser access until it
-comes back.
-
-The earlier "interop is EPERM" reading was an artifact: `timeout(1)` is itself
-broken in that sandbox (`timeout 10 echo hi` -> Operation not permitted, exit
-126) and the probe ran through it. Interop was never actually tested. Worth
-remembering as a pattern — a broken instrument reported a blocked capability,
-and that reading stood for weeks.
-
-## MUSE-16 - Does the interop route work in the sandboxed shell?
-
-Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@76ed138, WSL node v22.23.2) | Reviewer: Opus | **Do this one first**
-Verdict: browser checks ARE NOT available in the sandboxed shell (interop route launches Windows Chrome, which dies instantly on the same socketpair denial; 2/2 identical). Full output in docs/qa/overnight-results.md (MUSE-16). MUSE-17 stops here.
-
-Everything else about browser access depends on the answer, and the answer is
-one command. Do not plan other browser work until this is recorded.
-
-- Allowed writes: `docs/qa/overnight-results.md`, this task's status and report.
-  Change no code. If it fails, the fix is the lead's.
-- Run `node tools/page-check.js --ball-lab` in your normal sandboxed shell from
-  the repository root. Record the FULL output, exit code and wall time.
-- If it prints `browser : Windows Chrome via WSL interop` and passes: say so,
-  give the check count, and then run `node tools/page-check.js --worlds` and
-  record that too. Browser checks are now available to you.
-- If it fails, the exact error is the deliverable and it matters which kind:
-  - a `socketpair` error means it found the LINUX Chrome. Report which path
-    `findBrowser` returned (`node -e "import('./tools/browser-host.js').then(m
-    => console.log(m.findBrowser(), m.isWsl()))"`).
-  - an EPERM/EACCES on the `.exe` means the sandbox blocks Windows interop
-    itself, which is a different block from the one this routes around. Say so
-    plainly; that is a real finding, not a failure.
-  - anything else: quote it verbatim.
-- Also record, either way: `cat /proc/version`, whether
-  `/mnt/c/Program Files/Google/Chrome/Application/chrome.exe` is readable, and
-  whether `command -v taskkill.exe` and `command -v wslpath` resolve.
-- Do NOT retry more than twice, and do not attempt workarounds. One clean
-  reading is worth more than an afternoon of flags.
-- Acceptance: a verdict sentence of the form "browser checks ARE / ARE NOT
-  available in the sandboxed shell", with the command output that shows it.
-
-## MUSE-17 - Run everything that was blocked, now that it may not be
-
-Status: SKIPPED per its own precondition (MUSE-16: browser checks ARE NOT available in the sandboxed shell) | Owner: Muse (2026-09-09) | Reviewer: Opus | Blocked on MUSE-16 passing
-
-If MUSE-16 says browser checks are unavailable, STOP and skip this task; do not
-attempt it from a host that cannot run it.
-
-Several check families have been cited rather than run for weeks, which means
-nobody has actually confirmed them against current `main`. Run them.
+MUSE-20 measured seven of nine check families. `play-check` and `link-time`
+failed on the worker host with `no webgl2` from about 19:03, after real-GPU
+checks had passed at 18:52. The lead re-ran `link-time` directly on Windows
+afterwards and it was fine — 8.5 s hyperbolic, real GPU — so this is a
+transient on the worker, not a defect in either tool.
 
 - Allowed writes: `docs/qa/overnight-results.md`, `docs/qa/check-runbook.md`
-  (the timing column only, for rows you personally ran), this task's status and
-  report. No code changes.
-- Run and record, each with command, exit code, wall time and the count it
-  reports: `page-check --worlds`, `page-check --ball-lab`, `page-check --sw
-  --worlds`, `tools/net-check.js` (the peer half that needed Chrome),
-  `tools/play-check.js` default, `tools/link-time.js`.
-- For every row in `check-runbook.md` currently marked "cited", either replace
-  it with a measured figure you ran, or say why you could not.
-- Watch for the WARNING `page-check` prints when a browser process from its own
-  run survives cleanup. If you ever see it, that is a leak and it is the most
-  important thing in your report -- quote it and say how many runs you did.
-- Do NOT kill browser processes yourself under any circumstances. The cleanup
-  is by unique per-run stamp; a manual sweep would hit the user's own Chrome.
-- Acceptance: a table of every check family with a measured number from THIS
-  host, and an explicit statement of any that still cannot run.
+  (timing cells only, for rows you ran), this task's status and report.
+- Ask the user to restart the check-queue worker before you start, and say in
+  your report whether they did. A worker that has been up for a long time is
+  the suspect.
+- Through the queue: `play-check` (default) and `link-time`. Record command,
+  exit code, wall time and the numbers each reports.
+- If `no webgl2` recurs, STOP after two attempts and record: the exact error,
+  how long the worker had been up, and what the immediately preceding
+  successful check was. That timing is the finding.
+- Acceptance: both rows measured, or a precise account of the recurrence.
 
-## MUSE-18 - What does shader link time scale with?
+## MUSE-23 - What does a carve cost at query time?
 
-Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@76ed138, WSL node v22.23.2) | Reviewer: Opus | Node-only
-Report: docs/qa/overnight-results.md (MUSE-18). New docs/qa/link-time-inputs-2026-09.md: 11-row parsed-source table; headline is the five slow programs are one text (GEOM selector only) so no column separates them, and no column orders all eleven; full 27/27.
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
 
-`docs/qa/link-time-2026-09.md` shows two orders of magnitude between programs
-and observes that the fast ones are the ones with no quotient. That is one
-binary variable across nine points, which is suggestive and not a cause. This
-task supplies the other columns so the question can be answered. No browser
-needed: the shader SOURCES are all reachable from Node.
+With no carve, `rayHit` solves each primitive in closed form. With one, it
+sphere-traces, because the nearest analytic surface may have been cut away.
+That is a real cost and nobody has measured it. The collision solver calls
+these in a loop, so the number decides whether carving is something an author
+can use freely or something to use sparingly.
 
-- Allowed writes: `docs/qa/link-time-inputs-2026-09.md` (new),
-  `docs/qa/overnight-results.md`, this task's status and report. Change no
-  shader, no tool logic, and do not edit `link-time-2026-09.md`.
-- For each of the nine programs `tools/link-time.js` measures, plus both ball
-  programs, record from the generated source: total characters, non-comment
-  lines, number of function definitions, number of CALLS to each function
-  (this is the inlining multiplier that CLAUDE.md's rule is about), the number
-  of `for` loops and whether each has a compile-time-constant bound, and the
-  count of `#define`d primitives actually reachable.
-- Do this by PARSING the emitted source, not by reading the modules that build
-  it. The whole point of the inlining rule is that the source the compiler sees
-  differs from the source a human reads.
-- Put the measured link times from `link-time-2026-09.md` in the same table as
-  a final column so the correlation can be eyeballed. Do NOT compute a
-  correlation coefficient over nine points and present it as a finding.
-- State plainly which single column, if any, orders the programs the same way
-  link time does -- and say so even if none of them does.
-- Acceptance: one table, eleven rows, every column measured by a command you
-  show. An honest "no column explains it" is a complete answer.
+- Allowed writes: `docs/qa/carve-cost-2026-09.md` (new), `tools/carve-bench.js`
+  (new), `docs/qa/overnight-results.md`, this task's status and report. Do NOT
+  edit anything under `engine/`.
+- Measure, on documents you build in the benchmark rather than fixtures:
+  `distance()`, `normal()` and `rayHit()` calls per second, for scenes with
+  0, 1, 2, 4 and 8 carves, at 1, 4 and 16 additive solids.
+- Report the RATIO to the uncarved case, not just absolute rates — the
+  absolute numbers are about this machine and the ratio is about the design.
+- Also report the mean number of marching steps `rayHit` takes, since that is
+  the mechanism and it is the thing that would change if the bound got tighter.
+- Warm up before timing, run each configuration at least three times, and
+  report min/median/max. A single sample of a JIT'd loop measures the JIT.
+- Do NOT conclude whether carving is "too slow". Report numbers and say which
+  configuration you would want measured next.
+- Acceptance: one table, the ratios, the step counts, and the method stated
+  including how you warmed up.
 
-## Verdicts, 2026-09-09 (lead: Opus)
+## MUSE-24 - One place where the numbers live
 
-Batch MUSE-08..13 reviewed on the Windows host at `9356527` + the working tree.
-`node tools/test.js` 26/26 including the two new suites. Every acceptance below
-was re-run by the lead, not taken from the report: an agent asserting its own
-check can fail is exactly the claim that needs independent execution.
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
 
-- **MUSE-08 ACCEPTED.** Windows leg run here: 31 passed, 5 honest skips, prompt
-  exit, `owned real-child PIDs this run: (none)`. The diff LOOKS like it
-  deletes the `POSIX_HOST` gate; it does not -- the gate is now
-  `isPosixPlatform(platform)` with the platform injected, and it still skips
-  BEFORE anything spawns (`browser-process.test.js:510-514`), which is what the
-  task asked for. Handed-back finding accepted as real: `killOwnedChild` reads
-  a group-signal ESRCH as `already-exited` on the strength of the launch flag,
-  so a live child plus a throwing group signal reports a clean cleanup. That is
-  a genuine defect in module behaviour, correctly NOT fixed under a task that
-  forbade touching the module. Lead-owned follow-up.
-- **MUSE-09 ACCEPTED.** The `ball-scene.test.js` additions STRENGTHEN the
-  contract rather than relax it: every case must now declare a `reasonKind`
-  slug, a native verdict and the clause that answers it. 22 cases, new
-  `tools/ball-conformance.js` reporter. The five open questions for the Godot
-  run are the right shape -- they are questions, not assumptions.
-- **MUSE-10 ACCEPTED with one correction applied by the lead.** The runbook's
-  `--ball-lab` row cited 9 checks; it is 57, confirmed by three browser runs
-  here. Muse found this itself in MUSE-12 and correctly did not edit its own
-  runbook under a no-edit rule. Row fixed.
-- **MUSE-11 ACCEPTED.** Acceptance re-run by the lead rather than trusted:
-  deleting the `gl.uniform4fv(U.uPortals, ...)` line reports
-  `declared-but-never-set: ball-first-person uPortals (app/ball-lab.js)` and
-  the file restored green. 10 programs, 57 names, both directions, one
-  documented exception. This closes a class of bug nothing here could catch.
-- **MUSE-12 ACCEPTED, and the highest-value item in the batch.** 14 FALSE
-  claims with file:line and command evidence. F9 is an error in a document the
-  lead wrote the same day -- `host-capability-map.md` claimed exact ray hits in
-  eight geometries when they exist for the E3 ball and Nil columns only. An
-  agent auditing the reviewer's own fresh work and finding a real overclaim is
-  the batch working as intended. Corrections applied to `architecture.md`,
-  `playground.md`, `scene-format.md`, `README.md`, `rendering-contract.md`,
-  `host-capability-map.md`, `ball-lab.md` and this runbook.
-- **MUSE-13 ACCEPTED.** Acceptance re-run by the lead: removing the "radius
-  only applies to balls and anchors" clause from `document.js` fails with
-  `spawn-with-radius.nil.json: accepted, expected refusal (spawn.radius 0.5)`,
-  naming both the fixture and the field. 60 message-checked refusals plus 4
-  atomicity checks; 54 of ~59 rules covered with the remainder listed and
-  reasoned. Two diagnostic observations handed back, correctly unfixed.
-- **MUSE-14 and MUSE-15 remain OPEN.** Both need the Windows host with a real
-  GPU. Not attempting them from WSL, and spending no retries on a known block,
-  was the right call.
+MUSE-12 found fourteen false claims and nearly all of them were numbers that
+had been true once: check counts, suite counts, program counts, ray counts.
+The cause is structural — every document quotes its own figures, so every
+document rots independently. Fix the structure, not the fourteen instances.
 
-One process note worth keeping: three of these six tasks were checks on work
-the lead had just shipped, and two of them found something. Queue more of that
-shape.
-
-## Lead-owned next work
-
-See docs/engineering/NEXT_SESSION.md. F4 and the first E3 ball slice are done.
-Astra/Opus owns primitive/query contracts, further scene-to-native integration, numerical
-convergence, collision/transport, host choice and cross-geometry connections.
-
-Stop after this queue. Leave every output ready for review with a short handoff;
-do not invent more tasks or wait indefinitely for the lead to return.
-
-Note on the batch above: MUSE-08 is the highest value of the three, because it
-closes a defect that reached integration. MUSE-09 and MUSE-10 are independent of
-it and of each other, so a blocked prerequisite in one does not stall the rest.
-
-Note on MUSE-11 to MUSE-15: these are deliberately mechanical - static analysis,
-reading and verifying, high-volume case writing, and machine time. That is not a
-comment on their value. MUSE-11 closes a whole class of silent bug (a uniform
-that is declared and never set draws a wrong picture without any error), and
-MUSE-13 is the difference between a validator we hope is complete and one we
-know is. Three rules for all five: report defects rather than fixing them, show
-the command output rather than asserting the result, and say which host you ran
-on. Every one of them is a check on work the lead has already shipped, so
-finding something is the SUCCESS case, not an embarrassment to soften.
+- Allowed writes: `docs/qa/measurements.md` (new),
+  `docs/qa/overnight-results.md`, this task's status and report. **Do not edit
+  the documents that carry the stale numbers** — the migration is the lead's,
+  because deciding which claims are scope statements rather than measurements
+  is a judgement call.
+- Sweep every `.md` for a factual NUMBER about the code: counts of tests,
+  checks, suites, programs, rays, cases, fixtures, geometries, timings.
+- Build one table: the quantity, its current true value, the exact command that
+  produces it, the host that matters (or "any"), and every file:line that
+  currently quotes it.
+- Where a quantity can be produced by a command, say so. Where it cannot —
+  because nothing prints it — mark it and say what would have to exist. That
+  list is the more useful half of this task: a number no command produces is a
+  number that WILL rot.
+- Do not include numbers that are constants of the mathematics rather than
+  measurements of the code (eight Thurston geometries, four bounces, a 4x4
+  matrix). State the rule you used to draw that line.
+- Acceptance: the table, with a command against every row that has one, and an
+  explicit list of the rows that have none.
