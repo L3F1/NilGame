@@ -28,7 +28,9 @@ gl.linkProgram(program);
 if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
 const U = Object.fromEntries(['uBalls', 'uBallN', 'uPlanes', 'uPlaneN', 'uRes',
   'uEye', 'uFwd', 'uRight', 'uUp', 'uExtent', 'uSelected',
-  'uPortals', 'uPortalNml', 'uPortalExit', 'uPortalMap', 'uPortalN']
+  'uPortals', 'uPortalNml', 'uPortalExit', 'uPortalMap', 'uPortalN',
+  'uCarveBalls', 'uCarveBallOwner', 'uCarveBallN',
+  'uCarvePlanes', 'uCarvePlaneOwner', 'uCarvePlaneN', 'uMarchSteps']
   .map((n) => [n, gl.getUniformLocation(program, n)]));
 
 const params = new URLSearchParams(location.search);
@@ -131,7 +133,11 @@ function drawList(field) {
     const li = document.createElement('li');
     li.setAttribute('role', 'option');
     li.setAttribute('aria-selected', String(e.id === selected));
-    li.innerHTML = `<span>${e.id}</span><span class="kind">${e.kind}</span>`;
+    // A carve reads as a carve in the list. Two entities of the same kind
+    // where one is cut out of the other and nothing on screen says which is
+    // the sort of thing an author discovers by deleting the wrong one.
+    const mark = e.op === 'subtract' ? ` minus${e.target ? ` ${e.target}` : ' (all)'}` : '';
+    li.innerHTML = `<span>${e.id}</span><span class="kind">${e.kind}${mark}</span>`;
     li.onclick = () => { selected = e.id; draw(); };
     list.appendChild(li);
   }
@@ -183,6 +189,18 @@ function draw() {
   gl.uniform4fv(U.uPortalExit, exits.length ? exits : [0, 0, 0, 0]);
   gl.uniformMatrix3fv(U.uPortalMap, false, maps.length ? maps : new Array(9).fill(0));
   gl.uniform1i(U.uPortalN, field.portalCount);
+  // Carves, with the index of the solid each one cuts. When there are none the
+  // shader takes its exact closed-form path, exactly as before -- so a scene
+  // that carves nothing renders by the same route it always did.
+  const cb = field.carveBallsUniform(), cp = field.carvePlanesUniform();
+  gl.uniform4fv(U.uCarveBalls, cb.length ? cb : [0, 0, 0, 0]);
+  gl.uniform1iv(U.uCarveBallOwner, field.carveBallOwners().length ? field.carveBallOwners() : [-1]);
+  gl.uniform1i(U.uCarveBallN, field.carveBallCount);
+  gl.uniform4fv(U.uCarvePlanes, cp.length ? cp : [0, 0, 1, 0]);
+  gl.uniform1iv(U.uCarvePlaneOwner, field.carvePlaneOwners().length ? field.carvePlaneOwners() : [-1]);
+  gl.uniform1i(U.uCarvePlaneN, field.carvePlaneCount);
+  // A uniform, not a constant, so the D3D compiler cannot unroll the march.
+  gl.uniform1i(U.uMarchSteps, 160);
   // Which BALL is selected, as an index into the ball array the shader loops
   // over -- not the entity index, which counts spawns and planes too.
   const ballIds = field.entities().filter((e) => e.kind === 'ball').map((e) => e.id);
@@ -192,7 +210,10 @@ function draw() {
   drawList(field);
   const gap = clearance(field, probe.position, probe.radius);
   const gates = field.portalCount ? `, ${field.portalCount / 2} portal${field.portalCount === 2 ? '' : 's'}` : '';
+  const cuts = field.carveCount ? `, ${field.carveCount} carve${field.carveCount === 1 ? '' : 's'}`
+    + ` (distance is a ${field.capabilities.distance})` : '';
   $('query').textContent = `${field.solidCount} solid${field.solidCount === 1 ? '' : 's'}${gates}.`
+    + `${cuts}`
     + ` Player clearance ${gap.toFixed(3)}${gap < 0 ? ' — OVERLAPPING' : ''}`
     + `${probe.grounded ? ', on the ground' : ''}`
     + `${transited ? `, ${transited} transit${transited === 1 ? '' : 's'}` : ''}`
@@ -331,6 +352,27 @@ $('add-plane').onclick = () => {
     selected = compileSceneField(next).entities().at(-1).id;
     draw();
     $('status').textContent = `added ${selected} (a ceiling; edit its normal to re-aim it)`;
+  } catch (error) { $('status').textContent = error.message; }
+};
+$('add-carve').onclick = () => {
+  try {
+    // A carve targets the SELECTED solid, because a global one takes the floor
+    // out from under the doorway and the author is left over a hole wondering
+    // what they did. With nothing selected there is nothing to cut, so say so
+    // rather than quietly cutting everything.
+    const field = compileSceneField(scene);
+    const target = field.entities().find((e) => e.id === selected);
+    if (!target || !['ball', 'plane'].includes(target.kind)) {
+      throw new Error('Select the ball or plane you want to cut, then carve');
+    }
+    const { f } = basis();
+    const at = probe.position.map((x, i) => x + f[i] * 2.5);
+    const next = addEntity(scene, 'ball',
+      { position: at, radius: 0.7, op: 'subtract', target: target.id });
+    commit(next);
+    selected = compileSceneField(next).entities().at(-1).id;
+    draw();
+    $('status').textContent = `carving ${target.id} with ${selected}`;
   } catch (error) { $('status').textContent = error.message; }
 };
 $('add-portal').onclick = () => {
@@ -620,6 +662,48 @@ if (new URLSearchParams(location.search).has('check')) {
     draw();
     check('a portal room does not render the same picture as a flat one',
       pixels().some((x, i) => x !== flat[i]));
+    // --- carving, through the DOM -----------------------------------------
+    const beforeCarve = compileSceneField(scene);
+    selected = null; draw();
+    $('add-carve').click();
+    check('carving with nothing selected is refused, and says what to do',
+      /Select the ball or plane/.test($('status').textContent));
+    check('and nothing was added', compileSceneField(scene).carveCount === beforeCarve.carveCount);
+
+    const floorId = compileSceneField(scene).planeId;
+    selected = floorId; draw();
+    probe.position = [0, -3, 1.4]; yaw = Math.PI / 2; pitch = -0.5;
+    $('add-carve').click();
+    const carved = compileSceneField(scene);
+    check('carving a selected solid adds a subtract entity', carved.carveCount === 1);
+    const cut = carved.entities().at(-1);
+    check('the carve TARGETS what was selected', cut.target === floorId && cut.op === 'subtract');
+    check('the entity list says which solid it cuts',
+      /minus/.test($('entities').textContent));
+
+    // The contract the solver reads must follow the document, not lag it.
+    check('the field now advertises a bound, not an exact distance',
+      carved.capabilities.distance === 'bound' && carved.capabilities.intersection === 'marched');
+    check('and the readout tells the author', /carve/.test($('query').textContent));
+
+    // A hole is only a hole if the field agrees. The carve sits 2.5 ahead of
+    // the probe at its own height, so the floor under it is gone.
+    const holeAt = [probe.position[0], probe.position[1] + 2.5, 0.0];
+    check('the floor under the carve is now free space', carved.distance(holeAt) > 0);
+    check('the floor away from the carve is untouched', carved.distance([8, 8, -0.2]) < 0);
+
+    // And the renderer must have taken the marched path rather than silently
+    // drawing the uncarved floor: the picture has to change.
+    const beforeCut = pixels();
+    $('undo').click();
+    draw();
+    const uncut = pixels();
+    check('the carve changes what is drawn', beforeCut.some((v, i) => v !== uncut[i]));
+    $('redo').click();
+    draw();
+    check('and redo brings it back', compileSceneField(scene).carveCount === 1);
+    check('no GL errors after marching', gl.getError() === gl.NO_ERROR);
+
     // A PICTURE OF A PORTAL, for a human to look at. Every check above can
     // pass on a view that is upside down or shows the near room twice; only
     // looking catches that. Stand back from gate-a, put a ball where gate-b
@@ -627,7 +711,7 @@ if (new URLSearchParams(location.search).has('check')) {
     // aperture while the near room has none.
     commit(addEntity(scene, 'ball', { position: [6, 1.6, 0.7], radius: 0.7 }));
     probe.position = [0, -3.2, 1.2]; selected = null;
-    yaw = Math.PI / 2; pitch = 0;
+    yaw = Math.PI / 2; pitch = -0.12;
     draw();
     shot = canvas.toDataURL('image/png');
     setPlaying(false);

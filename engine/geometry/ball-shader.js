@@ -59,6 +59,8 @@ precision highp float;
 #define MAX_BALLS 16
 #define MAX_PLANES 4
 #define MAX_PORTALS 8
+#define MAX_CARVE_BALLS 8
+#define MAX_CARVE_PLANES 4
 // How many apertures one ray may pass through. Four is enough to see a portal
 // through a portal through a portal, which is the case that looks wrong when a
 // renderer cheats; beyond that the far side is smaller than a pixel anyway.
@@ -67,11 +69,28 @@ uniform vec4 uBalls[MAX_BALLS];
 uniform int uBallN;
 uniform vec4 uPlanes[MAX_PLANES];
 uniform int uPlaneN;
+// CARVES: solids SUBTRACTED from the scene. Each names the solid it cuts, or
+// -1 for one that cuts everything. Balls and planes are kept in separate
+// arrays rather than one array with a kind flag, because a branch on kind
+// inside the innermost loop is re-emitted at every inline site and that is the
+// exact shape of the 212-second link.
+uniform vec4 uCarveBalls[MAX_CARVE_BALLS];
+uniform int uCarveBallOwner[MAX_CARVE_BALLS];
+uniform int uCarveBallN;
+uniform vec4 uCarvePlanes[MAX_CARVE_PLANES];
+uniform int uCarvePlaneOwner[MAX_CARVE_PLANES];
+uniform int uCarvePlaneN;
 uniform vec4 uPortals[MAX_PORTALS];       // aperture centre, radius
 uniform vec4 uPortalNml[MAX_PORTALS];     // aperture normal, pointing OUT
 uniform vec4 uPortalExit[MAX_PORTALS];    // where the far aperture sits
 uniform mat3 uPortalMap[MAX_PORTALS];     // the isometry, translation removed
 uniform int uPortalN;
+// THE MARCH BOUND IS A UNIFORM, NOT A CONSTANT, and that is not a style
+// choice. The D3D compiler unrolls every COUNTABLE loop, so a literal 160 here
+// would paste the whole scene function 160 times and the link would not
+// return. A uniform bound is opaque to it. Same rule, same reason, as the
+// array uniforms above.
+uniform int uMarchSteps;
 uniform vec2 uRes;
 uniform vec3 uEye;
 uniform vec3 uFwd;
@@ -81,6 +100,53 @@ uniform float uExtent;
 uniform int uSelected;      // index into uBalls, or -1
 out vec4 fragColor;
 ${BALL_FIELD_GLSL}
+
+// A solid's own distance, then every carve that applies to it. Subtraction is
+// max against the NEGATED carving solid: a point survives when it is inside
+// what was added and outside everything cut away.
+float carveAdjust(float d, vec3 p, int owner){
+  for(int j=0;j<MAX_CARVE_BALLS;j++){
+    if(j>=uCarveBallN)break;
+    if(uCarveBallOwner[j]>=0 && uCarveBallOwner[j]!=owner)continue;
+    d=max(d,-(length(p-uCarveBalls[j].xyz)-uCarveBalls[j].w));
+  }
+  for(int j=0;j<MAX_CARVE_PLANES;j++){
+    if(j>=uCarvePlaneN)break;
+    if(uCarvePlaneOwner[j]>=0 && uCarvePlaneOwner[j]!=owner)continue;
+    d=max(d,-(dot(p,uCarvePlanes[j].xyz)-uCarvePlanes[j].w));
+  }
+  return d;
+}
+
+// The whole field as one number, plus WHICH solid gave it. Owners are ball
+// index i, or 100+i for plane i -- the shading needs to know whether it hit a
+// ball or a floor, and after a carve the nearest surface is not necessarily
+// the primitive a closed form would have found.
+float sceneDistance(vec3 p, out int owner){
+  float best=1e20; owner=-1;
+  for(int i=0;i<MAX_BALLS;i++){
+    if(i>=uBallN)break;
+    float d=carveAdjust(length(p-uBalls[i].xyz)-uBalls[i].w,p,i);
+    if(d<best){best=d;owner=i;}
+  }
+  for(int i=0;i<MAX_PLANES;i++){
+    if(i>=uPlaneN)break;
+    float d=carveAdjust(dot(p,uPlanes[i].xyz)-uPlanes[i].w,p,100+i);
+    if(d<best){best=d;owner=100+i;}
+  }
+  return best;
+}
+float sceneDistance(vec3 p){ int o; return sceneDistance(p,o); }
+
+vec3 sceneNormal(vec3 p){
+  // Tetrahedral differences: four samples rather than six, and no reliance on
+  // the field being an exact distance -- which it is not once anything is
+  // carved.
+  vec2 e=vec2(1.0,-1.0)*0.0015;
+  return normalize(e.xyy*sceneDistance(p+e.xyy)+e.yyx*sceneDistance(p+e.yyx)
+                  +e.yxy*sceneDistance(p+e.yxy)+e.xxx*sceneDistance(p+e.xxx));
+}
+
 void main(){
   vec2 uv=(2.0*gl_FragCoord.xy-uRes)/uRes.y;
   vec3 sky=mix(vec3(.025,.04,.07),vec3(.09,.13,.19),clamp(.5+.25*uv.y,0.0,1.0));
@@ -93,48 +159,65 @@ void main(){
   // Each transit dims what is beyond it a little, so depth through a chain of
   // apertures reads as depth rather than as one flat continuous room.
   float tint=1.0;
+  float far=uExtent*4.0+40.0;
 
   for(int bounce=0;bounce<MAX_BOUNCES;bounce++){
-    // Nearest ball along the ray.
-    float tBall=1e20; int hitBall=-1;
-    for(int i=0;i<MAX_BALLS;i++){
-      if(i>=uBallN)break;
-      float t=ballRayHit(eye,u,uBalls[i]);
-      if(t<tBall&&t>0.0){tBall=t;hitBall=i;}
-    }
-    // Nearest plane along the ray. A plane is { p : dot(p,n) = w }, solid on
-    // the side the normal points away from, so a ray only meets it coming from
-    // the free side and heading in.
-    float tPlane=1e20; int hitPlane=-1;
-    for(int i=0;i<MAX_PLANES;i++){
-      if(i>=uPlaneN)break;
-      vec4 pl=uPlanes[i];
-      float denom=dot(u,pl.xyz), height=dot(eye,pl.xyz)-pl.w;
-      if(denom<-1e-6&&height>0.0){
-        float t=-height/denom;
-        if(t>0.0&&t<tPlane){tPlane=t;hitPlane=i;}
+    float tSurf=1e20; int owner=-1; vec3 nSurf=vec3(0.0,0.0,1.0);
+
+    if(uCarveBallN+uCarvePlaneN==0){
+      // NOTHING IS CARVED, so every primitive still solves in closed form and
+      // the nearest one wins. This is the exact path and it stays exact --
+      // the capability the field advertises says so, and the renderer must
+      // not quietly stop matching it.
+      for(int i=0;i<MAX_BALLS;i++){
+        if(i>=uBallN)break;
+        float t=ballRayHit(eye,u,uBalls[i]);
+        if(t<tSurf&&t>0.0){tSurf=t;owner=i;}
       }
+      for(int i=0;i<MAX_PLANES;i++){
+        if(i>=uPlaneN)break;
+        vec4 pl=uPlanes[i];
+        float denom=dot(u,pl.xyz),height=dot(eye,pl.xyz)-pl.w;
+        if(denom<-1e-6&&height>0.0){
+          float t=-height/denom;
+          if(t>0.0&&t<tSurf){tSurf=t;owner=100+i;}
+        }
+      }
+      if(owner>=0&&owner<100)nSurf=normalize(eye+tSurf*u-uBalls[owner].xyz);
+      else if(owner>=100)nSurf=uPlanes[owner-100].xyz;
+    } else {
+      // SOMETHING IS CARVED, so a closed form would happily return a surface
+      // that has been cut away. Sphere-trace the expression instead: the
+      // distance is a lower bound, which is exactly what tracing needs.
+      float t=0.0; int o=-1; float d=0.0;
+      for(int step=0;step<4096;step++){
+        if(step>=uMarchSteps)break;
+        d=sceneDistance(eye+t*u,o);
+        if(d<2e-4){owner=o;tSurf=t;break;}
+        t+=max(d,2e-4);
+        if(t>far)break;
+      }
+      if(owner>=0)nSurf=sceneNormal(eye+tSurf*u);
     }
-    // Nearest aperture. ONE-SIDED, exactly as apertureCrossing is: the ray must
-    // start on the front of the disc and be heading through it. Seeing the back
-    // of an aperture as a hole would let you look out of the portal you are
-    // standing behind, and the walker cannot cross that way either.
+
+    // Apertures are analytic and independent of the field, so they are tested
+    // the same way on both paths.
     float tPort=1e20; int hitPort=-1; float edge=0.0;
     for(int i=0;i<MAX_PORTALS;i++){
       if(i>=uPortalN)break;
       vec3 c=uPortals[i].xyz,n=uPortalNml[i].xyz; float rad=uPortals[i].w;
-      float denom=dot(u,n), height=dot(eye-c,n);
+      float denom=dot(u,n),height=dot(eye-c,n);
       if(denom<-1e-6&&height>0.0){
         float t=-height/denom;
         if(t>0.0&&t<tPort){
-          vec3 d=eye+t*u-c;
-          float rr=length(d-dot(d,n)*n);
+          vec3 dv=eye+t*u-c;
+          float rr=length(dv-dot(dv,n)*n);
           if(rr<=rad){tPort=t;hitPort=i;edge=rr/rad;}
         }
       }
     }
 
-    if(hitPort>=0&&tPort<tBall&&tPort<tPlane){
+    if(hitPort>=0&&tPort<tSurf){
       vec3 p=eye+tPort*u;
       rim=max(rim,smoothstep(0.88,1.0,edge)*tint);
       // The SAME map the walker uses. mapPoint is the mat3 about the aperture
@@ -143,17 +226,15 @@ void main(){
       eye=uPortalExit[hitPort].xyz+uPortalMap[hitPort]*(p-uPortals[hitPort].xyz);
       u=normalize(uPortalMap[hitPort]*u);
       // Never resume exactly on the exit plane: the next sign test could read
-      // either way and the ray would ping-pong without advancing, which is the
-      // same guard sweep() needs at a transit and the H3 marcher needs at a
-      // fundamental-domain face.
+      // either way and the ray would ping-pong without advancing.
       eye+=u*1e-3;
       tint*=0.86;
       continue;
     }
 
-    if(hitPlane>=0&&tPlane<tBall){
-      vec4 pl=uPlanes[hitPlane];
-      vec3 p=eye+tPlane*u;
+    if(owner>=100){
+      vec4 pl=uPlanes[owner-100];
+      vec3 p=eye+tSurf*u;
       // A grid in the plane's OWN two directions, so it stays a grid whatever
       // the normal is -- a ceiling and a ramp are the same primitive here.
       vec3 a=abs(pl.x)<0.9?vec3(1,0,0):vec3(0,1,0);
@@ -164,23 +245,24 @@ void main(){
       // the horizon, and below a pixel the right answer is the average, not
       // whichever line the sample happened to land on -- otherwise the floor
       // aliases into moire rings. Same rule as the H^2 x R floor checker.
-      float sharp=1.0/(1.0+tPlane*tPlane*0.03);
+      float sharp=1.0/(1.0+tSurf*tSurf*0.03);
       vec3 floorColor=mix(vec3(.42,.50,.58),vec3(.13,.17,.23),mix(1.0,line,sharp));
-      float far=clamp(tPlane/max(uExtent,1e-6),0.0,1.0);
-      color=mix(floorColor,sky,far*far)*tint;
+      // A carved face on a plane is not flat, so shade it by its own normal
+      // rather than letting the grid pretend it is the untouched floor.
+      float lit=0.55+0.45*max(dot(nSurf,normalize(vec3(-.5,-1.0,1.0))),0.0);
+      float fade=clamp(tSurf/max(uExtent,1e-6),0.0,1.0);
+      color=mix(floorColor*lit,sky,fade*fade)*tint;
       break;
     }
-    if(hitBall>=0&&tBall<1e10){
-      vec4 b=uBalls[hitBall];
-      vec3 p=eye+tBall*u,n=normalize(p-b.xyz);
-      float light=.2+.65*max(dot(n,normalize(vec3(-.5,-1.0,1.0))),0.0);
+    if(owner>=0){
+      vec4 b=uBalls[owner];
+      float light=.2+.65*max(dot(nSurf,normalize(vec3(-.5,-1.0,1.0))),0.0);
       vec3 base=vec3(.20,.72,.69);
       // The selected object reads as selected from inside the world, rather
-      // than only in a list: a warmer body and a rim, so it is findable while
-      // playing. Only in the FIRST view -- a highlight seen through a portal
-      // would say "this is selected" about a reflection of it.
-      if(hitBall==uSelected&&bounce==0){
-        float ring=pow(1.0-max(dot(n,-u),0.0),2.0);
+      // than only in a list. Only in the FIRST view -- a highlight seen
+      // through a portal would say "this is selected" about a reflection.
+      if(owner==uSelected&&bounce==0){
+        float ring=pow(1.0-max(dot(nSurf,-u),0.0),2.0);
         base=mix(vec3(.98,.72,.30),vec3(1.0,.94,.75),ring);
       }
       color=base*light*tint;

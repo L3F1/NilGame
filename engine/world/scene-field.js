@@ -158,6 +158,17 @@ export function compileSceneField(source) {
     return [a, b];
   });
 
+  // Where a carve's target sits in the arrays the renderer loops over.
+  const addedBalls = added.filter((x) => x.kind === 'ball');
+  const addedPlanes = added.filter((x) => x.kind === 'plane');
+  function ownerIndex(carve) {
+    if (carve.target === null) return -1;             // cuts everything
+    const b = addedBalls.findIndex((x) => x.id === carve.target);
+    if (b >= 0) return b;
+    const p = addedPlanes.findIndex((x) => x.id === carve.target);
+    return p >= 0 ? 100 + p : -1;
+  }
+
   const ball = scene.entities.find((e) => e.kind === 'ball') || null;
   const plane = scene.entities.find((e) => e.kind === 'plane') || null;
   const planeSolid = solids.find((s) => s.kind === 'plane') || null;
@@ -179,8 +190,23 @@ export function compileSceneField(source) {
       : { distance: 'exact', intersection: 'exact', normal: 'exact-except-ball-center' }),
     /** Solids subtracted rather than added. Non-empty means the field is a bound. */
     carveCount: carved.length,
-    carvesUniform: () => carved.filter((x) => x.kind === 'ball')
+    /**
+     * Carves as uniform arrays, plus the OWNER each one cuts.
+     *
+     * The owner is an index into the arrays the renderer already loops over --
+     * ball i, or 100+i for plane i -- and -1 for a carve with no target, which
+     * cuts everything. Handing the shader an entity ID instead would make it
+     * do a string comparison per sample, which it cannot; handing it the
+     * position in the array is the same information in the form the loop needs.
+     */
+    carveBallsUniform: () => carved.filter((x) => x.kind === 'ball')
       .flatMap((x) => [...x.center, x.radius]),
+    carveBallOwners: () => carved.filter((x) => x.kind === 'ball').map(ownerIndex),
+    carvePlanesUniform: () => carved.filter((x) => x.kind === 'plane')
+      .flatMap((x) => [...x.normal, x.offset]),
+    carvePlaneOwners: () => carved.filter((x) => x.kind === 'plane').map(ownerIndex),
+    carveBallCount: carved.filter((x) => x.kind === 'ball').length,
+    carvePlaneCount: carved.filter((x) => x.kind === 'plane').length,
     document: () => structuredClone(scene),
     solidCount: solids.length,
     /** One-way aperture descriptors, two per connection. Holes, not solids. */
@@ -208,12 +234,10 @@ export function compileSceneField(source) {
      * is inlined, and that is what took a link from five seconds to 212. One
      * loop body, N iterations, and an object costs nothing when it is absent.
      */
-    ballsUniform: () => solids.filter((x) => x.kind === 'ball')
-      .flatMap((x) => [...x.center, x.radius]),
-    planesUniform: () => solids.filter((x) => x.kind === 'plane')
-      .flatMap((x) => [...x.normal, x.offset]),
-    ballCount: solids.filter((x) => x.kind === 'ball').length,
-    planeCount: solids.filter((x) => x.kind === 'plane').length,
+    ballsUniform: () => addedBalls.flatMap((x) => [...x.center, x.radius]),
+    planesUniform: () => addedPlanes.flatMap((x) => [...x.normal, x.offset]),
+    ballCount: addedBalls.length,
+    planeCount: addedPlanes.length,
     /** The FIRST ball/plane, kept for the single-primitive hosts and checks. */
     ballUniform: () => (ball ? [...ball.position, ball.radius] : null),
     planeUniform: () => (planeSolid ? [...planeSolid.normal, planeSolid.offset] : null),

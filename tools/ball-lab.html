@@ -34,7 +34,8 @@ small{color:#8fa3b4}
 <h1>SCENE LAB / E3</h1>
 <p><small>Scene v1 authoring. Z is up. Solids are authored entities: you stand on
 the same surfaces the renderer draws, and you see through a portal with the same
-map that carries you through it.</small></p>
+map that carries you through it. Select a solid and press Carve to cut a hole in
+it; a carved scene is marched rather than solved, and the readout says so.</small></p>
 
 <h2>Scene</h2>
 <label>Fixture <select id="fixture">
@@ -45,7 +46,8 @@ map that carries you through it.</small></p>
 <h2>Entities</h2>
 <ul id="entities" role="listbox" aria-label="Scene entities"></ul>
 <button id="add-ball">Add ball</button><button id="add-plane">Add plane</button>
-<button id="add-portal">Add portal</button><button id="delete">Delete</button>
+<button id="add-portal">Add portal</button><button id="add-carve">Carve</button>
+<button id="delete">Delete</button>
 
 <h2 id="inspector-title">Inspector</h2>
 <form id="editor">

@@ -81,10 +81,13 @@ The previous backlog is preserved in
   `distance: 'bound'`, `intersection: 'marched'`, and `rayHit` sphere-traces
   instead of solving in closed form. 14 tests including the safety property
   that a tracing step never lands inside a solid. `boolean.test.js`.
-- [ ] **Draw carves in the lab**, so a doorway is authorable and not only
-  representable. Needs the first-person shader to march when the scene carries
-  a carve, and a Carve button. Until then a carve is invisible in the editor --
-  the same kernel-complete-but-unusable state portals were in.
+- [x] **Draw carves in the lab.** Select a solid, press Carve, and the hole is
+  there. The shader keeps its exact closed-form path when nothing is carved and
+  sphere-traces when something is, with the march bound held in a UNIFORM so
+  the D3D compiler cannot unroll it -- a literal bound would paste the scene
+  function 160 times and never link. Measured cold on a real GPU: 1.8 s for the
+  page with 69 checks, against 0.9 s with 57 before, so the marching path
+  roughly doubled the link and is nowhere near the budget.
 - [ ] **Intersection** (`op: 'intersect'`). Subtraction and union cover most
   authoring; intersection is what makes a BOX from six planes, which is the
   primitive an author actually reaches for and the reason a wall currently has

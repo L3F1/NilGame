@@ -207,6 +207,37 @@ Known limit: `aimAlong` recovers yaw and pitch and therefore **drops roll**.
 That is correct for a walker whose up is the world's up and wrong the moment an
 aperture is tilted, so it is a limit of this camera and not of `mapVector`.
 
+## Carving
+
+Select a ball or a plane, press **Carve**, and a subtracting ball appears in
+front of you TARGETING what you had selected. Carving with nothing selected is
+refused and says what to do, because the alternative -- a global carve -- takes
+the floor out from under the doorway and leaves the author standing over a hole
+wondering what they did.
+
+The entity list marks a carve with what it cuts (`ball minus ground`), and the
+readout says when the field has stopped being exact:
+
+    2 solids, 1 portal, 1 carve (distance is a bound). Player clearance 0.412
+
+That readout is not decoration. A carve changes what the field PROMISES --
+`distance` becomes a bound and `intersection` becomes marched -- and a solver
+that trusted the old promise would be trusting a lie. See the
+[rendering contract](rendering-contract.md).
+
+The renderer follows the same split rather than approximating it. With nothing
+carved it takes the exact closed-form path it always did, so an uncarved scene
+is drawn by exactly the route it was before. With something carved it
+sphere-traces the boolean expression, because a closed form would happily
+return a surface that has been cut away.
+
+**The march bound is a uniform, not a constant, and that is not a style
+choice.** The D3D compiler unrolls every countable loop, so a literal `160`
+would paste the whole scene function 160 times and the link would not return --
+this is the 212-second failure CLAUDE.md records, in a new place. A uniform
+bound is opaque to it. Measured cold on a real GPU: 1.8 s for the page against
+0.9 s before, with the check count up from 57 to 69.
+
 ## Checks and measured limits
 
 ```sh
