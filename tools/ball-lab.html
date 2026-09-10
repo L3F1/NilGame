@@ -41,11 +41,13 @@ it; a carved scene is marched rather than solved, and the readout says so.</smal
 <label>Fixture <select id="fixture">
   <option value="room">room — a floor and a ball</option>
   <option value="portal-room">portal-room — two gates, walk through one</option>
+  <option value="box-room">box-room — a wall with a doorway, a step and a crate</option>
 </select></label>
 
 <h2>Entities</h2>
 <ul id="entities" role="listbox" aria-label="Scene entities"></ul>
-<button id="add-ball">Add ball</button><button id="add-plane">Add plane</button>
+<button id="add-ball">Add ball</button><button id="add-box">Add box</button>
+<button id="add-plane">Add plane</button>
 <button id="add-portal">Add portal</button><button id="add-carve">Carve</button>
 <button id="delete">Delete</button>
 
@@ -57,6 +59,11 @@ it; a carved scene is marched rather than solved, and the readout says so.</smal
     <input id="z" type="number" step="any" required aria-label="Position Z">
   </span></label>
   <label id="radius-field">Radius <input id="radius" type="number" step="any" min="0.01" required></label>
+  <label id="half-field">Half-extent (axis-aligned) <span class="row">
+    <input id="hx" type="number" step="any" min="0.01" aria-label="Half-extent X">
+    <input id="hy" type="number" step="any" min="0.01" aria-label="Half-extent Y">
+    <input id="hz" type="number" step="any" min="0.01" aria-label="Half-extent Z">
+  </span></label>
   <label id="forward-field">Forward (out of the aperture) <span class="row">
     <input id="fx" type="number" step="any" aria-label="Forward X">
     <input id="fy" type="number" step="any" aria-label="Forward Y">

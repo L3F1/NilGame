@@ -1,0 +1,17 @@
+{
+  "format": "nil-scene", "version": 1, "id": "box-room",
+  "units": { "name": "design-unit", "playerRadius": 0.25 },
+  "regions": [
+    { "id": "flat-room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 16 }
+  ],
+  "entities": [
+    { "id": "ground", "regionId": "flat-room", "kind": "plane", "position": [0, 0, 0], "up": [0, 0, 1] },
+    { "id": "start", "regionId": "flat-room", "kind": "spawn", "position": [0, -4, 0.3] },
+    { "id": "wall", "regionId": "flat-room", "kind": "box", "position": [0, 1.5, 1.4], "halfExtent": [5, 0.3, 1.4] },
+    { "id": "doorway", "regionId": "flat-room", "kind": "box", "position": [0, 1.5, 0.8], "halfExtent": [0.8, 1, 1.05], "op": "subtract", "target": "wall" },
+    { "id": "step", "regionId": "flat-room", "kind": "box", "position": [-2.6, -1.2, 0.25], "halfExtent": [1.2, 1.2, 0.25] },
+    { "id": "crate", "regionId": "flat-room", "kind": "box", "position": [2.4, -1.4, 0.6], "halfExtent": [0.6, 0.6, 0.6] },
+    { "id": "beacon", "regionId": "flat-room", "kind": "ball", "position": [0, 5, 0.9], "radius": 0.9 }
+  ],
+  "connections": []
+}

@@ -2,10 +2,13 @@
 // the collision solver walks into. One implementation, so the two cannot
 // disagree -- which is the whole reason the query boundary exists.
 //
-// v1 solids: BALL (a metric sphere) and PLANE (a half-space). Both have an
-// exact distance, an exact normal and an exact ray hit, which is capability
-// (1), (2) and (3) of docs/rendering-contract.md rather than a bound standing
-// in for all three.
+// v1 solids: BALL (a metric sphere), BOX (axis-aligned half-extents) and
+// PLANE (a half-space). All three have an exact distance, an exact normal and
+// an exact ray hit, which is capability (1), (2) and (3) of
+// docs/rendering-contract.md rather than a bound standing in for all three.
+// That is why a box is a primitive and not six clipped planes: the clipped
+// construction is correct and is only a BOUND, and one bound anywhere makes
+// the whole scene marched.
 //
 // The union of solids is `min` over their distances. For EXACT distances that
 // is exact outside the union, and an underestimate inside a concave junction
@@ -43,6 +46,83 @@ function solidOf(entity) {
       },
     });
   }
+  if (entity.kind === 'box') {
+    // AXIS-ALIGNED BOX, and the reason it is a primitive rather than sugar
+    // over six clipped planes. Six planes is the correct EXPRESSION and it is
+    // the wrong FIELD: every intersection is a `max`, so a box built that way
+    // is a bound, and a bound turns the whole scene marched. The one shape an
+    // author reaches for most would be the shape that costs the most. The
+    // closed form below is exact everywhere, so a room made of boxes still
+    // renders down the closed-form path.
+    //
+    // Outside: the distance to the box is the length of the componentwise
+    // overshoot, because the nearest point on a box is found per axis
+    // independently -- clamp the query into the box and measure. Inside:
+    // every overshoot is negative and the distance to the nearest FACE is the
+    // largest of them (the least deep), which is exact too. Neither case is
+    // an estimate, which is what separates this from `max` over half-spaces.
+    const c = entity.position.slice(), h = entity.halfExtent.slice();
+    const over = (p) => [
+      Math.abs(p[0] - c[0]) - h[0], Math.abs(p[1] - c[1]) - h[1], Math.abs(p[2] - c[2]) - h[2],
+    ];
+    return Object.freeze({
+      id: entity.id, kind: 'box', op: entity.op || 'add', target: entity.target ?? null,
+      center: c, halfExtent: h,
+      distance(p) {
+        const q = over(p);
+        return Math.hypot(Math.max(q[0], 0), Math.max(q[1], 0), Math.max(q[2], 0))
+          + Math.min(Math.max(q[0], q[1], q[2]), 0);
+      },
+      /**
+       * Outside, the direction away from the nearest point, which on a corner
+       * or an edge is the diagonal -- that is the true gradient, not a choice.
+       * Inside and ON the surface, the face that is nearest.
+       *
+       * WHERE IT IS A CHOICE: on an edge or a corner reached from inside, two
+       * or three faces tie exactly, and no normal is more correct than
+       * another. The lowest axis index wins, deterministically. A ball says
+       * `null` at its centre because there every direction is equally
+       * outward and no answer is defensible; here the tie set is a measure-
+       * zero seam a resting walker sits on constantly, and refusing to answer
+       * would be worse than answering consistently.
+       */
+      normal(p) {
+        const q = over(p);
+        const o = [Math.max(q[0], 0), Math.max(q[1], 0), Math.max(q[2], 0)];
+        const len = Math.hypot(...o);
+        const away = (i) => (p[i] < c[i] ? -1 : 1);
+        if (len > 0) return [away(0) * o[0] / len, away(1) * o[1] / len, away(2) * o[2] / len];
+        const m = Math.max(q[0], q[1], q[2]);
+        const i = q[0] === m ? 0 : q[1] === m ? 1 : 2;
+        const n = [0, 0, 0];
+        n[i] = away(i);
+        return n;
+      },
+      /**
+       * Slab method, exact. `tmin` starts at 0 so a ray that begins inside
+       * reports 0, which is the same convention the ball and the plane use:
+       * "you are already in it" is not a distance to travel.
+       */
+      rayHit(p, u) {
+        let tmin = 0, tmax = Infinity;
+        for (let i = 0; i < 3; i++) {
+          if (Math.abs(u[i]) < 1e-12) {
+            // Parallel to this pair of faces: either always between them or
+            // never, and never means the ray misses no matter how far it goes.
+            if (Math.abs(p[i] - c[i]) > h[i]) return Infinity;
+            continue;
+          }
+          const inv = 1 / u[i];
+          let t1 = (c[i] - h[i] - p[i]) * inv, t2 = (c[i] + h[i] - p[i]) * inv;
+          if (t1 > t2) { const swap = t1; t1 = t2; t2 = swap; }
+          if (t1 > tmin) tmin = t1;
+          if (t2 < tmax) tmax = t2;
+          if (tmin > tmax) return Infinity;
+        }
+        return tmin;
+      },
+    });
+  }
   if (entity.kind === 'plane') {
     // { p : dot(p, n) = offset }, solid on the side n points AWAY from.
     const n = entity.up.slice(), offset = dot3(entity.position, n);
@@ -65,7 +145,7 @@ function solidOf(entity) {
   throw new Error(`entity ${entity.id}: kind ${entity.kind} is not a solid`);
 }
 
-const SOLID_KINDS = ['ball', 'plane'];
+const SOLID_KINDS = ['ball', 'box', 'plane'];
 
 /**
  * Compile a validated document into a field plus the authoring data a host
@@ -179,13 +259,19 @@ export function compileSceneField(source) {
 
   // Where a modifier's target sits in the arrays the renderer loops over.
   const addedBalls = added.filter((x) => x.kind === 'ball');
+  const addedBoxes = added.filter((x) => x.kind === 'box');
   const addedPlanes = added.filter((x) => x.kind === 'plane');
+  // One number naming a solid across three arrays: ball i, box 200+i, plane
+  // 100+i. The bands are wide enough that no scene can collide them, and the
+  // shader compares owners as ints because it cannot compare strings.
   function ownerIndex(mod) {
     if (mod.target === null) return -1;               // applies to everything
     const b = addedBalls.findIndex((x) => x.id === mod.target);
     if (b >= 0) return b;
     const p = addedPlanes.findIndex((x) => x.id === mod.target);
-    return p >= 0 ? 100 + p : -1;
+    if (p >= 0) return 100 + p;
+    const x = addedBoxes.findIndex((k) => k.id === mod.target);
+    return x >= 0 ? 200 + x : -1;
   }
 
   const ball = scene.entities.find((e) => e.kind === 'ball') || null;
@@ -232,6 +318,14 @@ export function compileSceneField(source) {
     modPlaneOwners: () => modifiers.filter((m) => m.solid.kind === 'plane')
       .map((m) => ownerIndex(m.solid)),
     modPlaneSigns: () => modifiers.filter((m) => m.solid.kind === 'plane').map((m) => m.sign),
+    modBoxCentersUniform: () => modifiers.filter((m) => m.solid.kind === 'box')
+      .flatMap((m) => m.solid.center),
+    modBoxHalvesUniform: () => modifiers.filter((m) => m.solid.kind === 'box')
+      .flatMap((m) => m.solid.halfExtent),
+    modBoxOwners: () => modifiers.filter((m) => m.solid.kind === 'box')
+      .map((m) => ownerIndex(m.solid)),
+    modBoxSigns: () => modifiers.filter((m) => m.solid.kind === 'box').map((m) => m.sign),
+    modBoxCount: modifiers.filter((m) => m.solid.kind === 'box').length,
     modBallCount: modifiers.filter((m) => m.solid.kind === 'ball').length,
     modPlaneCount: modifiers.filter((m) => m.solid.kind === 'plane').length,
     document: () => structuredClone(scene),
@@ -263,7 +357,11 @@ export function compileSceneField(source) {
      */
     ballsUniform: () => addedBalls.flatMap((x) => [...x.center, x.radius]),
     planesUniform: () => addedPlanes.flatMap((x) => [...x.normal, x.offset]),
+    /** Boxes as centre and half-extent, in step. Axis-aligned, so no frame. */
+    boxCentersUniform: () => addedBoxes.flatMap((x) => x.center),
+    boxHalvesUniform: () => addedBoxes.flatMap((x) => x.halfExtent),
     ballCount: addedBalls.length,
+    boxCount: addedBoxes.length,
     planeCount: addedPlanes.length,
     /** The FIRST ball/plane, kept for the single-primitive hosts and checks. */
     ballUniform: () => (ball ? [...ball.position, ball.radius] : null),

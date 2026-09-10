@@ -26,7 +26,9 @@ void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.0
 gl.attachShader(program, shader(gl.FRAGMENT_SHADER, BALL_FIRST_PERSON_GLSL));
 gl.linkProgram(program);
 if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
-const U = Object.fromEntries(['uBalls', 'uBallN', 'uPlanes', 'uPlaneN', 'uRes',
+const U = Object.fromEntries(['uBalls', 'uBallN', 'uBoxes', 'uBoxHalves', 'uBoxN',
+  'uModBoxes', 'uModBoxHalves', 'uModBoxOwner', 'uModBoxSign', 'uModBoxN',
+  'uPlanes', 'uPlaneN', 'uRes',
   'uEye', 'uFwd', 'uRight', 'uUp', 'uExtent', 'uSelected',
   'uPortals', 'uPortalNml', 'uPortalExit', 'uPortalMap', 'uPortalN',
   'uModBalls', 'uModBallOwner', 'uModBallSign', 'uModBallN',
@@ -122,6 +124,15 @@ function reconcile(field) {
   return 'the edit trapped the player, who respawned';
 }
 
+// The shader speaks vec4 throughout, so a run of vec3 data is padded rather
+// than uploaded as a vec3 array. Keeping one array type across every uniform
+// is worth four bytes an object.
+const vec4s = (flat) => {
+  const out = [];
+  for (let i = 0; i < flat.length; i += 3) out.push(flat[i], flat[i + 1], flat[i + 2], 0);
+  return out;
+};
+
 // --- the inspector ---------------------------------------------------------
 function selectedEntity(field) {
   return field.entities().find((e) => e.id === selected) || null;
@@ -146,6 +157,7 @@ function drawList(field) {
   // The inspector shows only the fields the selected kind actually has, so it
   // cannot offer a radius for a spawn or a normal for a ball.
   $('radius-field').hidden = !e || e.radius === undefined;
+  $('half-field').hidden = !e || e.kind !== 'box';
   $('up-field').hidden = !e || e.kind !== 'plane';
   $('forward-field').hidden = !e || e.kind !== 'anchor';
   $('editor').hidden = !e;
@@ -160,6 +172,7 @@ function drawList(field) {
   if (e) {
     ['x', 'y', 'z'].forEach((id, i) => { $(id).value = e.position[i]; });
     if (e.radius !== undefined) $('radius').value = e.radius;
+    if (e.kind === 'box') ['hx', 'hy', 'hz'].forEach((id, i) => { $(id).value = e.halfExtent[i]; });
     if (e.kind === 'plane') ['ux', 'uy', 'uz'].forEach((id, i) => { $(id).value = e.up[i]; });
     if (e.kind === 'anchor') ['fx', 'fy', 'fz'].forEach((id, i) => { $(id).value = e.forward[i]; });
   }
@@ -173,8 +186,12 @@ function draw() {
   gl.useProgram(program);
   const { f, r, u } = basis();
   const balls = field.ballsUniform(), planes = field.planesUniform();
+  const boxC = field.boxCentersUniform(), boxH = field.boxHalvesUniform();
   gl.uniform4fv(U.uBalls, balls.length ? balls : [0, 0, 0, -1]);
   gl.uniform1i(U.uBallN, field.ballCount);
+  gl.uniform4fv(U.uBoxes, boxC.length ? vec4s(boxC) : [0, 0, 0, 0]);
+  gl.uniform4fv(U.uBoxHalves, boxH.length ? vec4s(boxH) : [1, 1, 1, 0]);
+  gl.uniform1i(U.uBoxN, field.boxCount);
   gl.uniform4fv(U.uPlanes, planes.length ? planes : [0, 0, 1, 0]);
   gl.uniform1i(U.uPlaneN, field.planeCount);
   gl.uniform2f(U.uRes, canvas.width, canvas.height);
@@ -197,6 +214,8 @@ function draw() {
   const mb = field.modBallsUniform(), mp = field.modPlanesUniform();
   const mbo = field.modBallOwners(), mps = field.modPlaneSigns();
   const mbs = field.modBallSigns(), mpo = field.modPlaneOwners();
+  const mxc = field.modBoxCentersUniform(), mxh = field.modBoxHalvesUniform();
+  const mxo = field.modBoxOwners(), mxs = field.modBoxSigns();
   gl.uniform4fv(U.uModBalls, mb.length ? mb : [0, 0, 0, 0]);
   gl.uniform1iv(U.uModBallOwner, mbo.length ? mbo : [-1]);
   gl.uniform1fv(U.uModBallSign, mbs.length ? mbs : [-1]);
@@ -205,12 +224,25 @@ function draw() {
   gl.uniform1iv(U.uModPlaneOwner, mpo.length ? mpo : [-1]);
   gl.uniform1fv(U.uModPlaneSign, mps.length ? mps : [-1]);
   gl.uniform1i(U.uModPlaneN, field.modPlaneCount);
+  // Boxes carry two arrays that must stay in step, so they are uploaded
+  // together and padded together: a half-extent without its centre is a box
+  // somewhere else, which is worse than no box at all.
+  gl.uniform4fv(U.uModBoxes, mxc.length ? vec4s(mxc) : [0, 0, 0, 0]);
+  gl.uniform4fv(U.uModBoxHalves, mxh.length ? vec4s(mxh) : [1, 1, 1, 0]);
+  gl.uniform1iv(U.uModBoxOwner, mxo.length ? mxo : [-1]);
+  gl.uniform1fv(U.uModBoxSign, mxs.length ? mxs : [-1]);
+  gl.uniform1i(U.uModBoxN, field.modBoxCount);
   // A uniform, not a constant, so the D3D compiler cannot unroll the march.
   gl.uniform1i(U.uMarchSteps, 160);
-  // Which BALL is selected, as an index into the ball array the shader loops
-  // over -- not the entity index, which counts spawns and planes too.
-  const ballIds = field.entities().filter((e) => e.kind === 'ball').map((e) => e.id);
-  gl.uniform1i(U.uSelected, ballIds.indexOf(selected));
+  // WHICH SOLID IS SELECTED, in the shader's own owner encoding: ball i, or
+  // 200+i for box i. Not the entity index, which counts spawns and planes
+  // too, and not a per-kind index, which would highlight ball 2 when box 2
+  // was chosen. Planes are shaded by their grid and take no highlight.
+  const added = field.entities().filter((e) => (e.op || 'add') === 'add');
+  const ballIds = added.filter((e) => e.kind === 'ball').map((e) => e.id);
+  const boxIds = added.filter((e) => e.kind === 'box').map((e) => e.id);
+  const boxPick = boxIds.indexOf(selected);
+  gl.uniform1i(U.uSelected, boxPick >= 0 ? 200 + boxPick : ballIds.indexOf(selected));
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 
   drawList(field);
@@ -299,6 +331,11 @@ $('editor').onsubmit = (e) => {
     if (!entity) throw new Error('Nothing selected');
     const patch = { position: ['x', 'y', 'z'].map((k) => Number($(k).value)) };
     if (entity.radius !== undefined) patch.radius = Number($('radius').value);
+    if (entity.kind === 'box') {
+      const h = ['hx', 'hy', 'hz'].map((k) => Number($(k).value));
+      if (!h.every((x) => x > 0)) throw new Error('A box needs three positive half-extents');
+      patch.halfExtent = h;
+    }
     if (entity.kind === 'anchor') {
       const fwd = ['fx', 'fy', 'fz'].map((k) => Number($(k).value));
       const n = Math.hypot(...fwd);
@@ -353,6 +390,17 @@ $('add-ball').onclick = () => {
     $('status').textContent = `added ${selected}`;
   } catch (error) { $('status').textContent = error.message; }
 };
+$('add-box').onclick = () => {
+  try {
+    const { f } = basis();
+    const at = probe.position.map((x, i) => x + f[i] * 3);
+    const next = addEntity(scene, 'box', { position: at, halfExtent: [0.8, 0.8, 0.8] });
+    commit(next);
+    selected = compileSceneField(next).entities().at(-1).id;
+    draw();
+    $('status').textContent = `added ${selected} (axis-aligned; edit its half-extents)`;
+  } catch (error) { $('status').textContent = error.message; }
+};
 $('add-plane').onclick = () => {
   try {
     const next = addEntity(scene, 'plane', { position: [0, 0, 3], up: [0, 0, -1] });
@@ -370,13 +418,20 @@ $('add-carve').onclick = () => {
     // rather than quietly cutting everything.
     const field = compileSceneField(scene);
     const target = field.entities().find((e) => e.id === selected);
-    if (!target || !['ball', 'plane'].includes(target.kind)) {
-      throw new Error('Select the ball or plane you want to cut, then carve');
+    if (!target || !['ball', 'box', 'plane'].includes(target.kind)) {
+      throw new Error('Select the solid you want to cut, then carve');
     }
+    // A BOX IS CARVED WITH A BOX. Cutting a rectangular doorway with a ball
+    // gives a round-topped hole, and an author who wanted a doorway has to
+    // undo and start over; matching the cutter to the target is the guess
+    // that is right far more often than it is wrong.
     const { f } = basis();
     const at = probe.position.map((x, i) => x + f[i] * 2.5);
-    const next = addEntity(scene, 'ball',
-      { position: at, radius: 0.7, op: 'subtract', target: target.id });
+    const next = target.kind === 'box'
+      ? addEntity(scene, 'box',
+        { position: at, halfExtent: [0.6, 0.6, 0.6], op: 'subtract', target: target.id })
+      : addEntity(scene, 'ball',
+        { position: at, radius: 0.7, op: 'subtract', target: target.id });
     commit(next);
     selected = compileSceneField(next).entities().at(-1).id;
     draw();
@@ -460,6 +515,7 @@ if (new URLSearchParams(location.search).has('check')) {
   const checks = [];
   const check = (name, ok) => { if (!ok) throw new Error(name); checks.push(name); };
   let err = '', shot = '';
+  const shots = [];
   try {
     const initial = JSON.stringify(scene);
     const pixels = () => {
@@ -675,7 +731,7 @@ if (new URLSearchParams(location.search).has('check')) {
     selected = null; draw();
     $('add-carve').click();
     check('carving with nothing selected is refused, and says what to do',
-      /Select the ball or plane/.test($('status').textContent));
+      /Select the solid/.test($('status').textContent));
     check('and nothing was added', compileSceneField(scene).carveCount === beforeCarve.carveCount);
 
     const floorId = compileSceneField(scene).planeId;
@@ -712,6 +768,55 @@ if (new URLSearchParams(location.search).has('check')) {
     check('and redo brings it back', compileSceneField(scene).carveCount === 1);
     check('no GL errors after marching', gl.getError() === gl.NO_ERROR);
 
+    // --- boxes, through the DOM -------------------------------------------
+    // A box is the primitive that has to stay EXACT, so these checks watch
+    // the capability as much as the picture. If adding a box ever flips the
+    // scene to a bound, the primitive has stopped earning its place and the
+    // author would have been better off with six clipped planes.
+    while (compileSceneField(scene).carveCount > 0) $('undo').click();
+    draw();
+    const beforeBox = pixels();
+    probe.position = [0, -3, 1.2]; yaw = Math.PI / 2; pitch = -0.1;
+    $('add-box').click();
+    const boxed = compileSceneField(scene);
+    check('add box adds a box', boxed.boxCount === 1);
+    check('THE FIELD IS STILL EXACT with a box in it',
+      boxed.capabilities.distance === 'exact' && boxed.capabilities.intersection === 'exact');
+    check('the new box is selected', selected === boxed.entities().at(-1).id);
+    check('the inspector shows half-extent for a box', shownField('half-field'));
+    check('and hides radius, which a box does not have', !shownField('radius-field'));
+    draw();
+    check('the box is actually drawn', pixels().some((v, i) => v !== beforeBox[i]));
+    check('no GL errors with a box on the closed-form path', gl.getError() === gl.NO_ERROR);
+
+    // Editing a half-extent through the form, which is the only way an author
+    // can resize a box -- a wrong field id here is a control that does nothing.
+    const wide = pixels();
+    $('hx').value = 2.4; $('hz').value = 0.3;
+    $('editor').requestSubmit();
+    const resized = compileSceneField(scene).entities().at(-1);
+    check('the form edits the half-extent',
+      resized.halfExtent[0] === 2.4 && resized.halfExtent[2] === 0.3);
+    check('and resizing changes the picture', pixels().some((v, i) => v !== wide[i]));
+
+    // A BOX IS CARVED WITH A BOX. Cutting a rectangular doorway with a ball
+    // gives a round-topped hole and an author has to undo and start over.
+    $('hx').value = 1.2; $('hy').value = 0.3; $('hz').value = 1.2;
+    $('editor').requestSubmit();
+    $('add-carve').click();
+    const boxCut = compileSceneField(scene);
+    const cutter = boxCut.entities().at(-1);
+    check('carving a box uses a BOX cutter, not a ball', cutter.kind === 'box');
+    check('and it targets the box that was selected',
+      cutter.op === 'subtract' && cutter.target === resized.id);
+    check('a modifier box is counted as one', boxCut.modBoxCount === 1);
+    check('and the field drops to a bound, as any modifier must',
+      boxCut.capabilities.distance === 'bound');
+    draw();
+    check('no GL errors marching a carved box', gl.getError() === gl.NO_ERROR);
+    while (compileSceneField(scene).boxCount > 0) $('undo').click();
+    draw();
+
     // A PICTURE OF A PORTAL, for a human to look at. Every check above can
     // pass on a view that is upside down or shows the near room twice; only
     // looking catches that. Stand back from gate-a, put a ball where gate-b
@@ -722,11 +827,25 @@ if (new URLSearchParams(location.search).has('check')) {
     yaw = Math.PI / 2; pitch = -0.12;
     draw();
     shot = canvas.toDataURL('image/png');
+    shots.push({ name: 'portal', data: shot });
+
+    // A PICTURE OF A BOX ROOM, for the same reason. Every box check above is
+    // a number, and a number cannot tell a square doorway from a round one,
+    // or a crate from a sphere. Load the fixture an author would open, stand
+    // where the wall, the doorway, the step and the crate are all in frame,
+    // and look.
+    scene = await fetchFixture('box-room');
+    undo = []; redo = []; selected = null;
+    probe.position = [0, -5.5, 1.5]; probe.velocity = [0, 0, 0]; probe.grounded = true;
+    yaw = Math.PI / 2; pitch = -0.08;
+    draw();
+    check('the box room loads and stays a room', compileSceneField(scene).boxCount === 3);
+    shots.push({ name: 'boxes', data: canvas.toDataURL('image/png') });
     setPlaying(false);
     check('no GL errors', gl.getError() === gl.NO_ERROR);
   } catch (error) { err = error.stack; }
   await fetch('/__report', {
     method: 'POST',
-    body: JSON.stringify({ err, boot: $('boot').textContent, hud: 'E3 scene authoring lab', px: 'render compared', checks, shot }),
+    body: JSON.stringify({ err, boot: $('boot').textContent, hud: 'E3 scene authoring lab', px: 'render compared', checks, shot, shots }),
   });
 }

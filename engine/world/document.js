@@ -48,16 +48,35 @@ export function validateScene(scene) {
   }
   const entities = new Map();
   for (const entity of scene.entities) {
-    fields(entity, ['id', 'regionId', 'kind', 'position', 'radius', 'forward', 'up', 'op', 'target'], 'entity');
+    fields(entity, ['id', 'regionId', 'kind', 'position', 'radius', 'halfExtent',
+      'forward', 'up', 'op', 'target'], 'entity');
     identify(entity.id, ids, 'entity.id');
     const chart = charts.get(entity.regionId);
     requireValue(chart, `entity ${entity.id}: unknown region ${entity.regionId}`);
-    requireValue(['ball', 'plane', 'spawn', 'objective', 'anchor'].includes(entity.kind), `entity ${entity.id}: unsupported kind`);
+    requireValue(['ball', 'box', 'plane', 'spawn', 'objective', 'anchor'].includes(entity.kind),
+      `entity ${entity.id}: unsupported kind`);
     vector(entity.position, `entity ${entity.id}.position`);
     chart.decode(entity.position);
     if (entity.kind === 'ball' || entity.kind === 'anchor') {
       positive(entity.radius, `entity ${entity.id}.radius`);
     } else requireValue(entity.radius === undefined, `entity ${entity.id}: radius only applies to balls and anchors`);
+    // A BOX is three half-extents from its centre, and it is AXIS-ALIGNED.
+    // That is not a simplification to be tidied up later: an orientation is a
+    // rotation, and a rotation is a rigid motion of the region the box lives
+    // in. In E3 that is the familiar 3x3, but this schema is meant to survive
+    // the other geometries, and in Nil or Sol there is no isometry carrying an
+    // axis-aligned box to a tilted one of the same shape -- the shape itself
+    // changes. Orientation is a question for the geometry layer to answer, not
+    // a field this schema can quietly accept and hand on.
+    if (entity.kind === 'box') {
+      vector(entity.halfExtent, `box ${entity.id}.halfExtent`);
+      for (let i = 0; i < 3; i++) {
+        positive(entity.halfExtent[i], `box ${entity.id}.halfExtent[${i}]`);
+      }
+    } else {
+      requireValue(entity.halfExtent === undefined,
+        `entity ${entity.id}: halfExtent only applies to boxes`);
+    }
     // BOOLEANS. A solid may be ADDED to the scene or SUBTRACTED from it -- a
     // doorway is a wall minus a box. Only the solid kinds have an op, because
     // subtracting a spawn point is not a thing that means anything, and
@@ -65,8 +84,8 @@ export function validateScene(scene) {
     // happened. Absent means 'add', so every document written before booleans
     // existed keeps its meaning exactly.
     if (entity.op !== undefined) {
-      requireValue(['ball', 'plane'].includes(entity.kind),
-        `entity ${entity.id}: op applies to balls and planes, not ${entity.kind}`);
+      requireValue(['ball', 'box', 'plane'].includes(entity.kind),
+        `entity ${entity.id}: op applies to balls, boxes and planes, not ${entity.kind}`);
       requireValue(['add', 'subtract', 'intersect'].includes(entity.op),
         `entity ${entity.id}.op: expected "add", "subtract" or "intersect", `
         + `got ${JSON.stringify(entity.op)}`);
@@ -90,10 +109,16 @@ export function validateScene(scene) {
     if (entity.target !== undefined) {
       requireValue(entity.op === 'subtract' || entity.op === 'intersect',
         `entity ${entity.id}: target only applies to a subtract or an intersect`);
+      // The noun follows the operation. A shared message that calls every
+      // modifier a carve tells an author looking for their clip that the
+      // validator is talking about something else.
       requireValue(entity.target !== entity.id,
-        `entity ${entity.id}: a carve cannot target itself`);
+        `entity ${entity.id}: a ${entity.op === 'intersect' ? 'clip' : 'carve'} `
+        + 'cannot target itself');
     }
-    const clearance = entity.kind === 'spawn' ? scene.units.playerRadius : (entity.radius || 0);
+    const clearance = entity.kind === 'spawn' ? scene.units.playerRadius
+      : entity.kind === 'box' ? Math.hypot(...entity.halfExtent)   // its farthest corner
+        : (entity.radius || 0);
     requireValue(Math.hypot(...entity.position) + clearance <= chart.maxDistance,
       `entity ${entity.id}: bounds straddle chart extent`);
     // A PLANE is unbounded inside its region, so `position` is a point ON it

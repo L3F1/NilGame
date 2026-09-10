@@ -209,13 +209,19 @@ console.log('boot panel        :', report.boot ? report.boot.split('\n').slice(0
 console.log('hud first line    :', first || '(EMPTY - the module never ran)');
 console.log('centre pixel      :', report.px);
 if (report.checks) console.log(`${ballLab ? 'ball editor' : 'world/input'} checks : ${report.checks.length} passed`);
-// A SCREENSHOT, when the page offers one. Numeric checks pass happily on a
+// SCREENSHOTS, when the page offers them. Numeric checks pass happily on a
 // view that is upside down or drawing the floor above the horizon -- that is
-// not hypothetical, it happened here and only a picture caught it. So a page
-// may return `shot` as a data URL and this writes it out to be looked at.
-if (report.shot) {
-  const at = resolve(process.env.SHOT || 'page-check-shot.png');
-  writeFileSync(at, Buffer.from(report.shot.split(',')[1], 'base64'));
+// not hypothetical, it happened here and only a picture caught it.
+//
+// A page returns `shot` as a data URL for one picture, or `shots` as a list
+// of { name, data } when there is more than one thing worth looking at. One
+// feature landing should not cost the picture that proved the last one.
+const pictures = report.shots?.length ? report.shots
+  : report.shot ? [{ name: '', data: report.shot }] : [];
+for (const pic of pictures) {
+  const base = resolve(process.env.SHOT || 'page-check-shot.png');
+  const at = pic.name ? base.replace(/\.png$/, `-${pic.name}.png`) : base;
+  writeFileSync(at, Buffer.from(pic.data.split(',')[1], 'base64'));
   console.log('screenshot        :', at);
 }
 

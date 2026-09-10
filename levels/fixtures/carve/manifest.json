@@ -6,19 +6,19 @@
       "file": "../invalid/boolean-op-on-spawn.nil.json",
       "change": "spawn start carries op subtract",
       "level": "document",
-      "errorContains": "op applies to balls and planes, not spawn"
+      "errorContains": "op applies to balls, boxes and planes, not spawn"
     },
     {
       "file": "../invalid/boolean-op-on-objective.nil.json",
       "change": "added objective goal carrying op add",
       "level": "document",
-      "errorContains": "op applies to balls and planes, not objective"
+      "errorContains": "op applies to balls, boxes and planes, not objective"
     },
     {
       "file": "../invalid/boolean-op-on-anchor.nil.json",
       "change": "added anchor gate (otherwise valid) carrying op subtract",
       "level": "document",
-      "errorContains": "op applies to balls and planes, not anchor"
+      "errorContains": "op applies to balls, boxes and planes, not anchor"
     },
     {
       "file": "../invalid/boolean-op-misspelled.nil.json",

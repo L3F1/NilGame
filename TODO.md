@@ -101,8 +101,28 @@ The previous backlog is preserved in
   at 40.4, the fixed budget of 256 ran out one step short, and `rayHit`
   answered "nothing there" about a wall it had nearly touched. The budget is
   larger and the result now says whether it left the scene or ran out.
-- [ ] **A box primitive**, now that intersection exists. Six clipped planes is
-  correct and is not what an author wants to type.
+- [x] **A box primitive**. Six clipped planes is the correct EXPRESSION of a
+  box and the wrong FIELD: every clip is a `max`, `max` under-reports near a
+  concave seam, and one bound anywhere makes the whole scene marched -- so the
+  shape an author reaches for most would have been the one that costs most.
+  `kind: 'box'` has an exact distance, an exact normal and an exact slab ray
+  hit, so a room made of boxes still renders down the closed-form path.
+  Measured: the six-clip build under-reports by up to 1.0 unit on a 2x4x2 box,
+  and that shortfall is what a marcher pays for one short step at a time.
+  AXIS-ALIGNED, deliberately -- see the note in `document.js`.
+- [ ] **An oriented box.** An orientation is a rotation and a rotation is a
+  rigid motion of the region, so this is a question for the geometry layer,
+  not a field the schema can accept and pass on. In E3 it is the familiar 3x3;
+  in Nil or Sol there is no isometry carrying an axis-aligned box to a tilted
+  one of the same shape, so the honest answer there may be that the primitive
+  is a different shape rather than the same one turned. Worth deciding BEFORE
+  the schema grows a `forward`/`up` on boxes that only E3 can honour.
+- [ ] **Warn on coincident faces.** The box-room fixture first drew a speckled
+  line across its doorway sill because the carving box's bottom face sat at
+  exactly z = 0, on the ground plane: two surfaces in the same place, and the
+  marcher cannot say which it is on. Sinking the cutter 0.2 below the floor
+  fixed it. That is an authoring hazard with a picture-only symptom, which is
+  the kind the editor should catch and say out loud.
 - [ ] **A viewport gizmo, in the browser.** Ours in either host -- Godot's
   `_set_handle` hands you a screen position and expects your own projection --
   so building it now costs nothing against a future migration and settles

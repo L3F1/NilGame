@@ -13,7 +13,8 @@ that table lacks: **which machine it runs on and how long it takes**.
    `socketpair(2)` and no flag avoids it -- but that was never the only
    Chrome available. `tools/browser-host.js` launches the WINDOWS Chrome
    through WSL interop, which runs outside the Linux sandbox entirely.
-   Measured from WSL on this machine: `page-check --ball-lab` 57 checks,
+   Measured from WSL on this machine at the time: `page-check --ball-lab`
+   57 checks (84 as of 2026-09-09; see the note on counts below),
    `page-check --worlds` **346 checks in 31.6 s**, both on a real GPU with
    a cold shader cache. See "Running browser checks from WSL" below,
    including the one thing that will bite you if you write this yourself.
@@ -41,7 +42,7 @@ exit 0 ([integration](opus-integration-2026-09-09.md)). Old
 | `node tools/sdf-check.js` | JS/GLSL SDF agreement, 21 cases | Windows | 7 s via queue 2026-09-09, exit 0 (cf integration table) | physics/render disagree; needs shared emitter |
 | `node tools/link-time.js` | real-driver link cost per program | Windows | 30 s all-nine cold via queue 2026-09-10, exit 0 (hyperbolic link 10.1 s; Nil/Sol/SL2R 0.2-0.3 s) | unrolled level loops (once 212 s); Rough time is cold-cache |
 | `node tools/page-check.js --worlds [--timeout=N]` | every world STARTS; 346 cold checks | Windows | 31 s cold real-GPU via queue 2026-09-09 (346 passed, exit 0; cf cited 28.5 s) | exit 21 = profile in use; assertion names world+check |
-| `... --ball-lab` | ball lab boots + probe | Windows | **57 checks** via queue 2026-09-09 (4 s wall, exit 0; same count as lead-run) | same as above, ball scope |
+| `... --ball-lab` | ball lab boots + probe | Windows | **84 checks** lead-run 2026-09-09, 4.4 s, exit 0, two pictures written (57 via queue earlier the same day, before carving and boxes landed) | same as above, ball scope |
 | `... --sw` | same under SwiftShader software GL | Windows | 172 s cold via queue 2026-09-09 (346 passed, exit 0; cf cited 158.8 s) | slowness expected; GPU-vs-SwiftShader pixels are driver diffs |
 | `... --warm` | reuses leased profile for iteration | Windows only (POSIX publication off) | cited: warm 346 final | profile lock = stale owner; run cold first |
 | `node tools/render-fixture.js <view> <png>` | saves a before/after view PNG | Windows | not measured here | exit 2 no-Chrome from WSL = expected; see [guide](render-fixture-guide.md) |
@@ -118,8 +119,15 @@ node tools/check-queue.js play-check --preset=fight --seeds=10 --frames=6000
 
 The requester prints the check's own output and exits with the check's own exit
 code, so it substitutes for running the check directly. Measured end to end
-from WSL: `page-check --ball-lab` returned its 57 checks and `exit 0` from the
+from WSL: `page-check --ball-lab` returned its checks and `exit 0` from the
 Windows host; a failing check returned `exit 1`; a refused request returns 2.
+
+**On the check counts in this file.** They go stale by design -- every feature
+that lands adds checks, so the number in a row is a reading taken on a date
+and not a target. MUSE-24 caught the ball-lab row drifting the same day carve
+rendering landed. Read them this way: a count that GREW needs no action, and a
+count that FELL means checks stopped running, which is the only reading worth
+chasing. Bring the number forward when you notice it, and date it.
 
 If no worker is serving, the requester says so immediately and tells you what
 to ask for, rather than waiting out its timeout.

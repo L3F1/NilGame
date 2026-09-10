@@ -185,7 +185,7 @@ test('carving from nothing leaves nothing', () => {
 test('op is refused on kinds that are not solids', () => {
   const doc = walled();
   doc.entities.find((e) => e.kind === 'spawn').op = 'subtract';
-  assert.throws(() => compileSceneField(doc), /op applies to balls and planes/);
+  assert.throws(() => compileSceneField(doc), /op applies to balls, boxes and planes/);
   const bad = walled();
   bad.entities.find((e) => e.id === 'wall').op = 'invert';
   assert.throws(() => compileSceneField(bad), /expected "add", "subtract" or "intersect"/);

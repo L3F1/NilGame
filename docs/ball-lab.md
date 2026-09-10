@@ -207,6 +207,36 @@ Known limit: `aimAlong` recovers yaw and pitch and therefore **drops roll**.
 That is correct for a walker whose up is the world's up and wrong the moment an
 aperture is tilted, so it is a limit of this camera and not of `mapVector`.
 
+## Boxes
+
+`kind: 'box'` is three half-extents from a centre, and it is a PRIMITIVE
+rather than sugar over six clipped planes. The distinction is the whole point.
+Six clips describe the same solid correctly, and every clip is a `max`, which
+under-reports near a concave seam -- so the six-clip build is a BOUND, and one
+bound anywhere makes the whole scene marched. The shape an author reaches for
+most would have been the one that costs most. Measured on a 2x4x2 box, the
+clipped construction under-reports the distance by up to 1.0 unit where the
+primitive is exact; that shortfall is what a marcher pays for, one short step
+at a time.
+
+A box is AXIS-ALIGNED, and that is not a corner waiting to be tidied up. An
+orientation is a rotation, and a rotation is a rigid motion of the region the
+box lives in. In E3 that is the familiar 3x3, but in Nil or Sol there is no
+isometry carrying an axis-aligned box to a tilted one OF THE SAME SHAPE -- the
+shape itself changes. So orientation is a question for the geometry layer to
+answer, not a field the schema can quietly accept and hand on.
+
+**Carve a box with a box.** The `Carve` button matches the cutter to the
+target, because cutting a rectangular doorway with a ball leaves a
+round-topped hole and an author who wanted a doorway has to undo and start
+over.
+
+**Watch for coincident faces.** The `box-room` fixture first drew a speckled
+line across its doorway sill: the carving box's bottom face sat at exactly
+z = 0, in the same place as the ground plane, and the marcher had no way to
+say which surface it was on. Sinking the cutter 0.2 below the floor fixed it.
+Nothing numeric caught this -- only the picture did.
+
 ## Carving and clipping
 
 Select a ball or a plane, press **Carve**, and a subtracting ball appears in
