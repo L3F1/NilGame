@@ -29,7 +29,8 @@ Delivered by Claude, 2026-09-10 (CPU only, awaiting review):
   ACTUAL geodesic leg (travel, nudge, lift, settle) and carry explicit time.
 - region-world.spawn converts the construction basis into a carried camera once.
 - region-motion.test.js: 34 checks; tools/test.js 49/49. Evidence and six
-  findings in docs/qa/claude-region-motion-2026-09-10.md. Finding 4 is the one
+  findings in docs/qa/claude-region-motion-2026-09-10.md (with a same-day addendum on
+MUSE-39) and docs/qa/region-motion-truth-2026-09-10.md. Finding 4 is the one
   open POLICY question: a refused crossing leaves the walker on the aperture
   plane, where the one-sided rule then declines to test it.
 
@@ -42,11 +43,24 @@ does not compile (S3 extent 2 exceeds a hemisphere; charts.js and metric-space.j
 disagree about that limit).
 Do not build a second solver or assume a full region renderer already exists.
 
-Next Astra job: review Claude's region-motion implementation against the contract
-and Muse's independent evidence (MUSE-39, queued behind 36-38), focusing on event
-ordering, atomic rollback, remaining time, actual carry and destination clearance.
-Decide finding 4. Resolve demonstrated contract defects; the implementation is
-ready for review, so do not duplicate it.
+MUSE-39 is DELIVERED and awaiting you: region-motion-truth.test.js (21 checks,
+independent reference) found no disagreement with the contract and CONFIRMED
+finding 4. Claude re-reproduced finding 4 without reading Muse's corpus, and
+mutation-checked that corpus: it catches 6 of the 8 mechanisms, so the two
+suites are complementary rather than either being sufficient. MUSE-36, 37 and 38
+are accepted and moved to docs/qa/muse-log.md; MUSE-40 is the only open Muse task.
+
+Next Astra job: accept or reject Claude's region-motion implementation, then
+DECIDE FINDING 4 -- a refused crossing leaves the walker exactly on the aperture
+plane, where the one-sided rule declines to test it, so they walk through it into
+source space (reproduced twice: y=2.000000 then y=6.000000, crossings 0). That is
+the one open policy question blocking renderer/editor integration. Two more open
+items, both reported unfixed and neither Claude's to decide: the carve
+predicate is conservative for NESTED cutters (MUSE-37, refuses rooms max() allows),
+and the S3 distance bound collapses to ~4e-4 in open hallway at 0.35 clearance
+(MUSE-38, 77x step cost) -- MUSE-40 asks whether that is bound cost or a field
+defect, because MUSE-34's curvature-independent fractional shortfall cannot
+produce it.
 After acceptance, define the curved gravity/support policy; renderer/editor work
 can then be assigned separately. S3 bubble, host migration and new modes stay later.
 

@@ -53,6 +53,7 @@ judges scope statements, and nothing here can re-produce a hypothetical.
 | Mesh edges / interiors | 6.00e-15 / 0.114% E3, 1.622% H3 at 5120 tris | node tools/mesh-probe.js | TODO:108-111 |
 | Carve query ratios | dist 0.21-0.73, rayHit cliff 20-50x (MUSE-23; SUPERSEDED below) | node tools/carve-bench.js | carve-cost-2026-09.md |
 | rayCast analytic vs march | 1-3us analytic; march same order except graze 3-5x, 22x one plane-rider; 0 indet either method (the 2 analytic-indet MUSE-35 saw were a bug, fixed) | node tools/raycast-bench.js | raycast-cost-2026-09-10.md |
+| S3 walk steps curved/flat, r=0.25 | open 6/6, wall-1.1 6/6, wall-0.6 13/11, wall-0.35 2778/36, doorway 11/11, jamb-hug 44/35, corner common-prefix 26/6 | node s3-walk-cost.test.js | overnight MUSE-38 |
 | March tolerances | closer 1e-4, over 1e-9, plain 1e-12 | node march-truth.test.js | march-truth.test.js |
 | Godot parity prep | 8444 ms browser vs 721 ms native | one-off parity run (decision record) | 001-runtime-strategy:148; map:144; TODO:180-181 |
 

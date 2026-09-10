@@ -1,10 +1,12 @@
-# Region-owned motion: CPU implementation, ready for independent review
+# Region-owned motion: CPU implementation, and its independent review
 
 Claude, 2026-09-10. Assignment: `docs/engineering/CLAUDE_REGION_HANDOFF.md`.
 Contract: `docs/engineering/REGION_MOTION_CONTRACT.md`.
 
 Base inspected: 7c68a62 plus Astra's uncommitted camera/carry/docs changes,
-which were present before this task and are untouched by it. No commit, no push.
+which were present before this task and are untouched by it. Committed and
+pushed as 7816d7f on the user's instruction, carrying Astra's prerequisite with
+it; the evidence below was gathered before that commit and re-run after it.
 
 Host, from `node tools/host-probe.js` at the start of this session:
 
@@ -83,7 +85,7 @@ offset draws on the remaining step budget.
 
 `node region-motion.test.js`: **34/34 checks passed, exit 0.**
 `node tools/test.js`: **49/49 suites passed, exit 0** (48 before, plus the new
-suite). `git diff --check`: clean.
+suite; 53/53 once Muse's four corpora landed). `git diff --check`: clean.
 
 Independent references, not second calls into the solver:
 
@@ -189,10 +191,47 @@ browser validation.
    which is pre-existing and unchanged. `maxContacts: 0` still records one
    contact before reporting exhaustion; the suite pins the current behaviour.
 
+## Addendum, same day: MUSE-39 came back
+
+Muse delivered `region-motion-truth.test.js` (21 checks) and
+`docs/qa/region-motion-truth-2026-09-10.md`, deriving its reference from the
+contract and the embedding math rather than from this implementation. Re-run
+here at 7816d7f: 21/21, and `node tools/test.js` 53/53, exit 0. Muse touched no
+`engine/` or `app/` file (`git status -- engine app` is empty).
+
+**Finding 4 is confirmed, and I reproduced it independently** rather than
+reading Muse's corpus for it. Free-standing gate pair, occupied destination:
+frame 1 ends `blocked-exit` / `destination-clearance-insufficient` at
+y = 2.000000 with 0.5 s handed back; frame 2 from there reports `crossings = 0`,
+region still `room`, and y = 6.000000 — four units straight through the aperture
+plane, the one-sided rule having declined the on-plane test. Muse's numbers and
+mine agree exactly. **This is the one thing that needs a decision before the
+renderer or the editor touches region motion**, and it is a policy call: back
+off by the safety margin and refund the time, require apertures to be set in
+solids, or arm the plane from the side the walker left on.
+
+**The two corpora are complementary, and neither alone covers the contract.**
+I ran the eight-way mutation matrix from this report against Muse's corpus:
+
+| mutation | `region-motion.test.js` | `region-motion-truth.test.js` |
+|---|---|---|
+| M1 no event query on the travel leg | caught (13/34) | caught (8/21) |
+| M2 slide spends leftover distance | caught | caught |
+| M3 settle runs before the event is yielded | caught | **missed** |
+| M4 array order instead of an unresolved tie | caught | caught |
+| M5 destination clearance not proved | caught | caught |
+| M6 exit offset not swept | caught | caught |
+| M7 out-of-range event rounded into range | caught | caught |
+| M8 endpoint transport instead of path carry | caught | **missed** |
+
+Neither gap is a fault in Muse's work — the assignment asked for a clock and
+atomicity reference, not for correction ordering or carry provenance. It is
+worth recording because "an independent corpus agrees" reads like "either would
+have caught anything", and here that is not true of either one.
+
 ## Next task
 
-Independent review by Muse against the public API and the contract — queued as
-**MUSE-39** in `MUSE_TASKS.md`, with writes limited to
-`region-motion-truth.test.js` and a dated `docs/qa` report. Then Astra's review
-of this implementation and finding 4, which is the one open policy question,
-before any renderer, editor or gravity integration.
+Astra: accept or reject this implementation, and decide finding 4. MUSE-39 is
+delivered and awaiting your acceptance; MUSE-36, 37 and 38 are accepted and
+logged. Renderer, editor and curved gravity remain unstarted, and the region
+lab still does not load (finding 2).

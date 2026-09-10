@@ -1476,3 +1476,107 @@ no survivor-cleanup WARNING appeared in any `page-check` output
   cell now reads 8 miss / 0 indeterminate on both methods. Leaving the
   disagreement in the table is what surfaced it. See
   `docs/qa/raycast-cost-2026-09-10.md`.
+
+## MUSE-36 — degenerate rays vs the new behind-origin guard (2026-09-10, Muse)
+
+- Corpus: `ray-degenerate.test.js` (23 checks, green). Each ray runs three
+  ways: analytic (under test), march (agreement only — it sphere-traces the
+  same field the reference reads), and an independent reference: uniform scan
+  of `field.distance` (step 5e-4) for the first sign change, then 60
+  bisections. Chords under the scan step can be skipped — the ulp cases prove
+  it on purpose, with a tight-window refinement (step 1e-7) and construction
+  truth at the bottom of the scale.
+- Construction lesson (first run): axis-EXACT tangency computes disc == 0 and
+  takes the confident point-interval path — it never reaches `unknown()`. The
+  guard only fires on near-miss-within-error, so every tangency is offset
+  1e-14 (disc ~= -2e-14, inside the ~1.1e-13 error bound).
+- Cost split: 0 correctness failures (no false HIT, no false MISS, no wrong
+  distance anywhere). 4 waste refusals, all pinned: near-tangency ahead
+  (ref miss), straddling the origin (ref miss, kept clamp by design), cutter
+  near-tangent at t=3 ahead of a hit at 4.8 (ref hit — the cutter floats
+  disjoint in empty space; finding for the lead, unfixed), +1ulp graze (true
+  miss). -1ulp graze-hit resolves hit@6 on all three paths.
+- Guard boundary: near-tangency swept from h=6 behind to h=0; flip sits
+  between h=1.5e-14 (miss) and h=1.0e-14 (indeterminate, uncertainFrom=0),
+  predicted tolerance(t,0) = 64eps = 1.42e-14. Boundary is in the right
+  place. No wrong-forward-answer case found: hunt pairs a live forward
+  refusal with an extra behind-origin near-tangency (refusal unchanged) plus
+  a 1e-15 thin-sliver subtraction (agrees with ref). Structural reason it
+  holds: `uncertainty` only gates refusal, never moves `best`.
+- Fail-demo: pre-fix `e3-ray-intervals.js` restored in working copy → 4
+  checks fail (every behind-origin case refuses, sweep all-indeterminate);
+  restored → 23/23 green, `engine/` diff clean.
+- March notes (not under test, recorded): march false-HITs the +1ulp true
+  miss and every near-tangency (1e-6 threshold vs 1e-14 gaps); expected
+  threshold behavior, stated here so nobody re-discovers it.
+- Checks: `node ray-degenerate.test.js` → 23/23; `node tools/test.js` →
+  50/50, exit 0 (WSL node v22.23.2 @ 7816d7f). Status: READY FOR REVIEW.
+
+## MUSE-37 — the carve predicate past the box cutter (2026-09-10, Muse)
+
+- Corpus: `carve-predicate.test.js` (9 checks, green, ~17 s). Predicate
+  implemented test-locally: BLOCK iff some path sample has dTarget <= r AND
+  min over cutters of dCutterBoundary <= r (golden-section refined on the
+  continuous distance + boundary bisection, so ties are exact, never sampled).
+  Multi-cutter form stated before sweeping: pass iff, everywhere the target
+  is within r, ALL cutter boundaries are farther than r.
+- E3 (264 configs: box/ball cutters head-on+oblique, plane-notch target,
+  tilted-25 and oblique-30 cutters, two doorways): 88 agree-pass, 136
+  agree-block-phantom, 31 agree-block-legit, 9 ties, ZERO disagreements in
+  either direction. Truth is an independent material-boundary sampler
+  (target faces outside cutters, cutter faces inside target, descent to
+  1e-9); halts split legit/phantom at 1e-3. All 9 ties halt in the solver.
+- S3 geodesic cells (s3-room fixture, hy ladder, geodesic path, r=0.25):
+  7/7 agree, R=0, A=0. Pass = doorway line crossed (phantom's line); hy>=1
+  halts at the BACK wall after crossing, which is not the carve stopping the
+  walk. Predicate distances are decoded face grids refined by descent under
+  sp.distance, plus a fine geodesic rescan for near-zero margins. No
+  legit/phantom split claimed in S3 (no exact truth there).
+- Two findings, both reported unfixed. (1) Nested cutters: an inner flush
+  mouth inside an outer cutter's void is MASKED by max() (walk passes) while
+  min-over-cutters refuses it — the multi-cutter form is conservative there;
+  NOT YET SAFE for the editor (pinned by its own check). (2) Solver refuses
+  every exact tie (9/9 halt), including the far-mouth tie at hy=0.8.
+- Fail-demos: naive "o > 2r" rule accepts tilted-25 o=0.6 r=0.25 while the
+  predicate blocks and the walker halts phantom (room 0.272); a
+  right-cutter-only predicate passes splitDoors-left while full blocks and
+  the walker halts phantom (room 0.636). Both fail without the predicate.
+- Plain statement: safe to check — single ball/box cutters head-on and
+  oblique, plane targets, tilted-25 and oblique-30 cutters, side-by-side
+  double doors, S3 geodesic cells on the measured ladder. Not yet safe:
+  NESTED cutters (inner mouth inside outer void), and anything outside the
+  measured radii (0.125/0.25/0.5 E3, 0.25 S3) and angles.
+- Checks: `node carve-predicate.test.js` → 9/9; `node tools/test.js` →
+  51/51, exit 0 (WSL node v22.23.2 @ 7816d7f). Status: READY FOR REVIEW.
+
+## MUSE-38 — what the S3 bound costs a walk (2026-09-10, Muse)
+
+- Bench: `s3-walk-cost.test.js` (4 checks, green). Seven routes walked in
+  the spherical room (R=8) and the flat limit (same document, R=10000,
+  verified Euclidean to 5.21e-8 over 6.5 units). Step sizes come from the
+  public `events` provider (records each proposed advance, returns null).
+  STALL = advance < 0.1r (a tenth of the probe radius moves it negligibly;
+  in open space — bound at step start > r — such steps are churn, not
+  approach). Budget 32768 steps never binds (asserted unstalled).
+- Per-route steps curved/flat (ratio), arclength/geodesic, stall fraction:
+  open 6/6 (1.00), wall-1.1 6/6 (1.00), wall-0.6 13/11 (1.18), wall-0.35
+  2778/36 (77.2), doorway 11/11 (1.00), jamb-hug 44/35 (1.26), corner 26/35
+  raw with halts at arc 0.77/0.93 — confounded; common-prefix 26/6 (4.33).
+- THE FINDING: wall-0.35 (0.1 surface clearance alongside s-right) burns
+  2704 of its 2778 steps in the first third of open hallway (y -3.00..-1.84),
+  bound ~4e-4 where the flat control proves 0.1 — a sustained 250x collapse,
+  stall fraction 0.988 vs 0.028 flat. MUSE-34's 0.29-0.42 local shortfall
+  predicts ~1.4-1.7x; this is 77x. The collapse is clearance-dependent:
+  wall-0.6 (0.35 clearance) costs 1.18x, wall-1.1 costs 1.00x. Jamb-hug
+  (1.26x, 38/44 steps inside the door third) and doorway (1.00x) fall where
+  MUSE-34 said it would; the open control is clean (1.00x).
+- Corner: curved halts 0.56 short of flat's halt (arcs 0.77/0.93, ends
+  [2.291,3.448] vs flat further in); no exact truth says which halt is
+  right, so no ratio is claimed — reported as endpoints + prefix steps.
+  Mechanism (which face binds) is the lead's domain; this file locates the
+  cost (route thirds with y-ranges) but does not name the face.
+- One sentence: the bound's cost does NOT fall where MUSE-34 said — seam
+  routes do, but a 0.1-clearance wall run pays 77x for a collapse two orders
+  beyond the measured shortfall.
+- Checks: `node s3-walk-cost.test.js` → 4/4; `node tools/test.js` → 52/52,
+  exit 0 (WSL node v22.23.2 @ 7816d7f). Status: READY FOR REVIEW.
