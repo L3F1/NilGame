@@ -67,7 +67,11 @@ The previous backlog is preserved in
   portal works. Browser check 35 -> 45, and it now returns a PNG to look at.
 - [ ] Roll through a tilted aperture. The lab's camera is yaw/pitch, so
   `aimAlong` silently drops roll; correct for a walker whose up is the world's
-  up, wrong the moment a portal is set in a wall.
+  up, wrong the moment a portal is set in a wall. **The engine half exists**:
+  `engine/world/camera-frame.js` carries a full frame, matches the lab's
+  `basis()` to 2.22e-16 in E3, and picks up holonomy on a sphere to 3.25e-17
+  against l'Huilier. What is left is the HOST -- `app/ball-lab.js` still keeps
+  yaw/pitch scalars, and `aimAlong` becomes `mapFrame` when it is wired.
 - [x] Author a portal in the lab: Add portal creates both apertures and the
   connection as ONE transaction, the inspector edits an anchor's forward and
   radius, a radius edit moves both ends because the schema pins them equal, and

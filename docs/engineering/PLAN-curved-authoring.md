@@ -167,11 +167,31 @@ their policy is Astra's; a chord-shaped guess would sit in the way of it.
    wall by only 0.5 against a player radius of 0.25, and the carver's own far
    face -- a PHANTOM SURFACE in open air -- stopped the walker at y = 2.05.
    Not curvature-specific; see the rendering contract and MUSE-33.
-2. **A transported camera frame.** `basis()` rebuilds the view from yaw and
-   pitch against a fixed world up, which is what "discards roll" means -- and
-   in S3 there is no global up to rebuild against. The frame has to be carried,
-   the way velocity now is, with gravity alignment an explicit walking policy
-   rather than an assumption baked into the reconstruction.
+2. ~~**A transported camera frame.**~~ **DONE in the engine; not yet wired
+   into the lab.** `engine/world/camera-frame.js`. The frame is state now: it
+   is created once, rotated in place about its OWN axes by the mouse, carried
+   along the path actually walked by the same `carry` the velocity uses, and
+   mapped through a portal by the same matrix the walker is.
+
+   Two properties had to hold at once, and they pull against each other. In E3
+   it must be the OLD camera exactly, or it is a rewrite wearing a
+   generalisation's clothes: `turn(canonical, { yaw, pitch })` matches the
+   lab's `basis()` to **2.22e-16** over 153 look angles. And on a sphere it
+   must do what the old one cannot: carried round a closed geodesic triangle
+   the frame comes back rotated by the enclosed area over R squared, matching
+   l'Huilier's theorem to **3.25e-17**, and exactly 0 in E3. A camera that
+   quietly re-derived itself from `space.frame(p)` would come home unrotated
+   and fail that by the whole excess.
+
+   Roll survives, because yaw and pitch about the frame's own axes do not
+   commute: a loop of look-inputs leaves 0.486 rad of roll that the old camera
+   reports as zero. Gravity alignment is `alignUp`, an explicit policy a host
+   may snap, ease or decline -- and it never re-aims forward, because standing
+   a walker upright is not turning them.
+
+   REMAINING: `app/ball-lab.js` still keeps `yaw`/`pitch` scalars and rebuilds
+   through `basis()`. Wiring it is a host change with a GPU check attached,
+   and `aimAlong` disappears in favour of `mapFrame` when it happens.
 3. **The room itself**, once those two exist.
 
 The S3 subset: metric balls and oriented great-sphere half-spaces;
