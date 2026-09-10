@@ -189,9 +189,16 @@ their policy is Astra's; a chord-shaped guess would sit in the way of it.
    may snap, ease or decline -- and it never re-aims forward, because standing
    a walker upright is not turning them.
 
-   REMAINING: `app/ball-lab.js` still keeps `yaw`/`pitch` scalars and rebuilds
-   through `basis()`. Wiring it is a host change with a GPU check attached,
-   and `aimAlong` disappears in favour of `mapFrame` when it happens.
+   The lab is wired to it: `yaw`/`pitch` scalars are gone, the mouse turns the
+   frame about its own axes, and a transit carries all three vectors through
+   `portal.mapVector` -- the same map the walker is carried by -- so roll
+   survives a tilted aperture. `aimAlong` is gone with them. 90 GPU checks on
+   a real GPU, cold cache.
+
+   ONE ASSUMPTION LEFT, and it is now named where it lives: the pitch clamp
+   stops the view tipping past vertical against a world up. That is a walking
+   policy, not a fact about the space, and a curved region will have to state
+   it differently or decline it.
 3. **The room itself**, once those two exist.
 
 The S3 subset: metric balls and oriented great-sphere half-spaces;

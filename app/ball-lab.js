@@ -11,6 +11,7 @@ import {
 import { BALL_FIRST_PERSON_GLSL } from '../engine/geometry/ball-shader.js';
 import { e3Space, clearance, resolveOverlap, sweep } from '../engine/world/collision.js';
 import { stepWalker } from '../engine/world/walker.js';
+import { createCameraFrame, turn, mapFrame } from '../engine/world/camera-frame.js';
 
 const $ = (id) => document.getElementById(id), canvas = $('c');
 const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
@@ -54,40 +55,81 @@ const probe = {
   position: spawnOf(scene), velocity: [0, 0, 0],
   radius: scene.units.playerRadius, grounded: false,
 };
-let yaw = Math.PI / 2, pitch = -0.15, playing = false, last = null, note = '';
+let playing = false, last = null, note = '';
 let transited = 0;
 const keys = new Set();
 const SPEED = 3.2;
 const gravityOn = () => $('gravity').checked;
 
+/**
+ * THE CAMERA IS A CARRIED FRAME, not a yaw and a pitch.
+ *
+ * `engine/world/camera-frame.js` keeps forward, up and right as state and
+ * rotates them about their OWN axes, which is what lets roll exist at all. It
+ * is held at the origin here because E3 transport is the identity, so the
+ * frame does not depend on where the walker stands; the moment this lab hosts
+ * a curved region that stops being true and the frame gets carried along the
+ * path with the same `carry` the velocity uses.
+ */
+const cameraSpace = e3Space();
+const CAMERA_ORIGIN = [0, 0, 0];
+let camera = null;
+/** Aim from absolute yaw and pitch, the old way, with up as near world up as
+ * forward allows. Scripted views want exactly this; a mouse does not. */
+function look(yaw, pitch) {
+  camera = turn(createCameraFrame(cameraSpace, CAMERA_ORIGIN,
+    { forward: [1, 0, 0], up: [0, 0, 1] }), { yaw, pitch });
+  return camera;
+}
+/** Aim along a world direction, keeping up as near world up as it allows. */
+function aimForward(f) {
+  const n = Math.hypot(...f);
+  if (!(n > 1e-9)) return camera;
+  const up = Math.abs(f[2] / n) > 0.999 ? [1, 0, 0] : [0, 0, 1];
+  camera = createCameraFrame(cameraSpace, CAMERA_ORIGIN, { forward: f, up });
+  return camera;
+}
+look(Math.PI / 2, -0.15);
+/** The view, in the shape the renderer and the walker already expect. */
 function basis() {
-  // right = normalize(forward x worldUp), up = right x forward. Getting the
-  // sign of `right` wrong negates `up` with it, which rotates the whole view a
-  // half turn about the forward axis -- it draws the FLOOR ABOVE THE HORIZON
-  // and reads as a plane-equation bug rather than a camera one.
-  const cp = Math.cos(pitch);
-  const f = [Math.cos(yaw) * cp, Math.sin(yaw) * cp, Math.sin(pitch)];
-  const r = [Math.sin(yaw), -Math.cos(yaw), 0];
-  return { f, r, u: [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]] };
+  return { f: camera.forward, r: camera.right, u: camera.up };
+}
+/** The heading, for anything that still wants one scalar. */
+const heading = () => Math.atan2(camera.forward[1], camera.forward[0]);
+
+/**
+ * Turn by a mouse delta.
+ *
+ * Yaw rotates about the frame's own up and pitch about its own right, so the
+ * two do not commute and the residue they leave is real roll rather than
+ * error. THE PITCH CLAMP IS THE ONE PLACE LEFT THAT ASSUMES A WORLD UP: it
+ * stops the view tipping past vertical, which is a walking policy and not a
+ * fact about the space. A curved region will have to state it differently or
+ * decline it.
+ */
+function turnBy(dYaw, dPitch) {
+  camera = turn(camera, { yaw: dYaw });
+  const climbed = Math.asin(Math.max(-1, Math.min(1, camera.forward[2])));
+  const wanted = Math.max(-1.5, Math.min(1.5, climbed + dPitch));
+  camera = turn(camera, { pitch: wanted - climbed });
+  return camera;
 }
 /**
- * Point the camera along a world direction.
+ * Carry the camera through a portal.
  *
- * A TRANSIT ROTATES THE WORLD, and the camera is the host's, not the engine's,
- * so nothing carries it through unless this does. Skipping it is not a subtle
- * visual error: the walker emerges facing back the way they came, walks
- * straight into the far aperture again, and the portal reads as broken.
+ * A TRANSIT ROTATES THE WORLD, and the camera is the host's, not the
+ * engine's, so nothing carries it through unless this does. Skipping it is
+ * not a subtle visual error: the walker emerges facing back the way they came,
+ * walks straight into the far aperture again, and the portal reads as broken.
  *
- * Yaw and pitch are recovered rather than a full frame kept, which silently
- * drops ROLL. That is right for a walker whose up is the world's up and wrong
- * the moment an aperture is tilted -- so it is a limit of this camera, not of
- * `portal.mapVector`, and the place to fix it when a wall portal exists.
+ * All three vectors go through `portal.mapVector` -- the same map the walker
+ * is carried by -- so ROLL SURVIVES a tilted aperture. Recovering a yaw and a
+ * pitch from the mapped forward, which is what this used to do, silently drops
+ * it and is only correct while every aperture stands upright.
  */
-function aimAlong(f) {
-  const n = Math.hypot(...f);
-  if (!(n > 1e-9)) return;
-  yaw = Math.atan2(f[1], f[0]);
-  pitch = Math.asin(Math.max(-1, Math.min(1, f[2] / n)));
+function carryThroughPortal(portal) {
+  camera = mapFrame(camera, CAMERA_ORIGIN, (v) => portal.mapVector(v));
+  return camera;
 }
 
 function want() {
@@ -322,7 +364,7 @@ function frame(now) {
     probe.grounded = false;
   }
   probe.position = out.position; probe.velocity = out.velocity;
-  for (const transit of out.transits) { aimAlong(transit.portal.mapVector(basis().f)); transited++; }
+  for (const transit of out.transits) { carryThroughPortal(transit.portal); transited++; }
   note = out.contacts.length
     ? `Contact normal ${out.contacts[0].map((n) => n.toFixed(2)).join(', ')}.`
     : out.blocked ? `Portal ${out.blocked.portal.id} refused: the far side is blocked.`
@@ -528,8 +570,7 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('mousemove', (e) => {
   if (!playing) return;
-  yaw -= e.movementX * 0.0025;
-  pitch = Math.max(-1.5, Math.min(1.5, pitch - e.movementY * 0.0025));
+  turnBy(-e.movementX * 0.0025, -e.movementY * 0.0025);
 });
 new ResizeObserver(draw).observe(canvas);
 draw();
@@ -552,11 +593,15 @@ if (new URLSearchParams(location.search).has('check')) {
 
     // The camera must not be upside down. A negated `right` negates `up` with
     // it and turns the view a half turn, drawing the floor above the horizon.
-    const savedPitch = pitch; pitch = 0;
+    const saved = camera; look(heading(), 0);
     check('camera up points along world up', basis().u[2] > 0.99);
     check('camera right is perpendicular to forward',
       Math.abs(basis().r.reduce((a, x, i) => a + x * basis().f[i], 0)) < 1e-9);
-    pitch = savedPitch;
+    // A carried frame keeps whatever roll it was given, so a scripted view
+    // that wants none has to say so. That it CAN hold roll is the point.
+    check('a rolled camera keeps its roll instead of snapping upright',
+      Math.abs(turn(look(heading(), 0), { roll: 0.4 }).up[2] - 1) > 1e-3);
+    camera = saved;
 
     // --- selection and the inspector --------------------------------------
     // Assert what the SCREEN shows, not what the attribute says. An author
@@ -731,21 +776,22 @@ if (new URLSearchParams(location.search).has('check')) {
     // walk. One transit, and the camera must come out facing the way the
     // walker now moves -- without that it faces back at the aperture it left
     // and ping-pongs, which is the failure the kernel test measures at 70.
-    aimAlong([0, 1, 0]);
-    const beforeYaw = yaw;
+    aimForward([0, 1, 0]);
+    const beforeForward = basis().f;
     let saw = 0, sankThroughGate = false;
     for (let i = 0; i < 240; i++) {
       const f2 = compileSceneField(scene);
       const out = stepWalker(f2, space, probe, 1 / 60,
-        { want: [Math.cos(yaw) * 3, Math.sin(yaw) * 3, 0], portals: f2.portals });
-      for (const transit of out.transits) { aimAlong(transit.portal.mapVector(basis().f)); saw++; }
+        { want: [basis().f[0] * 3, basis().f[1] * 3, 0], portals: f2.portals });
+      for (const transit of out.transits) { carryThroughPortal(transit.portal); saw++; }
       probe.position = out.position; probe.velocity = out.velocity; probe.grounded = out.grounded;
       if (clearance(f2, probe.position, probe.radius) < -1e-3) sankThroughGate = true;
     }
     check('never sank while walking a portal room', !sankThroughGate);
     check('walking into the gate transits exactly once', saw === 1);
     check('and comes out at the far gate', probe.position[0] > 4);
-    check('the camera turned with the walker', Math.abs(yaw - beforeYaw) > 0.1);
+    check('the camera turned with the walker',
+      Math.hypot(...basis().f.map((x, i) => x - beforeForward[i])) > 0.1);
     check('still standing after the transit', probe.grounded);
     draw();
     check('a portal room does not render the same picture as a flat one',
@@ -760,7 +806,7 @@ if (new URLSearchParams(location.search).has('check')) {
 
     const floorId = compileSceneField(scene).planeId;
     selected = floorId; draw();
-    probe.position = [0, -3, 1.4]; yaw = Math.PI / 2; pitch = -0.5;
+    probe.position = [0, -3, 1.4]; look(Math.PI / 2, -0.5);
     $('add-carve').click();
     const carved = compileSceneField(scene);
     check('carving a selected solid adds a subtract entity', carved.carveCount === 1);
@@ -802,7 +848,7 @@ if (new URLSearchParams(location.search).has('check')) {
     while (compileSceneField(scene).carveCount > 0) $('undo').click();
     draw();
     const beforeBox = pixels();
-    probe.position = [0, -3, 1.2]; yaw = Math.PI / 2; pitch = -0.1;
+    probe.position = [0, -3, 1.2]; look(Math.PI / 2, -0.1);
     $('add-box').click();
     const boxed = compileSceneField(scene);
     check('add box adds a box', boxed.boxCount === 1);
@@ -850,7 +896,7 @@ if (new URLSearchParams(location.search).has('check')) {
     // aperture while the near room has none.
     commit(addEntity(scene, 'ball', { position: [6, 1.6, 0.7], radius: 0.7 }));
     probe.position = [0, -3.2, 1.2]; selected = null;
-    yaw = Math.PI / 2; pitch = -0.12;
+    look(Math.PI / 2, -0.12);
     draw();
     shot = canvas.toDataURL('image/png');
     shots.push({ name: 'portal', data: shot });
@@ -863,7 +909,7 @@ if (new URLSearchParams(location.search).has('check')) {
     scene = await fetchFixture('box-room');
     undo = []; redo = []; selected = null;
     probe.position = [0, -5.5, 1.5]; probe.velocity = [0, 0, 0]; probe.grounded = true;
-    yaw = Math.PI / 2; pitch = -0.08;
+    look(Math.PI / 2, -0.08);
     draw();
     check('the box room loads and stays a room', compileSceneField(scene).boxCount === 3);
     shots.push({ name: 'boxes', data: canvas.toDataURL('image/png') });
@@ -878,7 +924,7 @@ if (new URLSearchParams(location.search).has('check')) {
     scene = await fetchFixture('oriented-room');
     undo = []; redo = []; selected = null;
     probe.position = [0, -5, 1.3]; probe.velocity = [0, 0, 0]; probe.grounded = true;
-    yaw = Math.PI / 2; pitch = -0.06;
+    look(Math.PI / 2, -0.06);
     draw();
     const turnedField = compileSceneField(scene);
     const crate = turnedField.entities().find((e) => e.id === 'crate');
