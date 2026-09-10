@@ -1321,3 +1321,245 @@ The one observation handed back -- the self-target refusal saying "carve" for
 intersects -- was correct and is fixed in `31281bc`. Handing back a wording
 nit with "wording is yours" rather than editing a message you were told not to
 touch is exactly the right call.
+
+
+## MUSE-32 - The metric space, checked against identities it cannot fake
+
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Report: docs/qa/overnight-results.md (MUSE-32). New metric-truth.test.js: 29 checks, e3 + s3 at R 0.5/1/7 (+R=1e4 flat limit). Holonomy matches l'Huilier to ≤8.4e-14, e3 exactly 0; inversion exact ≥1e-6 with the sub-1e-9 floor pinned as a correct gate; shortest/isometry/frame/boundary all dust-scale. Fail-demo (carry lobotomized): 23/6 exit 1 via the tangency gate. Restored, diff empty, 29/29 + suite 39/39. No engine edits.
+
+`engine/geometry/metric-space.js` is new and it is now load-bearing: the whole
+collision solver runs through it, and the S3 room is being built on top of it.
+It has 16 checks written by its author and 11 written by me, and both of us
+were checking the thing we had just written. That is exactly the situation
+MUSE-25 was about.
+
+A metric space is unusually good to test this way, because differential
+geometry supplies IDENTITIES that must hold for any correct implementation and
+that a wrong one cannot accidentally satisfy. Use those rather than recomputing
+the formulas a second way.
+
+- Allowed writes: a new `metric-truth.test.js`, `docs/qa/overnight-results.md`,
+  this task's status and report. Do NOT edit anything under `engine/`.
+- Test BOTH `kind: 'e3'` and `kind: 's3'` at several curvature radii, including
+  one large enough that S3 is nearly flat -- an S3 result that does not tend to
+  the E3 result as the radius grows is a bug, and that limit is a strong check
+  costing you nothing.
+- The identities worth pinning, each as a sentence before you test it:
+  - `logAt` and `expAt` invert each other, both ways round, over a spread of
+    separations from tiny to near the patch limit. Tiny separations are where
+    a naive implementation loses all its precision.
+  - `distance(p, q)` equals the norm of `logAt(p, q)`, and is symmetric.
+  - A geodesic is LOCALLY SHORTEST: sample paths that deviate from
+    `stepWithTransport` and confirm none is shorter. This is the one that
+    catches a step that is subtly not a geodesic.
+  - Transport is an ISOMETRY: it preserves the inner product of any two
+    vectors, not merely the length of one. Length alone is preserved by
+    things that are not transport.
+  - Transport around a CLOSED LOOP returns a rotated vector, and on a sphere
+    the angle it comes back rotated by is the enclosed area divided by R^2.
+    That is holonomy, it is the sharpest available test that transport is
+    genuinely the Levi-Civita one, and it cannot be satisfied by accident.
+    In E3 the same loop must return the vector unchanged.
+  - `frame(p)` is orthonormal at every p you try.
+  - `boundaryDistance` agrees with a bisection on `withinDomain`.
+- Report worst deviations WITH the query that produced them, and the
+  separation or radius regime each was found in. If precision degrades near
+  the patch limit or at tiny separations, that is a finding worth more than a
+  pass -- say where it starts.
+- Fail-demo: break one identity in your own copy of a helper, show the check
+  catching it, restore, show `git diff engine/` empty.
+- Acceptance: each identity stated as a sentence, tested in both geometries,
+  and either confirmed with its worst deviation or reported as not holding.
+
+## MUSE-31 - Coincident faces: characterise, and do not force a number
+
+Status: READY FOR REVIEW (REVISED 2026-09-09) | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Report: docs/qa/overnight-results.md (MUSE-31). Reproduced in Node: analytic flags exact coincidence (21/41 indeterminate, zero elsewhere incl +-1e-12); march dithers owners on wide coincident sills (sizes 2-3, 4/8 pairs, zero off exact-zero). No warning distance exists; the flag is the signal. Fail-demo on the uncertainty trip, restored, 4/4 + suite 40/40. No engine/app edits.
+
+**REVISION, from Astra.** The first version of this task asked you to find a
+threshold. That framing pushes toward producing a number whether or not one
+exists, so three things are now explicit:
+
+1. **Failing to reproduce the artifact in Node is a VALID RESULT** and a
+   complete answer to this task. The symptom was seen on a GPU. If the CPU
+   field is well behaved across the whole sweep, say so and stop -- that
+   finding is worth more than a threshold extracted from a signal you had to
+   go looking for.
+2. **A legitimate change of normal across an edge is not a defect.** A box has
+   edges; neighbouring rays that land on different faces SHOULD report
+   different normals. Only a discontinuity that cannot be explained by the
+   geometry counts.
+3. **Do not derive a universal editor warning distance from one camera or one
+   epsilon.** If the behaviour tracks view distance, grazing angle or
+   `hitEpsilon`, then there is no document-level constant to warn on, and
+   saying that plainly is the deliverable.
+
+The `box-room` fixture first drew a SPECKLED LINE across its doorway sill.
+The carving box's bottom face sat at exactly z = 0, in the same place as the
+ground plane; two surfaces occupy one location and the marcher cannot say
+which it is on. Sinking the cutter 0.2 below the floor fixed it. Nothing
+numeric caught this -- only the picture did.
+
+There is a TODO to have the editor WARN about this. Whether such a warning
+can exist AT ALL -- whether "too close" is a property of the document or only
+of a particular view -- is the actual question. Answering "it is not a
+document property" closes the TODO just as well as a number would.
+
+- Allowed writes: a new `coincident.test.js`, `docs/qa/overnight-results.md`,
+  this task's status and report. Do NOT edit anything under `engine/` or
+  `app/`.
+- Reproduce it in Node FIRST, without a browser. The symptom on screen is a
+  ray that cannot decide which surface it hit, so the CPU analogue is
+  `rayCast` disagreeing with itself: march a fan of rays across the seam and
+  look at whether `t`, the owner, or the normal flips between neighbouring
+  rays that should agree. State what signal you chose to be the defect and
+  why, BEFORE you sweep -- a threshold found by looking for one is not a
+  measurement.
+- Then sweep the separation: carving box bottom at exactly the plane, and at
+  a decreasing series of offsets above and below. Report where the signal
+  appears and disappears, in both directions. Coincident and NEARLY coincident
+  may not behave the same way, and if so that is the finding.
+- Vary the thing that should matter and check whether it does: the distance
+  from the camera to the seam, the grazing angle, the size of the solids, and
+  `hitEpsilon`. A threshold that is really a function of one of those is not a
+  constant the editor can warn on, and saying so is a better answer than a
+  number that only holds for one scene.
+- Report any threshold as a RANGE with the sweep that produced it, never a
+  single value, and never one extrapolated past the conditions you swept.
+- NOTE THE FIELD HAS CHANGED UNDER THIS TASK. `rayCast` now resolves ray
+  intervals analytically per solid group by default and reports `status`,
+  `owner` and `normal`; the marcher is reachable with `method: 'march'`. Sweep
+  BOTH, and report them separately -- if the analytic path is clean where the
+  marcher is not, that is the most useful thing this task could find, because
+  it says the artifact belongs to marching rather than to the geometry.
+- Acceptance: the chosen defect signal stated as a sentence BEFORE the sweep,
+  the sweep itself, and either a characterised range or a clear statement that
+  no document-level threshold exists. A fail-demo only if you found a signal
+  to demonstrate; if you found none, show instead that your check WOULD fire
+  on a scene you construct to be genuinely bad.
+
+## MUSE-29 - A corpus for boxes
+
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
+
+Report: docs/qa/overnight-results.md (MUSE-29). 12 validator gates around `box`
+covered by 18 one-defect invalids (document vs field layer asserted per case,
+refusal leaves input byte-identical); owner bands pinned in two declaration
+orders with subtracts-before-intersects ordering (ball [200,101,0,101,200],
+box [0,101], plane [200]); caps measured: single unmodified box `exact`,
+any union or modifier `bound` (the task's "scene of boxes stays exact" holds
+for ONE box only — finding, not a failure). Fail-demos: corpus absent crashes
+ENOENT; neutralised zero-defect gives Missing expected exception. Restored,
+27/27 + suite 41/41. No engine edits.
+
+MUSE-21 did this for subtraction and MUSE-26 for intersection, and both found
+things. Same pattern, new kind. The interesting part this time is that a box
+is the FIRST solid to arrive after modifiers existed, so it lands in code that
+was written without it.
+
+- Allowed writes: new files under `levels/fixtures/invalid/` and a new
+  `levels/fixtures/box/`, a new `box-corpus.test.js`,
+  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
+  `engine/world/document.js`, `engine/world/scene-field.js`, `box.test.js` or
+  any existing test.
+- Invalid cases, one defect each: `halfExtent` missing, wrong length, zero,
+  negative, non-finite; `halfExtent` on a ball, a plane, a spawn; `radius` on
+  a box; a frame (`up` or `forward`) on a box; a box whose CORNER leaves the
+  chart while every half-extent on its own is inside it. Assert on the
+  message, and confirm each refusal leaves the document byte-identical.
+- THE ONE THAT MATTERS MOST: owner indices now span three bands -- ball i,
+  plane 100+i, box 200+i -- and a modifier names its target by that index.
+  Build scenes with several of each kind, in several document orders, and
+  assert every modifier applies to the solid it names AND to nothing else. An
+  off-by-one in a band carves the wrong object, which looks like a rendering
+  bug and is a bookkeeping one. Cover a box carving a ball, a ball carving a
+  box, a box clipping a plane, and a box modified by two different kinds.
+- Also worth pinning: that a scene of boxes with no modifier still advertises
+  `distance: 'exact'`, and that adding one modifier of any kind drops it to
+  `bound`. That is the capability the whole primitive exists to protect.
+- Checks: your new file plus `node tools/test.js`. Report both numbers.
+- Acceptance: a stated count of rules found around `box` and how many are
+  covered, plus a fail-demo on one of them.
+
+## MUSE-30 - Is the box really exact?
+
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
+
+Report: docs/qa/overnight-results.md (MUSE-30). Independent reference
+(face-sampled nearest surface point + descent to <1e-12, numeric gradient at
+h=1e-7, sign-bisection to 1e-12) agrees with the closed form on 5 boxes
+(unit, 10:1:0.01 slab, 0.001 needle, 2 oriented) at ~210 distance, ~90
+normal, 40 ray points: worst deviations 1.8e-16 (distance), 3.3e-16
+(normal gap), 7.1e-15 (slab, needle). Reference discriminates: six-plane
+max bound misses an outside corner by 0.037, 1e-9 tolerance catches it.
+Fail-demo by construction (see report). box-truth 3/3 + suite 42/42.
+No engine edits.
+
+`box.test.js` brackets the distance from both sides -- nothing within `d` is
+inside, and stepping past `d` is not outside -- which pins it to about 1e-7.
+That is the lead checking their own formula with a cleverer version of the
+same idea, and MUSE-25 is the reason that is not enough: an independent
+reference caught a defect in code the lead had written and was confident in.
+
+Build the independent reference.
+
+- Allowed writes: a new `box-truth.test.js`, `docs/qa/overnight-results.md`,
+  this task's status and report. Do NOT edit anything under `engine/`.
+- The reference is the NEAREST POINT ON THE SURFACE, found without the box
+  formula: sample the six faces densely, take the best, then refine locally
+  until it stops improving. State your refinement and its convergence, and
+  report the resolution you actually achieved rather than assuming it.
+- Compare across many boxes and many query points -- inside, outside, on a
+  face, off an edge, off a corner, very close to the surface, and far away --
+  and include boxes with extreme aspect ratios, where a formula that is
+  secretly assuming a cube shows it.
+- Do the same for the NORMAL against a numeric gradient, and for `rayHit`
+  against bisection on the sign, at a much finer resolution than `box.test.js`
+  uses. Report worst deviations with the query that produced them.
+- If everything agrees, say so with the numbers and the resolution -- that IS
+  the deliverable, and it is what lets the rest of the project rely on the
+  primitive. If anything disagrees, stop and report the case: the box, the
+  query, both answers, and the difference.
+- Acceptance: the reference described well enough that someone could rebuild
+  it, the comparison, and either a clean verdict with worst deviations or a
+  reproducing case.
+
+**VERDICTS on MUSE-29, 30, 31 and 32 -- 2026-09-09 (lead: Opus). All four
+accepted.** Committed as `0879193`.
+
+MUSE-32 mattered most. `metric-space.js` is load-bearing -- the whole collision
+solver runs through it -- and it had only checks written by the two people who
+wrote it. HOLONOMY closes that gap in the way nothing else could: transport a
+vector round a closed geodesic triangle and it returns rotated by the enclosed
+area over R squared, with the area obtained independently through l'Huilier's
+theorem rather than by composing the same rotations a second time. 8.4e-14
+across three radii, exactly 0 in E3. Reaching for an identity instead of a
+recomputation is the whole lesson of this task.
+
+Fail-demo re-run by the lead: lobotomise `carry` to return its input and the
+suite goes 23 passed / 6 failed, exit 1, caught at the tangency gate -- a
+vector that was not transported is no longer tangent. Restored, `git diff
+engine/` empty, 29/29.
+
+MUSE-31 answered its question with a NO, which the revision existed to make
+possible. There is no coincident-face warning distance because there is no
+distance: the analytic path flags exact coincidence and is clean at 1e-12.
+Reporting the marcher's own dithering separately is what says the artifact
+belongs to marching rather than to the geometry. The lead reproduced the fan
+(21/41 at zero, 0 at 1e-12) before building on it, and `coincidentFaces()` now
+ships -- exact candidates from the document, confirmed by the flag.
+
+Two exclusions had to be added on top, both found by building the naive version
+and watching it cry wolf: sharing a PLANE is not a defect (a crate resting on
+the floor shares one), and an exposed shared plane is not enough either (the
+wall's bottom face is in the floor's plane and exposed inside the doorway, but
+its material there is carved away).
+
+MUSE-29 found a claim of the LEAD's to be false -- "a scene of boxes stays
+exact" holds for one box only -- and reported it rather than loosening the
+test. That is the right call every time. Corrected in the docs.
+
+MUSE-30's independent reference agreed to 1.8e-16 on distance and showed its
+discriminating power rather than asserting it, by catching a six-plane bound
+missing an outside corner by 0.037.

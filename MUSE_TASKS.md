@@ -95,204 +95,140 @@ these tasks were written against a field that has since moved.
 If one of your tasks contradicts the above, the task is out of date and saying
 so is the right answer, not working around it.
 
-## MUSE-32 - The metric space, checked against identities it cannot fake
+Order: **MUSE-33 first** -- it is a live authoring defect with a rule that has
+only been derived, not measured. Then 34, then 35. All three are Node-only;
+none needs a browser or a worker.
 
-Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
-Report: docs/qa/overnight-results.md (MUSE-32). New metric-truth.test.js: 29 checks, e3 + s3 at R 0.5/1/7 (+R=1e4 flat limit). Holonomy matches l'Huilier to ≤8.4e-14, e3 exactly 0; inversion exact ≥1e-6 with the sub-1e-9 floor pinned as a correct gate; shortest/isometry/frame/boundary all dust-scale. Fail-demo (carry lobotomized): 23/6 exit 1 via the tangency gate. Restored, diff empty, 29/29 + suite 39/39. No engine edits.
+WHAT CHANGED UNDER THIS QUEUE, 2026-09-09. Read before starting:
 
-`engine/geometry/metric-space.js` is new and it is now load-bearing: the whole
-collision solver runs through it, and the S3 room is being built on top of it.
-It has 16 checks written by its author and 11 written by me, and both of us
-were checking the thing we had just written. That is exactly the situation
-MUSE-25 was about.
+- **The curved side is real now.** `engine/geometry/metric-space.js` supports
+  `e3` and `s3`; `engine/world/collision.js` runs entirely through it, and
+  `engine/world/region-world.js` compiles a scene into per-region fields
+  including a spherical one. `s3-room.test.js` walks a probe through a doorway
+  on a sphere with the SAME solver E3 uses.
+- A metric takes the point it is evaluated at: `norm(p, v)`, `dot(p, u, v)`,
+  `project(p, u, n)`, `transport(p, q, v)`. A sweep returns `carry`, which
+  transports a vector along the path actually taken.
+- `field.coincidentFaces()` reports entity pairs sharing a surface exactly.
+- Portals are refused outside E3 on purpose: the aperture test assumes a
+  straight segment. That is not a bug to fix, it is a design (item 4) that has
+  not happened yet.
 
-A metric space is unusually good to test this way, because differential
-geometry supplies IDENTITIES that must hold for any correct implementation and
-that a wrong one cannot accidentally satisfy. Use those rather than recomputing
-the formulas a second way.
+## MUSE-33 - The phantom surface of a carve: find the real rule
 
-- Allowed writes: a new `metric-truth.test.js`, `docs/qa/overnight-results.md`,
-  this task's status and report. Do NOT edit anything under `engine/`.
-- Test BOTH `kind: 'e3'` and `kind: 's3'` at several curvature radii, including
-  one large enough that S3 is nearly flat -- an S3 result that does not tend to
-  the E3 result as the radius grows is a bug, and that limit is a strong check
-  costing you nothing.
-- The identities worth pinning, each as a sentence before you test it:
-  - `logAt` and `expAt` invert each other, both ways round, over a spread of
-    separations from tiny to near the patch limit. Tiny separations are where
-    a naive implementation loses all its precision.
-  - `distance(p, q)` equals the norm of `logAt(p, q)`, and is symmetric.
-  - A geodesic is LOCALLY SHORTEST: sample paths that deviate from
-    `stepWithTransport` and confirm none is shorter. This is the one that
-    catches a step that is subtly not a geodesic.
-  - Transport is an ISOMETRY: it preserves the inner product of any two
-    vectors, not merely the length of one. Length alone is preserved by
-    things that are not transport.
-  - Transport around a CLOSED LOOP returns a rotated vector, and on a sphere
-    the angle it comes back rotated by is the enclosed area divided by R^2.
-    That is holonomy, it is the sharpest available test that transport is
-    genuinely the Levi-Civita one, and it cannot be satisfied by accident.
-    In E3 the same loop must return the vector unchanged.
-  - `frame(p)` is orthonormal at every p you try.
-  - `boundaryDistance` agrees with a bisection on `withinDomain`.
-- Report worst deviations WITH the query that produced them, and the
-  separation or radius regime each was found in. If precision degrades near
-  the patch limit or at tiny separations, that is a finding worth more than a
-  pass -- say where it starts.
-- Fail-demo: break one identity in your own copy of a helper, show the check
-  catching it, restore, show `git diff engine/` empty.
-- Acceptance: each identity stated as a sentence, tested in both geometries,
-  and either confirmed with its worst deviation or reported as not holding.
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
 
-## MUSE-31 - Coincident faces: characterise, and do not force a number
+Walking the new S3 room turned up a live defect, and it is not
+curvature-specific. Subtraction is `max(d, -m)`. Where the carving solid
+extends PAST the solid it cuts, that `-m` term is the distance to the CARVER's
+own boundary -- a surface standing in open air that belongs to nothing. The
+value stays a valid lower bound and nothing is drawn there, so the renderer is
+innocent. But a walker reads a CLEARANCE from it, and when that clearance falls
+below the player radius the player is stopped dead by nothing at all.
 
-Status: READY FOR REVIEW (REVISED 2026-09-09) | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
-Report: docs/qa/overnight-results.md (MUSE-31). Reproduced in Node: analytic flags exact coincidence (21/41 indeterminate, zero elsewhere incl +-1e-12); march dithers owners on wide coincident sills (sizes 2-3, 4/8 pairs, zero off exact-zero). No warning distance exists; the flag is the signal. Fail-demo on the uncertainty trip, restored, 4/4 + suite 40/40. No engine/app edits.
+Observed: the S3 probe halted at y = 2.05, past the wall's far face, with the
+field reporting 0.2505 against a player radius of 0.25.
 
-**REVISION, from Astra.** The first version of this task asked you to find a
-threshold. That framing pushes toward producing a number whether or not one
-exists, so three things are now explicit:
+I derived a rule and confirmed it in one configuration:
 
-1. **Failing to reproduce the artifact in Node is a VALID RESULT** and a
-   complete answer to this task. The symptom was seen on a GPU. If the CPU
-   field is well behaved across the whole sweep, say so and stop -- that
-   finding is worth more than a threshold extracted from a signal you had to
-   go looking for.
-2. **A legitimate change of normal across an edge is not a defect.** A box has
-   edges; neighbouring rays that land on different faces SHOULD report
-   different normals. Only a discontinuity that cannot be explained by the
-   geometry counts.
-3. **Do not derive a universal editor warning distance from one camera or one
-   epsilon.** If the behaviour tracks view distance, grazing angle or
-   `hitEpsilon`, then there is no document-level constant to warn on, and
-   saying that plainly is the deliverable.
+    a cutter must overhang its target by MORE THAN TWICE the player radius
 
-The `box-room` fixture first drew a SPECKLED LINE across its doorway sill.
-The carving box's bottom face sat at exactly z = 0, in the same place as the
-ground plane; two surfaces occupy one location and the marcher cannot say
-which it is on. Sinking the cutter 0.2 below the floor fixed it. Nothing
-numeric caught this -- only the picture did.
+reasoning that a probe is stopped one radius short of the carver's face and
+escapes only if the target's own distance already exceeds a radius there. At
+radius 0.25 an overhang of 0.5 blocks and 0.7 walks through.
 
-There is a TODO to have the editor WARN about this. Whether such a warning
-can exist AT ALL -- whether "too close" is a property of the document or only
-of a particular view -- is the actual question. Answering "it is not a
-document property" closes the TODO just as well as a number would.
+**One configuration is not a rule.** That derivation assumes an axis-aligned
+box cutter meeting a flat face head-on. Find out what is actually true.
 
-- Allowed writes: a new `coincident.test.js`, `docs/qa/overnight-results.md`,
-  this task's status and report. Do NOT edit anything under `engine/` or
-  `app/`.
-- Reproduce it in Node FIRST, without a browser. The symptom on screen is a
-  ray that cannot decide which surface it hit, so the CPU analogue is
-  `rayCast` disagreeing with itself: march a fan of rays across the seam and
-  look at whether `t`, the owner, or the normal flips between neighbouring
-  rays that should agree. State what signal you chose to be the defect and
-  why, BEFORE you sweep -- a threshold found by looking for one is not a
-  measurement.
-- Then sweep the separation: carving box bottom at exactly the plane, and at
-  a decreasing series of offsets above and below. Report where the signal
-  appears and disappears, in both directions. Coincident and NEARLY coincident
-  may not behave the same way, and if so that is the finding.
-- Vary the thing that should matter and check whether it does: the distance
-  from the camera to the seam, the grazing angle, the size of the solids, and
-  `hitEpsilon`. A threshold that is really a function of one of those is not a
-  constant the editor can warn on, and saying so is a better answer than a
-  number that only holds for one scene.
-- Report any threshold as a RANGE with the sweep that produced it, never a
-  single value, and never one extrapolated past the conditions you swept.
-- NOTE THE FIELD HAS CHANGED UNDER THIS TASK. `rayCast` now resolves ray
-  intervals analytically per solid group by default and reports `status`,
-  `owner` and `normal`; the marcher is reachable with `method: 'march'`. Sweep
-  BOTH, and report them separately -- if the analytic path is clean where the
-  marcher is not, that is the most useful thing this task could find, because
-  it says the artifact belongs to marching rather than to the geometry.
-- Acceptance: the chosen defect signal stated as a sentence BEFORE the sweep,
-  the sweep itself, and either a characterised range or a clear statement that
-  no document-level threshold exists. A fail-demo only if you found a signal
-  to demonstrate; if you found none, show instead that your check WOULD fire
-  on a scene you construct to be genuinely bad.
-
-## MUSE-29 - A corpus for boxes
-
-Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
-
-Report: docs/qa/overnight-results.md (MUSE-29). 12 validator gates around `box`
-covered by 18 one-defect invalids (document vs field layer asserted per case,
-refusal leaves input byte-identical); owner bands pinned in two declaration
-orders with subtracts-before-intersects ordering (ball [200,101,0,101,200],
-box [0,101], plane [200]); caps measured: single unmodified box `exact`,
-any union or modifier `bound` (the task's "scene of boxes stays exact" holds
-for ONE box only — finding, not a failure). Fail-demos: corpus absent crashes
-ENOENT; neutralised zero-defect gives Missing expected exception. Restored,
-27/27 + suite 41/41. No engine edits.
-
-MUSE-21 did this for subtraction and MUSE-26 for intersection, and both found
-things. Same pattern, new kind. The interesting part this time is that a box
-is the FIRST solid to arrive after modifiers existed, so it lands in code that
-was written without it.
-
-- Allowed writes: new files under `levels/fixtures/invalid/` and a new
-  `levels/fixtures/box/`, a new `box-corpus.test.js`,
+- Allowed writes: a new `phantom-carve.test.js`,
   `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
-  `engine/world/document.js`, `engine/world/scene-field.js`, `box.test.js` or
-  any existing test.
-- Invalid cases, one defect each: `halfExtent` missing, wrong length, zero,
-  negative, non-finite; `halfExtent` on a ball, a plane, a spawn; `radius` on
-  a box; a frame (`up` or `forward`) on a box; a box whose CORNER leaves the
-  chart while every half-extent on its own is inside it. Assert on the
-  message, and confirm each refusal leaves the document byte-identical.
-- THE ONE THAT MATTERS MOST: owner indices now span three bands -- ball i,
-  plane 100+i, box 200+i -- and a modifier names its target by that index.
-  Build scenes with several of each kind, in several document orders, and
-  assert every modifier applies to the solid it names AND to nothing else. An
-  off-by-one in a band carves the wrong object, which looks like a rendering
-  bug and is a bookkeeping one. Cover a box carving a ball, a ball carving a
-  box, a box clipping a plane, and a box modified by two different kinds.
-- Also worth pinning: that a scene of boxes with no modifier still advertises
-  `distance: 'exact'`, and that adding one modifier of any kind drops it to
-  `bound`. That is the capability the whole primitive exists to protect.
-- Checks: your new file plus `node tools/test.js`. Report both numbers.
-- Acceptance: a stated count of rules found around `box` and how many are
-  covered, plus a fail-demo on one of them.
+  anything under `engine/` or `app/`.
+- Vary what the derivation assumed and see which parts of it survive: cutter
+  and target kinds (ball, box, plane, and geodesic-cell in S3), approach angle
+  (head-on versus oblique versus grazing), player radius, the SIZE of the
+  overhang relative to the target's own thickness, and an oriented cutter
+  whose faces are not parallel to the target's.
+- State the measured quantity before you sweep. "Blocked" needs a definition:
+  a sweep that reports `hit` where the true nearest material is further than
+  the probe radius is the obvious one, but say what you chose and why, and how
+  you compute the TRUE nearest material independently of the field.
+- The interesting answers, in order of usefulness: the rule is 2r for every
+  configuration; the rule is k*r for some other k you measure; the rule depends
+  on something other than the radius, in which case say what; or there are
+  configurations with no safe overhang at all, which would be the most
+  important finding of the four.
+- A ball cutter has no flat face and may behave completely differently. Say so
+  if it does rather than forcing it into the same rule.
+- Also worth knowing and cheap: does the phantom ever make the walker SINK
+  rather than stop? It should not -- the bound never overestimates -- but the
+  claim is worth one check.
+- Fail-demo: an authored scene that a check based on your rule accepts and that
+  the walker then fails to cross, or a demonstration that you could not
+  construct one.
+- Acceptance: the rule as a sentence with the sweep behind it, the
+  configurations where it does NOT hold, and an explicit statement of what an
+  editor could check from the document alone.
 
-## MUSE-30 - Is the box really exact?
+## MUSE-34 - The S3 room, checked the way MUSE-30 checked the box
 
-Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
 
-Report: docs/qa/overnight-results.md (MUSE-30). Independent reference
-(face-sampled nearest surface point + descent to <1e-12, numeric gradient at
-h=1e-7, sign-bisection to 1e-12) agrees with the closed form on 5 boxes
-(unit, 10:1:0.01 slab, 0.001 needle, 2 oriented) at ~210 distance, ~90
-normal, 40 ray points: worst deviations 1.8e-16 (distance), 3.3e-16
-(normal gap), 7.1e-15 (slab, needle). Reference discriminates: six-plane
-max bound misses an outside corner by 0.037, 1e-9 tolerance catches it.
-Fail-demo by construction (see report). box-truth 3/3 + suite 42/42.
-No engine edits.
+`s3-room.test.js` has eight checks, written by the person who verified the
+field, and its strongest is the flat limit at R = 10000. That is a good check
+and it is one lead checking another lead's code with a third idea. MUSE-30 is
+the pattern for what comes next: an INDEPENDENT reference, finer than the
+thing it tests.
 
-`box.test.js` brackets the distance from both sides -- nothing within `d` is
-inside, and stepping past `d` is not outside -- which pins it to about 1e-7.
-That is the lead checking their own formula with a cleverer version of the
-same idea, and MUSE-25 is the reason that is not enough: an independent
-reference caught a defect in code the lead had written and was confident in.
-
-Build the independent reference.
-
-- Allowed writes: a new `box-truth.test.js`, `docs/qa/overnight-results.md`,
+- Allowed writes: a new `s3-truth.test.js`, `docs/qa/overnight-results.md`,
   this task's status and report. Do NOT edit anything under `engine/`.
-- The reference is the NEAREST POINT ON THE SURFACE, found without the box
-  formula: sample the six faces densely, take the best, then refine locally
-  until it stops improving. State your refinement and its convergence, and
-  report the resolution you actually achieved rather than assuming it.
-- Compare across many boxes and many query points -- inside, outside, on a
-  face, off an edge, off a corner, very close to the surface, and far away --
-  and include boxes with extreme aspect ratios, where a formula that is
-  secretly assuming a cube shows it.
-- Do the same for the NORMAL against a numeric gradient, and for `rayHit`
-  against bisection on the sign, at a much finer resolution than `box.test.js`
-  uses. Report worst deviations with the query that produced them.
-- If everything agrees, say so with the numbers and the resolution -- that IS
-  the deliverable, and it is what lets the rest of the project rely on the
-  primitive. If anything disagrees, stop and report the case: the box, the
-  query, both answers, and the difference.
-- Acceptance: the reference described well enough that someone could rebuild
-  it, the comparison, and either a clean verdict with worst deviations or a
-  reproducing case.
+- The reference for a `geodesic-cell` is the nearest point on its surface
+  found WITHOUT the plane construction: sample the cell's boundary, refine, and
+  measure great-circle distance. State your refinement and the resolution you
+  actually reached.
+- The cell distance is a BOUND, not exact, so the comparison is one-sided:
+  the field may under-report and must never over-report. Measure how MUCH it
+  under-reports and where -- near a face, near an edge, near a corner, deep
+  inside -- because that shortfall is what the walker pays for and nobody has
+  measured it in a curved space.
+- Sweep the curvature radius from nearly flat to tight enough that the room
+  fills a large fraction of the sphere. Report where, if anywhere, the
+  behaviour departs from the flat case by more than the geometry demands.
+- Include a cell whose half-extents approach the patch limit, which is where a
+  face's pole construction is most likely to lose precision.
+- Acceptance: the reference described well enough to rebuild, the one-sided
+  comparison with worst under-report and where, and the curvature sweep.
+
+## MUSE-35 - What does the marched path cost now?
+
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+
+MUSE-23 measured a 20-50x cliff on the first carve, and that number is now
+stale in two ways at once: `rayCast` resolves ray intervals analytically per
+solid group by default, so a modifier no longer forces the whole scene to
+march; and the figure was CPU `rayHit` THROUGHPUT, which the lead then repeated
+as if it were frame time. It is not, and no GPU path may be promoted on CPU
+throughput alone.
+
+Re-measure the CPU half honestly. The GPU half needs a browser and is not
+yours.
+
+- Allowed writes: a new or updated bench under `tools/`, a dated report under
+  `docs/qa/`, `docs/qa/measurements.md`, `docs/qa/overnight-results.md`, this
+  task's status and report. Do NOT edit anything under `engine/` or `app/`.
+- Compare `method: 'analytic'` against `method: 'march'` on the same scenes and
+  the same rays, and report them separately. Scenes worth including: a room
+  with no modifiers, a room with one carve, a room with many, a scene where the
+  modifiers are concentrated on one solid while others are untouched (which is
+  the case the per-group change was made for), and grazing rays.
+- Report hit and miss rays SEPARATELY. A miss costs a marcher its whole budget
+  and costs the analytic path almost nothing, so mixing them produces a number
+  that describes neither.
+- Count `status: 'indeterminate'` results as their own category. A path that is
+  fast because it gives up is not fast.
+- Every number carries the command that produced it and the host it ran on.
+  Warm up, take several runs, report min/median/max rather than one figure.
+- Say plainly what the measurement does NOT establish -- specifically that it
+  says nothing about frame time -- so the next person to quote it has the
+  caveat attached to the number rather than in a paragraph they might skip.
+- Acceptance: the table, the method, the separation of hits/misses/give-ups,
+  and one sentence on what changed since MUSE-23 and why.
