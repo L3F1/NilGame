@@ -39,7 +39,7 @@ exit 0 ([integration](opus-integration-2026-09-09.md)). Old
 | `node tools/net-check.js` | relay sockets anywhere; WebRTC self-connect on Windows | split | 42 s sandboxed WSL (peer FAILs); 7 s via queue 2026-09-09, 9 passed incl peer | relay FAIL = strip sandbox proxy vars; peer FAIL on WSL = expected |
 | `node tools/shader-check.js` | all 10 programs compile+link under ANGLE | Windows | 2 s via queue 2026-09-09, exit 0 (cf integration table) | GLSL/syntax error with info log |
 | `node tools/sdf-check.js` | JS/GLSL SDF agreement, 21 cases | Windows | 7 s via queue 2026-09-09, exit 0 (cf integration table) | physics/render disagree; needs shared emitter |
-| `node tools/link-time.js` | real-driver link cost per program | Windows | cited: 0.7 s editor vs 8.4 s arena ([map](../host-capability-map.md)) | unrolled level loops (once 212 s); Rough time is cold-cache |
+| `node tools/link-time.js` | real-driver link cost per program | Windows | 30 s all-nine cold via queue 2026-09-10, exit 0 (hyperbolic link 10.1 s; Nil/Sol/SL2R 0.2-0.3 s) | unrolled level loops (once 212 s); Rough time is cold-cache |
 | `node tools/page-check.js --worlds [--timeout=N]` | every world STARTS; 346 cold checks | Windows | 31 s cold real-GPU via queue 2026-09-09 (346 passed, exit 0; cf cited 28.5 s) | exit 21 = profile in use; assertion names world+check |
 | `... --ball-lab` | ball lab boots + probe | Windows | **57 checks** via queue 2026-09-09 (4 s wall, exit 0; same count as lead-run) | same as above, ball scope |
 | `... --sw` | same under SwiftShader software GL | Windows | 172 s cold via queue 2026-09-09 (346 passed, exit 0; cf cited 158.8 s) | slowness expected; GPU-vs-SwiftShader pixels are driver diffs |

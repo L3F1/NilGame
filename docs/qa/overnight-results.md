@@ -981,3 +981,114 @@ no survivor-cleanup WARNING appeared in any `page-check` output
 - Checks: `node boolean-corpus.test.js` → 18 checks, exit 0;
   `node tools/test.js` → 30/30, exit 0 (WSL node v22.23.2).
   Status: READY FOR REVIEW.
+
+## MUSE-25 — Is the marcher telling the truth?
+
+- Ground truth is an independent reference, never rayHit: fixed
+  0.002 steps for the first sign change of field.distance, then
+  60-iteration bisection (tmax 100; farthest real hit in the spread
+  is 40.4). Six scenes built in the test: uncarved, doorway, carve
+  fully inside, straddling carve, two overlapping carves, and a
+  0.02 membrane. ~65 deterministic rays each: grid, tilted, grazing,
+  void-origin, into-void.
+- Worst per scene (printed by the test, ray attached):
+  uncarved over 4e-15 (closed form exact); every carved scene closer
+  6.56e-6 on the same grazing ray (origin [-3,0,1.5], 8.5° incidence
+  — the 1e-6 stop threshold amplified by 1/sin, mechanism confirmed)
+  and over exactly 0. Zero hallucinated hits anywhere.
+- Thin membrane ray: truth 0.18, marched agrees to 3e-17. The
+  membrane is a hit, not a step-over.
+- FINDING, handed back: one ray per carved scene returns Infinity
+  for a wall face at truth 40.4475. Replicated loop shows 256/256
+  steps used, reaching t=40.4474 — the bound never steps past, the
+  fixed 256-step budget runs out one step short (grazing run with
+  steps capped by a near-parallel floor). Pinned in the test as an
+  explicit KNOWN LIMITATION (fails if the budget changes, says to
+  delete it then), not as correctness.
+- Tolerances, all stated in the test with the measurement behind
+  them: closer 1e-4 (15x over measured 6.56e-6), overshoot 1e-9
+  (measured 0), uncarved 1e-12 (measured 4e-15). Both directions
+  asserted separately; misses must agree.
+- Fail-demo (hit threshold 1e-6 → 0.5 in working copy): 2 passed,
+  7 failed, exit 1. Restored, `git diff engine/` empty, 9/9,
+  full suite 31/31 exit 0. Nothing under `engine/` edited.
+- Checks: `node march-truth.test.js` → 9 checks, 1 s wall, exit 0;
+  `node tools/test.js` → 31/31, exit 0 (WSL node v22.23.2).
+  Status: READY FOR REVIEW.
+
+## MUSE-22 — The two blocked checks, on the fresh worker
+
+- The user restarted the worker as asked: `LeoPC (win32)`, pid
+  40688, uptime minutes at run time (heartbeat current). Report
+  says so: yes, they did, and on Windows node as the lead
+  suggested. No `no webgl2` recurrence — the dropout diagnosis
+  (worker lost its GPU context) is confirmed by both rows going
+  green on the fresh worker.
+- `node tools/check-queue.js link-time` → exit 0, wall 30 s
+  (worker 29.7 s). Driver ANGLE NVIDIA RTX 5070 Ti D3D11. Nine
+  programs cold: hyperbolic link 10.1 s (lead's direct-Windows
+  re-run gave 8.5 s median — same order, cold-cache variance, run 1
+  slowest per MUSE-15), spherical 4.4, H2R 6.2, S2R 4.1, E3T 3.4,
+  Nil/Sol/SL2R 0.2–0.3, lines 0.0. Full log `/tmp/muse22-link.log`.
+- `node tools/check-queue.js play-check` (default: fight, 3000
+  frames, seeds 1..3) → exit 0, wall 30 s (worker 29.8 s), real
+  GPU cold. 10 face crossings total (5/2/3), nothing broke. Full
+  log `/tmp/muse22-play.log`. (There is no runbook row for
+  play-check, so no timing cell to update; link-time's cell now
+  carries this figure.)
+- All nine MUSE-20 families are now measured. No code changed;
+  writes are this report, the link-time timing cell, and the task's
+  status line. Status: READY FOR REVIEW.
+
+## MUSE-23 — What a carve costs at query time
+
+- New `tools/carve-bench.js` (docs built in code, not fixtures) and
+  `docs/qa/carve-cost-2026-09.md` (both tables in full). WSL node
+  v22.23.2. Warmup 5000 untimed calls, adaptive sizing to >= 250 ms,
+  three timed runs (min/med/max). Step counts replicate rayHit's
+  loop against public `distance()` with a counter; the bench throws
+  on any replica disagreement (none observed). Nothing under
+  `engine/` edited.
+- Headline ratios to uncarved (median): `distance()` 0.21 / 0.44 /
+  0.73 at 8 carves for 1 / 4 / 16 solids — roughly (S+K)/S, since
+  each targeted carve evaluates once per query. `normal()` milder
+  (0.33 / 0.59 / 0.75). `rayHit()` is a cliff not a slope: the
+  first carve switches closed form to marching, 20-50x (0.02-0.05),
+  further carves cost little. Mean march steps 96 / 43 / 23 (fall
+  as rays terminate sooner; means include the budget-capped miss).
+- No "too slow" verdict offered. Next configuration wanted:
+  untargeted (global) carves, which evaluate against every solid
+  instead of one, plus hit/miss-separated step means.
+- Checks: `node tools/carve-bench.js` → exit 0 (full log
+  `/tmp/muse23-bench.log`, scratch). Status: READY FOR REVIEW.
+
+## MUSE-24 — One place where the numbers live
+
+- New `docs/qa/measurements.md`: every factual number about the
+  current tree, re-produced 2026-09-10, with the exact command, the
+  host where it matters, and every live file:line quoting it.
+  Yesterday's queue figures kept only where marked (sw-worlds,
+  net/sdf/shader compile counts); everything else is fresh today,
+  including worlds 346 (32 s, win32) and ball-lab 69 (2 s, win32).
+- Two findings for the migration, not fixes: runbook:34 still says
+  23 suites (true: 31) and the ball-lab row says 57 (true: 69 since
+  the carve render); TODO:257-262's Sol/SL2R-era totals (16 suites,
+  316 checks, 7 programs) are superseded (31 / 346 / 11). No
+  swept document edited.
+- Four rows have NO producing command — the structurally useful
+  half: 70 transits/200 steps (no transit printer), lie-lab GPU
+  sample counts (no per-case counter), the 0.01 s substep (constant
+  not located; the audit's lie-labs.js:6 pointer lands on
+  LAB_BOXES), link-inputs columns (scratch parser, never
+  committed). A number no command produces is a number that WILL
+  rot; each names what would have to exist.
+- Line drawn in the doc: rows only for claims about the current
+  tree a command can re-produce; dated QA logs stay as evidence
+  (file list given, not per-line); math constants, host identity,
+  example params, readout examples, anecdotes/hypotheticals,
+  line pointers, archive/legacy, and design targets excluded with
+  reasons. 41 project docs swept (node_modules excluded as
+  third-party).
+- Checks: no code changed, so no suite re-run for this task; the
+  table's Node rows were each freshly executed above
+  (test.js 31/31 at 9 s wall among them). Status: READY FOR REVIEW.
