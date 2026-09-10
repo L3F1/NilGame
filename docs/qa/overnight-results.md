@@ -1346,3 +1346,133 @@ no survivor-cleanup WARNING appeared in any `page-check` output
 - Checks: `node box-truth.test.js` → 3 checks, exit 0;
   `node tools/test.js` → 42/42, exit 0 (WSL node v22.23.2).
   Status: READY FOR REVIEW.
+
+## MUSE-33 — The phantom surface of a carve: the real rule
+
+- MEASURED QUANTITY, stated before sweeping: a walk is PHANTOM-BLOCKED
+  when the sweep halts while the TRUE clearance at the halt exceeds 1e-3
+  (margin far above the 1e-4 solver skin, far below the smallest probe
+  radius 0.125). Truth is computed independently of the field: the true
+  material boundary (target surface outside the cutter, cutter surface
+  inside the target) is sampled densely and refined on-surface to
+  <1e-10, membership by hand-written closed forms at dust-proof margins.
+  Each family self-checks: uncarved, |truth|-|field| <= 1e-6 along the
+  walk. New `phantom-carve.test.js`; nothing under `engine/` touched.
+- REPRO first: E3 doorway, r=0.25, o=0.5 halts with field 0.0000 vs truth
+  0.6360 (hand-checkable: sqrt(0.85^2+0.25^2)-0.25); o=0.7 crosses.
+- THE RULE, confirmed: a centered untilted walk releases at o* = 2r
+  within one 0.1 grid step -- box cutter thin/thick wall, ball cutter,
+  ball-wall tunnel, plane-wall notch, oblique-30 at small r, r =
+  0.125/0.25/0.5. Analytic backbone: approaching the mouth the walker
+  halts where max(wall-face, -m) = r, i.e. exactly o <= 2r. A ball cutter
+  behaves like a box one (no flat face needed -- the mouth rim plays the
+  same role); tangent-flush ball (o=0) is a pinhole the probe genuinely
+  cannot fit, marked legit, not phantom.
+- WHERE IT DOES NOT HOLD: tilted-25 cutters release LATE (o* one to two
+  grid steps above 2r); fat oblique ball (r=0.5) releases at (1.1,1.2]
+  against 2r=1.0. And the most important finding: TWO configurations
+  have NO safe overhang -- oblique-30 and tilted-25 box cutters at r=0.5
+  in a 1.7-wide doorway halt with truth-room (0.133 / 0.24) at the same
+  face-minus-r point for every overhang through o=3.0. The void depth
+  there is capped by the jamb gap (0.39 < r), so no overhang lets go.
+- S3 (walk outcome vs flush, no distance truth claimed -- that reference
+  is MUSE-34's): verdicts match E3 everywhere measured; the lead's
+  original pinned (o=0.5, r=0.25 halts at y=2.05, the FAR-mouth phantom).
+  The cell bound's shortfall does not move any verdict.
+- SINK: field-minus-truth over all walks worst 4.44e-16, never positive.
+  The phantom stops; it never sinks.
+- Fail-demo: a 2r check accepts tilted-25 o=0.6 (r=0.25) and ball-oblique
+  o=1.1 (r=0.5); the walker halts in open air in both (truth 0.272 /
+  0.534). The rule is sufficient; it is not necessary, and for two
+  configurations nothing is sufficient.
+- EDITOR-CHECKABLE, from the document alone: overhang o = target face
+  minus cutter mouth along the approach, probe radius r, doorway
+  half-width w, path offset and cutter tilt. Warn when o <= 2r. Warn
+  stronger when the cutter is tilted or the approach oblique (release
+  moves up by an unmodeled amount). Refuse-to-promise when r approaches
+  w minus path offset: no overhang can clear that walk.
+- Checks: `node phantom-carve.test.js` → 7 checks, exit 0;
+  `node tools/test.js` → 44/44, exit 0 (WSL node v22.23.2).
+  Status: READY FOR REVIEW.
+
+## MUSE-34 — The S3 room, checked the way MUSE-30 checked the box
+
+- REFERENCE, stated before comparing: each face is the great sphere
+  through its face-center (stepped arclength h along the lifted axis) in
+  the directions orthogonal to the transported axis -- totally geodesic,
+  so no pole is formed. Slab membership is the angular coordinate
+  R*atan2(p.a, p.c), also pole-free. Faces sampled on a (t,phi) grid with
+  an aimed log-map seed plus descent from the best grid seeds, all
+  on-surface; sign from the slab test. Shared substrate is decode/step/
+  distance/transport/frame only (MUSE-32-verified); the asin(dot)-pole
+  construction under test is never invoked. New `s3-truth.test.js`.
+- COMPARED: roomy cell (h 1.2/0.25/0.8) at R = 2/8/10000 plus near-limit
+  cells (h/R ratio 0.80-0.83) at R = 2/8 -- ~337 probes each (axis doses,
+  located edges/corners with on/off/diagonal probes, far chart probes),
+  center pinned exact both sides (-min halves). Floor scaffolding handled
+  by an exact hand form on both sides with per-probe owner guards.
+- ONE-SIDED VERDICT: field <= ref + 1e-9 at every probe (1680+ total).
+  Faces, inside, outside, far agree to dust (worst 5e-14). The shortfall
+  lives exactly where theory says: diagonal-outside probes, where the
+  seam (not a face) is nearest -- edge-diagonal 0.29, corner-diagonal
+  0.36-0.42 per unit distance, matching 1-1/sqrt(2) and ~1-1/sqrt(3).
+- CURVATURE SWEEP: the profiles are IDENTICAL at R = 2, 8 and 10000 and
+  at patch ratio 0.83. Nothing departs from the flat case beyond what
+  the dihedral geometry demands -- curvature contributes no extra
+  shortfall anywhere measured. Deep inside the bound is exact (center
+  agrees to 1e-9); the walker pays only near seams, at the geometric
+  rate above.
+- Fail-demo by construction: flat chart arithmetic (the chord-class bug)
+  over-reports by 3.8e-2 at R = 2 -- caught by four orders of magnitude
+  -- and agrees to 1.8e-9 at R = 10000, where it would hide. That hiding
+  is why the curved check exists.
+- Checks: `node s3-truth.test.js` → 5 checks, exit 0;
+  `node tools/test.js` → 45/45, exit 0 (WSL node v22.23.2).
+  Status: READY FOR REVIEW.
+
+## MUSE-35 — What does the marched path cost now?
+
+- BENCH, stated before measuring: new `tools/raycast-bench.js` runs the
+  SAME scenes and rays under method analytic and march, with hits, misses
+  and indeterminates reported as OBSERVED per cell, never mixed. Five
+  scenes (plain, one carve, eight spread, six concentrated on one of four
+  balls, coincident pair), three ray buckets each (aimed hits, away /
+  parallel misses, tangent-skim and hairline grazes). Engine defaults
+  (maxSteps 2048, hitEpsilon 1e-6), 3000-ray warmup, five timed runs,
+  min/med/max µs per ray, three invocations stable within ~5%.
+- NO CLIFF: first carve on hits analytic 1.55 -> 1.82µs (~1.2x), march
+  1.42 -> 1.54 (~1.1x); eight carves ~2.4x both methods. Concentrated
+  2.81µs beats spread 3.68µs analytic -- the per-group change shows up
+  where it was aimed. Misses cost both methods ~1-3µs (march exits in
+  6-11 steps). The premium is all in grazing: 3-5x analytic at 49
+  steps, because each skim step advances ~epsilon.
+- WORST RATIO 22x, one ray: riding the coincident face plane at x=1.01,
+  analytic says miss in 1.5µs, march walks it in 216 steps / 34µs. Narrow
+  (one ray in the whole matrix), deep, and the only cell above 5x.
+- GIVE-UPS: analytic declines twice (carve-8 away-rays past carved
+  balls come back indeterminate; march calls both miss in 6 steps).
+  March never exhausts the default budget -- zero indeterminates in
+  100+ marched rays, so the category stands in the table EMPTY rather
+  than folded into "miss". The methods agree on hit/miss everywhere
+  else; nothing to explain away.
+- SINCE MUSE-23, in one sentence: MUSE-23 measured rayHit throughput
+  when any modifier forced the whole scene through the marcher; rayCast
+  now resolves analytically per solid group by default, so a carve costs
+  ~10-20% on hits and marching is opt-in -- the cliff survives only as
+  a grazing-ray premium.
+- Retires the stale row: measurements.md "rayHit cliff 20-50x" marked
+  SUPERSEDED, replaced by the rayCast row pointing at the dated report
+  `docs/qa/raycast-cost-2026-09-10.md`. What this does NOT establish is
+  printed with the table itself: CPU ray throughput is not frame time,
+  and no GPU path may be promoted on it.
+- Checks: `node tools/raycast-bench.js` (3 runs, stable);
+  `node tools/test.js` → 45/45, exit 0 (WSL node v22.23.2).
+  Status: ACCEPTED.
+- LEAD, 2026-09-10: the two analytic give-ups were chased down and turned
+  out to be a BUG, not a limit of the method -- a near-tangency six units
+  BEHIND the ray origin was being clamped to the origin, so the cast
+  refused from a standing start with nothing ahead of it. Fixed in
+  `engine/geometry/e3-ray-intervals.js`, pinned by a contract test; that
+  cell now reads 8 miss / 0 indeterminate on both methods. Leaving the
+  disagreement in the table is what surfaced it. See
+  `docs/qa/raycast-cost-2026-09-10.md`.
