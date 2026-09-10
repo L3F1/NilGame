@@ -59,37 +59,51 @@ a design. That is a useful report, not a failure.
 
 ---
 
-## MUSE-21 - A corpus for booleans
+Order: **MUSE-25 first** (it checks work that just shipped), then MUSE-23 and
+MUSE-24, which are Node-only and independent of each other. MUSE-22 needs the
+check-queue worker restarted and is the user's to unblock, not yours -- ask
+once, and move on to the others rather than waiting.
 
-Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@c3d4631, WSL node v22.23.2) | Reviewer: Opus | Node-only
-Report: docs/qa/overnight-results.md (MUSE-21). 5 rules found, all covered: 10 message-checked invalid docs (7 document-level, 3 field-level with the layer split asserted) + 7 valid carve docs with capabilities pinned; fail-demo on the target rule (exit 1 without it, 18/18 with it); full suite 30/30. No engine edits.
+## MUSE-25 - Is the marcher telling the truth?
 
-`op: add | subtract` and `target` landed in `e348791` with 14 tests. Those
-tests were written by the person who wrote the feature, which is the weakest
-kind of coverage there is. MUSE-13 built exactly this for the base schema and
-found the shape of the validator; do the same here.
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only | **Take this first**
 
-- Allowed writes: new files under `levels/fixtures/invalid/` and
-  `levels/fixtures/carve/`, a new `boolean-corpus.test.js`, registration in
-  `tools/test.js` if it needs it, `docs/qa/overnight-results.md`, this task's
-  status and report. Do NOT edit `engine/world/document.js`,
-  `engine/world/scene-field.js` or `boolean.test.js`.
-- Invalid cases, one defect each, built by mutating a VALID document: `op` on
-  a spawn / objective / anchor, `op` misspelled, `target` on an `add`, `target`
-  naming itself, `target` naming a non-existent id, `target` naming a
-  non-solid (a spawn), `target` naming another SUBTRACT rather than an added
-  solid. Assert on the message, not just that it threw.
-- Valid cases worth pinning because they are easy to break: a carve that
-  removes a solid entirely (is the field empty space, or does something worse
-  happen?), two carves targeting the same solid, one carve targeting a solid
-  that a second carve has already removed, a carve entirely outside the solid
-  it targets (no effect), and a carve exactly tangent to its target.
-- For every valid case also assert the CAPABILITY the field advertises, since
-  that is the part a solver trusts.
-- Checks: your new file plus `node tools/test.js`. Report both numbers.
-- Acceptance: a stated count of how many validator rules you found around `op`
-  and `target`, how many you covered, and the rest listed with reasons. Plus
-  the fail-demo required above, on one rule of your choosing.
+`rayHit` used to solve each primitive in closed form. On a carved scene it now
+SPHERE-TRACES (`engine/world/scene-field.js`), because the nearest analytic
+surface may have been cut away. Nobody has checked that the marched answer is
+the right one. A marcher that stops slightly early, or sails past a thin
+feature, is wrong in a way every existing test would pass: `boolean.test.js`
+asserts a ray gets through a doorway and stops at a wall, which a sloppy
+marcher also does.
+
+The check is a comparison against an INDEPENDENT ground truth, not against the
+marcher's own idea of where it stopped.
+
+- Allowed writes: a new `march-truth.test.js`, `docs/qa/overnight-results.md`,
+  this task's status and report. Do NOT edit anything under `engine/`. If the
+  marcher is wrong, that is the finding and it is the deliverable.
+- Ground truth: step along the ray in small fixed increments and find the first
+  sign change of `field.distance`, then bisect that bracket to convergence.
+  That is slow and obviously correct, which is exactly what a reference should
+  be. Do not reuse `rayHit` to produce it.
+- Compare over a spread of scenes you build in the test: carved and uncarved,
+  carve fully inside its target, carve straddling the surface, two overlapping
+  carves, and a carve that leaves a THIN remaining wall (the case a marcher
+  most plausibly steps over). Deterministic ray origins and directions, no RNG.
+- Report the worst absolute disagreement and the ray that produced it, and say
+  which scene it came from. A single number with no case attached is not
+  actionable.
+- Assert separately that the marcher never reports a hit CLOSER than the truth
+  (that would draw a surface in front of where it is) and never overshoots by
+  more than a stated tolerance. Those two failures have different causes and a
+  combined assertion hides which one happened.
+- Also check the UNCARVED case agrees with the closed form to near machine
+  precision. If it does not, the exact path has a bug and that outranks
+  everything else in this task.
+- Fail-demo: loosen the marcher's hit threshold in your own copy, show the
+  check catching it, restore, show `git diff engine/` empty.
+- Acceptance: worst-case numbers per scene, both directions asserted
+  separately, and the fail-demo.
 
 ## MUSE-22 - The two checks the GPU dropout blocked
 

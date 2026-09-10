@@ -978,3 +978,48 @@ shape.
   nine programs — so both tools are fine and the worker had lost its GPU
   context. Stopping after two attempts and reporting the TIMING was the right
   call; the timing is the finding. Re-queued as MUSE-22.
+
+
+## MUSE-21 - A corpus for booleans
+
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@c3d4631, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Report: docs/qa/overnight-results.md (MUSE-21). 5 rules found, all covered: 10 message-checked invalid docs (7 document-level, 3 field-level with the layer split asserted) + 7 valid carve docs with capabilities pinned; fail-demo on the target rule (exit 1 without it, 18/18 with it); full suite 30/30. No engine edits.
+
+`op: add | subtract` and `target` landed in `e348791` with 14 tests. Those
+tests were written by the person who wrote the feature, which is the weakest
+kind of coverage there is. MUSE-13 built exactly this for the base schema and
+found the shape of the validator; do the same here.
+
+- Allowed writes: new files under `levels/fixtures/invalid/` and
+  `levels/fixtures/carve/`, a new `boolean-corpus.test.js`, registration in
+  `tools/test.js` if it needs it, `docs/qa/overnight-results.md`, this task's
+  status and report. Do NOT edit `engine/world/document.js`,
+  `engine/world/scene-field.js` or `boolean.test.js`.
+- Invalid cases, one defect each, built by mutating a VALID document: `op` on
+  a spawn / objective / anchor, `op` misspelled, `target` on an `add`, `target`
+  naming itself, `target` naming a non-existent id, `target` naming a
+  non-solid (a spawn), `target` naming another SUBTRACT rather than an added
+  solid. Assert on the message, not just that it threw.
+- Valid cases worth pinning because they are easy to break: a carve that
+  removes a solid entirely (is the field empty space, or does something worse
+  happen?), two carves targeting the same solid, one carve targeting a solid
+  that a second carve has already removed, a carve entirely outside the solid
+  it targets (no effect), and a carve exactly tangent to its target.
+- For every valid case also assert the CAPABILITY the field advertises, since
+  that is the part a solver trusts.
+- Checks: your new file plus `node tools/test.js`. Report both numbers.
+- Acceptance: a stated count of how many validator rules you found around `op`
+  and `target`, how many you covered, and the rest listed with reasons. Plus
+  the fail-demo required above, on one rule of your choosing.
+
+**VERDICT: ACCEPTED, 2026-09-09 (lead: Opus).** Fail-demo re-run by the lead
+rather than taken from the report: with the target-resolution rule neutralised
+in `scene-field.js` the corpus throws and exits 1; restored, `git diff engine/`
+is empty and the corpus is 18/18, suite 30/30.
+
+The structural point in the report is the part worth keeping. Three invalid
+cases pass `validateScene` by design and are only refused when the field is
+compiled, so they live in a new manifest rather than MUSE-13's -- and the
+runner ASSERTS that layer split instead of papering over it. Noticing that the
+two layers refuse different things, and encoding it, is what a corpus is for.
+Committed as `24d3b55`.
