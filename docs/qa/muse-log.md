@@ -1023,3 +1023,153 @@ compiled, so they live in a new manifest rather than MUSE-13's -- and the
 runner ASSERTS that layer split instead of papering over it. Noticing that the
 two layers refuse different things, and encoding it, is what a corpus is for.
 Committed as `24d3b55`.
+
+
+## MUSE-25 - Is the marcher telling the truth?
+
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@c3d4631, WSL node v22.23.2) | Reviewer: Opus | Node-only | **Take this first**
+Report: docs/qa/overnight-results.md (MUSE-25). Marched vs fixed-step+bisect truth over 6 scenes: uncarved 4e-15, carved closer ≤6.56e-6 (threshold/sin mechanism), overshoot 0, membrane ray exact; one budget-exhaustion sail (256 steps, t=40.4474 vs truth 40.4475) pinned as known limitation and handed back. Fail-demo 2/7 exit 1 without threshold; 9/9 + suite 31/31 restored. No engine edits.
+
+`rayHit` used to solve each primitive in closed form. On a carved scene it now
+SPHERE-TRACES (`engine/world/scene-field.js`), because the nearest analytic
+surface may have been cut away. Nobody has checked that the marched answer is
+the right one. A marcher that stops slightly early, or sails past a thin
+feature, is wrong in a way every existing test would pass: `boolean.test.js`
+asserts a ray gets through a doorway and stops at a wall, which a sloppy
+marcher also does.
+
+The check is a comparison against an INDEPENDENT ground truth, not against the
+marcher's own idea of where it stopped.
+
+- Allowed writes: a new `march-truth.test.js`, `docs/qa/overnight-results.md`,
+  this task's status and report. Do NOT edit anything under `engine/`. If the
+  marcher is wrong, that is the finding and it is the deliverable.
+- Ground truth: step along the ray in small fixed increments and find the first
+  sign change of `field.distance`, then bisect that bracket to convergence.
+  That is slow and obviously correct, which is exactly what a reference should
+  be. Do not reuse `rayHit` to produce it.
+- Compare over a spread of scenes you build in the test: carved and uncarved,
+  carve fully inside its target, carve straddling the surface, two overlapping
+  carves, and a carve that leaves a THIN remaining wall (the case a marcher
+  most plausibly steps over). Deterministic ray origins and directions, no RNG.
+- Report the worst absolute disagreement and the ray that produced it, and say
+  which scene it came from. A single number with no case attached is not
+  actionable.
+- Assert separately that the marcher never reports a hit CLOSER than the truth
+  (that would draw a surface in front of where it is) and never overshoots by
+  more than a stated tolerance. Those two failures have different causes and a
+  combined assertion hides which one happened.
+- Also check the UNCARVED case agrees with the closed form to near machine
+  precision. If it does not, the exact path has a bug and that outranks
+  everything else in this task.
+- Fail-demo: loosen the marcher's hit threshold in your own copy, show the
+  check catching it, restore, show `git diff engine/` empty.
+- Acceptance: worst-case numbers per scene, both directions asserted
+  separately, and the fail-demo.
+
+## MUSE-22 - The two checks the GPU dropout blocked
+
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@c3d4631, WSL node v22.23.2) | Reviewer: Opus | Worker: LeoPC win32 pid 40688 (fresh, user-restarted)
+Report: docs/qa/overnight-results.md (MUSE-22). User restarted on Windows node as asked; both green: link-time exit 0 (9 cold programs, hyperbolic 10.1 s, RTX 5070 Ti) and play-check default exit 0 (3x3000 frames, 10 crossings). Dropout diagnosis confirmed. All nine families measured.
+
+MUSE-20 measured seven of nine check families. `play-check` and `link-time`
+failed on the worker host with `no webgl2` from about 19:03, after real-GPU
+checks had passed at 18:52. The lead re-ran `link-time` directly on Windows
+afterwards and it was fine — 8.5 s hyperbolic, real GPU — so this is a
+transient on the worker, not a defect in either tool.
+
+- Allowed writes: `docs/qa/overnight-results.md`, `docs/qa/check-runbook.md`
+  (timing cells only, for rows you ran), this task's status and report.
+- Ask the user to restart the check-queue worker before you start, and say in
+  your report whether they did. A worker that has been up for a long time is
+  the suspect.
+- Through the queue: `play-check` (default) and `link-time`. Record command,
+  exit code, wall time and the numbers each reports.
+- If `no webgl2` recurs, STOP after two attempts and record: the exact error,
+  how long the worker had been up, and what the immediately preceding
+  successful check was. That timing is the finding.
+- Acceptance: both rows measured, or a precise account of the recurrence.
+
+## MUSE-23 - What does a carve cost at query time?
+
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@c3d4631, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Report: docs/qa/overnight-results.md (MUSE-23). New tools/carve-bench.js + docs/qa/carve-cost-2026-09.md: distance 0.21/0.44/0.73 at 8 carves (1/4/16 solids), normal milder, rayHit cliff 20-50x on first carve, mean steps 96/43/23. Warmed, 3 runs min/med/max. No verdict offered; next: untargeted carves + hit/miss-separated steps. No engine edits.
+
+With no carve, `rayHit` solves each primitive in closed form. With one, it
+sphere-traces, because the nearest analytic surface may have been cut away.
+That is a real cost and nobody has measured it. The collision solver calls
+these in a loop, so the number decides whether carving is something an author
+can use freely or something to use sparingly.
+
+- Allowed writes: `docs/qa/carve-cost-2026-09.md` (new), `tools/carve-bench.js`
+  (new), `docs/qa/overnight-results.md`, this task's status and report. Do NOT
+  edit anything under `engine/`.
+- Measure, on documents you build in the benchmark rather than fixtures:
+  `distance()`, `normal()` and `rayHit()` calls per second, for scenes with
+  0, 1, 2, 4 and 8 carves, at 1, 4 and 16 additive solids.
+- Report the RATIO to the uncarved case, not just absolute rates — the
+  absolute numbers are about this machine and the ratio is about the design.
+- Also report the mean number of marching steps `rayHit` takes, since that is
+  the mechanism and it is the thing that would change if the bound got tighter.
+- Warm up before timing, run each configuration at least three times, and
+  report min/median/max. A single sample of a JIT'd loop measures the JIT.
+- Do NOT conclude whether carving is "too slow". Report numbers and say which
+  configuration you would want measured next.
+- Acceptance: one table, the ratios, the step counts, and the method stated
+  including how you warmed up.
+
+## MUSE-24 - One place where the numbers live
+
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@c3d4631, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Report: docs/qa/overnight-results.md (MUSE-24). New docs/qa/measurements.md: ~30 rows, every number re-produced (worlds 346 + ball-lab 69 fresh today), stale runbook cells + superseded TODO era totals flagged for migration, 4 no-command rows named as the rot list, dated logs + excluded classes stated with reasons. No docs edited.
+
+MUSE-12 found fourteen false claims and nearly all of them were numbers that
+had been true once: check counts, suite counts, program counts, ray counts.
+The cause is structural — every document quotes its own figures, so every
+document rots independently. Fix the structure, not the fourteen instances.
+
+- Allowed writes: `docs/qa/measurements.md` (new),
+  `docs/qa/overnight-results.md`, this task's status and report. **Do not edit
+  the documents that carry the stale numbers** — the migration is the lead's,
+  because deciding which claims are scope statements rather than measurements
+  is a judgement call.
+- Sweep every `.md` for a factual NUMBER about the code: counts of tests,
+  checks, suites, programs, rays, cases, fixtures, geometries, timings.
+- Build one table: the quantity, its current true value, the exact command that
+  produces it, the host that matters (or "any"), and every file:line that
+  currently quotes it.
+- Where a quantity can be produced by a command, say so. Where it cannot —
+  because nothing prints it — mark it and say what would have to exist. That
+  list is the more useful half of this task: a number no command produces is a
+  number that WILL rot.
+- Do not include numbers that are constants of the mathematics rather than
+  measurements of the code (eight Thurston geometries, four bounces, a 4x4
+  matrix). State the rule you used to draw that line.
+- Acceptance: the table, with a command against every row that has one, and an
+  explicit list of the rows that have none.
+
+**VERDICTS on MUSE-22, 23, 24, 25 -- 2026-09-09 (lead: Opus). All four
+accepted.** Committed as `62ed20f` and `aaa8015`.
+
+MUSE-25 is the one that mattered. Its brute-force reference caught a real
+defect in code the lead had written: `rayHit` reported `Infinity` -- "nothing
+there" -- about a wall it had nearly reached, because a fixed 256-step budget
+ran out one step short on a grazing ray. The bound never lied; the budget did.
+Fail-demo re-run by the lead: with the hit threshold loosened to 0.5 the suite
+goes 2 passed / 7 failed and exits 1; restored, `git diff engine/` is empty and
+it is 9/9.
+
+Pinning the limitation explicitly, with a note saying to delete the case once
+the budget changed, was the right call and made the fix trivial to land. The
+case is now two assertions instead: that the ray resolves, and that a starved
+cast reports `exhausted` rather than pretending to be a miss.
+
+MUSE-23's finding is the SHAPE rather than any number: `rayHit` shows a 20-50x
+cliff on the FIRST carve and very little after, because that is where the
+closed form stops applying and tracing begins. Carving is a threshold, not a
+gradient, and the second carve is nearly free. Declining to say whether that is
+acceptable was correct -- that is a design question.
+
+MUSE-24 caught the runbook's ball-lab count going stale the moment carve
+rendering landed, which is precisely the decay it exists to end. The four rows
+with no producing command are the more useful half of that table.

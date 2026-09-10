@@ -64,121 +64,109 @@ MUSE-24, which are Node-only and independent of each other. MUSE-22 needs the
 check-queue worker restarted and is the user's to unblock, not yours -- ask
 once, and move on to the others rather than waiting.
 
-## MUSE-25 - Is the marcher telling the truth?
+Order: **MUSE-26 first**, then 27 and 28, which are independent of it and of
+each other. All three are Node-only; none needs a browser or a worker.
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only | **Take this first**
-
-`rayHit` used to solve each primitive in closed form. On a carved scene it now
-SPHERE-TRACES (`engine/world/scene-field.js`), because the nearest analytic
-surface may have been cut away. Nobody has checked that the marched answer is
-the right one. A marcher that stops slightly early, or sails past a thin
-feature, is wrong in a way every existing test would pass: `boolean.test.js`
-asserts a ray gets through a doorway and stops at a wall, which a sloppy
-marcher also does.
-
-The check is a comparison against an INDEPENDENT ground truth, not against the
-marcher's own idea of where it stopped.
-
-- Allowed writes: a new `march-truth.test.js`, `docs/qa/overnight-results.md`,
-  this task's status and report. Do NOT edit anything under `engine/`. If the
-  marcher is wrong, that is the finding and it is the deliverable.
-- Ground truth: step along the ray in small fixed increments and find the first
-  sign change of `field.distance`, then bisect that bracket to convergence.
-  That is slow and obviously correct, which is exactly what a reference should
-  be. Do not reuse `rayHit` to produce it.
-- Compare over a spread of scenes you build in the test: carved and uncarved,
-  carve fully inside its target, carve straddling the surface, two overlapping
-  carves, and a carve that leaves a THIN remaining wall (the case a marcher
-  most plausibly steps over). Deterministic ray origins and directions, no RNG.
-- Report the worst absolute disagreement and the ray that produced it, and say
-  which scene it came from. A single number with no case attached is not
-  actionable.
-- Assert separately that the marcher never reports a hit CLOSER than the truth
-  (that would draw a surface in front of where it is) and never overshoots by
-  more than a stated tolerance. Those two failures have different causes and a
-  combined assertion hides which one happened.
-- Also check the UNCARVED case agrees with the closed form to near machine
-  precision. If it does not, the exact path has a bug and that outranks
-  everything else in this task.
-- Fail-demo: loosen the marcher's hit threshold in your own copy, show the
-  check catching it, restore, show `git diff engine/` empty.
-- Acceptance: worst-case numbers per scene, both directions asserted
-  separately, and the fail-demo.
-
-## MUSE-22 - The two checks the GPU dropout blocked
-
-Status: OPEN | Owner: Muse | Reviewer: Opus | Needs a queue worker
-
-MUSE-20 measured seven of nine check families. `play-check` and `link-time`
-failed on the worker host with `no webgl2` from about 19:03, after real-GPU
-checks had passed at 18:52. The lead re-ran `link-time` directly on Windows
-afterwards and it was fine — 8.5 s hyperbolic, real GPU — so this is a
-transient on the worker, not a defect in either tool.
-
-- Allowed writes: `docs/qa/overnight-results.md`, `docs/qa/check-runbook.md`
-  (timing cells only, for rows you ran), this task's status and report.
-- Ask the user to restart the check-queue worker before you start, and say in
-  your report whether they did. A worker that has been up for a long time is
-  the suspect.
-- Through the queue: `play-check` (default) and `link-time`. Record command,
-  exit code, wall time and the numbers each reports.
-- If `no webgl2` recurs, STOP after two attempts and record: the exact error,
-  how long the worker had been up, and what the immediately preceding
-  successful check was. That timing is the finding.
-- Acceptance: both rows measured, or a precise account of the recurrence.
-
-## MUSE-23 - What does a carve cost at query time?
+## MUSE-26 - A corpus for intersection
 
 Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
 
-With no carve, `rayHit` solves each primitive in closed form. With one, it
-sphere-traces, because the nearest analytic surface may have been cut away.
-That is a real cost and nobody has measured it. The collision solver calls
-these in a loop, so the number decides whether carving is something an author
-can use freely or something to use sparingly.
+`op: 'intersect'` landed in `aaa8015` with seven tests, all written by the
+person who wrote the feature. MUSE-21 did this for subtraction and the pattern
+worked; do it again for clipping. The interesting part is that intersection is
+the SAME code path as subtraction with the sign flipped, so the cases that
+matter are the ones where the two differ.
 
-- Allowed writes: `docs/qa/carve-cost-2026-09.md` (new), `tools/carve-bench.js`
-  (new), `docs/qa/overnight-results.md`, this task's status and report. Do NOT
-  edit anything under `engine/`.
-- Measure, on documents you build in the benchmark rather than fixtures:
-  `distance()`, `normal()` and `rayHit()` calls per second, for scenes with
-  0, 1, 2, 4 and 8 carves, at 1, 4 and 16 additive solids.
-- Report the RATIO to the uncarved case, not just absolute rates — the
-  absolute numbers are about this machine and the ratio is about the design.
-- Also report the mean number of marching steps `rayHit` takes, since that is
-  the mechanism and it is the thing that would change if the bound got tighter.
-- Warm up before timing, run each configuration at least three times, and
-  report min/median/max. A single sample of a JIT'd loop measures the JIT.
-- Do NOT conclude whether carving is "too slow". Report numbers and say which
-  configuration you would want measured next.
-- Acceptance: one table, the ratios, the step counts, and the method stated
-  including how you warmed up.
+- Allowed writes: new files under `levels/fixtures/invalid/` and
+  `levels/fixtures/carve/` (or a new `levels/fixtures/clip/`), a new
+  `intersect-corpus.test.js`, `docs/qa/overnight-results.md`, this task's
+  status and report. Do NOT edit `engine/world/document.js`,
+  `engine/world/scene-field.js`, `boolean.test.js` or `boolean-corpus.test.js`.
+- Invalid cases, one defect each: a global intersect (no target), an intersect
+  on a spawn / anchor / objective, an intersect targeting itself, targeting a
+  missing id, targeting a subtract, targeting another intersect. Assert on the
+  MESSAGE, and for the global case assert it explains WHY rather than just
+  refusing -- that message is doing real work.
+- Valid cases worth pinning: a clip that removes its target entirely, a clip
+  that removes nothing (target wholly inside it -- assert the field is
+  bitwise what it would be with no clip at all), two clips on one target,
+  a clip and a carve on the SAME target in both document orders (the result
+  must not depend on the order, since both are a max), and a clip whose
+  boundary exactly touches its target.
+- THE ONE THAT MATTERS MOST: for a face produced by a clip and the
+  corresponding face produced by a carve, assert the normals agree. The sign
+  that distinguishes the two operations also decides which way a surface
+  faces, and getting it backwards is a one-character bug that looks like a
+  collision problem.
+- Checks: your new file plus `node tools/test.js`. Report both numbers.
+- Acceptance: a stated count of rules found around `intersect` and how many are
+  covered, plus a fail-demo on one of them.
 
-## MUSE-24 - One place where the numbers live
+## MUSE-27 - The modifier algebra, tested rather than asserted
 
 Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
 
-MUSE-12 found fourteen false claims and nearly all of them were numbers that
-had been true once: check counts, suite counts, program counts, ray counts.
-The cause is structural — every document quotes its own figures, so every
-document rots independently. Fix the structure, not the fourteen instances.
+`engine/world/scene-field.js` justifies its design in a comment:
 
-- Allowed writes: `docs/qa/measurements.md` (new),
-  `docs/qa/overnight-results.md`, this task's status and report. **Do not edit
-  the documents that carry the stale numbers** — the migration is the lead's,
-  because deciding which claims are scope statements rather than measurements
-  is a judgement call.
-- Sweep every `.md` for a factual NUMBER about the code: counts of tests,
-  checks, suites, programs, rays, cases, fixtures, geometries, timings.
-- Build one table: the quantity, its current true value, the exact command that
-  produces it, the host that matters (or "any"), and every file:line that
-  currently quotes it.
-- Where a quantity can be produced by a command, say so. Where it cannot —
-  because nothing prints it — mark it and say what would have to exist. That
-  list is the more useful half of this task: a number no command produces is a
-  number that WILL rot.
-- Do not include numbers that are constants of the mathematics rather than
-  measurements of the code (eight Thurston geometries, four bounces, a 4x4
-  matrix). State the rule you used to draw that line.
-- Acceptance: the table, with a command against every row that has one, and an
-  explicit list of the rows that have none.
+    A modifier with no target applies to every solid, and that is EQUIVALENT
+    to applying it to the union afterwards, because max distributes over min:
+        max(min(a, b), k) = min(max(a, k), max(b, k))
+
+That identity is the reason scoped modifiers are called a strict
+generalisation rather than a different operation. It has never been tested. A
+comment asserting an algebraic law is exactly the kind of claim that is true
+when written and false after a refactor.
+
+- Allowed writes: a new `modifier-algebra.test.js`,
+  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
+  anything under `engine/`.
+- Test the identity AS THE FIELD COMPUTES IT, not as arithmetic: build a scene
+  with a global modifier, build the same scene with that modifier duplicated
+  and explicitly targeted at each solid, and assert the two fields agree at
+  many deterministic sample points -- distance AND normal.
+- Then the properties that follow, each of which could break independently:
+  order-independence (two modifiers on one target, both document orders),
+  idempotence (the same modifier twice is the same as once), and that a
+  modifier targeting a solid has NO effect on any other solid's surface.
+- Sample points must include places near the seams, not just open space. A
+  property that holds everywhere except where two surfaces meet is a property
+  that does not hold, and the seams are where `max` is not exact.
+- Where an identity does NOT hold exactly, say so with the worst deviation and
+  where it happens, rather than loosening a tolerance until it passes. A
+  measured near-miss is a finding; a passing test with a mystery tolerance is
+  not.
+- Fail-demo: break the identity in your own copy (make the global modifier
+  apply to only the first solid, say), show the check catching it, restore,
+  show `git diff engine/` empty.
+- Acceptance: each property stated as a sentence, tested, and either confirmed
+  with its worst deviation or reported as not holding.
+
+## MUSE-28 - Walking on a bound
+
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+
+The collision solver was built against an EXACT distance field. Carving and
+clipping made the distance a lower bound, and the walker has not been exercised
+on one in any systematic way -- `boolean.test.js` walks through one doorway.
+Conservative advancement should be safe on a bound by construction, since a
+lower bound only makes steps shorter. "Should be" is the part this task
+replaces.
+
+- Allowed writes: a new `walk-bound.test.js`, `docs/qa/overnight-results.md`,
+  this task's status and report. Do NOT edit anything under `engine/`.
+- Generate scenes deterministically -- no RNG, or a seeded generator whose seed
+  is printed on failure. Vary: number of solids, number and kind of modifiers,
+  whether modifiers are targeted or global, and include configurations that
+  produce thin walls, narrow gaps and concave corners.
+- For each scene, walk a probe from several starts along several headings for
+  several hundred steps, and assert on every step: it never sinks below
+  `-1e-3` clearance, it never reports `stalled` for more than N consecutive
+  steps (state your N and why), and its position stays finite.
+- Report separately how often the solver STALLS on a bound versus on an exact
+  field, at matched scene complexity. A bound makes steps shorter, so more
+  stalling is expected -- the question is how much, and nobody knows.
+- If you find a scene where the probe sinks, that is the deliverable: the seed,
+  the scene as JSON, the step it happened on, and the clearance. Stop and
+  report rather than characterising further.
+- Acceptance: the number of scenes and total steps walked, the stall comparison
+  with its method, and either a clean verdict sentence or a reproducing case.
