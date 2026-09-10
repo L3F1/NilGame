@@ -2003,3 +2003,105 @@ API. **Do not read the implementation for your reference** -- derive it.
 
 
 Astra verdict: docs/qa/astra-region-review-2026-09-10.md. Both motion corpora rerun at e3300e6. QA deliverable accepted; runtime integration requires finding-4 and strict-budget repairs. No claim of complete contract compliance.
+
+## Verdict on MUSE-40, 2026-09-10 (lead: Opus)
+
+ACCEPTED. Re-run on LeoPC (win32) node v24.20.0: `node s3-bound-truth.test.js`
+3/3, `node tools/test.js` 55/55, exit 0. Every number in the report reproduces.
+
+**The answer is neither of the two the task offered, and that is the result.**
+The task asked whether the collapse was a conservative bound behaving
+conservatively or a defect in `sphericalPrimitive`. It is neither: the bound is
+EXACT. Over 720 hallway samples at R = 8 and R = 10000 the ratio of field to an
+independently built slab truth is 1.0000 at both the minimum and the tenth
+percentile, and safety holds on every sample. At the collapsing point the facing
+x- plane reads 0.2001 against a truth of 0.2001, correct to about 1e-13, with
+every other `max` term deeply negative. There is nothing wrong with the field.
+
+What is actually happening is PEEL, and it is a fact about curved space rather
+than about this code. An authored cell is input parameters -- a centre and three
+arclengths -- and in S3 its faces are great spheres, which curve away from the
+flat plane the author drew. Three units along a face at R = 8 the wall has peeled
+about 0.14 to 0.15 away from where the author put it: the profile runs 0.200 at
+the sampled point and 0.351 toward the face centre, while the same room at
+R = 10000 is flat 0.350 throughout. So the route MUSE-38 measured had an author
+clearance of 0.10 and a real clearance of **-0.0499**. The walker was scraping
+the wall. 2778 steps is what the contact regime costs, and it is honest.
+
+**A self-correction, which is the part to keep.** Muse went back to their own
+MUSE-38 report and named the two numbers that were wrong: "bound ~4e-4"
+conflated step ADVANCES with the bound itself (the bound's median is 0.227), and
+"truth 0.1" used the author box as truth where slab truth is 0.20. The walk data
+stood; the "250x under-report" did not.
+
+**And I amplified it.** The MUSE-40 assignment states a "250x under-report in
+open space" as its premise, and I did not verify it before writing the task --
+the suite output I had in front of me says `step p50 4.0e-4`, an advance, and I
+repeated the prose instead of reading the column. The investigation was worth
+running and produced the peel law and a corrected record, but it was commissioned
+on a number I should have checked. Reading the summary rather than the output is
+exactly the failure this log has recorded in other people's work.
+
+Two consequences that outlive the task. The renderer question is answered: it is
+safe to march against `field.distance`, verified one-sided on 720 samples, so the
+cost lives in the walker's advance rule and not in the field. And the editor
+question is opened: an author who types a 0.35 gap into a curved room does not
+get a 0.35 gap, and the fix is a peel-aware clearance warning at authoring time,
+not a change to the geometry. Muse's proposed next experiment -- fit peel against
+face length and along-face distance, then check jamb-hug and corner against the
+one rule -- is the right next question and is not queued yet.
+
+One process note, recorded because it will come up again: no `SceneControls`
+harness exists in the repo, so the reconstructions R1-R4 are minimal scenes
+committed inside `s3-bound-truth.test.js`. Muse said so in both the corpus and
+the report rather than leaving the provenance implied.
+
+---
+
+The closed assignment follows, as issued -- including its premise, which was wrong.
+
+## MUSE-40 - The S3 bound collapse: curvature cost, or a defect?
+
+Status: READY FOR REVIEW (2026-09-10, branch main) | Owner: Muse | Reviewer: Opus | Node-only
+
+Your MUSE-38 measured the wall-0.35 route at **2778 curved steps against 36
+flat**, with 98.8% of steps stalling and 97% of them burned in OPEN HALLWAY
+where the bound reports about 4e-4 and the flat control proves 0.1. That is a
+250x under-report in open space, and it does not fit the story it is currently
+filed under. MUSE-34 measured the cell bound's shortfall as a FRACTION -- 0.29
+at an edge, 0.36-0.42 at a corner -- and found it identical at R = 2, 8 and
+10000. A fractional shortfall that does not vary with curvature cannot produce
+a 250x collapse that appears only in the curved room. One of those two results
+is measuring something other than what it is labelled.
+
+The question is which, and the answer changes what happens next. If it is the
+bound doing what a bound does, the walker needs a different advance rule. If
+`sphericalPrimitive`'s distance is simply wrong somewhere -- a seam, a face far
+from its own centre, a `max` over planes that goes bad when the nearest face is
+behind you -- then it is a field defect, the renderer marches against the same
+function, and the walker is the messenger rather than the patient.
+
+- Allowed writes: a new `s3-bound-truth.test.js`, a dated report under
+  `docs/qa/`, `docs/qa/measurements.md`, this task's status and report. Do NOT
+  edit anything under `engine/` or `app/`.
+- **Evaluate the field directly, away from any walk.** Take the MUSE-38 room and
+  sample `field.distance` on a grid through the open hallway. For each sample
+  compute an INDEPENDENT true distance to the same authored solids -- great
+  spheres through transported axes, membership in slab coordinates, the way
+  MUSE-34's reference was built, so the function under test is never its own
+  reference. Report the ratio bound/truth as a field, not as a walk statistic.
+- **Find where the 4e-4 comes from.** Which primitive, which face, which term
+  wins the `max` at the collapsing points, and is that term's own distance
+  right? A single sample with the winning term named is worth more than a table.
+- **Hold curvature fixed and vary one thing at a time.** Same room at R = 8 and
+  R = 10000; then the same R with the wall moved so clearance is 0.35, 0.6 and
+  1.1. MUSE-38 already shows the collapse is clearance-dependent (0.35 -> 77x,
+  0.6 -> 1.18x); say whether it is ALSO curvature-dependent, which is the fact
+  that separates the two explanations.
+- **Say which it is, plainly.** "Conservative bound behaving conservatively" and
+  "the distance function is wrong here" are different verdicts with different
+  owners. If it is the second, a reproduction with the winning term named is the
+  deliverable -- report it, do not fix it.
+- Acceptance: the sampling reference described well enough to rebuild, the
+  bound/truth ratio field, the named winning term at the collapse, the
+  curvature-vs-clearance separation, and a one-line verdict.

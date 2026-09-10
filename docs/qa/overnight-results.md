@@ -1580,3 +1580,31 @@ no survivor-cleanup WARNING appeared in any `page-check` output
   beyond the measured shortfall.
 - Checks: `node s3-walk-cost.test.js` → 4/4; `node tools/test.js` → 52/52,
   exit 0 (WSL node v22.23.2 @ 7816d7f). Status: READY FOR REVIEW.
+
+## MUSE-40 — the S3 bound collapse: curvature cost, or a defect? (2026-09-10, Muse)
+
+- Verdict: NEITHER as framed — conservative bound behaving EXACTLY. Field
+  equals slab truth (ratio 1.0000, min and p10) on a 720-sample hallway grid
+  at R = 8 and R = 10000; safety (field <= truth + 1e-9) holds everywhere.
+  The 77x is contact-regime churn for a route whose slab clearance is
+  -0.05. No defect in `sphericalPrimitive`'s distance; MUSE-34 stands.
+- Mechanism: the facing x- plane is correct at its center (0.0000) but its
+  great sphere peels ~0.14 off the author plane 3 units along-face, reading
+  0.2001 where the author gap says 0.35. Peel profile at R = 8:
+  0.200→0.351 toward face center; R = 10000 flat 0.350. All other max terms
+  deeply negative; room composition innocent (R1 single cell == R2 room).
+- Walk-truth loop: R = 8 drift 0.045, min slab clearance -0.0499 over 2778
+  steps; R = 10000 min clearance +0.1000 over 36 steps.
+- CORRECTION to MUSE-38 (same author): "bound ~4e-4" conflated advances
+  with bounds (bound p50 is 0.227); "truth 0.1" used the author box as truth
+  (slab truth 0.20). Walk data stood; "250x under-report" did not.
+- Consequence for the renderer question: marching against field.distance is
+  safe (one-sided, verified); cost lives in the walker's contact regime.
+  Authoring candidate: warn when author-clearance minus face-length peel
+  drops below r. Next experiment: fit peel vs along-face distance/face
+  length, check jamb-hug and corner against the same rule.
+- Reconstructions R1-R4 committed in the corpus (single cell / full room /
+  flat / face center). No SceneControls harness exists in the repo; the
+  committed minimal scenes are the reconstructions, stated in the corpus.
+- Checks: `node s3-bound-truth.test.js` → 3/3; full suite below. Report:
+  docs/qa/s3-bound-peel-2026-09-10.md. Status: READY FOR REVIEW.

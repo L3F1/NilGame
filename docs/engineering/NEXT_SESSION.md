@@ -60,6 +60,32 @@ TWO ITEMS FOR YOUR DECISION, raised by Muse and NOT acted on:
   four. Six consecutive full runs on LeoPC (win32, Node v24.20.0) at 4e9dbc9 all
   read 54/54. Unreproduced here; recorded, not explained.
 
+MUSE-40 ACCEPTED and logged. The S3 bound is EXACT (field/truth = 1.0000 over
+720 samples at R=8 and R=10000); the 77x walk had a real clearance of -0.0499 and
+was in contact. The mechanism is PEEL: an authored cell is a centre plus three
+arclengths, its faces in S3 are great spheres, and three units along a face at
+R=8 the wall has moved ~0.15 from where the author drew it. An author who types a
+0.35 gap into a curved room gets 0.20. Marching against field.distance is safe;
+the cost is in the walker's advance rule. THE EDITOR CONSEQUENCE IS THE LIVE ONE:
+authored clearance does not survive the port into a curved region, and the fix is
+a peel-aware clearance warning at authoring time, not a field change. Muse's
+proposed next experiment (fit peel against face length and along-face distance,
+then check jamb-hug and corner against one rule) is not queued yet.
+Muse also corrected two numbers in their own MUSE-38 report; the "250x
+under-report" premise I wrote into the MUSE-40 assignment was not real, and I had
+the output that said so. Details in the log verdict.
+
+The ball lab camera was repaired (app/ball-lab.js, no engine change). It yawed
+about the frame's OWN up while clamping pitch against world z: once pitched, the
+own-up axis is tilted, so ordinary mouse circles injected 6.5 deg of roll each,
+39 deg over six; a pitch request then delivered 77% of itself, a pure-yaw sweep
+drifted elevation 29 deg, and near the clamp a constant drag moved the view -6.6,
+-0.6, then +5.6 deg. All four now measure 0.00 / 100% / 0.00 / exact. Gravity on:
+yaw about the WORLD up, pitch about the horizon, and alignUp eases out roll
+arriving through a tilted aperture. Gravity off: own axes, roll accumulates, no
+clamp -- a 6DoF camera, which is also what a curved region will need.
+node tools/page-check.js --ball-lab: 90 checks, real GPU, no boot error.
+
 Also still open, and untouched by the repair: connected-lab.nil.json does not
 compile, and app/region-lab.js imports stepRegionPlayer, turnRegionPlayer and
 engine/geometry/region-renderer.js, none of which exist. VERIFIED 2026-09-10 by

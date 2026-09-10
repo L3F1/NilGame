@@ -11,7 +11,7 @@ import {
 import { BALL_FIRST_PERSON_GLSL } from '../engine/geometry/ball-shader.js';
 import { e3Space, clearance, resolveOverlap, sweep } from '../engine/world/collision.js';
 import { stepWalker } from '../engine/world/walker.js';
-import { createCameraFrame, turn, mapFrame } from '../engine/world/camera-frame.js';
+import { createCameraFrame, turn, mapFrame, alignUp } from '../engine/world/camera-frame.js';
 
 const $ = (id) => document.getElementById(id), canvas = $('c');
 const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
@@ -73,6 +73,11 @@ const gravityOn = () => $('gravity').checked;
  */
 const cameraSpace = e3Space();
 const CAMERA_ORIGIN = [0, 0, 0];
+const WORLD_UP = [0, 0, 1];
+/** Stop the view tipping past vertical. A WALKING policy, not a fact. */
+const PITCH_LIMIT = 1.5;
+/** How fast gravity stands a rolled walker back up, per second, e-folding. */
+const UPRIGHT_RATE = 8;
 let camera = null;
 /** Aim from absolute yaw and pitch, the old way, with up as near world up as
  * forward allows. Scripted views want exactly this; a mouse does not. */
@@ -98,20 +103,62 @@ function basis() {
 const heading = () => Math.atan2(camera.forward[1], camera.forward[0]);
 
 /**
- * Turn by a mouse delta.
+ * Turn by a mouse delta, and WHICH AXIS THE YAW IS ABOUT IS THE WHOLE BUG.
  *
- * Yaw rotates about the frame's own up and pitch about its own right, so the
- * two do not commute and the residue they leave is real roll rather than
- * error. THE PITCH CLAMP IS THE ONE PLACE LEFT THAT ASSUMES A WORLD UP: it
- * stops the view tipping past vertical, which is a walking policy and not a
- * fact about the space. A curved region will have to state it differently or
- * decline it.
+ * This used to yaw about the frame's OWN up and then clamp the pitch against
+ * world z, which is two models of the same camera disagreeing. Once the view is
+ * pitched, the frame's own up is tilted out of vertical, so yawing about it is
+ * not a horizontal turn: it rolls. Ordinary mouse circles piled up 6.5 degrees
+ * of roll each, 39 degrees over six; a pitch request then delivered 77% of what
+ * it asked for, a pure yaw sweep drifted the elevation by 29 degrees, and near
+ * the clamp a constant diagonal drag moved the view -6.6, then -0.6, then +5.6
+ * degrees -- the snap. Reproduced in full before the change.
+ *
+ * So the two cases are separated, because they are genuinely different spaces
+ * to be a camera in:
+ *
+ *   GRAVITY ON. The host has declared a world up, and under that declaration
+ *   rebuilding the frame from it is not the trap camera-frame.js warns about --
+ *   it is precisely the case that file calls legitimate, "a walker whose up is
+ *   the world's up". Yaw is about the WORLD up and pitch about the horizon, so
+ *   roll cannot accumulate and the clamp lands exactly where it says. Roll that
+ *   arrives through a tilted aperture is real, and gravity eases it out in the
+ *   frame loop rather than this deleting it on sight.
+ *
+ *   GRAVITY OFF. There is no up to be upright against, so the frame turns about
+ *   its own axes, roll accumulates because it should, and nothing is clamped.
+ *   That is a six-degree-of-freedom camera and it is what a carried frame is
+ *   for -- it is also what a curved region will need, which is why the policy
+ *   lives here in the host and not in the camera.
  */
 function turnBy(dYaw, dPitch) {
-  camera = turn(camera, { yaw: dYaw });
+  if (!gravityOn()) {
+    camera = turn(camera, { yaw: dYaw, pitch: dPitch });
+    return camera;
+  }
+  // Yaw about the world up: rotate forward about +z, keeping the lab's sign
+  // convention that increasing yaw turns the view toward -right.
+  const [fx, fy, fz] = camera.forward;
+  const c = Math.cos(dYaw), s = Math.sin(dYaw);
+  camera = createCameraFrame(cameraSpace, CAMERA_ORIGIN,
+    { forward: [fx * c - fy * s, fx * s + fy * c, fz], up: WORLD_UP });
+  // Upright now, so `right` is horizontal and a pitch about it IS an elevation
+  // change, exactly and not approximately.
   const climbed = Math.asin(Math.max(-1, Math.min(1, camera.forward[2])));
-  const wanted = Math.max(-1.5, Math.min(1.5, climbed + dPitch));
+  const wanted = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, climbed + dPitch));
   camera = turn(camera, { pitch: wanted - climbed });
+  return camera;
+}
+/**
+ * Gravity standing the walker back up, a fraction of the way, once a frame.
+ *
+ * Snapping would work and would throw away the one thing a tilted aperture is
+ * worth watching: you come through rolled and the room rights itself. Declined
+ * entirely in free flight, where there is nothing to be upright against.
+ */
+function standUpright(dt) {
+  if (!gravityOn() || !(dt > 0)) return camera;
+  camera = alignUp(camera, WORLD_UP, 1 - Math.exp(-UPRIGHT_RATE * dt));
   return camera;
 }
 /**
@@ -365,6 +412,7 @@ function frame(now) {
   }
   probe.position = out.position; probe.velocity = out.velocity;
   for (const transit of out.transits) { carryThroughPortal(transit.portal); transited++; }
+  standUpright(dt);
   note = out.contacts.length
     ? `Contact normal ${out.contacts[0].map((n) => n.toFixed(2)).join(', ')}.`
     : out.blocked ? `Portal ${out.blocked.portal.id} refused: the far side is blocked.`

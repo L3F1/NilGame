@@ -65,81 +65,23 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: **MUSE-41 first, then MUSE-40.** 41 re-checks a repair that is blocking
-Astra's review and the renderer work behind it; 40 is a question, and questions
-keep. Both are Node-only and need no browser or worker. They are INDEPENDENT of
-each other: a blocker in one does not stall the other, and 40 must not be folded
-into 41 -- the bound collapse is its own investigation.
+Order: **nothing is open.** MUSE-40 is accepted and logged; MUSE-41 is delivered
+and waiting on Astra, not on you. Do not re-run or extend it. The next batch
+follows Astra's review of the region-motion repair.
 
-WHAT CHANGED UNDER THIS QUEUE, 2026-09-10 (second turn). Read before starting:
+WHAT CHANGED UNDER THIS QUEUE, 2026-09-10 (third turn). Read before starting:
 
-- **MUSE-36, 37 and 38 are accepted and moved to the log.** Verdicts and what
-  the lead re-ran are in `docs/qa/muse-log.md`. Do not reopen them.
-- **The region-motion coordinator landed.** `engine/world/region-motion.js`
-  exposes `moveRegionProbe(world, state, dt, options)`, and `collision.js`
-  `sweep`/`moveProbe` now take an event provider queried on each ACTUAL geodesic
-  leg plus explicit time accounting. Your MUSE-38 bench already uses that
-  provider as its measuring instrument, which is what it is for.
-- **Your MUSE-38 result is the reason MUSE-40 exists.** The wall-0.35 route cost
-  77x the flat control, two orders beyond the shortfall MUSE-34 predicted, and
-  the steps went somewhere nobody has explained. That is a better question than
-  the one that produced it.
-- Baseline is 53 suites: `ray-degenerate`, `carve-predicate`, `s3-walk-cost` and
-  `region-motion-truth` are yours and are in the tree.
-- **Your finding 4 was accepted as a defect and has been repaired.** Astra
-  amended the contract; a refused crossing now rolls back to a checkpoint
-  strictly on the entering side instead of stopping on the aperture plane.
-  Three of your checks pinned the old behaviour and were updated in place, with
-  their old numbers preserved in comments beside them -- including the finding-4
-  reproduction, which now runs five fresh frames and prints what it used to say.
-  Nothing was weakened; read `docs/qa/claude-region-repair-2026-09-10.md` before
-  starting MUSE-41.
-
-## MUSE-40 - The S3 bound collapse: curvature cost, or a defect?
-
-Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
-
-Your MUSE-38 measured the wall-0.35 route at **2778 curved steps against 36
-flat**, with 98.8% of steps stalling and 97% of them burned in OPEN HALLWAY
-where the bound reports about 4e-4 and the flat control proves 0.1. That is a
-250x under-report in open space, and it does not fit the story it is currently
-filed under. MUSE-34 measured the cell bound's shortfall as a FRACTION -- 0.29
-at an edge, 0.36-0.42 at a corner -- and found it identical at R = 2, 8 and
-10000. A fractional shortfall that does not vary with curvature cannot produce
-a 250x collapse that appears only in the curved room. One of those two results
-is measuring something other than what it is labelled.
-
-The question is which, and the answer changes what happens next. If it is the
-bound doing what a bound does, the walker needs a different advance rule. If
-`sphericalPrimitive`'s distance is simply wrong somewhere -- a seam, a face far
-from its own centre, a `max` over planes that goes bad when the nearest face is
-behind you -- then it is a field defect, the renderer marches against the same
-function, and the walker is the messenger rather than the patient.
-
-- Allowed writes: a new `s3-bound-truth.test.js`, a dated report under
-  `docs/qa/`, `docs/qa/measurements.md`, this task's status and report. Do NOT
-  edit anything under `engine/` or `app/`.
-- **Evaluate the field directly, away from any walk.** Take the MUSE-38 room and
-  sample `field.distance` on a grid through the open hallway. For each sample
-  compute an INDEPENDENT true distance to the same authored solids -- great
-  spheres through transported axes, membership in slab coordinates, the way
-  MUSE-34's reference was built, so the function under test is never its own
-  reference. Report the ratio bound/truth as a field, not as a walk statistic.
-- **Find where the 4e-4 comes from.** Which primitive, which face, which term
-  wins the `max` at the collapsing points, and is that term's own distance
-  right? A single sample with the winning term named is worth more than a table.
-- **Hold curvature fixed and vary one thing at a time.** Same room at R = 8 and
-  R = 10000; then the same R with the wall moved so clearance is 0.35, 0.6 and
-  1.1. MUSE-38 already shows the collapse is clearance-dependent (0.35 -> 77x,
-  0.6 -> 1.18x); say whether it is ALSO curvature-dependent, which is the fact
-  that separates the two explanations.
-- **Say which it is, plainly.** "Conservative bound behaving conservatively" and
-  "the distance function is wrong here" are different verdicts with different
-  owners. If it is the second, a reproduction with the winning term named is the
-  deliverable -- report it, do not fix it.
-- Acceptance: the sampling reference described well enough to rebuild, the
-  bound/truth ratio field, the named winning term at the collapse, the
-  curvature-vs-clearance separation, and a one-line verdict.
+- **MUSE-40 is accepted and moved to the log**, and its verdict is worth reading
+  even though the task is closed: the S3 distance bound is EXACT, and the 77x is
+  a walk whose true clearance is negative. See `docs/qa/muse-log.md`.
+- **Your MUSE-38 correction is the reason to trust the rest of it.** You went
+  back and said which two numbers in your own report were wrong and why. That is
+  the second time this queue has produced a correction rather than a defence,
+  and it is the habit worth keeping.
+- **The ball lab's camera was fixed** (`app/ball-lab.js`): it yawed about the
+  frame's own up while clamping against world z, so ordinary mouse circles piled
+  up 6.5 degrees of roll each. Nothing under `engine/` changed.
+- Baseline is 55 suites.
 
 ## MUSE-41 - Does the refusal stay refused?
 
