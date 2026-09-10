@@ -12,6 +12,8 @@ import { BALL_FIRST_PERSON_GLSL } from '../engine/geometry/ball-shader.js';
 import { e3Space, clearance, resolveOverlap, sweep } from '../engine/world/collision.js';
 import { stepWalker } from '../engine/world/walker.js';
 import { createCameraFrame, turn, mapFrame, alignUp } from '../engine/world/camera-frame.js';
+import { createMouseLook } from './mouse-look.js';
+const mouseLook = createMouseLook();
 
 const $ = (id) => document.getElementById(id), canvas = $('c');
 const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
@@ -392,6 +394,8 @@ const stepHistory = (from, to) => {
 // --- frame loop ------------------------------------------------------------
 function frame(now) {
   if (!playing) return;
+  const look = mouseLook.drain();
+  if (look.yaw || look.pitch) turnBy(look.yaw, look.pitch);
   // Clamp dt at BOTH ends. The lower one bites: a first callback stamped
   // before the clock was read gives a NEGATIVE dt, which runs the integrator
   // backwards and never recovers. See CLAUDE.md, "Clamp dt at BOTH ends".
@@ -422,6 +426,7 @@ function frame(now) {
 }
 function setPlaying(on) {
   playing = on; last = null;
+  mouseLook.reset(false, performance.now());
   $('play').textContent = on ? 'Stop (Esc)' : 'Play from spawn';
   canvas.style.cursor = on ? 'crosshair' : 'default';
   if (on) {
@@ -617,8 +622,15 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('mousemove', (e) => {
-  if (!playing) return;
-  turnBy(-e.movementX * 0.0025, -e.movementY * 0.0025);
+  if (!playing || document.pointerLockElement !== canvas) return;
+  mouseLook.push(e.movementX, e.movementY, performance.now());
+});
+document.addEventListener('pointerlockchange', () => {
+  mouseLook.reset(playing && document.pointerLockElement === canvas, performance.now());
+});
+addEventListener('blur', () => { mouseLook.reset(false, performance.now()); keys.clear(); });
+addEventListener('focus', () => {
+  mouseLook.reset(playing && document.pointerLockElement === canvas, performance.now());
 });
 new ResizeObserver(draw).observe(canvas);
 draw();
@@ -1000,6 +1012,108 @@ if (new URLSearchParams(location.search).has('check')) {
     check('and reports which solid it belongs to', typeof cast.owner === 'string');
     shots.push({ name: 'oriented', data: canvas.toDataURL('image/png') });
 
+
+    // --- POINTER LOCK AND SPIKES, through this page's own handlers ---------
+    //
+    // `mouse-look.test.js` covers the filter directly. What Node cannot cover
+    // is the WIRING: which listener is attached to what, whether the settle is
+    // armed on the right transition, and whether the frame loop really drains
+    // the accumulator once. So this block dispatches real events at the real
+    // listeners and reads the result off the real camera, one frame at a time.
+    //
+    // ONE THING IS SIMULATED, and it should be read as such: headless Chrome
+    // will not grant pointer lock without a user gesture, so
+    // `document.pointerLockElement` is shadowed here and restored afterwards.
+    // An operating system's mouse stream is covered by nothing, so a
+    // hardware-specific snap would still not appear here.
+    const lockOwn = Object.getOwnPropertyDescriptor(document, 'pointerLockElement');
+    const gravityWas = $('gravity').checked;
+    let lockedTo = null;
+    Object.defineProperty(document, 'pointerLockElement',
+      { configurable: true, get: () => lockedTo });
+    try {
+      const nextFrame = () => new Promise((done) =>
+        requestAnimationFrame(() => requestAnimationFrame(done)));
+      const move = (dx, dy) => dispatchEvent(
+        new MouseEvent('mousemove', { movementX: dx, movementY: dy, bubbles: true }));
+      const lock = (to) => { lockedTo = to; document.dispatchEvent(new Event('pointerlockchange')); };
+      const aim = () => basis().f.slice();
+      // Nothing applied means the frame was never rebuilt, so the components
+      // are bit-identical. A tolerance here would hide a small real turn.
+      const same = (a, b) => a.every((x, i) => x === b[i]);
+      const between = (a, b) => Math.acos(Math.max(-1, Math.min(1,
+        a.reduce((s, x, i) => s + x * b[i], 0))));
+
+      // Free flight, so `turnBy` is a plain frame turn and the angle between
+      // two forwards IS the yaw that was applied. Under gravity the yaw is
+      // about world up instead and the angle only bounds it.
+      $('gravity').checked = false;
+      setPlaying(true);
+      lockedTo = null;
+      let mark = aim();
+      move(40, 0); await nextFrame();
+      check('a fresh play session does not turn until the pointer is locked',
+        same(mark, aim()));
+
+      lock(canvas);
+      move(40, 0); await nextFrame();
+      check('and a move inside the lock settle window is discarded too', same(mark, aim()));
+
+      await new Promise((done) => setTimeout(done, 300));
+      move(40, 0); await nextFrame();
+      check('after the settle an ordinary move turns the view', between(mark, aim()) > 1e-4);
+
+      // THE HANDLER'S OWN LOCK GUARD, with the filter armed behind it. The
+      // check above cannot see this one: a fresh session leaves the filter
+      // inactive anyway, so it passes whether the guard is there or not --
+      // deleting the guard did not fail it. Dropping the lock WITHOUT the
+      // change event leaves the filter armed and the lock gone, which is the
+      // only state where the guard is what is doing the work. This editor used
+      // to turn here.
+      lockedTo = null;
+      move(40, 0); mark = aim(); await nextFrame();
+      check('a move with no pointer lock is refused even while the filter is armed',
+        same(mark, aim()));
+      lockedTo = canvas;
+
+      mark = aim();
+      move(900, 0); await nextFrame();
+      check('a pointer-lock spike is dropped rather than applied', same(mark, aim()));
+
+      // TWENTY-FIVE moves of 60, and the count is load-bearing. That is three
+      // radians of raw wish against a cap of six tenths -- and three is under
+      // pi, which is the point. The angle between two forwards WRAPS, so a
+      // burst large enough to wrap can land back inside the cap's band by
+      // coincidence: the first version of this check used a hundred moves, and
+      // with the cap deleted its twelve radians read as 0.5664 and passed.
+      for (let i = 0; i < 25; i++) move(60, 0);
+      await nextFrame();
+      const burst = between(mark, aim());
+      check('A BURST IS CAPPED INSIDE ONE FRAME', burst > 0.5 && burst <= 0.6 + 1e-9);
+      mark = aim(); await nextFrame();
+      check('and nothing is held back to snap on the frame after', same(mark, aim()));
+
+      keys.add('KeyW');
+      dispatchEvent(new Event('blur'));
+      move(40, 0); mark = aim(); await nextFrame();
+      check('losing focus clears the keys and the pending turn together',
+        keys.size === 0 && same(mark, aim()));
+
+      lock(canvas);
+      move(40, 0); mark = aim(); await nextFrame();
+      check('re-acquiring the lock arms a fresh settle window', same(mark, aim()));
+      await new Promise((done) => setTimeout(done, 300));
+      move(40, 0); mark = aim(); await nextFrame();
+      check('and turning resumes once that window has passed', !same(mark, aim()));
+    } finally {
+      lockedTo = null;
+      if (lockOwn) Object.defineProperty(document, 'pointerLockElement', lockOwn);
+      else delete document.pointerLockElement;
+      $('gravity').checked = gravityWas;
+      setPlaying(false);
+    }
+    check('the browser owns the pointer lock again after the check',
+      Object.getOwnPropertyDescriptor(document, 'pointerLockElement') === undefined);
 
     setPlaying(false);
     check('no GL errors', gl.getError() === gl.NO_ERROR);

@@ -65,37 +65,61 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: **MUSE-42**. MUSE-41 accepted by Astra and archived. Claude is separately
-building a single-region S3 viewport; do not edit its files.
+Order: MUSE-43 first, then MUSE-44. Both are independent audits of the host
+pause policy landed in `app/motion-pause.js`; neither may change engine, app or
+tool code. What changed: Claude implemented the contract's pause/reset policy in
+the S3 editor and added pointer-lock lifecycle coverage to both editors
+(`docs/qa/claude-pause-input-2026-09-10.md`). The parity between that policy and
+the contract was checked by the person who wrote the policy, which is exactly
+the arrangement these two tasks exist to break.
 
-## MUSE-42 - Independent checks for intrinsic clearance
+## MUSE-43 — Is the pause table the one the contract asks for?
 
-Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only
+**Do not read `app/motion-pause.js` until you have written your own table.**
+That is the whole method: derive, from `docs/engineering/REGION_MOTION_CONTRACT.md`
+alone, which `moveRegionProbe` outcomes must END a host's movement session and
+which must not, and which of the ending ones a host may offer an explicit retry
+for. Write that table down in your report, with the contract line each row
+rests on, BEFORE you open the module.
 
-Read docs/engineering/CURVED_CLEARANCE_CONTRACT.md and only the relevant S3
-cell/reference helpers. MUSE-40 proved the sampled hallway was face-limited;
-it did not establish global field exactness. No empirical peel fitting needed.
+Then build a corpus and compare. Sweep real results out of the kernel — several
+fixtures, several start states including ones inside solids and on chart edges,
+`maxSteps` / `maxContacts` / `maxCrossings` from 0 upward, dt from 0 to
+something large — and tabulate `status × detail × (pendingLift ? owed : none) ×
+timeRemaining`, with a count for each combination reached. Then run
+`motionPause` over the same corpus and report every disagreement with your
+table, plus every combination your table covers that the corpus never reached.
 
-Allowed writes: new curved-clearance-truth.test.js, a dated docs/qa report,
-and this task's status/report. No engine/app/schema changes.
+Deliver: `motion-pause-truth.test.js` (yours, independent of
+`motion-pause.test.js`), a report, and — most valuable — any row where your
+reading of the contract and the shipped policy differ. If they agree everywhere,
+say so and say how much of the space you actually reached; an unreached
+combination is a finding, not a gap to paper over.
 
-Check the analytic center-local face-height relation against an independently
-parameterized great-sphere face and metric distance. Include translated and
-rotated cells, R=0.5/8/10000, multiple offsets, nonzero along-face coordinates,
-and explicit distinction between scene-origin coordinates and center-local ones.
+Two specific things worth aiming at. First: is `blocked-exit` really not a
+pause? Claude decided it is not, on the grounds that a refused crossing retains
+a certified source state. Check whether the contract supports that, and whether
+a `blocked-exit` can ever arrive carrying an unpaid correction. Second: can a
+result carry `pendingLift` with `status === 'complete'`? If it can, a host
+reading only the status would fly straight on, and the whole policy rests on
+the debt being checked first.
 
-Test the face-foot exactness certificate: outside a single cell, a nearest face
-foot contained in ALL half-spaces attains the bound. Include face-interior
-positive cases and corner/jamb cases where containment fails and exactness must
-NOT be claimed. Singular/near-ambiguous projection is unresolved. Do not apply a
-single-cell certificate to modified/union scenes without a separate proof.
+## MUSE-44 — Does anything else in the tree feed a refusal forward?
 
-Use the existing independent nearest-point reference where applicable; report
-reference tolerances and convergence. Vary face length to distinguish changing
-the supporting sphere from changing only the clipped face extent. Provide a
-counterexample to treating negative conservative clearance as proof of collision.
+A sweep, not a fix. `app/region-lab.js` now consults `motionPause`. Find every
+other place in the repository that consumes a motion or walker result and
+carries its state into a subsequent frame — `app/ball-lab.js`, anything under
+`app/`, `levels/`, `tools/` and the arena code — and report, per site, what it
+does with a status that is not a completion and with any correction the solver
+left owed. Some of these are the E3 walker with a different result shape; say
+so rather than forcing them into the region-motion vocabulary.
 
-Acceptance: seeded checks with non-vacuous positive and refusal cases, isolated
-fail-demo targeting a sign/chart/containment error, restored focused tests and
-tools/test.js. Describe limits; no universal safe-distance or step-cost claim.
-If the proposed contract is wrong, report a minimal counterexample, not a fix.
+Deliver a table of call sites and a verdict per site: consults the status /
+ignores it / has no status to consult. Do not repair any of them. If a site
+looks wrong, the reproduction is the deliverable.
+
+---
+
+Both tasks: report defects, do not fix them. Every number carries its command
+and host. Paste `node tools/host-probe.js` output and do not investigate the
+environment further.

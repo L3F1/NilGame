@@ -15,6 +15,9 @@
 import { compileRegionWorld, editRegionEntity } from '../engine/world/region-world.js';
 import { moveRegionProbe } from '../engine/world/region-motion.js';
 import { turn } from '../engine/world/camera-frame.js';
+import { motionPause } from './motion-pause.js';
+import { createMouseLook } from './mouse-look.js';
+const mouseLook = createMouseLook({sensitivity:.002});
 import { createRegionRenderer } from '../engine/geometry/region-renderer.js';
 
 const $ = id => document.getElementById(id);
@@ -24,6 +27,10 @@ const SPEED = 2.6;
 let world, state, selectedId, selectedRegion, playing = false, checking = false;
 let undo = [], redo = [], keys = new Set(), lastTime = null;
 let loadSequence = 0, raf, motion = null;
+// Set when a movement request ENDS the session rather than merely limiting
+// the frame. While it is set the host issues no further requests: only an
+// explicit control -- resume, reset, an edit or a fixture load -- starts one.
+let halted = null;
 const ids3 = ['x', 'y', 'z'];
 const read3 = ids => ids.map(id => {
   const text = $(id).value.trim(), value = Number(text);
@@ -37,8 +44,37 @@ function failure(error) { $('boot').textContent = error.message || String(error)
 function clearError() { $('boot').textContent = ''; }
 function guarded(fn) { return (...args) => { try { clearError(); return fn(...args); } catch (error) { failure(error); } }; }
 
+/**
+ * Put the refusal on the page and stop asking.
+ *
+ * The kernel's state is adopted either way -- it is the last VALIDATED state,
+ * so it is safe to stand on and safe to draw. What this denies is CONTINUING
+ * from it, which for an owed correction would spend a debt that was never paid
+ * and for an unresolved query would replay a refusal until it happened to land
+ * somewhere. See `motion-pause.js` for which statuses end a session and why.
+ */
+function halt(pause) {
+  halted = pause;
+  stop(); updateHalt(); draw();
+}
+function updateHalt() {
+  $('halt').hidden = !halted;
+  if (!halted) return;
+  $('halt-text').textContent = halted.text;
+  // A debt has no resume: there is no correction-resume API to resume WITH,
+  // so the only sound exit is a reset to a spawn the compiler validated.
+  $('resume').disabled = !halted.resumable;
+}
+/** The one recovery the contract requires to always be on offer. */
+function resetToSpawn() {
+  stop(); state = world.spawn(selectedRegion);
+  motion = null; halted = null; updateHalt(); draw();
+  message('Player reset to the validated region spawn.');
+}
+
 function stop() {
   playing = false; keys.clear();
+  mouseLook.reset(false, performance.now());
   if (document.pointerLockElement === canvas) document.exitPointerLock();
   $('play').textContent = 'Fly from region spawn';
 }
@@ -89,7 +125,8 @@ function motionLine() {
   const left = motion.timeRemaining > 1e-9 ? `, ${motion.timeRemaining.toFixed(4)} s unspent` : '';
   const owed = motion.pendingLift ? `, settle of ${motion.pendingLift.distance.toFixed(4)} still owed` : '';
   const events = motion.events.length ? `, ${motion.events.map(e => e.kind).join('/')}` : '';
-  return `${motion.status}${detail}${left}${owed}${events}`;
+  const held = halted ? `PAUSED (${halted.kind}) — ` : '';
+  return `${held}${motion.status}${detail}${left}${owed}${events}`;
 }
 function draw() {
   if (!world || !state) return;
@@ -126,6 +163,9 @@ function install(document, { history = false, resetHistory = false } = {}) {
   if (history) { undo.push(world.document()); redo = []; }
   if (resetHistory) { undo = []; redo = []; }
   stop(); world = next; state = spawn; selectedRegion = state.regionId; motion = null;
+  // A scene edit is one of the recoveries the contract names, so it clears
+  // any pause: the document that stranded the player is no longer loaded.
+  halted = null; updateHalt();
   refresh();
 }
 const FIXTURES = ['s3-room', 'oriented-room', 'portal-room'];
@@ -163,6 +203,8 @@ function historyStep(from, to) {
 }
 function startPlay({ pointer = true } = {}) {
   state = world.spawn(selectedRegion); playing = true; keys.clear(); motion = null;
+  halted = null; updateHalt();
+  mouseLook.reset(document.pointerLockElement === canvas, performance.now());
   $('play').textContent = 'Restart from region spawn'; draw();
   if (pointer && !checking) canvas.requestPointerLock?.()?.catch?.(failure);
 }
@@ -174,7 +216,11 @@ function startPlay({ pointer = true } = {}) {
  * any conversion -- and without a world up appearing anywhere. Free flight
  * means the control IS the velocity, so nothing accumulates between frames.
  */
-function advance(dt) {
+function advance(dt, options) {
+  // A HALTED SESSION IS OVER. Not throttled, not retried more slowly: over.
+  // The refused request's unspent time is already discarded and is never
+  // accumulated into whatever request comes next.
+  if (halted) return motion;
   const wish = [
     Number(keys.has('KeyD')) - Number(keys.has('KeyA')),
     Number(keys.has('KeyW')) - Number(keys.has('KeyS')),
@@ -184,15 +230,30 @@ function advance(dt) {
   const raw = camera.right.map((x, i) => x * wish[0] + camera.forward[i] * wish[1] + camera.up[i] * wish[2]);
   const length = Math.hypot(...raw);
   const velocity = length > 1e-9 ? raw.map(x => x * SPEED / length) : raw.map(() => 0);
-  const result = moveRegionProbe(world, { ...state, velocity }, dt);
+  // `options` exists so a check can tighten the kernel's own budgets and get a
+  // REAL refusal out of a real scene rather than a hand-built result. Play
+  // always passes nothing, and gets REGION_MOTION_DEFAULTS.
+  const result = moveRegionProbe(world, { ...state, velocity }, dt, options);
   motion = result;
   // The leftover time of a refusal is NOT replayed. The host shows it, and the
   // author steers, edits or resets.
   state = { ...result.state, position: [...result.state.position], velocity: [...result.state.velocity] };
+  // Status and pendingLift, never the clock: a correction can go unpaid beside
+  // a timeRemaining that already reads zero, and a host watching only the clock
+  // reads that frame as a completed move.
+  const pause = motionPause(result);
+  if (pause) halt(pause);
+  return motion;
+}
+/** One frame's worth of accumulated mouse, applied once. */
+function applyLook() {
+  const look = mouseLook.drain();
+  if (look.yaw || look.pitch) state = { ...state, camera: turn(state.camera, look) };
 }
 function tick(time) {
   const dt = lastTime === null ? 0 : Math.min(.04, Math.max(0, (time - lastTime) / 1000)); lastTime = time;
   if (playing && !checking) {
+    applyLook();
     try { advance(dt); draw(); } catch (error) { stop(); failure(error); }
   }
   raf = requestAnimationFrame(tick);
@@ -205,7 +266,18 @@ $('fixture').onchange = () => { clearError(); loadFixture($('fixture').value).ca
 $('regions').onchange = guarded(() => { stop(); selectedRegion = $('regions').value; state = world.spawn(selectedRegion); selectedId = undefined; refresh(); });
 $('entities').onchange = guarded(() => { selectedId = $('entities').value; updateInspector(); draw(); });
 $('play').onclick = guarded(() => startPlay()); $('stop').onclick = () => { stop(); draw(); };
-$('reset').onclick = guarded(() => { stop(); state = world.spawn(selectedRegion); motion = null; draw(); });
+$('reset').onclick = guarded(resetToSpawn);
+$('halt-reset').onclick = guarded(resetToSpawn);
+$('resume').onclick = guarded(() => {
+  if (!halted) return;
+  if (!halted.resumable) throw new Error(halted.text);
+  // A NEW REQUEST from the state the kernel validated, NOT a respawn and NOT a
+  // replay: the refused request's unspent time stays discarded, and the clock
+  // starts again from this frame.
+  halted = null; motion = null; playing = true; keys.clear(); lastTime = null;
+  mouseLook.reset(document.pointerLockElement === canvas, performance.now());
+  updateHalt(); message('New movement request from the last validated state.'); draw();
+});
 $('save').onclick = guarded(() => {
   const data = JSON.stringify(world.document(), null, 2) + '\n';
   const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
@@ -222,15 +294,21 @@ $('load').onchange = async () => {
   finally { $('load').value = ''; }
 };
 canvas.onclick = guarded(() => { if (playing && !checking) canvas.requestPointerLock?.()?.catch?.(failure); });
-document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement !== canvas && !checking) { stop(); draw(); } });
+document.addEventListener('pointerlockchange', () => {
+  mouseLook.reset(playing && document.pointerLockElement === canvas, performance.now());
+  if (document.pointerLockElement !== canvas && !checking) { stop(); draw(); }
+});
 document.addEventListener('mousemove', guarded(event => {
   if (!playing || document.pointerLockElement !== canvas) return;
   // Turned about the frame's OWN axes and never realigned: in free flight there
   // is no up to be upright against, so the roll these leave behind is the
   // walker's real orientation rather than an error to correct.
-  state = { ...state, camera: turn(state.camera, { yaw: -event.movementX * .002, pitch: -event.movementY * .002 }) };
-  draw();
+  mouseLook.push(event.movementX, event.movementY, performance.now());
 }));
+addEventListener('blur', () => { mouseLook.reset(false, performance.now()); keys.clear(); });
+addEventListener('focus', () => {
+  mouseLook.reset(playing && document.pointerLockElement === canvas, performance.now());
+});
 document.addEventListener('keydown', event => {
   if (event.code === 'Escape') { stop(); draw(); return; }
   if (!playing || event.target.closest?.('input,select,textarea,button')) return;
@@ -275,7 +353,7 @@ export async function runRegionEditorChecks() {
 
     // RENDER PARITY, at the eye: the clearance the shader marches against is
     // the clearance the walker collides with.
-    const region = world.regions.get(state.regionId);
+    let region = world.regions.get(state.regionId);
     const { packRegionScene, packedSample } = await import('../engine/geometry/region-shader.js');
     const packed = packRegionScene(world, state.regionId);
     let worst = 0;
@@ -310,6 +388,9 @@ export async function runRegionEditorChecks() {
     // between. A check that can pass without the thing under test happening is
     // not a check.
     startPlay({ pointer: false });
+    // Re-read the region: the JSON round trip above installed a NEW compiled
+    // world, and the field and space captured before it belong to the old one.
+    region = world.regions.get(state.regionId);
     draw();
     const atSpawn = pixels();
     const start = [...state.position];
@@ -374,6 +455,199 @@ export async function runRegionEditorChecks() {
     check('the measured frame time is a real number greater than zero', totalMs > 0);
     check('thirty frames complete without a GL error', renderer.error() === 0);
     stop();
+
+    // PAUSE AND RESET, on refusals the kernel really produced.
+    //
+    // A stranded player is how a settle goes unpaid: an author drags a wall
+    // onto the spawn, or buries it in the floor, and the next frame's lift has
+    // nothing left in the budget to settle back down with. Both states below
+    // are built by putting the player INSIDE a solid of the loaded fixture and
+    // asking the real coordinator to move them -- no hand-written results. The
+    // debt case tightens `maxSteps`, which is the kernel's own knob and the one
+    // the contract's "retry after a budget increase" language is about; the
+    // unresolved case needs no knob at all.
+    const { createCameraFrame } = await import('../engine/world/camera-frame.js');
+    const strandAt = (chart) => {
+      const position = region.space.decode(chart);
+      const basis = region.space.frame(position);
+      return { regionId: state.regionId, radius: state.radius, position,
+        camera: createCameraFrame(region.space, position, { forward: basis[1], up: basis[2] }),
+        velocity: basis[1].map(() => 0) };
+    };
+
+    startPlay({ pointer: false });
+    state = strandAt([0, -3, -0.1]);          // buried under the floor
+    keys.clear(); keys.add('KeyW');
+    advance(1 / 60, { maxSteps: 2 });
+    check('a settle the budget could not pay is reported as owed',
+      !!motion.pendingLift && motion.pendingLift.distance > 0);
+    check('and the host stops flying rather than spending the debt',
+      !playing && !!halted && halted.kind === 'debt');
+    check('the refusal is on the page, where the author is',
+      !$('halt').hidden && /correction/i.test($('halt-text').textContent));
+    // The key has to go back: `halt` clears them, so a second frame with an
+    // empty wish would sit still whether the guard were there or not. Asserting
+    // that `motion` is the SAME OBJECT is the direct statement -- no request was
+    // issued at all, rather than one whose outcome happened to look static.
+    const held = [...state.position], heldMotion = motion;
+    keys.add('KeyW');
+    advance(1 / 60);
+    check('a halted session issues no further movement request',
+      motion === heldMotion && held.every((x, i) => x === state.position[i]));
+    keys.clear();
+    check('and an owed correction is not offered a resume, because none exists',
+      $('resume').disabled);
+    $('halt-reset').click();
+    check('reset returns the player to the validated spawn and clears the pause',
+      !halted && $('halt').hidden && !playing
+      && [...world.spawn(selectedRegion).position].every((x, i) => Math.abs(x - state.position[i]) < 1e-12));
+
+    startPlay({ pointer: false });
+    state = strandAt([-1.5, 0, 0.75]);        // dead centre of the metric ball
+    keys.clear(); keys.add('KeyW');
+    advance(1 / 60);
+    check('a contact the solver cannot resolve is unresolved, not a guess',
+      motion.status === 'unresolved' && motion.timeRemaining > 0);
+    check('which pauses the flight and keeps the edit controls',
+      !playing && halted?.kind === 'unresolved' && !$('editor').hidden);
+    check('an unresolved refusal MAY be retried, as a new request',
+      !$('resume').disabled);
+    const beforeResume = [...state.position];
+    $('resume').click();
+    check('and resuming neither respawns the player nor replays the refused time',
+      playing && !halted && motion === null
+      && beforeResume.every((x, i) => x === state.position[i]));
+    stop(); keys.clear();
+    resetToSpawn();
+
+    // POINTER LOCK AND SPIKES, through the page's own listeners.
+    //
+    // Node covers the filter in `mouse-look.js` directly and cannot cover the
+    // WIRING: which listener is attached to what, whether the settle is armed
+    // on the right transition, whether an unlock really stops the flight. So
+    // this block dispatches real events at the real handlers, with `checking`
+    // off and the frame loop suspended so nothing races the assertions.
+    //
+    // ONE THING HERE IS SIMULATED and it should be read as such: headless
+    // Chrome will not grant pointer lock without a user gesture, so
+    // `document.pointerLockElement` is shadowed for the duration and restored
+    // afterwards. An operating system's mouse stream is still not covered by
+    // anything here, and a hardware-specific snap would not show up.
+    const lockOwn = Object.getOwnPropertyDescriptor(document, 'pointerLockElement');
+    let lockedTo = null;
+    Object.defineProperty(document, 'pointerLockElement',
+      { configurable: true, get: () => lockedTo });
+    cancelAnimationFrame(raf);
+    checking = false;
+    try {
+      const move = (dx, dy) => document.dispatchEvent(
+        new MouseEvent('mousemove', { movementX: dx, movementY: dy, bubbles: true }));
+      const lock = (to) => { lockedTo = to; document.dispatchEvent(new Event('pointerlockchange')); };
+      const settle = () => new Promise((done) => setTimeout(done, 300));
+      // Nothing applied means the camera OBJECT was never replaced. Comparing
+      // angles instead would hide a turn of 1e-16 behind a tolerance.
+      const angle = (before) => Math.acos(Math.max(-1, Math.min(1,
+        region.space.dot([...state.position], [...before], [...state.camera.forward]))));
+
+      startPlay({ pointer: false });
+      region = world.regions.get(state.regionId);
+      let cam = state.camera;
+      move(40, 0); applyLook();
+      check('a fresh play session does not turn until the pointer is locked',
+        state.camera === cam);
+
+      lock(canvas);
+      move(40, 0); applyLook();
+      check('and a move inside the lock settle window is discarded too',
+        state.camera === cam);
+
+      await settle();
+      move(40, 0); applyLook();
+      check('after the settle an ordinary move turns the camera', angle(cam.forward) > 1e-4);
+
+      // THE HANDLER'S OWN LOCK GUARD, with the filter armed behind it. The
+      // check above cannot see this one: a fresh session leaves the filter
+      // inactive anyway, so it passes whether the guard is there or not.
+      // Dropping the lock WITHOUT the change event leaves the filter armed and
+      // the lock gone, which is the only state where the guard does the work.
+      lockedTo = null;
+      cam = state.camera;
+      move(40, 0); applyLook();
+      check('a move with no pointer lock is refused even while the filter is armed',
+        state.camera === cam);
+      lockedTo = canvas;
+
+      cam = state.camera;
+      move(900, 0); applyLook();
+      check('a pointer-lock spike is dropped rather than applied',
+        state.camera === cam);
+
+      // TWENTY-FIVE moves of 60, and the count is load-bearing. At this
+      // sensitivity that is three radians of raw wish against a cap of six
+      // tenths -- and three is under pi, which is the whole point. The angle
+      // between two forwards WRAPS, so a burst big enough to wrap can land
+      // back inside the cap's band by coincidence: the first version of this
+      // check used a hundred moves, and with the cap deleted its twelve
+      // radians read as 0.5664 and passed. Kept under pi, an uncapped turn
+      // cannot be mistaken for a capped one.
+      for (let i = 0; i < 25; i++) move(60, 0);
+      applyLook();
+      const burst = angle(cam.forward);
+      check('a burst is accumulated once and capped inside the frame',
+        burst > 0.5 && burst <= 0.6 + 1e-9);
+      cam = state.camera; applyLook();
+      check('and nothing is held back to snap on the next frame', state.camera === cam);
+
+      keys.add('KeyW');
+      dispatchEvent(new Event('blur'));
+      move(40, 0); cam = state.camera; applyLook();
+      check('losing focus clears the keys and the pending turn together',
+        keys.size === 0 && state.camera === cam);
+
+      lock(canvas);
+      move(40, 0); cam = state.camera; applyLook();
+      check('re-acquiring the lock arms a FRESH settle window',
+        state.camera === cam);
+      await settle();
+      move(40, 0); cam = state.camera; applyLook();
+      check('and turning resumes once that window has passed',
+        state.camera !== cam);
+
+      // The real frame loop, drawing and draining for itself. Object identity
+      // is no use here: the carry rebuilds the frame every tick, so
+      // `state.camera` is a new object each time whether anything turned or
+      // not -- which is why the first version of this check passed with
+      // `applyLook` deleted from the loop entirely. So measure BOTH: what a
+      // still frame does to the numbers, and what a frame with a mouse move
+      // does. The control is the half that makes the other half mean anything.
+      const twoFrames = () => new Promise((done) =>
+        requestAnimationFrame(() => requestAnimationFrame(done)));
+      raf = requestAnimationFrame(tick);
+      cam = state.camera;
+      await twoFrames();
+      const drift = Math.hypot(...[...state.camera.forward].map((x, i) => x - cam.forward[i]));
+      cam = state.camera;
+      move(40, 0);
+      await twoFrames();
+      const turned = Math.hypot(...[...state.camera.forward].map((x, i) => x - cam.forward[i]));
+      check('the frame loop drains the accumulator itself, and a still frame does not',
+        drift < 1e-9 && turned > 1e-3);
+
+      lock(null);
+      check('releasing the pointer lock stops the flight', !playing);
+    } finally {
+      checking = true;
+      lockedTo = null;
+      cancelAnimationFrame(raf);
+      if (lockOwn) Object.defineProperty(document, 'pointerLockElement', lockOwn);
+      else delete document.pointerLockElement;
+      raf = requestAnimationFrame(tick);
+      stop(); keys.clear();
+    }
+    check('the browser owns the pointer lock again after the check',
+      Object.getOwnPropertyDescriptor(document, 'pointerLockElement') === undefined);
+    resetToSpawn(); draw();
+    shots.push({ name: 's3-after-input-lifecycle', data: canvas.toDataURL('image/png') });
 
     // Scenes this viewport must refuse, by name, without drawing them.
     for (const [name, pattern] of [['oriented-room', /E3/], ['portal-room', /portal|connection/i]]) {

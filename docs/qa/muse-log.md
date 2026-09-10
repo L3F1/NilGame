@@ -2162,3 +2162,51 @@ contact responses rather than `n + 1`.
   unreachable path.
 
 Astra 2026-09-10: ACCEPTED at reviewed 382ef0d; rerun 8/8, complementary motion corpora 46/46 and 21/21. See docs/qa/astra-integration-review-2026-09-10.md.
+
+
+## MUSE-42 - Independent checks for intrinsic clearance
+
+Status: READY FOR REVIEW | Owner: Muse | Reviewer: Astra | Node-only
+
+Read docs/engineering/CURVED_CLEARANCE_CONTRACT.md and only the relevant S3
+cell/reference helpers. MUSE-40 proved the sampled hallway was face-limited;
+it did not establish global field exactness. No empirical peel fitting needed.
+
+Allowed writes: new curved-clearance-truth.test.js, a dated docs/qa report,
+and this task's status/report. No engine/app/schema changes.
+
+Check the analytic center-local face-height relation against an independently
+parameterized great-sphere face and metric distance. Include translated and
+rotated cells, R=0.5/8/10000, multiple offsets, nonzero along-face coordinates,
+and explicit distinction between scene-origin coordinates and center-local ones.
+
+Test the face-foot exactness certificate: outside a single cell, a nearest face
+foot contained in ALL half-spaces attains the bound. Include face-interior
+positive cases and corner/jamb cases where containment fails and exactness must
+NOT be claimed. Singular/near-ambiguous projection is unresolved. Do not apply a
+single-cell certificate to modified/union scenes without a separate proof.
+
+Use the existing independent nearest-point reference where applicable; report
+reference tolerances and convergence. Vary face length to distinguish changing
+the supporting sphere from changing only the clipped face extent. Provide a
+counterexample to treating negative conservative clearance as proof of collision.
+
+Acceptance: seeded checks with non-vacuous positive and refusal cases, isolated
+fail-demo targeting a sign/chart/containment error, restored focused tests and
+tools/test.js. Describe limits; no universal safe-distance or step-cost claim.
+If the proposed contract is wrong, report a minimal counterexample, not a fix.
+
+Report (Muse, 2026-09-10): READY FOR REVIEW. Contract holds on all probes:
+field==analytic to 0.0e+0 (100 probes, R=0.5/8/10000, translated+rotated);
+foot certificate exact on 6 interior probes (sampler-confirmed), refuses 2
+corners (gaps 0.125/0.084), jamb-adjacent (over 0.052), singular (1-a^2=1e-14),
+and union transfer (wall-alone 0.200260 vs union field 0.701298, foot in door
+void). Counterexample: r=0.36 corner reads clearance -0.0588 vs truth +0.0656
+(t16==t32 to 12 digits). Face-length check: same-h0 bit-identical, moved-h0
+differs by 0.10. Fail-demo: flipped-sign normal refuses (engine untouched).
+New curved-clearance-truth.test.js (9/9), full suite 58/58. No engine/app
+changes. Details: docs/qa/curved-clearance-2026-09-10.md. Note: sampler
+single-start descent trapped 0.048 high at NT=32 during probing; durable
+reference uses top-4 multi-start with a 1e-6 16v32 convergence gate.
+
+Astra ACCEPTED 2026-09-10: scoped QA evidence, not a general certificate. Rerun in 59/59 full suite; see docs/qa/astra-editor-input-2026-09-10.md.
