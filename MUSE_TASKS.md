@@ -67,9 +67,10 @@ once, and move on to the others rather than waiting.
 Order: **MUSE-26 first**, then 27 and 28, which are independent of it and of
 each other. All three are Node-only; none needs a browser or a worker.
 
-Order: **MUSE-31 first** -- it is the one with a decision waiting on it. 29
-and 30 are independent of it and of each other. All three are Node-only; none
-needs a browser or a worker.
+Order: **MUSE-32 first** -- it is the newest code and the most depended upon,
+and the S3 room is being built on it right now. Then 31, which has a decision
+waiting on it, then 29 and 30. All four are Node-only; none needs a browser or
+a worker.
 
 Context you need for all three: `kind: 'box'` landed in `319ca88`. It is an
 axis-aligned box with three half-extents, and unlike every other way of
@@ -78,6 +79,54 @@ building a box it is EXACT -- exact distance, exact normal, exact slab ray hit
 clipped planes describe the same solid and can only promise a bound, and one
 bound anywhere makes the whole scene marched. `box.test.js` has the argument
 in full.
+
+## MUSE-32 - The metric space, checked against identities it cannot fake
+
+Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+
+`engine/geometry/metric-space.js` is new and it is now load-bearing: the whole
+collision solver runs through it, and the S3 room is being built on top of it.
+It has 16 checks written by its author and 11 written by me, and both of us
+were checking the thing we had just written. That is exactly the situation
+MUSE-25 was about.
+
+A metric space is unusually good to test this way, because differential
+geometry supplies IDENTITIES that must hold for any correct implementation and
+that a wrong one cannot accidentally satisfy. Use those rather than recomputing
+the formulas a second way.
+
+- Allowed writes: a new `metric-truth.test.js`, `docs/qa/overnight-results.md`,
+  this task's status and report. Do NOT edit anything under `engine/`.
+- Test BOTH `kind: 'e3'` and `kind: 's3'` at several curvature radii, including
+  one large enough that S3 is nearly flat -- an S3 result that does not tend to
+  the E3 result as the radius grows is a bug, and that limit is a strong check
+  costing you nothing.
+- The identities worth pinning, each as a sentence before you test it:
+  - `logAt` and `expAt` invert each other, both ways round, over a spread of
+    separations from tiny to near the patch limit. Tiny separations are where
+    a naive implementation loses all its precision.
+  - `distance(p, q)` equals the norm of `logAt(p, q)`, and is symmetric.
+  - A geodesic is LOCALLY SHORTEST: sample paths that deviate from
+    `stepWithTransport` and confirm none is shorter. This is the one that
+    catches a step that is subtly not a geodesic.
+  - Transport is an ISOMETRY: it preserves the inner product of any two
+    vectors, not merely the length of one. Length alone is preserved by
+    things that are not transport.
+  - Transport around a CLOSED LOOP returns a rotated vector, and on a sphere
+    the angle it comes back rotated by is the enclosed area divided by R^2.
+    That is holonomy, it is the sharpest available test that transport is
+    genuinely the Levi-Civita one, and it cannot be satisfied by accident.
+    In E3 the same loop must return the vector unchanged.
+  - `frame(p)` is orthonormal at every p you try.
+  - `boundaryDistance` agrees with a bisection on `withinDomain`.
+- Report worst deviations WITH the query that produced them, and the
+  separation or radius regime each was found in. If precision degrades near
+  the patch limit or at tiny separations, that is a finding worth more than a
+  pass -- say where it starts.
+- Fail-demo: break one identity in your own copy of a helper, show the check
+  catching it, restore, show `git diff engine/` empty.
+- Acceptance: each identity stated as a sentence, tested in both geometries,
+  and either confirmed with its worst deviation or reported as not holding.
 
 ## MUSE-31 - Coincident faces: characterise, and do not force a number
 
