@@ -1195,3 +1195,154 @@ no survivor-cleanup WARNING appeared in any `page-check` output
 - Checks: `node walk-bound.test.js` → 13 scenes, 20800 steps,
   13 walk checks, exit 0; `node tools/test.js` → 34/34, exit 0
   (WSL node v22.23.2). Status: READY FOR REVIEW.
+
+## MUSE-32 — The metric space, checked against identities it cannot fake
+
+- Environment: `host-probe` pasted at session start (sandboxed WSL,
+  Chrome dead both routes, win32 worker pid 40688 serving).
+  Baseline `node tools/test.js` at `08247fe` → 38/38 before edits.
+- New `metric-truth.test.js` (no fixtures; scenes are points). e3
+  plus s3 at R 0.5/1/7, flat-limit space at R=1e4. Each property a
+  sentence in the file, then the check.
+- Holonomy (the sharpest): geodesic triangles at 3 sizes, rotation
+  vs l'Huilier excess — worst 8.4e-14 (R=7, angle ~9e-4), e3
+  exactly 0.00e+0. Nothing satisfies that by luck.
+- log/exp invert both ways 1e-6 → patch edge, worst ~1e-15
+  (R-scaled tolerance 1e-12·max(1,R)). Below ~1e-9, renormalizing
+  amplifies dust past the tangency gate and expAt REFUSES — pinned
+  as a correct gate with a labeled regime check (fails if precision
+  ever improves past it), not as error.
+- distance == norm(log) and symmetric (≤1.6e-15); deviated paths
+  strictly longer (dust floor -1e-12, teeth: max detour > 0.38);
+  transport+carry preserve pairwise inner products (≤2.2e-16);
+  frame orthonormal to 2.2e-16 incl. 98% patch radius; analytic
+  boundary exit matches marched bisection to ≤1.8e-15 over 32 rays
+  per space.
+- Flat limit: s3 R=1e4 matches e3 to 2.1e-9 (distance),
+  5.5e-9 (transport); log slice needed its tolerance set from the
+  sep^3/R^2 scale (1e-7), radial part bounded separately as the
+  real |a|^2/R geometry it is.
+- Fail-demo (carry lobotomized in working copy): 23 passed,
+  6 failed, exit 1 — and the failure mode is worth noting: the
+  checks fail through the tangency gate (refusing non-tangent
+  vectors) rather than a wrong angle, so the contracts are
+  load-bearing, not decorative. Restored, `git diff engine/`
+  empty, 29/29, full suite 39/39 exit 0. Nothing under `engine/`
+  edited.
+- Checks: `node metric-truth.test.js` → 29 checks, exit 0;
+  `node tools/test.js` → 39/39, exit 0 (WSL node v22.23.2).
+  Status: READY FOR REVIEW.
+
+## MUSE-31 — Coincident faces: characterised, no forced number
+
+- DEFECT SIGNAL, stated before sweeping: neighbouring fan rays whose
+  hit (owner or normal) disagrees where the geometry is the same
+  face — flips NOT explained by crossing a box face, grazing a jamb
+  (one-endpoint touch), or passing within 5e-3 of an edge. Touch
+  tolerance follows the path's own precision (exact analytic,
+  2*hitEpsilon march). New `coincident.test.js`: 55 fans, 4510
+  casts, box-room cutter bottom swept 0 → ±1e-12 → ±1e-3 → ±0.01 →
+  sunk, 4 cameras, cutter half/double, hitEpsilon 1e-9..1e-3, both
+  paths separately.
+- REPRODUCED, twice, and the split is the finding. Analytic never
+  disagrees with itself (suspect 0 in all 62 configs) AND reports
+  status 'indeterminate' (floating-point-boundary) on 21/41 spawn
+  rays at exact offset 0 — zero indeterminates at ±1e-12 and
+  everywhere else. March dithers owners between the coplanar faces
+  (identical normals — the speckle mechanism) on wide coincident
+  sills: 4 suspect pairs at size 2, 8 at size 3, all at z=0
+  mid-sill, far from edges; clean at sill ≤2.4 wide, clean at
+  ±1e-9 even at size 3, clean across cameras and epsilons.
+- No document-level threshold exists, and the sweep says why: both
+  signals live at EXACTLY zero, not within a distance. A warning
+  epsilon would either never fire (±1e-12 is already clean) or fire
+  on nothing. The robust signal is the analytic indeterminate flag
+  — it fires iff coincidence is exact — so the TODO's "warn" is
+  better framed as "surface the flag", which needs no new number.
+- Touch/uniqueness machinery is live: an edge-aimed graze reports
+  contact 'touch' (asserted). Fail-demo (uncertainty trip
+  neutralised): the flag assertion fails, exit 1. Restored,
+  `git diff engine/` empty, 4/4, full suite 40/40 exit 0. Nothing
+  under `engine/` or `app/` edited.
+- Checks: `node coincident.test.js` → 55 fans, 4510 casts,
+  4 checks, exit 0; `node tools/test.js` → 40/40, exit 0
+  (WSL node v22.23.2). Status: READY FOR REVIEW.
+
+## MUSE-29 — A corpus for boxes
+
+- RULES FOUND, stated before covering: twelve validator gates around
+  `box` read from document.js / scene-field.js: (1) halfExtent is 3
+  finite numbers; (2) every component is positive; (3) halfExtent
+  applies only to boxes; (4) radius applies only to balls and anchors;
+  (5) a ball-style up does not apply to a box; (6) a box requires an E3
+  chart; (7) a v2 frame must be orthonormal; (8) a v1 box takes no
+  frame; (9) the box corner must stay inside the chart extent;
+  (10) op applies to balls, boxes and planes, never a spawn;
+  (11) target needs a subtract or intersect; (12) a modifier target
+  must be an added solid in the same region (missing target refuses at
+  the field layer, cross-region at the document layer).
+- COVERED: 18 one-defect invalids under `levels/fixtures/invalid/`
+  (`box-*.nil.json`), 9 valids under `levels/fixtures/box/` with a
+  manifest, new `box-corpus.test.js`. Each refusal asserts its layer
+  (document vs field) and its message, and that the refusal leaves the
+  input byte-identical. The task's enumerated defect list is covered in
+  full: missing / wrong-length / zero / negative / non-finite
+  halfExtent, halfExtent on a ball, a plane, a spawn, radius on a box,
+  tilted and v1 frames, and anchor-inside-corner-outside
+  (19.5 + corner 21.2 > extent 20).
+- OWNER BANDS, the one that matters most: a six-carve scene (box→ball,
+  ball→box, plane→box, ball→ball, ball→plane, box∩plane) plus a box
+  cut AND clipped by two different kinds pins ball owners
+  [200,101,0,101,200], box owners [0,101], plane owners [200] with
+  signs [-1,-1,-1,+1,+1] / [-1,+1] / [-1]. A shuffled-declaration twin
+  asserts the same target-derived bands, a bitwise-identical hash, and
+  equal distances at four probe points — document order is invisible.
+  Modifiers lay subtracts before intersects within each kind, which the
+  runner derives from the document rather than hard-coding.
+- CAPS, measured not cited: one unmodified box advertises
+  distance 'exact'; a two-solid union with NO modifiers already
+  advertises 'bound' (rule is `activeAdded.length === 1 && !modified`,
+  scene-field.js:323). The task's "a scene of boxes stays exact" holds
+  for one box only — a measured near-miss, reported, not loosened.
+  Any subtract or intersect drops exterior to 'bound' as well.
+- Fail-demos: corpus absent → ENOENT crash, exit 1; zero-defect
+  neutralised ([1,0,1]→[1,1,1]) → Missing expected exception, exit 1.
+  Restored, `git diff engine/` empty, 27/27, full suite 41/41 exit 0.
+  Nothing under `engine/` or `app/` edited.
+- Checks: `node box-corpus.test.js` → 27 checks, exit 0;
+  `node tools/test.js` → 41/41, exit 0 (WSL node v22.23.2).
+  Status: READY FOR REVIEW.
+
+## MUSE-30 — Is the box really exact?
+
+- REFERENCE, stated before comparing: the nearest point on the surface
+  found without the over()/hypot-minmax formula — six faces on a 51x51
+  grid, per-face coordinate descent to a step below 1e-12, minimum over
+  faces; UNSIGNED, with the sign coming from construction margins, never
+  from the formula. Frame rebuilt from raw document values. Normal:
+  central differences of the box distance at h=1e-7, compared only where
+  unique:true. RayHit: bisection on the sign down to a 1e-12 bracket.
+  New `box-truth.test.js` (imports `primitiveOf`; nothing under
+  `engine/` touched).
+- COMPARED: 5 boxes (unit, slab 10:1:0.01, needle 0.001:0.001:50,
+  turned, turned-flat) × inside / outside / on-face / off-edge /
+  off-corner / 1e-6-near / far points (~210 distance), smooth normals
+  plus seam determinism (~90), 8 rays each (face/edge/corner-on,
+  parallel, away, inside-start, 1e-9 graze, far start; 40 total) —
+  finer than box.test.js on all three axes (1e-9/1e-5/1e-9 there,
+  1e-9/1e-8/1e-12 here).
+- CLEAN VERDICT with numbers: worst |ref|-|formula|| 1.8e-16
+  (turned-flat centre); worst normal gap 3.3e-16 (needle diagonal);
+  worst slab-vs-bisection 7.1e-15 (needle edge, thin-box float);
+  finest reference step 5.8e-13. Three reference-side traps found and
+  fixed in the open (thin-box inside margins, 1-ulp on-face signs,
+  bisection overshoot past small boxes) — each was the REFERENCE
+  disagreeing with itself, never the formula.
+- Fail-demo by construction: the reference discriminates — a six-plane
+  max bound (the wrong field from scene-field.js:52-54) misses an
+  outside corner by 0.037, which the 1e-9 tolerance catches (scratch
+  probe, no engine edits). Plus the standard absence demo: without the
+  new file the suite has no independent box check at all.
+- Checks: `node box-truth.test.js` → 3 checks, exit 0;
+  `node tools/test.js` → 42/42, exit 0 (WSL node v22.23.2).
+  Status: READY FOR REVIEW.

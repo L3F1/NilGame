@@ -97,7 +97,8 @@ so is the right answer, not working around it.
 
 ## MUSE-32 - The metric space, checked against identities it cannot fake
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Report: docs/qa/overnight-results.md (MUSE-32). New metric-truth.test.js: 29 checks, e3 + s3 at R 0.5/1/7 (+R=1e4 flat limit). Holonomy matches l'Huilier to ≤8.4e-14, e3 exactly 0; inversion exact ≥1e-6 with the sub-1e-9 floor pinned as a correct gate; shortest/isometry/frame/boundary all dust-scale. Fail-demo (carry lobotomized): 23/6 exit 1 via the tangency gate. Restored, diff empty, 29/29 + suite 39/39. No engine edits.
 
 `engine/geometry/metric-space.js` is new and it is now load-bearing: the whole
 collision solver runs through it, and the S3 room is being built on top of it.
@@ -145,7 +146,8 @@ the formulas a second way.
 
 ## MUSE-31 - Coincident faces: characterise, and do not force a number
 
-Status: OPEN (REVISED 2026-09-09) | Owner: Muse | Reviewer: Opus | Node-only
+Status: READY FOR REVIEW (REVISED 2026-09-09) | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Report: docs/qa/overnight-results.md (MUSE-31). Reproduced in Node: analytic flags exact coincidence (21/41 indeterminate, zero elsewhere incl +-1e-12); march dithers owners on wide coincident sills (sizes 2-3, 4/8 pairs, zero off exact-zero). No warning distance exists; the flag is the signal. Fail-demo on the uncertainty trip, restored, 4/4 + suite 40/40. No engine/app edits.
 
 **REVISION, from Astra.** The first version of this task asked you to find a
 threshold. That framing pushes toward producing a number whether or not one
@@ -211,7 +213,17 @@ document property" closes the TODO just as well as a number would.
 
 ## MUSE-29 - A corpus for boxes
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
+
+Report: docs/qa/overnight-results.md (MUSE-29). 12 validator gates around `box`
+covered by 18 one-defect invalids (document vs field layer asserted per case,
+refusal leaves input byte-identical); owner bands pinned in two declaration
+orders with subtracts-before-intersects ordering (ball [200,101,0,101,200],
+box [0,101], plane [200]); caps measured: single unmodified box `exact`,
+any union or modifier `bound` (the task's "scene of boxes stays exact" holds
+for ONE box only — finding, not a failure). Fail-demos: corpus absent crashes
+ENOENT; neutralised zero-defect gives Missing expected exception. Restored,
+27/27 + suite 41/41. No engine edits.
 
 MUSE-21 did this for subtraction and MUSE-26 for intersection, and both found
 things. Same pattern, new kind. The interesting part this time is that a box
@@ -244,7 +256,17 @@ was written without it.
 
 ## MUSE-30 - Is the box really exact?
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
+
+Report: docs/qa/overnight-results.md (MUSE-30). Independent reference
+(face-sampled nearest surface point + descent to <1e-12, numeric gradient at
+h=1e-7, sign-bisection to 1e-12) agrees with the closed form on 5 boxes
+(unit, 10:1:0.01 slab, 0.001 needle, 2 oriented) at ~210 distance, ~90
+normal, 40 ray points: worst deviations 1.8e-16 (distance), 3.3e-16
+(normal gap), 7.1e-15 (slab, needle). Reference discriminates: six-plane
+max bound misses an outside corner by 0.037, 1e-9 tolerance catches it.
+Fail-demo by construction (see report). box-truth 3/3 + suite 42/42.
+No engine edits.
 
 `box.test.js` brackets the distance from both sides -- nothing within `d` is
 inside, and stepping past `d` is not outside -- which pins it to about 1e-7.

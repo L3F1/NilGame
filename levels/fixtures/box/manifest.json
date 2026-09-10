@@ -1,0 +1,125 @@
+{
+  "_note": "MUSE-29 box corpus: the validator rules around `box`, each refused for the RIGHT reason, plus valid box documents pinned where the lead's own tests do not reach.",
+  "base": "box-base.nil.json",
+  "valid": [
+    "box-alone.nil.json",
+    "owner-bands.nil.json",
+    "owner-bands-shuffled.nil.json",
+    "overlap-ab.nil.json",
+    "overlap-ba.nil.json",
+    "rest-point.nil.json",
+    "oriented-box.nil.json",
+    "clip-box.nil.json",
+    "dup-pair.nil.json"
+  ],
+  "invalid": [
+    {
+      "file": "../invalid/box-half-missing.nil.json",
+      "change": "crate with no halfExtent at all",
+      "level": "document",
+      "errorContains": "expected 3 finite numbers"
+    },
+    {
+      "file": "../invalid/box-half-wrong-length.nil.json",
+      "change": "crate halfExtent with two components",
+      "level": "document",
+      "errorContains": "expected 3 finite numbers"
+    },
+    {
+      "file": "../invalid/box-half-zero.nil.json",
+      "change": "crate halfExtent has a zero component",
+      "level": "document",
+      "errorContains": "halfExtent"
+    },
+    {
+      "file": "../invalid/box-half-negative.nil.json",
+      "change": "crate halfExtent has a negative component",
+      "level": "document",
+      "errorContains": "halfExtent"
+    },
+    {
+      "file": "../invalid/box-half-nonfinite.nil.json",
+      "change": "crate halfExtent has an infinite component",
+      "level": "document",
+      "errorContains": "expected 3 finite numbers"
+    },
+    {
+      "file": "../invalid/box-half-on-ball.nil.json",
+      "change": "ball carries halfExtent",
+      "level": "document",
+      "errorContains": "halfExtent only applies to boxes"
+    },
+    {
+      "file": "../invalid/box-half-on-plane.nil.json",
+      "change": "plane carries halfExtent",
+      "level": "document",
+      "errorContains": "halfExtent only applies to boxes"
+    },
+    {
+      "file": "../invalid/box-half-on-spawn.nil.json",
+      "change": "spawn carries halfExtent",
+      "level": "document",
+      "errorContains": "halfExtent only applies to boxes"
+    },
+    {
+      "file": "../invalid/box-with-radius.nil.json",
+      "change": "crate carries a ball-style radius",
+      "level": "document",
+      "errorContains": "radius only applies to balls and anchors"
+    },
+    {
+      "file": "../invalid/box-in-s3.nil.json",
+      "change": "box inside an S3 region",
+      "level": "document",
+      "errorContains": "requires E3"
+    },
+    {
+      "file": "../invalid/box-frame-tilted.nil.json",
+      "change": "crate frame forward and up are parallel",
+      "level": "document",
+      "errorContains": "orthonormal"
+    },
+    {
+      "file": "../invalid/box-frame-v1.nil.json",
+      "change": "version-1 crate carries a frame",
+      "level": "document",
+      "errorContains": "unknown field"
+    },
+    {
+      "file": "../invalid/box-with-up.nil.json",
+      "change": "crate carries a ball-style up vector",
+      "level": "document",
+      "errorContains": "up"
+    },
+    {
+      "file": "../invalid/box-corner-outside.nil.json",
+      "change": "crate anchor inside the chart but its corner outside it",
+      "level": "document",
+      "errorContains": "straddle chart extent"
+    },
+    {
+      "file": "../invalid/box-spawn-op-add.nil.json",
+      "change": "spawn start carries op add",
+      "level": "document",
+      "errorContains": "op applies to balls, boxes and planes, not spawn"
+    },
+    {
+      "file": "../invalid/box-spawn-target.nil.json",
+      "change": "spawn start carries a target with no op",
+      "level": "document",
+      "errorContains": "target only applies to a subtract or an intersect"
+    },
+    {
+      "file": "../invalid/box-carve-missing-target.nil.json",
+      "change": "box carve targets nonesuch",
+      "level": "field",
+      "errorContains": "target nonesuch is not a solid in this scene"
+    },
+    {
+      "file": "../invalid/box-carve-cross-region.nil.json",
+      "change": "r1 box carve targets the r2 solid",
+      "level": "document",
+      "errorContains": "modifier target belongs to another region"
+    }
+  ]
+}

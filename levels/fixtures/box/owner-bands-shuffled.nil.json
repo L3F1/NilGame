@@ -1,0 +1,33 @@
+{
+  "format": "nil-scene",
+  "version": 2,
+  "id": "box-bands-shuffled",
+  "units": { "name": "design-unit", "playerRadius": 0.25 },
+  "regions": [
+    { "id": "r", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 20 }
+  ],
+  "entities": [
+    { "id": "k2", "regionId": "r", "kind": "ball", "op": "intersect", "target": "x",
+      "position": [4, 0, 1], "radius": 2 },
+    { "id": "x", "regionId": "r", "kind": "box", "position": [4, 0, 1], "halfExtent": [1, 1, 1] },
+    { "id": "c5", "regionId": "r", "kind": "plane", "op": "subtract", "target": "x",
+      "position": [4, 0, 3], "up": [0, 0, -1] },
+    { "id": "p", "regionId": "r", "kind": "plane", "position": [0, -3, 0], "up": [0, 1, 0] },
+    { "id": "c4", "regionId": "r", "kind": "box", "op": "subtract", "target": "a",
+      "position": [-4, 0, 0.25], "halfExtent": [0.5, 0.5, 0.5] },
+    { "id": "a", "regionId": "r", "kind": "ball", "position": [-4, 0, 1], "radius": 1 },
+    { "id": "c1", "regionId": "r", "kind": "ball", "op": "subtract", "target": "x",
+      "position": [4, 0, 2], "radius": 0.8 },
+    { "id": "ground", "regionId": "r", "kind": "plane", "position": [0, 0, 0], "up": [0, 0, 1] },
+    { "id": "k1", "regionId": "r", "kind": "ball", "op": "intersect", "target": "p",
+      "position": [0, -3, 1], "radius": 2 },
+    { "id": "k3", "regionId": "r", "kind": "box", "op": "intersect", "target": "p",
+      "position": [0, -3, 0], "halfExtent": [1, 1, 1] },
+    { "id": "c3", "regionId": "r", "kind": "ball", "op": "subtract", "target": "a",
+      "position": [-4, 0, 2], "radius": 0.8 },
+    { "id": "start", "regionId": "r", "kind": "spawn", "position": [0, -5, 0.3] },
+    { "id": "c2", "regionId": "r", "kind": "ball", "op": "subtract", "target": "p",
+      "position": [0, -3, 1], "radius": 0.8 }
+  ],
+  "connections": []
+}

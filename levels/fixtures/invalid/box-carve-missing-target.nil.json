@@ -1,0 +1,16 @@
+{
+  "format": "nil-scene",
+  "version": 2,
+  "id": "boxcarve-missing",
+  "units": { "name": "design-unit", "playerRadius": 0.25 },
+  "regions": [
+    { "id": "r", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 20 }
+  ],
+  "entities": [
+    { "id": "crate", "regionId": "r", "kind": "box", "position": [2, 0, 1], "halfExtent": [1, 1, 1] },
+    { "id": "start", "regionId": "r", "kind": "spawn", "position": [0, -5, 0.3] },
+    { "id": "ghost", "regionId": "r", "kind": "box", "op": "subtract", "target": "nonesuch",
+      "position": [2, 0, 1], "halfExtent": [0.5, 0.5, 0.5] }
+  ],
+  "connections": []
+}

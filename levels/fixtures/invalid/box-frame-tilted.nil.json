@@ -1,0 +1,15 @@
+{
+  "format": "nil-scene",
+  "version": 2,
+  "id": "box-frame-tilted",
+  "units": { "name": "design-unit", "playerRadius": 0.25 },
+  "regions": [
+    { "id": "r", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 20 }
+  ],
+  "entities": [
+    { "id": "crate", "regionId": "r", "kind": "box", "position": [2, 0, 1], "halfExtent": [1, 1, 1],
+      "frame": { "forward": [1, 0, 0], "up": [1, 0, 0] } },
+    { "id": "start", "regionId": "r", "kind": "spawn", "position": [0, -5, 0.3] }
+  ],
+  "connections": []
+}

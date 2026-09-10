@@ -1,0 +1,18 @@
+{
+  "format": "nil-scene",
+  "version": 2,
+  "id": "box-cross-region",
+  "units": { "name": "design-unit", "playerRadius": 0.25 },
+  "regions": [
+    { "id": "r1", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 20 },
+    { "id": "r2", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 20 }
+  ],
+  "entities": [
+    { "id": "crate", "regionId": "r1", "kind": "box", "position": [2, 0, 1], "halfExtent": [1, 1, 1] },
+    { "id": "orb", "regionId": "r2", "kind": "ball", "position": [2, 0, 1], "radius": 1 },
+    { "id": "start", "regionId": "r1", "kind": "spawn", "position": [0, -5, 0.3] },
+    { "id": "cut", "regionId": "r1", "kind": "box", "op": "subtract", "target": "orb",
+      "position": [2, 0, 1], "halfExtent": [0.5, 0.5, 0.5] }
+  ],
+  "connections": []
+}

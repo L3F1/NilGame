@@ -1,0 +1,16 @@
+{
+  "format": "nil-scene",
+  "version": 2,
+  "id": "box-dup-pair",
+  "units": { "name": "design-unit", "playerRadius": 0.25 },
+  "regions": [
+    { "id": "r", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 20 }
+  ],
+  "entities": [
+    { "id": "b", "regionId": "r", "kind": "ball", "position": [3, 0, 1], "radius": 1 },
+    { "id": "g", "regionId": "r", "kind": "ball", "op": "subtract", "target": "b",
+      "position": [3, 0, 1], "radius": 1 },
+    { "id": "start", "regionId": "r", "kind": "spawn", "position": [0, -5, 0.3] }
+  ],
+  "connections": []
+}
