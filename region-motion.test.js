@@ -12,6 +12,7 @@ import { compileRegionWorld } from './engine/world/region-world.js';
 import { moveRegionProbe } from './engine/world/region-motion.js';
 import { moveProbe } from './engine/world/collision.js';
 import { createCameraFrame, turn } from './engine/world/camera-frame.js';
+import { PORTAL_PLANE_TOLERANCE } from './engine/world/region-portal.js';
 
 let passed = 0, failed = 0;
 function test(name, fn) {
@@ -23,6 +24,11 @@ const vectorNear = (a, b, tol = 1e-9) => {
   a.forEach((x, i) => near(x, b[i], tol));
 };
 const scale = (v, s) => v.map((x) => x * s);
+const SKIN = 1e-4;   // the default checkpoint retreat, and the default skin
+/** Feed a result's state back in as the next frame's, the way a host would. */
+const nextFrame = (out, velocity) => ({ ...out.state,
+  position: [...out.state.position],
+  velocity: velocity ? velocity.slice() : [...out.state.velocity] });
 
 const UNITS = { name: 'design-unit', playerRadius: 0.25 };
 const e3Region = (id, extent = 6) => ({ id, geometry: { kind: 'e3', curvatureRadius: 1 }, topology: 'cover', extent });
@@ -428,7 +434,14 @@ test('two indistinguishable apertures are unresolved, in either authoring order'
     assert.equal(out.state.regionId, 'room');
     assert.equal(out.crossings, 0);
     assert.equal(out.events.at(-1).competitors.length, 2);
-    near([...out.state.position][1], 2, 1e-9);
+    // An unresolved tie is an UNCOMMITTED approach. The walker is returned to
+    // the start of the leg that raised it, not parked on a plane nobody could
+    // show they had a right to be on, and the whole frame is handed back.
+    near([...out.state.position][1], 0, 1e-12);
+    near(out.timeConsumed, 0, 1e-12);
+    near(out.timeRemaining, 1, 1e-12);
+    near(out.events.at(-1).at[1], 2, 1e-12);
+    near(out.events.at(-1).stoppedAt[1], 0, 1e-12);
   }
 });
 
@@ -486,10 +499,15 @@ test('a destination that is occupied refuses the crossing and keeps source owner
   assert.equal(out.detail, 'destination-clearance-insufficient');
   assert.equal(out.state.regionId, 'room');
   assert.equal(out.crossings, 0);
-  near([...out.state.position][1], 2, 1e-12);
-  // Travel to the aperture was proved and is kept; the rest of the frame is
-  // handed back unconsumed rather than replayed into a refused destination.
-  near(out.timeConsumed, 2 / 4, 1e-12);
+  // STRICTLY SOURCE-SIDE, not on the plane: the approach was provisional and
+  // the destination refused it, so it rolls back by one skin along the leg it
+  // was travelling. The aperture it aimed at is reported separately.
+  near([...out.state.position][1], 2 - SKIN, 1e-12);
+  near(out.events.at(-1).at[1], 2, 1e-12);
+  near(out.events.at(-1).stoppedAt[1], 2 - SKIN, 1e-12);
+  // Only the DISCARDED travel is refunded: the walker really did cover the
+  // first 2 - skin units.
+  near(out.timeConsumed, (2 - SKIN) / 4, 1e-12);
   near(out.timeConsumed + out.timeRemaining, dt, 1e-15);
   assert.ok(out.timeRemaining > 0);
 });
@@ -510,7 +528,7 @@ test('an obstructed exit offset fails the whole crossing, not half of it', () =>
   assert.equal(out.state.regionId, 'room');
   assert.equal(out.state.camera.space, world.regions.get('room').space);
   assert.equal(out.crossings, 0);
-  near([...out.state.position][1], 2, 1e-12);
+  near([...out.state.position][1], 2 - SKIN, 1e-12);
 });
 
 test('a legitimate return crossing is not suppressed', () => {
@@ -536,8 +554,9 @@ test('a legitimate return crossing is not suppressed', () => {
 // lying flat just above the walker -- close enough that the LIFT off the floor
 // runs into it. A lift is a numerical repair, not a journey, and it is not
 // allowed to decide which region anybody is standing in.
-const floorScene = (lidHeight) => scene('floor-room', [e3Region('room'), e3Region('next')], [
+const floorScene = (lidHeight, plug = false) => scene('floor-room', [e3Region('room'), e3Region('next')], [
   spawn('room-start', 'room', [0, 0, 1]), spawn('next-start', 'next', [-1, 0, 0]),
+  ...(plug ? [{ id: 'plug', regionId: 'next', kind: 'ball', position: [0, 0, 0], radius: 0.5 }] : []),
   { id: 'ground', regionId: 'room', kind: 'plane', position: [0, 0, 0], up: [0, 0, 1] },
   anchor('ahead', 'room', [2, 0, 0.3], [-1, 0, 0], 0.8, [0, 0, 1]),
   anchor('next-gate', 'next', [0, 0, 0], [1, 0, 0], 0.8, [0, 0, 1]),
@@ -558,9 +577,13 @@ test('a lift that reaches an aperture stops and says so instead of crossing', ()
   const event = out.events.at(-1);
   assert.equal(event.phase, 'correction');
   assert.equal(event.portalId, 'lid-gate');
-  // The unpaid settle is reported rather than silently applied: paying it would
-  // move the walker back through the aperture the lift just stopped at.
-  assert.ok(out.pendingLift && out.pendingLift.regionId === 'room');
+  // NONE OF THE LIFT IS KEPT. A correction that runs into a decision it may not
+  // make is discarded whole, so the walker is still at the contact it was
+  // lifting off and owes no settle -- the debt only exists if the lift happened.
+  assert.equal(out.pendingLift, null);
+  assert.ok(event.at[2] > event.stoppedAt[2] + 1e-9,
+    'the aperture aimed at is above the contact stopped at');
+  near([...out.state.position][2], event.stoppedAt[2], 1e-15);
   assert.ok(out.timeRemaining > 0);
 });
 
@@ -656,6 +679,207 @@ test('a crossing that lies past the frame is not pulled back onto it', () => {
   near([...out.state.position][1], 1, 1e-12);
 });
 
+// ------------------------------------------- a refusal that stays a refusal
+
+test('a settle owed at a REFUSED aperture is still owed, and never paid first', () => {
+  // Descend, meet the floor, lift off it, slide into a gate whose far side is
+  // plugged. The lift is outstanding when the aperture is reached, so the
+  // settle must not run first -- running it would drag the probe off the
+  // aperture and the crossing would be tested from a point it was never at.
+  const world = compileRegionWorld(floorScene(null, true));
+  const portal = world.portals.find((p) => p.fromRegionId === 'room' && p.toId === 'next-gate');
+  const out = moveRegionProbe(world, stateAt(world, 'room', [0, 0, 0.5], [4, 0, -2]), 0.6);
+  assert.equal(out.status, 'blocked-exit', out.detail ?? out.status);
+  assert.equal(out.state.regionId, 'room');
+  assert.ok(out.contactSamples.length > 0, 'the floor must have been met, so a lift was owed');
+  // The debt survives the refusal: it was never paid, and it is still owed at
+  // the checkpoint the walker was rolled back to.
+  assert.ok(out.pendingLift, 'the outstanding settle is reported, not silently applied');
+  assert.equal(out.pendingLift.regionId, 'room');
+  assert.ok(portal.signedHeight([...out.state.position]) > PORTAL_PLANE_TOLERANCE);
+});
+
+test('an event yields BEFORE the settle, so the debt is still outstanding', () => {
+  // Descend onto a floor, lift off it, slide, and run into the chart edge. The
+  // settle is still owed at that moment, and the event has to be handed back
+  // before it can be paid: paying it first moves the probe away from the very
+  // thing that stopped it, and the caller is told about a point the probe was
+  // never at when it stopped.
+  const world = compileRegionWorld(scene('edge-room', [e3Region('room', 2.5)], [
+    spawn('room-start', 'room', [0, 0, 0.5]),
+    { id: 'ground', regionId: 'room', kind: 'plane', position: [0, 0, 0], up: [0, 0, 1] },
+  ]));
+  const out = moveRegionProbe(world, stateAt(world, 'room', [0, 0, 0.5], [4, 0, -2]), 1);
+  assert.equal(out.status, 'domain-exit', out.detail ?? out.status);
+  assert.ok(out.contactSamples.length > 0, 'the floor must have been met, so a lift was owed');
+  assert.ok(out.pendingLift, 'the settle is still owed when the chart edge stops the walk');
+  assert.equal(out.pendingLift.regionId, 'room');
+  // Still up off the floor by the lift that was never undone.
+  assert.ok([...out.state.position][2] > UNITS.playerRadius + 1e-3,
+    'the probe is where the event stopped it, not where a settle would have put it');
+});
+
+// A gate whose far side is plugged solid, and the same scene with the plug
+// taken out. Free-standing apertures: no wall saves this one.
+const plugScene = (plug) => scene('plug-room', [e3Region('room', 9), e3Region('rock')], [
+  spawn('room-start', 'room', [0, 0, 0]), spawn('rock-start', 'rock', [2, 0, 0]),
+  anchor('gate-in', 'room', [0, 2, 0], [0, -1, 0]),
+  anchor('gate-out', 'rock', [0, 0, 0], [0, 1, 0]),
+  ...(plug ? [{ id: 'plug', regionId: 'rock', kind: 'ball', position: [0, 0, 0], radius: 0.5 }] : []),
+], [link('gate', 'gate-in', 'gate-out')]);
+
+test('a refused crossing stops on the ENTERING side, frame after frame', () => {
+  const world = compileRegionWorld(plugScene(true));
+  const portal = world.portals.find((p) => p.fromRegionId === 'room');
+  let state = stateAt(world, 'room', [0, 0, 0], [0, 4, 0]);
+  for (let frame = 0; frame < 12; frame++) {
+    const out = moveRegionProbe(world, state, 1);
+    assert.equal(out.status, 'blocked-exit', `frame ${frame}`);
+    assert.equal(out.state.regionId, 'room');
+    assert.equal(out.crossings, 0);
+    // The one thing that must never happen: ending at or past the plane, where
+    // the one-sided test declines to look and the next frame walks through.
+    const height = portal.signedHeight([...out.state.position]);
+    assert.ok(height > PORTAL_PLANE_TOLERANCE, `frame ${frame} height ${height}`);
+    near([...out.state.position][1], 2 - SKIN, 1e-12);
+    // The first frame pays for the approach it really made; every later frame
+    // starts already at the checkpoint and so covers no ground at all.
+    near(out.timeConsumed, frame === 0 ? (2 - SKIN) / 4 : 0, 1e-12);
+    near(out.timeConsumed + out.timeRemaining, 1, 1e-15);
+    state = nextFrame(out);
+  }
+});
+
+test('retreat and lateral departure stay possible from a refused checkpoint', () => {
+  const world = compileRegionWorld(plugScene(true));
+  const refused = moveRegionProbe(world, stateAt(world, 'room', [0, 0, 0], [0, 4, 0]), 1);
+  assert.equal(refused.status, 'blocked-exit');
+  const back = moveRegionProbe(world, nextFrame(refused, [0, -4, 0]), 0.25);
+  assert.equal(back.status, 'complete');
+  near([...back.state.position][1], 1 - SKIN, 1e-12);
+  const sideways = moveRegionProbe(world, nextFrame(refused, [4, 0, 0]), 0.25);
+  assert.equal(sideways.status, 'complete');
+  near([...sideways.state.position][0], 1, 1e-12);
+  // No cooldown was armed: a portal is refused because its far side is blocked,
+  // not because it refused once before.
+  assert.equal(sideways.crossings, 0);
+});
+
+test('clearing the obstruction lets the very next frame cross', () => {
+  const blocked = compileRegionWorld(plugScene(true));
+  const open = compileRegionWorld(plugScene(false));
+  const refused = moveRegionProbe(blocked, stateAt(blocked, 'room', [0, 0, 0], [0, 4, 0]), 1);
+  assert.equal(refused.status, 'blocked-exit');
+  // Same place, same heading, same remaining time -- only the far side changed.
+  const resumed = moveRegionProbe(open,
+    stateAt(open, 'room', [...refused.state.position], [...refused.state.velocity]),
+    refused.timeRemaining);
+  assert.equal(resumed.status, 'complete', resumed.detail ?? '');
+  assert.equal(resumed.state.regionId, 'rock');
+  assert.equal(resumed.crossings, 1);
+});
+
+test('a refusal keeps the work it spent and refunds only the travel it discarded', () => {
+  // A ball beside the path so the approach costs real marching steps, which a
+  // rollback must NOT hand back: those queries happened.
+  const world = compileRegionWorld(scene('spend-room', [e3Region('room', 9), e3Region('rock')], [
+    spawn('room-start', 'room', [0, 0, 0]), spawn('rock-start', 'rock', [2, 0, 0]),
+    { id: 'post', regionId: 'room', kind: 'ball', position: [0.75, 1, 0], radius: 0.4 },
+    anchor('gate-in', 'room', [0, 2, 0], [0, -1, 0]),
+    anchor('gate-out', 'rock', [0, 0, 0], [0, 1, 0]),
+    { id: 'plug', regionId: 'rock', kind: 'ball', position: [0, 0, 0], radius: 0.5 },
+  ], [link('gate', 'gate-in', 'gate-out')]));
+  const out = moveRegionProbe(world, stateAt(world, 'room', [0, 0, 0], [0, 4, 0]), 1);
+  assert.equal(out.status, 'blocked-exit');
+  assert.ok(out.steps > 1, `the approach must cost steps to be worth retaining (${out.steps})`);
+  near([...out.state.position][1], 2 - SKIN, 1e-9);
+  near(out.timeConsumed, (2 - SKIN) / 4, 1e-9);
+});
+
+test('the checkpoint carries the camera and the clock to the point it restores', () => {
+  const world = compileRegionWorld(plugScene(true));
+  const start = stateAt(world, 'room', [0.1, 0, -0.05], [0, 4, 0], { roll: 0.9, pitch: 0.3 });
+  const out = moveRegionProbe(world, start, 1);
+  assert.equal(out.status, 'blocked-exit');
+  // E3 transport is the identity along the whole approach, so the frame that
+  // survives the rollback is the frame that set out -- vector for vector.
+  for (const key of ['forward', 'up', 'right']) {
+    vectorNear([...out.state.camera[key]], [...start.camera[key]], 1e-14);
+  }
+  vectorNear([...out.state.camera.position], [0.1, 2 - SKIN, -0.05], 1e-12);
+  near(out.timeConsumed + out.timeRemaining, 1, 1e-15);
+  near(out.time.rest, 0, 0);
+});
+
+test('a crossing refused at the very end of the frame still rolls back', () => {
+  const world = compileRegionWorld(plugScene(true));
+  const out = moveRegionProbe(world, stateAt(world, 'room', [0, 0, 0], [0, 4, 0]), 0.5);
+  assert.equal(out.status, 'blocked-exit');
+  near([...out.state.position][1], 2 - SKIN, 1e-12);
+  // The refund is real even when there was almost nothing left to refund.
+  near(out.timeRemaining, SKIN / 4, 1e-15);
+});
+
+test('an uncommitted portal held by the crossing budget is also held source-side', () => {
+  const world = compileRegionWorld(plugScene(false));
+  const portal = world.portals.find((p) => p.fromRegionId === 'room');
+  let state = stateAt(world, 'room', [0, 0, 0], [0, 4, 0]);
+  for (let frame = 0; frame < 3; frame++) {
+    const out = moveRegionProbe(world, state, 1, { maxCrossings: 0 });
+    assert.equal(out.status, 'budget-exhausted');
+    assert.equal(out.detail, 'crossings');
+    assert.equal(out.crossings, 0);
+    assert.ok(portal.signedHeight([...out.state.position]) > PORTAL_PLANE_TOLERANCE, `frame ${frame}`);
+    state = nextFrame(out);
+  }
+  // Give it the budget it was short of, from the state it was left in.
+  const allowed = moveRegionProbe(world, state, 1);
+  assert.equal(allowed.state.regionId, 'rock');
+  assert.equal(allowed.crossings, 1);
+});
+
+test('a grazing approach is certified on the entering side, in E3 and S3', () => {
+  const flat = compileRegionWorld(plugScene(true));
+  const flatPortal = flat.portals.find((p) => p.fromRegionId === 'room');
+  // 0.02 of the speed into the plane, so the checkpoint sits one skin back
+  // along a path almost parallel to the aperture -- 2e-6 of physical height.
+  // A backward nudge along a guessed normal is what lands on the wrong side here.
+  const grazed = moveRegionProbe(flat, stateAt(flat, 'room', [-2.5, 1.95, 0], [4, 0.08, 0]), 0.7);
+  assert.equal(grazed.status, 'blocked-exit', grazed.detail ?? grazed.status);
+  const flatHeight = flatPortal.signedHeight([...grazed.state.position]);
+  assert.ok(flatHeight > PORTAL_PLANE_TOLERANCE, `E3 grazing height ${flatHeight}`);
+  assert.ok(flatHeight < 1e-4, 'and genuinely grazing, not comfortably clear');
+
+  // The same in S3, built FROM the aperture so the shallow walk lands near the
+  // disc centre: back off along the plane's own normal, slide sideways, then
+  // come in almost parallel.
+  const curved = compileRegionWorld(scene('graze-sphere', [s3Region('curve', 2, 3), e3Region('rock')], [
+    spawn('curve-start', 'curve'), spawn('rock-start', 'rock', [2, 0, 0]),
+    anchor('curved-gate', 'curve', [0, 1.2, 0], [0, -1, 0], 1.2),
+    anchor('rock-gate', 'rock', [0, 0, 0], [0, 1, 0], 1.2),
+    { id: 'plug', regionId: 'rock', kind: 'ball', position: [0, 0, 0], radius: 0.5 },
+  ], [link('gate', 'curved-gate', 'rock-gate')]));
+  const space = curved.regions.get('curve').space;
+  const portal = curved.portals.find((p) => p.fromRegionId === 'curve');
+  const centre = space.decode([0, 1.2, 0]);
+  const back = space.stepWithTransport(centre, portal.normal, 0.05);
+  const normalThere = back.carry(portal.normal);
+  const lateral = space.normalize(back.position,
+    space.project(back.position, space.frame(back.position)[0], normalThere));
+  const over = space.stepWithTransport(back.position, lateral, -0.25);
+  const from = over.position;
+  const heading = space.normalize(from,
+    over.carry(lateral).map((x, i) => x - 0.1 * over.carry(normalThere)[i]));
+
+  const out = moveRegionProbe(curved, stateAt(curved, 'curve', from, scale(heading, 2)), 0.5);
+  assert.equal(out.status, 'blocked-exit', out.detail ?? out.status);
+  const height = portal.signedHeight([...out.state.position]);
+  assert.ok(height > PORTAL_PLANE_TOLERANCE, `S3 grazing height ${height}`);
+  assert.ok(height < 1e-4, 'and genuinely grazing');
+  space.validatePoint([...out.state.position]);
+  assert.equal(out.state.camera.space, space);
+});
+
 // ------------------------------------------------------------------ budgets
 
 test('a crossing budget of zero stops at the aperture with a valid state', () => {
@@ -674,7 +898,9 @@ test('a starved step budget leaves the probe short, valid, and honest about time
   const dt = 4;
   const out = moveRegionProbe(world, stateAt(world, 'room', [0, 0, 0], [3, 4, 0]), dt, { maxSteps: 6 });
   assert.equal(out.status, 'budget-exhausted');
-  assert.ok(out.steps <= 6 + 16, `steps ${out.steps}`);
+  // EXACT. Lift and settle are work and come out of the same allowance; giving
+  // each of them its own fixed budget is how a cap of six becomes thirty.
+  assert.ok(out.steps <= 6, `steps ${out.steps}`);
   assert.ok(out.timeRemaining > 0);
   near(out.timeConsumed + out.timeRemaining, dt, 1e-12);
   const space = world.regions.get('room').space;
@@ -683,13 +909,59 @@ test('a starved step budget leaves the probe short, valid, and honest about time
   assert.ok([...out.state.position][0] <= 1 - UNITS.playerRadius + 1e-6);
 });
 
-test('a starved contact budget stops with the contact count spent', () => {
+test('zero contacts buys zero contact responses, and says what it met', () => {
   const world = compileRegionWorld(wallScene(1));
   const out = moveRegionProbe(world, stateAt(world, 'room', [0, 0, 0], [3, 4, 0]), 0.5, { maxContacts: 0 });
   assert.equal(out.status, 'budget-exhausted');
   assert.equal(out.detail, 'contacts');
+  // A cap of zero responses buys zero responses. The surface was still MET, and
+  // saying so is a diagnostic, not a response: no slide, no lift, no settle.
+  assert.equal(out.contacts, 0);
+  assert.equal(out.contactSamples.length, 0);
+  assert.ok(out.limitingContact, 'the limiting contact is reported apart from the response list');
+  assert.equal(out.limitingContact.regionId, 'room');
+  vectorNear([...out.limitingContact.normal], [-1, 0, 0], 1e-12);
+  near([...out.state.position][0], 1 - UNITS.playerRadius, 2e-3);
   assert.ok(out.timeRemaining > 0);
   near(out.timeConsumed + out.timeRemaining, 0.5, 1e-12);
+});
+
+test('each contact budget buys exactly that many responses', () => {
+  // A corner: two walls, so a probe driven into it meets one surface, slides,
+  // and meets the second. The cap decides how many of those it may answer.
+  const corner = scene('corner-room', [e3Region('room', 8)], [
+    spawn('room-start', 'room', [0, 0, 0]),
+    { id: 'east', regionId: 'room', kind: 'plane', position: [1.2, 0, 0], up: [-1, 0, 0] },
+    { id: 'north', regionId: 'room', kind: 'plane', position: [0, 1.2, 0], up: [0, -1, 0] },
+  ]);
+  const world = compileRegionWorld(corner);
+  for (const cap of [0, 1, 2]) {
+    const out = moveRegionProbe(world, stateAt(world, 'room', [0, 0, 0], [3, 4, 0]), 0.6, { maxContacts: cap });
+    assert.ok(out.contacts <= cap, `cap ${cap} answered ${out.contacts}`);
+    assert.equal(out.contactSamples.length, out.contacts);
+    if (out.detail === 'contacts') assert.ok(out.limitingContact, `cap ${cap} met a surface it could not answer`);
+  }
+});
+
+test('the step cap is exact, and an unpayable settle is reported not borrowed', () => {
+  const world = compileRegionWorld(wallScene(1));
+  for (const cap of [4, 8, 12, 16, 24]) {
+    const out = moveRegionProbe(world, stateAt(world, 'room', [0, 0, 0], [3, 4, 0]), 4, { maxSteps: cap });
+    assert.equal(out.status, 'budget-exhausted');
+    // EXACT, not "about". Corrections draw on this allowance like everything
+    // else; a settle handed its own fresh sixteen is how a cap of twelve turns
+    // into twenty-eight and nobody notices until a frame takes too long.
+    assert.ok(out.steps <= cap, `cap ${cap} spent ${out.steps}`);
+    near(out.timeConsumed + out.timeRemaining, 4, 1e-12);
+    world.regions.get('room').space.validateTangent([...out.state.position], [...out.state.velocity]);
+    if (cap >= 12) {
+      // The probe was lifted off the wall and ran out of budget before it could
+      // settle back. The debt is REPORTED; it is not paid with steps that do
+      // not exist.
+      assert.ok(out.pendingLift, `cap ${cap} owes a settle it could not pay`);
+      assert.equal(out.pendingLift.regionId, 'room');
+    }
+  }
 });
 
 test('a very large dt still leaves a valid state and a truthful clock', () => {

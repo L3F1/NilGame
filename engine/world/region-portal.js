@@ -5,6 +5,17 @@ const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
 const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
 const add=(a,b)=>a.map((x,i)=>x+b[i]);
 const scale=(v,s)=>v.map(x=>x*s);
+const clamp1=x=>Math.max(-1,Math.min(1,x));
+/**
+ * How close to the aperture plane still counts as ON it, in PHYSICAL units.
+ *
+ * One constant, shared by `crossing` and by `signedHeight`, because a
+ * checkpoint that a caller believes is on the entering side while `crossing`
+ * reads it as on-plane is exactly the disagreement that lets a walker through
+ * a refused portal. Exported so a coordinator can certify a point against the
+ * same number the crossing test used.
+ */
+export const PORTAL_PLANE_TOLERANCE=1e-9;
 function anchorFrame(entity,space) {
   const center=space.decode(entity.position),base=space.frame(center);
   const lift=v=>base[0].map((_,i)=>base.reduce((sum,b,j)=>sum+b[i]*v[j],0));
@@ -28,16 +39,24 @@ export function compileRegionPortals(scene,regions) {
       portals.push(Object.freeze({id:connection.id,fromId:a.entity.id,toId:b.entity.id,
         fromRegionId:a.entity.regionId,toRegionId:b.entity.regionId,
         radius:a.entity.radius,center:a.center.slice(),normal:a.normal.slice(),
+        // PHYSICAL signed distance to the aperture's plane: positive on the
+        // entering side. In E3 that is the plane offset; on S3 the aperture is
+        // a great sphere and the physical height is R*asin(p.n), not the dot
+        // product itself -- the two agree only near the plane, which is the one
+        // place a tolerance must not be approximated.
+        signedHeight:p=>a.space.kind==='e3'
+          ?dot(p.map((x,j)=>x-a.center[j]),a.normal)
+          :a.space.curvatureRadius*Math.asin(clamp1(dot(p,a.normal))),
         crossing(p,u,maxTravel,radius=0) {
           const s=a.space;
           let t=Infinity;
           if(s.kind==='e3') {
             const h=dot(p.map((x,j)=>x-a.center[j]),a.normal),speed=dot(u,a.normal);
-            if(h<=1e-9||speed>=-1e-12)return null;
+            if(h<=PORTAL_PLANE_TOLERANCE||speed>=-1e-12)return null;
             t=-h/speed;
           } else {
             const A=dot(p,a.normal),B=dot(u,a.normal),R=s.curvatureRadius;
-            if(A*R<=1e-9)return null;
+            if(R*Math.asin(clamp1(A))<=PORTAL_PLANE_TOLERANCE)return null;
             const root=Math.atan2(-A,B);
             for(let k=-1;k<=3;k++) {
               const theta=root+k*Math.PI,candidate=theta*R;

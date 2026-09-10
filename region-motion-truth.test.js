@@ -376,7 +376,11 @@ check('blocked exit II: occupied destination, exact field proves it', () => {
   // A single unmodified ball advertises exact exterior distance: occupancy
   // is PROVED, reported distinctly from an unproven bound.
   assert.equal(out.detail, 'destination-clearance-insufficient');
-  near(out.timeConsumed, 2 / 4, 1e-12);
+  // Updated 2026-09-10 for Astra's finding-4 amendment: the final approach is
+  // provisional, so a refusal rolls back one skin along the leg and refunds
+  // exactly that. Before the repair this read 2/4 with the walker on the plane.
+  near(out.timeConsumed, (2 - 1e-4) / 4, 1e-12);
+  vnear([...out.state.position], [0, 2 - 1e-4, 0], 1e-12, 'held one skin short of the plane');
 });
 
 const lipScene = () => scene('lip', [e3Region('room'), e3Region('ledge')], [
@@ -435,7 +439,11 @@ check('tied apertures are unresolved in either authoring order, clock honest', (
     assert.equal(snap(state), before, 'tied input untouched');
     auditClock(`tie-${first}`, out, dt);
     assert.ok(out.timeRemaining > 0, 'unconsumed time handed back');
-    vnear([...out.state.position], [0, 2, 0], 1e-9, 'held at the aperture');
+    // Updated 2026-09-10: a tie is an UNCOMMITTED approach, so the walker is
+    // returned to the start of the leg that raised it rather than parked on a
+    // plane nobody could show they had a right to be on. Was [0, 2, 0].
+    vnear([...out.state.position], [0, 0, 0], 1e-12, 'returned to the pre-leg checkpoint');
+    near(out.timeConsumed, 0, 1e-12);
   }
 });
 
@@ -494,26 +502,37 @@ check('an event past the proposed leg is refused, not rounded in', () => {
     { events: () => ({ kind: 'portal', distance: -1 }) }), /within the proposed leg/);
 });
 
-check('finding 4: a refused crossing leaves the walker on the plane, and the next frame walks through it', () => {
-  // Free-standing gate pair (no wall anywhere): the plug refuses the
-  // crossing with the walker exactly on the aperture plane. Next frame, the
-  // one-sided rule declines to test it (h = 0), so nothing stops the walker
-  // travelling through the plane into source space behind it. CONFIRM with
-  // two frames and positions, not with adjectives.
+check('finding 4 repaired: a refusal stays on the entering side, frame after frame', () => {
+  // WHAT THIS CHECK USED TO SAY, and the numbers it reported when it said it:
+  // frame 1 ended blocked-exit at y = 2.000000, exactly on the aperture plane;
+  // frame 2 then reported crossings = 0 and y = 6.000000 -- four units straight
+  // through the plane into source space, because the one-sided rule declines to
+  // test a walker standing on it. Confirmed 2026-09-10, and those numbers are
+  // preserved here because they are the evidence the repair was needed.
+  //
+  // Astra's amendment made the final approach provisional. The walker is now
+  // held one skin short of the plane, on the entering side by the portal's own
+  // signed height, and repeated fresh frames stop there again.
   const world = compileRegionWorld(plugScene());
+  const portal = world.portals.find((p) => p.fromRegionId === 'room');
   const dt = 1.0;
-  const refused = moveRegionProbe(world, stateAt(world, 'room', [0, 0, 0], [0, 4, 0]), dt);
-  assert.equal(refused.status, 'blocked-exit');
-  assert.equal(refused.crossings, 0);
-  vnear([...refused.state.position], [0, 2, 0], 1e-9, 'refused exactly on the plane');
-  const next = moveRegionProbe(world,
-    { ...refused.state, position: [...refused.state.position], velocity: [...refused.state.velocity] }, dt);
-  console.log(`  finding4: frame1 ${refused.status} at y=${[...refused.state.position][1].toFixed(6)}; `
-    + `frame2 crossings=${next.crossings} region=${next.state.regionId} y=${[...next.state.position][1].toFixed(6)}`);
-  assert.equal(next.crossings, 0, 'one-sided rule declines the on-plane test');
-  assert.ok([...next.state.position][1] > 2, 'CONFIRMED: walked through the aperture plane into source space');
-  assert.equal(next.state.regionId, 'room');
-  auditClock('finding4-f2', next, dt);
+  let state = stateAt(world, 'room', [0, 0, 0], [0, 4, 0]);
+  for (let frame = 1; frame <= 5; frame++) {
+    const out = moveRegionProbe(world, state, dt);
+    assert.equal(out.status, 'blocked-exit', `frame ${frame} status`);
+    assert.equal(out.crossings, 0, `frame ${frame} crossings`);
+    assert.equal(out.state.regionId, 'room', `frame ${frame} ownership`);
+    assert.ok(portal.signedHeight([...out.state.position]) > 0,
+      `frame ${frame}: never at or past the plane`);
+    vnear([...out.state.position], [0, 2 - 1e-4, 0], 1e-12, `frame ${frame} checkpoint`);
+    // Only discarded travel is refunded; after the first frame there is nothing
+    // left to cover, so nothing is charged.
+    near(out.timeConsumed, frame === 1 ? (2 - 1e-4) / 4 : 0, 1e-12);
+    auditClock(`finding4-repaired-f${frame}`, out, dt);
+    state = { ...out.state, position: [...out.state.position], velocity: [...out.state.velocity] };
+  }
+  console.log('  finding4: repaired -- 5 fresh frames all held at y=1.999900, '
+    + 'was y=2.000000 then y=6.000000 before the amendment');
 });
 
 check('legitimate return: clock both ways, camera home', () => {

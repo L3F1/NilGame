@@ -65,9 +65,11 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: **MUSE-40 is the only open task.** It is Node-only and needs no browser
-or worker. MUSE-39 sits below it as DELIVERED, waiting on Astra rather than on
-you -- do not re-run it or extend it.
+Order: **MUSE-41 first, then MUSE-40.** 41 re-checks a repair that is blocking
+Astra's review and the renderer work behind it; 40 is a question, and questions
+keep. Both are Node-only and need no browser or worker. They are INDEPENDENT of
+each other: a blocker in one does not stall the other, and 40 must not be folded
+into 41 -- the bound collapse is its own investigation.
 
 WHAT CHANGED UNDER THIS QUEUE, 2026-09-10 (second turn). Read before starting:
 
@@ -84,63 +86,14 @@ WHAT CHANGED UNDER THIS QUEUE, 2026-09-10 (second turn). Read before starting:
   the one that produced it.
 - Baseline is 53 suites: `ray-degenerate`, `carve-predicate`, `s3-walk-cost` and
   `region-motion-truth` are yours and are in the tree.
-
-## MUSE-39 - Region motion: is the clock honest and the crossing atomic?
-
-Status: DELIVERED 2026-09-10, awaiting Astra | Owner: Muse | Reviewer: Astra | Node-only
-
-Delivered: `region-motion-truth.test.js` (21 checks) and
-`docs/qa/region-motion-truth-2026-09-10.md`. Finding 4 CONFIRMED. Opus
-re-reproduced it independently (y = 2.000000 refused on the plane, then
-y = 6.000000 with `crossings = 0`) and ran the region-motion mutation matrix
-against this corpus: it catches 6 of 8, missing the settle-before-event-yield
-ordering and path-versus-endpoint carry, both of which `region-motion.test.js`
-covers. The two corpora are COMPLEMENTARY; neither alone covers the contract,
-and that is worth knowing before either is trusted on its own. Acceptance and
-the finding-4 policy call are Astra's. The original assignment follows.
-
-`engine/world/region-motion.js` now exists: `moveRegionProbe(world, state, dt,
-options)` owns which region a walker is in, how much of the frame's time is
-left, and whether a portal crossing is allowed to commit. It was written by
-Claude against `docs/engineering/REGION_MOTION_CONTRACT.md` and checked by
-`region-motion.test.js` (34 checks) plus an eight-way mutation matrix -- all of
-it by the person who wrote the code. Evidence and open findings:
-`docs/qa/claude-region-motion-2026-09-10.md`. Read the contract and the public
-API. **Do not read the implementation for your reference** -- derive it.
-
-- Allowed writes: a new `region-motion-truth.test.js` and a dated report under
-  `docs/qa/`. Do NOT edit anything under `engine/` or `app/`, and do not change
-  any existing check.
-- **Write an independent analytic reference for free flight and time.** For a
-  straight run at constant speed with no contact, the position after `dt` and
-  the arclength travelled are closed forms in both E3 and S3; a crossing costs
-  no time, so source arc + destination arc must equal `speed * dt` up to the
-  exit offset. Say what your reference is and how you derived it.
-- Cases worth having, at minimum: off-centre and tilted round trips; R = 0.5, 8
-  and 100; two S3 regions with DIFFERENT radii and the same-dimension trap that
-  goes with it; collision strictly before portal; blocked exits; a crossing that
-  lands exactly on the frame end; a legitimate return crossing; tied events;
-  and every budget exhausted.
-- **The clock is the thing to attack.** For every result, check
-  `timeConsumed + timeRemaining == dt`, and separately that `time.travel`,
-  `time.rest` and the zero-time corrections add up to what actually happened.
-  Rest time is not travel time. A correction is not either. Look specifically
-  for a path where time is consumed twice or refunded once.
-- **Check ownership and immutability on a FAILED commit.** After a refused
-  crossing the input state must be untouched, the returned state must still be
-  the source region, and no destination position, velocity or camera may appear
-  anywhere in the result. Try to find one that leaks.
-- Fail-demo: break one mechanism in an ISOLATED copy of the tree, show your
-  corpus catching it, restore, show it green. Then run
-  `node region-motion.test.js` and `node tools/test.js` and paste both.
-- Finding 4 in Claude's report says a refused crossing leaves the walker exactly
-  on the aperture plane, where the one-sided rule then declines to test it, so
-  they can walk through the plane into source space. **Confirm or refute that,
-  with a check.** It is a policy question for Astra either way -- report it, do
-  not fix it.
-- Acceptance: the reference described well enough to rebuild, the case table,
-  the time-accounting audit, a verdict on finding 4, and any disagreement with
-  the contract stated as a reproduction rather than a redesign.
+- **Your finding 4 was accepted as a defect and has been repaired.** Astra
+  amended the contract; a refused crossing now rolls back to a checkpoint
+  strictly on the entering side instead of stopping on the aperture plane.
+  Three of your checks pinned the old behaviour and were updated in place, with
+  their old numbers preserved in comments beside them -- including the finding-4
+  reproduction, which now runs five fresh frames and prints what it used to say.
+  Nothing was weakened; read `docs/qa/claude-region-repair-2026-09-10.md` before
+  starting MUSE-41.
 
 ## MUSE-40 - The S3 bound collapse: curvature cost, or a defect?
 
@@ -187,3 +140,57 @@ function, and the walker is the messenger rather than the patient.
 - Acceptance: the sampling reference described well enough to rebuild, the
   bound/truth ratio field, the named winning term at the collapse, the
   curvature-vs-clearance separation, and a one-line verdict.
+
+## MUSE-41 - Does the refusal stay refused?
+
+Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only
+
+Your MUSE-39 found that a refused crossing left the walker standing exactly on
+the aperture plane, where the one-sided test declines to look, so the next frame
+carried them straight through a portal that had just said no. Astra accepted it,
+amended the contract, and Claude repaired it: the final approach is now
+provisional, and a refusal rolls back to a checkpoint the PORTAL ITSELF certifies
+is on the entering side. Claude checked that with sixteen mutations, and all
+sixteen are caught -- by the person who wrote the repair.
+
+The repair also tightened two budget rules Astra called out: corrections now draw
+on the same step allowance as travel, and a contact cap of `n` buys exactly `n`
+contact responses rather than `n + 1`.
+
+- Allowed writes: extend `region-motion-truth.test.js` (it is yours) or add a new
+  `region-refusal-truth.test.js`, plus a dated report under `docs/qa/`. Do NOT
+  edit anything under `engine/` or `app/`, and do not change checks you did not
+  write.
+- **Repeated refusals.** Many fresh frames against a blocked exit, in E3 and S3,
+  at several speeds and `dt` values, upright/tilted/off-centre apertures, and at
+  grazing incidence where the checkpoint sits micrometres from the plane. For
+  every frame: source ownership, no crossing, and `portal.signedHeight` of the
+  returned position strictly above the tolerance the crossing test uses. Go
+  looking for ONE frame that lands on or past it.
+- **Restored clearance.** Clear the obstruction and check the next frame crosses,
+  from the state the refusal left. Then try it from a state several refusals
+  deep. A repair that quietly arms something on refusal would show up here as a
+  crossing that needs two frames instead of one.
+- **Time refunds.** Only the DISCARDED travel may come back. First frame charges
+  the approach it really made; later frames, already at the checkpoint, charge
+  nothing. Audit `consumed + remaining == dt` every frame and check that a long
+  run of refusals never accumulates time it did not spend -- or loses time it did.
+- **Exact budget caps.** `maxSteps: n` must spend at most `n`, corrections
+  included; `maxContacts: 0` must record zero responses while still reporting the
+  contact it met as a diagnostic; `maxContacts: k` must buy exactly `k`. Sweep a
+  range of caps against a scene that contacts, lifts, slides and settles, and
+  report any cap where the spend exceeds it.
+- **Work counters are not refunded.** A rolled-back approach still queried the
+  field. Check that steps and contacts spent on a refused approach stay spent,
+  and that a walker refusing every frame cannot use rollback to buy unbounded
+  work inside one call.
+- Fail-demo in an isolated copy, restore, then run `node region-motion.test.js`,
+  `node region-motion-truth.test.js` and `node tools/test.js` and paste all three.
+- Claude flagged one path as implemented but UNREACHABLE: the case where even the
+  leg start cannot be certified on the entering side, which should return
+  `unresolved` / `uncertifiable-checkpoint`. Try to construct a scene that
+  reaches it. If you cannot, say what you tried -- that is a real result either
+  way, and it is the kind of thing a corpus finds and an author never does.
+- Acceptance: the repeated-refusal table, the restored-clearance result, the
+  time audit, the budget sweep with any overrun named, and a verdict on the
+  unreachable path.

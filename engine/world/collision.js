@@ -208,19 +208,30 @@ export function sweep(field, space, {
     }
     return found;
   };
+  // THE FINAL APPROACH IS PROVISIONAL, so the leg it happens on is handed back
+  // whole: where it started, which way it pointed, how far along it the event
+  // sits, and the transport composed STRICTLY BEFORE it. A caller that has to
+  // undo the approach can then rebuild any point on that already-validated leg
+  // by arithmetic, rather than re-running the move with a shortened dt -- which
+  // would be a different move, free to choose a different contact or lift.
   const stopAtEvent = (found, step) => {
+    const legStart = position.slice(), legDirection = u.slice();
+    const before = legs.slice(), travelledBefore = travelled;
+    const prefix = (v) => before.reduce((value, leg) => leg(value), v);
     advanceBy(found.distance);
     travelled += found.distance;
     return {
       position, travelled, hit: false, normal: null, stalled: false, steps: step,
       transits, blocked, carry,
       event: { ...found, phase, at: position.slice() },
+      checkpoint: { position: legStart, direction: legDirection,
+        distance: found.distance, travelled: travelledBefore, carry: prefix },
     };
   };
   for (let step = 0; step < maxSteps; step++) {
     const remaining = distance - travelled;
     if (remaining <= 0) {
-      return { position, travelled, hit: false, normal: null, stalled: false, steps: step, transits, blocked, carry, event: null };
+      return { position, travelled, hit: false, normal: null, stalled: false, steps: step, transits, blocked, carry, event: null , checkpoint: null };
     }
     const gap = clearance(field, position, radius);
     if (gap <= skin) {
@@ -245,7 +256,7 @@ export function sweep(field, space, {
       // Blocked. Report the surface normal at the contact, which is capability
       // (3) in the rendering contract -- a real normal, not the direction the
       // marcher happened to stop from.
-      return { position, travelled, hit: true, normal: n, stalled: false, steps: step, transits, blocked, carry, event: null };
+      return { position, travelled, hit: true, normal: n, stalled: false, steps: step, transits, blocked, carry, event: null , checkpoint: null };
     }
     // The only safe advance is one we have proved is free. Stop `skin` short so
     // the probe never lands exactly ON a surface, where the next clearance is
@@ -290,7 +301,7 @@ export function sweep(field, space, {
         return {
           position: at, travelled: travelled + reached,
           hit: true, normal: field.normal(at), stalled: false, steps: step,
-          transits, blocked, carry, event: null,
+          transits, blocked, carry, event: null, checkpoint: null,
         };
       }
       transits.push({ portal, entered: at, exited: eased });
@@ -311,6 +322,7 @@ export function sweep(field, space, {
   return {
     position, travelled, hit: false, normal: null,
     stalled: travelled < distance, steps: maxSteps, transits, blocked, carry, event: null,
+    checkpoint: null,
   };
 }
 
@@ -359,19 +371,29 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
   // numerical repairs, not gameplay travel.
   let timeRemaining = dt, timeTravelled = 0, timeRested = 0;
   let stalled = false, steps = 0, atRest = false, exhausted = null;
-  let event = null, pendingLift = null;
+  let event = null, pendingLift = null, checkpoint = null;
+  // A contact the probe MET but was not allowed to respond to. It is reported
+  // apart from `contacts`/`contactSamples`, which are the counted response
+  // list: a budget of zero responses must buy zero responses, and saying "there
+  // is a surface here and I did not process it" is a different statement from
+  // "I slid along a surface here".
+  let limitingContact = null;
+  let responses = 0;
   // How far the probe was lifted off its last contact, and along which normal,
   // so the settle at the end knows what to undo. See the LIFT note below.
   let lifted = 0, liftNormal = null;
   const transits = [];
   let blocked = null;
 
-  let bounce = 0;
-  for (; bounce <= maxContacts && timeRemaining > 0; bounce++) {
+  while (timeRemaining > 0) {
     const speed = space.norm(p, v);
     if (speed <= 0) { atRest = true; break; }
     if (steps >= maxSteps) { stalled = true; exhausted = 'steps'; break; }
     const u = space.normalize(p, v);
+    // Snapshot everything the final approach may have to be rolled back to.
+    const legsBefore = legs.slice(), velocityBefore = v.slice();
+    const liftNormalBefore = liftNormal ? liftNormal.slice() : null;
+    const liftedBefore = lifted, travelBefore = timeTravelled;
     const swept = sweep(field, space, {
       from: p, direction: u, distance: speed * timeRemaining, radius, skin,
       maxSteps: maxSteps - steps, portals, events, phase: 'travel',
@@ -397,7 +419,25 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
     // YIELD THE EVENT BEFORE ANYTHING ELSE CAN MOVE THE PROBE. A settle that
     // ran first would pull the probe off the aperture it had just reached, and
     // the crossing would then be tested from a point the probe was never at.
-    if (swept.event) { event = swept.event; break; }
+    if (swept.event) {
+      event = swept.event;
+      if (swept.checkpoint) {
+        const cp = swept.checkpoint;
+        const prefix = legsBefore.concat([cp.carry]);
+        checkpoint = {
+          position: cp.position, direction: cp.direction, distance: cp.distance, speed,
+          velocity: cp.carry(velocityBefore),
+          liftNormal: liftNormalBefore ? cp.carry(liftNormalBefore) : null,
+          lifted: liftedBefore,
+          timeConsumed: travelBefore + cp.travelled / speed,
+          carry: (vector) => {
+            space.validateTangent(carryOrigin, vector);
+            return prefix.reduce((value, leg) => leg(value), vector.slice());
+          },
+        };
+      }
+      break;
+    }
     if (swept.stalled || steps >= maxSteps) { stalled = true; exhausted = 'steps'; break; }
     if (!swept.hit) break;
     const n = swept.normal;
@@ -405,6 +445,12 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
     // ball's centre). There is nothing to slide along, so stop rather than
     // invent a direction.
     if (!n) { stalled = true; exhausted = 'degenerate-contact'; break; }
+    if (responses >= maxContacts) {
+      limitingContact = { position: p.slice(), normal: n.slice() };
+      exhausted = 'contacts';
+      break;
+    }
+    responses += 1;
     contacts.push(n.slice());
     // Raw normals belong at their contact points, not at the final position.
     // Keep the legacy contacts array for E3 callers; curved callers use samples.
@@ -429,8 +475,13 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
     // into a ceiling stops at the ceiling instead of tunnelling through it.
     const lift = Math.min(0.25 * radius, Math.max(8 * skin, speed * timeRemaining));
     const liftDir = space.normalize(p, n);
+    // A correction is work, and work comes out of the SAME budget as travel.
+    // Handing it its own fixed allowance is how a call with a cap of six steps
+    // ends up taking thirty.
+    if (steps >= maxSteps) { stalled = true; exhausted = 'steps'; break; }
     const up = sweep(field, space, {
-      from: p, direction: liftDir, distance: lift, radius, skin, maxSteps: 8,
+      from: p, direction: liftDir, distance: lift, radius, skin,
+      maxSteps: Math.min(8, maxSteps - steps),
       // No legacy portals: a lift is a correction normal to a surface, not
       // travel. It IS event-checked, and that is not the same thing -- a lift
       // that walks silently across an aperture bypasses the one test that
@@ -438,6 +489,12 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
       events, phase: 'correction',
     });
     steps += up.steps;
+    // A CORRECTION THAT REACHES AN APERTURE IS NOT COMMITTED AT ALL. The lift
+    // is a numerical repair that has run into a decision it may not make, so
+    // none of it is kept: the probe stays at the contact it was lifting off,
+    // which is the pre-leg checkpoint the contract asks for, and the aperture
+    // it would have reached is reported as the event's attempted point.
+    if (up.event) { event = up.event; break; }
     legs.push(up.carry);
     lifted = up.travelled;
     // The lift moved the probe, so the slide direction and the normal we will
@@ -445,28 +502,32 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
     v = up.carry(slid);
     liftNormal = up.carry(liftDir);
     p = up.position;
-    if (up.event) { event = up.event; break; }
     // The velocity is now only its tangent part, so the remaining TIME is
     // unchanged and the next leg is shorter because the speed is lower. That
     // is the whole of "tangential speed loss uses remaining time correctly";
     // reusing the original distance as time would give the slide its lost
     // speed back for free.
   }
-  if (bounce > maxContacts && timeRemaining > 0 && !event && !stalled && !atRest) exhausted = 'contacts';
   // Settle back onto whatever was lifted off, so the probe ends resting on the
   // surface rather than hovering a fraction above it. Swept again, so it stops
   // at the first thing it meets rather than being teleported down.
-  if (lifted > 0 && liftNormal && !event) {
+  if (lifted > 0 && liftNormal && !event && steps < maxSteps) {
     const back = sweep(field, space, {
-      from: p, direction: liftNormal.map((x) => -x), distance: lifted, radius, skin, maxSteps: 16,
-      events, phase: 'correction',
+      from: p, direction: liftNormal.map((x) => -x), distance: lifted, radius, skin,
+      maxSteps: Math.min(16, maxSteps - steps), events, phase: 'correction',
     });
     steps += back.steps;
-    legs.push(back.carry);
-    v = back.carry(v);
-    p = back.position;
-    if (back.event) event = back.event;
-  } else if (lifted > 0 && liftNormal && event) {
+    if (back.event) {
+      // Same rule as the lift: none of a correction that reached an aperture is
+      // kept, so the settle debt stays owed and is reported instead.
+      event = back.event;
+      pendingLift = { distance: lifted, normal: liftNormal.slice() };
+    } else {
+      legs.push(back.carry);
+      v = back.carry(v);
+      p = back.position;
+    }
+  } else if (lifted > 0 && liftNormal) {
     // The probe stopped at an event still owing its floor a settle. The debt is
     // REPORTED rather than paid: paying it would move the probe off the
     // aperture, and a coordinator about to change regions has to be able to
@@ -476,7 +537,7 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
   if (atRest) { timeRested = timeRemaining; timeRemaining = 0; }
   return {
     position: p, velocity: v, contacts, contactSamples, stalled, steps, transits, blocked, carry,
-    event, pendingLift, atRest, exhausted,
+    event, checkpoint, pendingLift, atRest, exhausted, limitingContact, responses,
     timeConsumed: timeTravelled + timeRested, timeRemaining,
     time: { travel: timeTravelled, rest: timeRested, correction: 0 },
   };

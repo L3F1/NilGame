@@ -106,6 +106,38 @@ Budget exhaustion stays at the last validated state with remaining time reported
 
 On refusal, retain source ownership and the last source-safe point just before
 the aperture, stop this call, and report blocked-exit plus unconsumed time.
+Finding 4 decision (2026-09-10): this means a STRICTLY source-side checkpoint,
+not the aperture plane. Free-standing portals are supported; requiring a wall
+or letting the next frame pass through the source-side plane is not acceptable.
+The final source approach is provisional until the destination transaction commits.
+
+Before advancing the final event leg, retain its start and transport/time prefix.
+Choose a checkpoint on this already-validated leg, initially skin physical units
+of arclength before the crossing (or its start if the leg is shorter). Validate
+that it is strictly on the entering side, outside the crossing predicate's
+on-plane tolerance. For grazing/numerically inseparable cases, use the leg start
+that qualified the crossing; do not nudge backwards along a guessed normal.
+If even that side cannot be certified, return unresolved without committing
+the questionable leg. Side classification must use the portal's geometry and
+physical signed height, with a documented tolerance shared with crossing().
+
+On success commit the whole approach and charge its d/s time normally. On
+refusal restore checkpoint position, velocity, full camera, pending correction
+state and their transport prefix; refund only the discarded travel time.
+Do NOT undo solver work counters: speculative queries consumed real budget.
+Keep an event's attempted aperture point separate from its returned stop point.
+No source contact is invented. Repeated fresh frames must stop again while the
+exit remains blocked; removing the obstruction permits a subsequent crossing.
+Retreat and lateral departure remain possible. No persistent cooldown is needed.
+
+Use the same safe checkpoint for an uncommitted portal stopped by crossing/step
+budget exhaustion, and retain the pre-leg checkpoint for unresolved portal ties
+or correction-boundary events. Otherwise these outcomes can leak next frame too.
+This does not change deliberately initialized on-plane states with no approach
+history; their existing one-sided convention remains until an authoring policy
+explicitly addresses them. It does prohibit returning such a state after a
+known uncommitted approach.
+
 If retaining a pre-aperture point rolls back tentative travel, its carry and
 elapsed time must roll back too; no discarded leg enters the committed result.
 Do not invent a contact normal from the source field at an empty aperture or
@@ -140,6 +172,13 @@ support needs its own swept/local proof, not an endpoint-down sample through a f
 - Carry matches composition along actual legs, not shortest endpoint transport;
   include correction legs and roll. Contact samples remain tangent at their points.
 - Input state unchanged, invalid input rejected, destination ownership atomic.
+- Refusal repeated for many fresh frames cannot pass the source plane; clearing
+  the exit permits entry, and retreat/lateral departure stay possible. Include
+  E3/S3, grazing incidence, tilted/off-center apertures, failed exit offsets,
+  frame-end refusal, correction/tie/budget stops and a retry after budget increase.
+- Checkpoint rollback refunds discarded travel only, preserves camera transport
+  to the checkpoint, and retains all spent work counters. Exact budget caps:
+  zero permits zero work of that kind, including corrections and contacts.
 
 CPU motion acceptance does not establish rendered portal parity or GPU performance.
 The editor, renderer, gravity walker, saved runtime state and connected playable

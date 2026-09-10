@@ -1,71 +1,50 @@
 # Fresh-chat handoff for Astra
 
-Updated 2026-09-10. Base inspected: 7c68a62; Astra's two latest tasks remain
-uncommitted in the shared tree. Claude/Muse may have progressed since this note:
-check git status and recent log before editing. Preserve .codex/ and shared work.
+## Current review and next task
 
-User wants one difficult contract/fix from Astra, bounded implementation by
-Claude, independent checks by Muse, and small task-specific context loads.
-Do not resume the entire four-milestone plan in one turn.
+2026-09-10 at e3300e6: Astra reran both motion corpora (34/34 and 21/21)
+and reproduced finding 4. Runtime verdict: REQUEST CHANGES. MUSE-39 accepted
+as QA evidence and archived; MUSE-40 remains open and independent.
 
-Read WORKING_RULES.md, REGION_MOTION_CONTRACT.md and Claude's latest short report.
-CLAUDE_REGION_HANDOFF.md is the assigned implementation scope. Other documents
-are selected via TASK_ROUTER.md, not a mandatory full-file reading list.
+Decision: free-standing portals remain supported. Final approach is provisional;
+on refusal return a validated strictly source-side checkpoint with matching
+camera/velocity/time. Do not require walls, add cooldowns, or silently return
+on-plane. Apply protection to other uncommitted portal event stops too.
+Findings 5/6 require exact work/contact budgets before integration as well.
 
-Completed by Astra:
-- camera-frame.mapFrame now takes an explicit destinationSpace; roll and metric
-  ownership survive E3/S3 and distinct-radius transfers. cross-region-frame.test.js.
-- moveProbe now returns actual path carry, including lift/settle, separate from
-  velocity projection; contactSamples retain contact point/normal. motion-carry.test.js
-  uses an independent per-leg transport formula and distinguishes endpoint transport.
-- Shared rules split without losing detailed safeguards; stale handoff archived.
-- Accepted region-motion policy written in REGION_MOTION_CONTRACT.md. Implementation
-  is pending Claude, NOT a completed connected-room runtime.
+Read docs/qa/astra-region-review-2026-09-10.md for Claude's bounded repair scope
+and REGION_MOTION_CONTRACT.md for the accepted amendment. These supersede the
+older instruction to decide finding 4. Next Astra task: review that repair
+and independent regressions, not implement renderer/editor or re-decide policy.
+Nested-cutter conservatism and the S3 bound collapse remain unfixed; the latter
+is MUSE-40's investigation. Last host probe found a working browser queue.
 
-Delivered by Claude, 2026-09-10 (CPU only, awaiting review):
-- engine/world/region-motion.js: moveRegionProbe(world, state, dt, options).
-  Event-limited movement, one clock, transactional crossings, shared budgets.
-- collision.js sweep/moveProbe take an optional event provider queried on each
-  ACTUAL geodesic leg (travel, nudge, lift, settle) and carry explicit time.
-- region-world.spawn converts the construction basis into a carried camera once.
-- region-motion.test.js: 34 checks; tools/test.js 49/49. Evidence and six
-  findings in docs/qa/claude-region-motion-2026-09-10.md (with a same-day addendum on
-MUSE-39) and docs/qa/region-motion-truth-2026-09-10.md. Finding 4 is the one
-  open POLICY question: a refused crossing leaves the walker on the aperture
-  plane, where the one-sided rule then declines to test it.
+REPAIR DELIVERED 2026-09-10 by Claude, awaiting this review.
+docs/qa/claude-region-repair-2026-09-10.md. A refused crossing now rolls back to
+a checkpoint the PORTAL certifies is on the entering side: y = 1.999900 rather
+than 2.000000, held for twelve fresh frames without ever reaching the plane,
+against y = 2.000000 then y = 6.000000 before. Retreat, lateral departure and
+unblock-and-retry all work with no cooldown armed. The same checkpoint holds a
+portal stopped by the crossing budget; a tie returns to the pre-leg checkpoint;
+a correction that reaches an aperture is discarded whole. Only discarded travel
+is refunded and work counters are never undone. Findings 5/6: corrections draw on
+the shared step allowance, and maxContacts: n buys exactly n responses with a
+contact met-but-unanswered reported as limitingContact.
+region-portal.js gained PORTAL_PLANE_TOLERANCE and signedHeight so the checkpoint
+and crossing() judge the side by one number. node region-motion.test.js 46/46,
+node region-motion-truth.test.js 21/21, node tools/test.js 53/53, exit 0.
+Sixteen mutations, all caught; two checks exist only because the matrix found
+them missing. Six checks that pinned the superseded behaviour were updated in
+place with their old numbers preserved beside them, three of them Muse's.
+One path is implemented but has no positive test: an entering side that cannot be
+certified even at the leg start returns unresolved/uncertifiable-checkpoint, and
+no scene was found that reaches it. MUSE-41 is asked to try, and is queued FIRST,
+ahead of MUSE-40; the two are independent.
+Also still open, and untouched by the repair: connected-lab.nil.json does not
+compile, and app/region-lab.js imports stepRegionPlayer, turnRegionPlayer and
+engine/geometry/region-renderer.js, none of which exist.
 
-Important remaining gaps: walker.js is still three-component; legacy collision
-portals are E3-only; domain exits are not walls; lower-bound clearance failure is
-not proof of overlap. app/region-lab.js still imports stepRegionPlayer/
-turnRegionPlayer and engine/geometry/region-renderer.js, none of which this task
-was scoped to write; the lab does not load. levels/fixtures/connected-lab.nil.json
-does not compile (S3 extent 2 exceeds a hemisphere; charts.js and metric-space.js
-disagree about that limit).
-Do not build a second solver or assume a full region renderer already exists.
-
-MUSE-39 is DELIVERED and awaiting you: region-motion-truth.test.js (21 checks,
-independent reference) found no disagreement with the contract and CONFIRMED
-finding 4. Claude re-reproduced finding 4 without reading Muse's corpus, and
-mutation-checked that corpus: it catches 6 of the 8 mechanisms, so the two
-suites are complementary rather than either being sufficient. MUSE-36, 37 and 38
-are accepted and moved to docs/qa/muse-log.md; MUSE-40 is the only open Muse task.
-
-Next Astra job: accept or reject Claude's region-motion implementation, then
-DECIDE FINDING 4 -- a refused crossing leaves the walker exactly on the aperture
-plane, where the one-sided rule declines to test it, so they walk through it into
-source space (reproduced twice: y=2.000000 then y=6.000000, crossings 0). That is
-the one open policy question blocking renderer/editor integration. Two more open
-items, both reported unfixed and neither Claude's to decide: the carve
-predicate is conservative for NESTED cutters (MUSE-37, refuses rooms max() allows),
-and the S3 distance bound collapses to ~4e-4 in open hallway at 0.35 clearance
-(MUSE-38, 77x step cost) -- MUSE-40 asks whether that is bound cost or a field
-defect, because MUSE-34's curvature-independent fractional shortfall cannot
-produce it.
-After acceptance, define the curved gravity/support policy; renderer/editor work
-can then be assigned separately. S3 bubble, host migration and new modes stay later.
-
-Evidence: docs/qa/astra-boundary-2026-09-10.md,
-docs/qa/astra-motion-contract-2026-09-10.md and
-docs/qa/claude-region-motion-2026-09-10.md. Browser availability is dynamic; run
-host-probe in the new execution session. Last probe found no queue worker.
-Existing MUSE-36..38 statuses were not changed or accepted by these tasks.
+User preference: one difficult contract/fix per Astra task; Claude implements
+and Muse checks independently. Preserve shared edits and use TASK_ROUTER.md.
+Prior implementation context is archived in
+`docs/archive/region-implementation-handoff-2026-09-10.md`; read only if needed.
