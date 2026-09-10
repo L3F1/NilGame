@@ -59,41 +59,11 @@ a design. That is a useful report, not a failure.
 
 ---
 
-Order: **MUSE-32 first** -- it is the newest code and the most depended upon,
-and the S3 room is being built on it right now. Then 31, which has a decision
-waiting on it, then 29 and 30. All four are Node-only; none needs a browser or
-a worker.
-
-Context you need: `kind: 'box'` landed in `319ca88`. It is an
-axis-aligned box with three half-extents, and unlike every other way of
-building a box it is EXACT -- exact distance, exact normal, exact slab ray hit
--- so a scene made of boxes still renders down the closed-form path. Six
-clipped planes describe the same solid and can only promise a bound, and one
-bound anywhere makes the whole scene marched. `box.test.js` has the argument
-in full.
-
-WHAT CHANGED UNDER THIS QUEUE, 2026-09-09. Read this before starting: two of
-these tasks were written against a field that has since moved.
-
-- `capabilities` no longer has one `distance` word doing several jobs. It now
-  reports `exteriorDistance`, `interiorDistance`, `interiorSign`,
-  `intersection`, `normal` and `normalUniqueness` separately. The reason is a
-  real defect: an overlapping union advertised an EXACT signed distance it did
-  not have (two unit balls one apart report -0.5 at the midpoint where the
-  truth is 0.866). `interiorSign` is exact through every operation.
-- `rayCast` resolves ray intervals ANALYTICALLY per solid group by default and
-  returns `status`, `owner` and `normal`. The marcher is still there under
-  `method: 'march'`. A modifier no longer forces the whole scene to march.
-- Scene documents are at version 2. A v2 entity may carry an orthonormal
-  `frame` of `forward` and `up`; v1 documents load unchanged with identity
-  orientation. E3 boxes may be oriented. S3 uses a `geodesic-cell`.
-- `engine/world/collision.js` consumes `createMetricSpace`. The metric takes
-  the point it is evaluated at -- `norm(p, v)`, `dot(p, u, v)`,
-  `project(p, u, n)`, `transport(p, q, v)` -- and a sweep returns a `carry`
-  that transports a vector along the path actually taken.
-
-If one of your tasks contradicts the above, the task is out of date and saying
-so is the right answer, not working around it.
+A NOTE ON THIS FILE, so it stops rotting. Everything above the `---` is
+standing rules and outlives a batch. Everything below it belongs to the CURRENT
+batch only -- the order line, the "what changed" note, and the open tasks --
+and is replaced wholesale when the queue turns over. Three stale order lines
+had accumulated before anyone noticed, each naming a different task as first.
 
 Order: **MUSE-33 first** -- it is a live authoring defect with a rule that has
 only been derived, not measured. Then 34, then 35. All three are Node-only;
