@@ -29,7 +29,8 @@ function solidOf(entity) {
   if (entity.kind === 'ball') {
     const c = entity.position.slice(), r = entity.radius;
     return Object.freeze({
-      id: entity.id, kind: 'ball', center: c, radius: r,
+      id: entity.id, kind: 'ball', op: entity.op || 'add', target: entity.target ?? null,
+      center: c, radius: r,
       distance: (p) => Math.hypot(...sub(p, c)) - r,
       // Undefined at the exact centre: every direction is equally outward, and
       // returning one of them would be a guess the caller cannot detect.
@@ -46,7 +47,8 @@ function solidOf(entity) {
     // { p : dot(p, n) = offset }, solid on the side n points AWAY from.
     const n = entity.up.slice(), offset = dot3(entity.position, n);
     return Object.freeze({
-      id: entity.id, kind: 'plane', normal: n, offset,
+      id: entity.id, kind: 'plane', op: entity.op || 'add', target: entity.target ?? null,
+      normal: n, offset,
       distance: (p) => dot3(p, n) - offset,
       // Constant everywhere, which is what makes a plane the cheapest possible
       // ground contact: no gradient estimate, no finite differences.
@@ -81,17 +83,62 @@ export function compileSceneField(source) {
   const spawns = scene.entities.filter((e) => e.kind === 'spawn');
   if (spawns.length !== 1) throw new Error('Scene field requires exactly one spawn');
 
-  // The nearest solid decides both the distance and the normal. Taking the
-  // normal from a different solid than the distance came from is a class of
-  // bug that draws and collides against two different surfaces.
+  const added = solids.filter((x) => x.op !== 'subtract');
+  const carved = solids.filter((x) => x.op === 'subtract');
+  const addedIds = new Set(added.map((x) => x.id));
+  for (const c of carved) {
+    if (c.target !== null && !addedIds.has(c.target)) {
+      throw new Error(`entity ${c.id}: target ${c.target} is not a solid in this scene`);
+    }
+  }
+  // Which carves apply to which solid, worked out once. A carve with no
+  // target applies to all of them, and that is EQUIVALENT to applying it to
+  // the union afterwards, because max distributes over min:
+  //     max(min(a, b), k) = min(max(a, k), max(b, k))
+  // so the scoped form is a strict generalisation rather than a different
+  // operation that happens to agree in one case.
+  const carvesFor = new Map(added.map((a) =>
+    [a.id, carved.filter((c) => c.target === null || c.target === a.id)]));
+
+  /**
+   * The field, as a boolean expression over the authored solids.
+   *
+   *     d(p) = max( min_i added_i(p) , max_j -carved_j(p) )
+   *
+   * The union is `min`, and subtraction is `max` against the NEGATED carving
+   * solid: a point is in the result when it is inside something added and
+   * outside everything carved away.
+   *
+   * WHICH TERM WON DECIDES THE NORMAL, and this is the part that is easy to
+   * get wrong. Taking the normal from a different solid than the distance came
+   * from draws and collides against two different surfaces. On a carved face
+   * the surface belongs to the carving solid but points the OTHER WAY -- you
+   * are standing in the doorway looking at the inside of the box that made it
+   * -- so its normal is negated with the distance it came from.
+   *
+   * EXACTNESS. `min` of two exact signed distances is still exact. `max` is
+   * NOT: it under-estimates near a concave seam, where the true nearest point
+   * is on neither surface but on the edge where they meet. That is safe for
+   * sphere tracing, which only needs a lower bound, and it is why a scene with
+   * any carve advertises `distance: 'bound'` rather than `'exact'`. See
+   * docs/rendering-contract.md.
+   */
   function nearest(p) {
     vector3(p);
-    let best = null, bestD = Infinity;
-    for (const s of solids) {
-      const d = s.distance(p);
-      if (d < bestD) { bestD = d; best = s; }
+    // Nothing to carve FROM is not the same as carving nothing: with no
+    // additive solid the scene is empty space, and subtracting from empty
+    // space leaves empty space.
+    if (!added.length) return { solid: null, distance: Infinity, negate: false };
+    let best = null, bestD = Infinity, negate = false;
+    for (const a of added) {
+      let d = a.distance(p), winner = a, flip = false;
+      for (const c of carvesFor.get(a.id)) {
+        const cut = -c.distance(p);
+        if (cut > d) { d = cut; winner = c; flip = true; }
+      }
+      if (d < bestD) { bestD = d; best = winner; negate = flip; }
     }
-    return { solid: best, distance: bestD };
+    return { solid: best, distance: bestD, negate };
   }
 
   // Connections become one-way aperture descriptors, two per portal. An
@@ -121,7 +168,19 @@ export function compileSceneField(source) {
     extent: region.extent,
     playerRadius: scene.units.playerRadius,
     spawn: spawns[0].position.slice(),
-    capabilities: Object.freeze({ distance: 'exact', intersection: 'exact', normal: 'exact-except-ball-center' }),
+    // What this field PROMISES, which changes with the operations used to
+    // build it. A carve makes the distance a lower bound rather than the true
+    // distance, and makes an exact per-primitive ray hit wrong -- the nearest
+    // surface along the ray may be one that has been carved away -- so the
+    // intersection becomes marched. Advertising this is the difference between
+    // a conservative solver and a lying one.
+    capabilities: Object.freeze(carved.length
+      ? { distance: 'bound', intersection: 'marched', normal: 'exact-except-ball-center' }
+      : { distance: 'exact', intersection: 'exact', normal: 'exact-except-ball-center' }),
+    /** Solids subtracted rather than added. Non-empty means the field is a bound. */
+    carveCount: carved.length,
+    carvesUniform: () => carved.filter((x) => x.kind === 'ball')
+      .flatMap((x) => [...x.center, x.radius]),
     document: () => structuredClone(scene),
     solidCount: solids.length,
     /** One-way aperture descriptors, two per connection. Holes, not solids. */
@@ -166,16 +225,37 @@ export function compileSceneField(source) {
       return solids.length ? nearest(p).distance : Infinity;
     },
     normal(p) {
-      const { solid } = nearest(p);
+      const { solid, negate } = nearest(p);
       if (!solid) return null;
-      return solid.kind === 'plane' ? solid.normalAt() : solid.normal(p);
+      const n = solid.kind === 'plane' ? solid.normalAt() : solid.normal(p);
+      // A carved face is the carving solid's surface, seen from the other
+      // side. Without the flip a walker slides along a doorway's edge as if
+      // the wall were still there.
+      return n && negate ? n.map((x) => -x) : n;
     },
     rayHit(p, direction) {
       vector3(p); vector3(direction, 'direction');
       if (Math.abs(Math.hypot(...direction) - 1) > 1e-8) throw new Error('Ray direction must be unit length');
-      let best = Infinity;
-      for (const s of solids) best = Math.min(best, s.rayHit(p, direction));
-      return best;
+      // No carves: every primitive solves in closed form and the nearest one
+      // wins. This is the exact path and it stays exact.
+      if (!carved.length) {
+        let best = Infinity;
+        for (const s of added) best = Math.min(best, s.rayHit(p, direction));
+        return best;
+      }
+      // With carves the nearest analytic surface may have been cut away, so
+      // the closed forms no longer answer the question. Sphere-trace the
+      // expression instead: the distance is a lower bound, which is exactly
+      // the guarantee tracing needs, and the capability says so.
+      let t = 0;
+      for (let step = 0; step < 256; step++) {
+        const at = [p[0] + direction[0] * t, p[1] + direction[1] * t, p[2] + direction[2] * t];
+        const d = nearest(at).distance;
+        if (d < 1e-6) return t;
+        t += d;
+        if (t > 1e6) break;
+      }
+      return Infinity;
     },
   });
 }

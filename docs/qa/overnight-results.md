@@ -847,3 +847,89 @@ Verdict: **browser checks ARE NOT available in the sandboxed shell.**
 - Commands: analyzer + h3/e3t diff shown in the doc; `node
   tools/test.js` → 27/27 suites, exit 0 (WSL node v22.23.2).
   Status: READY FOR REVIEW.
+
+## MUSE-19 — Check queue from the sandboxed shell: WORKS
+
+Verdict: **the check queue DOES work from the sandboxed shell.**
+
+- Environment (this shell): branch `main` at `dccbff0`, WSL2 Linux
+  (6.18.33.2-microsoft-standard), Node `/usr/bin/node` v22.23.2.
+  No Chrome was started from this shell; no retries were needed
+  (every command below behaved on its first attempt).
+- Worker (user-started, as the task asks): `LeoPC (linux)`, pid 22617,
+  heartbeat fresh (≤1 s old at every step), queue
+  `/mnt/c/Users/lflyn/Projects/NilGame/.check-queue` empty before
+  and after. Note plainly: the serving worker reports platform
+  `linux`, i.e. the user's `--serve` runs in their own un-sandboxed
+  WSL shell on the same machine, not Windows node. Browser launches
+  from that shell go through WSL interop, which works there — the
+  run below is the proof. An unserved queue was never observed, so
+  the "nobody serving" branch was not exercised.
+- `node tools/check-queue.js --list` → exit 0. Names the worker and
+  the seven runnable checks with their allowed flags.
+- `node tools/check-queue.js page-check --ball-lab` → exit 0,
+  wall 4 s. Full worker-side output:
+  `browser : Windows Chrome via WSL interop` /
+  `backend: real GPU, COLD shader cache` /
+  `ball editor checks : 57 passed` /
+  `[page-check ran on LeoPC, exit 0, 2.8 s]`
+  (page error none, boot panel hidden, HUD `E3 scene authoring lab`,
+  screenshot `page-check-shot.png`). The queue printed the check's
+  own output and exited with the check's own code, as designed.
+- Refusals (each `echo $?` on its own line, no pipeline):
+  `node tools/check-queue.js rm-rf --all` →
+  `unknown check "rm-rf". Allowed: page-check, play-check, link-time,
+  net-check, march-check, shader-check, sdf-check`, exit **2**;
+  `node tools/check-queue.js page-check /etc/passwd` →
+  `page-check does not accept "/etc/passwd". Flags: --worlds
+  --ball-lab --sw --warm --timeout=`, exit **2**.
+  Both refused client-side with a reason; a refusal looking like
+  success (the worst failure mode) was not observed.
+- No code changed; no files written outside this report and the
+  task's status line. Status: READY FOR REVIEW.
+
+## MUSE-20 — Cited checks through the queue
+
+Worker throughout: `LeoPC (linux)`, pid 22617 (same user-started
+`--serve` as MUSE-19). Full per-check logs in `/tmp/muse20-*.log`
+(scratch, not committed). No browser process was touched from here;
+no survivor-cleanup WARNING appeared in any `page-check` output
+(explicitly grepped `--worlds` and `--sw --worlds`; none in the
+`--ball-lab` output either).
+
+| Check (queue command) | Exit | Wall | Count / verdict |
+| --- | --- | --- | --- |
+| `page-check --worlds` | 0 | 31 s | 346 passed, real GPU cold, no page error |
+| `page-check --ball-lab` | 0 | 4 s | 57 passed (MUSE-19 run, reused here) |
+| `page-check --sw --worlds` | 0 | 172 s | 346 passed, SwiftShader cold, no page error |
+| `net-check` | 0 | 7 s | 9 passed, 0 failed; relay AND peer data-channel connect |
+| `play-check` (default: fight, 3000 frames, seeds 1..3) | 1 (worker) / 4 (requester timed out at 900 s, result retrieved after) | 900 s worker | all 3 seeds FAIL: page never reported back within 300 s, browser refusing a 3D context |
+| `link-time` | 1, twice | 0.7 s / 0.6 s worker | `FAIL no webgl2 - rerun with a real GPU available` |
+| `march-check` | 0 | 4 s | 0 / 29913 exhausted, mean steps 18.2, worst folds 4 |
+| `shader-check` | 0 | 2 s | every program compiled+linked (incl. ball first-person with uPortals*) |
+| `sdf-check` | 0 | 7 s | every world's two SDFs agree (worst ~7e-7 vs tol 2e-5) |
+
+- Seven of nine families are now measured through the queue instead
+  of cited, all green. `check-runbook.md` timing cells for those
+  rows carry the queue figures; `link-time` keeps its cited figure
+  (see next point) and there is no runbook row for `play-check`.
+- Two families explicitly still without a green number: `play-check`
+  default and `link-time`. Both are blocked by the same environmental
+  cause, measured twice for link-time: the worker host's Chrome lost
+  WebGL between ~18:56 (shader-check linking under ANGLE: exit 0)
+  and ~19:03 (play-check seeds timing out on no-3D-context).
+  Real-GPU `page-check` runs passed on the same worker minutes
+  earlier, so this is a host-side GPU dropout (GPU process died,
+  driver blocklist, or acceleration toggled), not a game or queue
+  defect. Remedy is on the worker host: restart Chrome, check
+  `chrome://gpu` WebGL2 row, reboot if needed — then re-run just
+  these two commands. No third probe was spent here (two failed
+  setup observations is the stop line); a `play-check --sw` run
+  could meanwhile confirm the probe under software GL if the lead
+  wants it.
+- Notable aside for the runbook: `net-check`'s peer half PASSES
+  from the worker host (9/9 in 7 s), against the standing "peer
+  FAILs on WSL" note — the difference is the worker's un-sandboxed
+  shell, same as MUSE-19's interop finding.
+- No code changed; writes are this report, runbook timing cells,
+  and the task's status line. Status: READY FOR REVIEW.

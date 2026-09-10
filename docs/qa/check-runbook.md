@@ -36,13 +36,13 @@ exit 0 ([integration](opus-integration-2026-09-09.md)). Old
 | `node tools/ball-conformance.js` | 22 doc cases match JS; emits native expectations | either | <1 s ran here | JS drift; FAIL names the case |
 | `node tools/scene-check.js [file]` | scene docs validate; transfer samples | either | <1 s ran here | malformed authoring; message names id/field |
 | `node tools/march-check.js` | no exhausted-ray wedge (JS replay) | either | 3 s ran here | grey seam; fix step rule/SDF, not shading |
-| `node tools/net-check.js` | relay sockets anywhere; WebRTC self-connect on Windows | split | 42 s ran here (peer FAILs) | relay FAIL = strip sandbox proxy vars; peer FAIL on WSL = expected |
-| `node tools/shader-check.js` | all 10 programs compile+link under ANGLE | Windows | cited: integration table | GLSL/syntax error with info log |
-| `node tools/sdf-check.js` | JS/GLSL SDF agreement, 21 cases | Windows | cited: integration table | physics/render disagree; needs shared emitter |
+| `node tools/net-check.js` | relay sockets anywhere; WebRTC self-connect on Windows | split | 42 s sandboxed WSL (peer FAILs); 7 s via queue 2026-09-09, 9 passed incl peer | relay FAIL = strip sandbox proxy vars; peer FAIL on WSL = expected |
+| `node tools/shader-check.js` | all 10 programs compile+link under ANGLE | Windows | 2 s via queue 2026-09-09, exit 0 (cf integration table) | GLSL/syntax error with info log |
+| `node tools/sdf-check.js` | JS/GLSL SDF agreement, 21 cases | Windows | 7 s via queue 2026-09-09, exit 0 (cf integration table) | physics/render disagree; needs shared emitter |
 | `node tools/link-time.js` | real-driver link cost per program | Windows | cited: 0.7 s editor vs 8.4 s arena ([map](../host-capability-map.md)) | unrolled level loops (once 212 s); Rough time is cold-cache |
-| `node tools/page-check.js --worlds [--timeout=N]` | every world STARTS; 346 cold checks | Windows | cited: 28.5 s cold real-GPU | exit 21 = profile in use; assertion names world+check |
-| `... --ball-lab` | ball lab boots + probe | Windows | **57 checks**, lead-run 2026-09-09 | same as above, ball scope |
-| `... --sw` | same under SwiftShader software GL | Windows | cited: 158.8 s cold (MUSE-04) | slowness expected; GPU-vs-SwiftShader pixels are driver diffs |
+| `node tools/page-check.js --worlds [--timeout=N]` | every world STARTS; 346 cold checks | Windows | 31 s cold real-GPU via queue 2026-09-09 (346 passed, exit 0; cf cited 28.5 s) | exit 21 = profile in use; assertion names world+check |
+| `... --ball-lab` | ball lab boots + probe | Windows | **57 checks** via queue 2026-09-09 (4 s wall, exit 0; same count as lead-run) | same as above, ball scope |
+| `... --sw` | same under SwiftShader software GL | Windows | 172 s cold via queue 2026-09-09 (346 passed, exit 0; cf cited 158.8 s) | slowness expected; GPU-vs-SwiftShader pixels are driver diffs |
 | `... --warm` | reuses leased profile for iteration | Windows only (POSIX publication off) | cited: warm 346 final | profile lock = stale owner; run cold first |
 | `node tools/render-fixture.js <view> <png>` | saves a before/after view PNG | Windows | not measured here | exit 2 no-Chrome from WSL = expected; see [guide](render-fixture-guide.md) |
 | `tools/world-probe.js` | focused-shortcut/menu behavior, injected by page-check | Windows via page-check | inside --worlds time | Digit9-from-focus FAIL = menu guard regression (MUSE-04) |

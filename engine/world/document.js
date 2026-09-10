@@ -48,7 +48,7 @@ export function validateScene(scene) {
   }
   const entities = new Map();
   for (const entity of scene.entities) {
-    fields(entity, ['id', 'regionId', 'kind', 'position', 'radius', 'forward', 'up'], 'entity');
+    fields(entity, ['id', 'regionId', 'kind', 'position', 'radius', 'forward', 'up', 'op', 'target'], 'entity');
     identify(entity.id, ids, 'entity.id');
     const chart = charts.get(entity.regionId);
     requireValue(chart, `entity ${entity.id}: unknown region ${entity.regionId}`);
@@ -58,6 +58,29 @@ export function validateScene(scene) {
     if (entity.kind === 'ball' || entity.kind === 'anchor') {
       positive(entity.radius, `entity ${entity.id}.radius`);
     } else requireValue(entity.radius === undefined, `entity ${entity.id}: radius only applies to balls and anchors`);
+    // BOOLEANS. A solid may be ADDED to the scene or SUBTRACTED from it -- a
+    // doorway is a wall minus a box. Only the solid kinds have an op, because
+    // subtracting a spawn point is not a thing that means anything, and
+    // accepting it silently would leave an author wondering why nothing
+    // happened. Absent means 'add', so every document written before booleans
+    // existed keeps its meaning exactly.
+    if (entity.op !== undefined) {
+      requireValue(['ball', 'plane'].includes(entity.kind),
+        `entity ${entity.id}: op applies to balls and planes, not ${entity.kind}`);
+      requireValue(['add', 'subtract'].includes(entity.op),
+        `entity ${entity.id}.op: expected "add" or "subtract", got ${JSON.stringify(entity.op)}`);
+    }
+    // WHAT A CARVE CUTS. Absent, it cuts everything -- which sounds simpler
+    // and is the wrong default for authoring: cutting a doorway through a wall
+    // with a global subtraction takes the FLOOR out of the doorway too, and
+    // the author is left standing over a hole wondering what they did. So a
+    // carve may name the one solid it applies to.
+    if (entity.target !== undefined) {
+      requireValue(entity.op === 'subtract',
+        `entity ${entity.id}: target only applies to a subtract`);
+      requireValue(entity.target !== entity.id,
+        `entity ${entity.id}: a carve cannot target itself`);
+    }
     const clearance = entity.kind === 'spawn' ? scene.units.playerRadius : (entity.radius || 0);
     requireValue(Math.hypot(...entity.position) + clearance <= chart.maxDistance,
       `entity ${entity.id}: bounds straddle chart extent`);

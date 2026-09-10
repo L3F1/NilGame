@@ -707,7 +707,8 @@ argument and not a measurement. MUSE-19 is the measurement.
 
 ## MUSE-19 - Does the check queue work from the sandbox?
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | **Do this one first**
+Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@dccbff0, WSL node v22.23.2) | Reviewer: Opus | **Do this one first**
+Report: docs/qa/overnight-results.md (MUSE-19). Queue DOES work from the sandboxed shell: --list exit 0 (LeoPC linux worker, pid 22617), page-check --ball-lab exit 0 (57 passed, real GPU, 4 s wall), both refusals exit 2 with reasons. No code changed.
 
 One command decides whether browser checks are available to you at all. Do not
 plan other browser work until it is recorded.
@@ -733,7 +734,8 @@ plan other browser work until it is recorded.
 
 ## MUSE-20 - Run the cited checks through the queue
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | Blocked on MUSE-19 passing
+Status: READY FOR REVIEW | Owner: Muse (2026-09-09, main@dccbff0, WSL node v22.23.2) | Reviewer: Opus | Unblocked: MUSE-19 passes (queue DOES work)
+Report: docs/qa/overnight-results.md (MUSE-20). 7 of 9 families green through the queue (worlds 346, ball-lab 57, sw-worlds 346, net 9 incl peer, march/sdf/shader exit 0; no survivor WARNING). play-check default + link-time blocked by a worker-host GPU dropout (no webgl2, measured twice); remedy is a Chrome restart on the worker host, then re-run those two.
 
 This is MUSE-17 again, by the route that works. If MUSE-19 says the queue does
 not work, STOP and skip this task.

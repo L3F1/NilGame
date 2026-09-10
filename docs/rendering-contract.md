@@ -43,10 +43,25 @@ not an automated image-difference assertion or scene-document v1 levels.
 
 Done, 2026-09-09: authored primitives carry explicit distance/intersection/
 normal capabilities, `engine/world/collision.js` consumes a distance bound plus
-a normal, and Godot reads the same ball documents. Next: BOOLEANS, where `min`
-of two exact SDFs stays exact but `max` and subtraction return only a bound --
-so the capability a compiled solid advertises has to change with the operation
-that built it, or `clearance()` quietly stops meaning what it says. Avoid forcing
+a normal, and Godot reads the same ball documents.
+
+Booleans landed the same day and they MOVE THE CAPABILITY, which is the point
+of having one. `min` of two exact signed distances is still exact, so a union
+of authored solids keeps `distance: 'exact'`. `max` is not: at a concave seam
+the true nearest point lies on the edge where two surfaces meet rather than on
+either surface, so subtraction under-estimates. A scene containing any carve
+therefore advertises `distance: 'bound'` and `intersection: 'marched'`, and
+`rayHit` stops solving in closed form and sphere-traces instead -- because the
+nearest analytic surface along a ray may be one that has been carved away, and
+the closed form cannot know that.
+
+Under-estimating is the SAFE direction and that is why the bound is usable: a
+marcher that steps by a lower bound can never step through a surface. It is
+also the property most easily lost by a plausible-looking change, so it is
+asserted directly rather than argued -- `boolean.test.js` traces sixty
+deterministic rays and checks that no step ever lands inside a solid.
+
+Next: intersection, which is what makes a box from six planes. Avoid forcing
 every geometry through a constant-curvature exponential/logarithm interface.
 
 Validation on 2026-09-08: 18 Node suites, nine shader programs, 20 GPU field/math

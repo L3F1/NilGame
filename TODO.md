@@ -73,11 +73,22 @@ The previous backlog is preserved in
   radius, a radius edit moves both ends because the schema pins them equal, and
   Delete on either end removes the whole portal. `editEntities` is the general
   form: some edits have no valid intermediate document.
-- [ ] **Booleans in the field** (union, intersection, subtraction). Highest
-  ratio of authoring power to work, and pure kernel -- a doorway is a wall
-  minus a box. `min` of two exact SDFs stays exact; `max` and subtraction are
-  only a BOUND, so the rendering contract's capability table must say which is
-  which rather than letting `clearance()` quietly stop being exact.
+- [x] **Booleans in the field.** A solid carries `op: 'add' | 'subtract'`, and
+  a carve may `target` the one solid it cuts. Union is `min`, subtraction is
+  `max` against the negated carving solid, and the term that wins decides the
+  normal -- a carved face is the carving solid's surface with its normal
+  FLIPPED. Any carve downgrades the advertised capability to
+  `distance: 'bound'`, `intersection: 'marched'`, and `rayHit` sphere-traces
+  instead of solving in closed form. 14 tests including the safety property
+  that a tracing step never lands inside a solid. `boolean.test.js`.
+- [ ] **Draw carves in the lab**, so a doorway is authorable and not only
+  representable. Needs the first-person shader to march when the scene carries
+  a carve, and a Carve button. Until then a carve is invisible in the editor --
+  the same kernel-complete-but-unusable state portals were in.
+- [ ] **Intersection** (`op: 'intersect'`). Subtraction and union cover most
+  authoring; intersection is what makes a BOX from six planes, which is the
+  primitive an author actually reaches for and the reason a wall currently has
+  to be a half-space cut back by a second plane.
 - [ ] **A viewport gizmo, in the browser.** Ours in either host -- Godot's
   `_set_handle` hands you a screen position and expects your own projection --
   so building it now costs nothing against a future migration and settles

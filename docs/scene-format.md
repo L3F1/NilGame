@@ -103,3 +103,30 @@ remains an authoring bound, not a wall: the field answers for points outside it.
 
 `experiments/godot/ball_document.gd` does not implement planes yet and rejects
 documents containing them.
+
+## Booleans: `op` and `target`
+
+A solid entity (`ball`, `plane`) may carry `op`:
+
+- `"add"` — the default, and what every document written before this meant.
+  Absent is `add`, so no existing file changes meaning.
+- `"subtract"` — the solid is CUT OUT of the scene rather than added to it.
+
+A subtracting solid may also carry `target`, naming the one additive solid it
+cuts. Without a target it cuts everything.
+
+**Prefer a target.** Cutting a doorway through a wall with a global subtraction
+takes the floor out of the doorway too, and the author is left standing over a
+hole wondering what they did. Scoping is also a strict generalisation rather
+than a different operation: because `max` distributes over `min`, applying a
+global carve to each solid and then taking the union gives exactly the same
+field as applying it to the union afterwards.
+
+Two limits worth knowing before you author against this:
+
+- A plane is a HALF-SPACE, infinitely thick. Subtracting a ball from one makes
+  a cavity, not a doorway — you can walk in and not out. A wall you can pass
+  through has to be a slab, which today means a second plane carve taking the
+  far side off. Intersection would make this one operation instead of two.
+- Any carve changes what the field PROMISES: `distance` becomes a bound rather
+  than exact, and `intersection` becomes marched. See the rendering contract.
