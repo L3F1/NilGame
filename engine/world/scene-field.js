@@ -17,6 +17,7 @@
 // No DOM, no graphics, no host transform.
 import { validateScene } from './document.js';
 import { portalPair } from './portal.js';
+import { csgRayCast } from '../geometry/e3-ray-intervals.js';
 
 function vector3(p, name = 'position') {
   if (!Array.isArray(p) || p.length !== 3 || !p.every(Number.isFinite)) {
@@ -28,7 +29,7 @@ const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 /** One solid, as the field sees it. Authored data stays in the document. */
-function solidOf(entity) {
+export function primitiveOf(entity) {
   if (entity.kind === 'ball') {
     const c = entity.position.slice(), r = entity.radius;
     return Object.freeze({
@@ -62,12 +63,28 @@ function solidOf(entity) {
     // largest of them (the least deep), which is exact too. Neither case is
     // an estimate, which is what separates this from `max` over half-spaces.
     const c = entity.position.slice(), h = entity.halfExtent.slice();
-    const over = (p) => [
-      Math.abs(p[0] - c[0]) - h[0], Math.abs(p[1] - c[1]) - h[1], Math.abs(p[2] - c[2]) - h[2],
-    ];
+    const forward = entity.frame?.forward.slice() || [0, 1, 0];
+    const up = entity.frame?.up.slice() || [0, 0, 1];
+    const right = [forward[1] * up[2] - forward[2] * up[1],
+      forward[2] * up[0] - forward[0] * up[2], forward[0] * up[1] - forward[1] * up[0]];
+    const axes = [right, forward, up];
+    const localDirection = (v) => axes.map((a) => dot3(a, v));
+    const localPoint = (p) => localDirection(sub(p, c));
+    const worldDirection = (v) => [0, 1, 2].map((i) => axes.reduce((s, a, j) => s + a[i] * v[j], 0));
+    const over = (p) => localPoint(p).map((x, i) => Math.abs(x) - h[i]);
+    function normalInfo(p) {
+      const q = over(p), local = localPoint(p);
+      const o = q.map((x) => Math.max(x, 0)), len = Math.hypot(...o);
+      const away = (i) => local[i] < 0 ? -1 : 1;
+      if (len > 0) return { normal: worldDirection(o.map((x, i) => away(i) * x / len)), unique: true };
+      const m = Math.max(...q), i = q.indexOf(m), n = [0, 0, 0];
+      n[i] = away(i);
+      return { normal: worldDirection(n), unique: q.filter((x) => x === m).length === 1 && local[i] !== 0 };
+    }
     return Object.freeze({
       id: entity.id, kind: 'box', op: entity.op || 'add', target: entity.target ?? null,
-      center: c, halfExtent: h,
+      center: c, halfExtent: h, frame: axes.flat(), forward, up,
+      localPoint, localDirection, worldDirection,
       distance(p) {
         const q = over(p);
         return Math.hypot(Math.max(q[0], 0), Math.max(q[1], 0), Math.max(q[2], 0))
@@ -86,34 +103,25 @@ function solidOf(entity) {
        * zero seam a resting walker sits on constantly, and refusing to answer
        * would be worse than answering consistently.
        */
-      normal(p) {
-        const q = over(p);
-        const o = [Math.max(q[0], 0), Math.max(q[1], 0), Math.max(q[2], 0)];
-        const len = Math.hypot(...o);
-        const away = (i) => (p[i] < c[i] ? -1 : 1);
-        if (len > 0) return [away(0) * o[0] / len, away(1) * o[1] / len, away(2) * o[2] / len];
-        const m = Math.max(q[0], q[1], q[2]);
-        const i = q[0] === m ? 0 : q[1] === m ? 1 : 2;
-        const n = [0, 0, 0];
-        n[i] = away(i);
-        return n;
-      },
+      normal: (p) => normalInfo(p).normal,
+      normalInfo,
       /**
        * Slab method, exact. `tmin` starts at 0 so a ray that begins inside
        * reports 0, which is the same convention the ball and the plane use:
        * "you are already in it" is not a distance to travel.
        */
       rayHit(p, u) {
+        p = localPoint(p); u = localDirection(u);
         let tmin = 0, tmax = Infinity;
         for (let i = 0; i < 3; i++) {
-          if (Math.abs(u[i]) < 1e-12) {
+          if (u[i] === 0) {
             // Parallel to this pair of faces: either always between them or
             // never, and never means the ray misses no matter how far it goes.
-            if (Math.abs(p[i] - c[i]) > h[i]) return Infinity;
+            if (Math.abs(p[i]) > h[i]) return Infinity;
             continue;
           }
           const inv = 1 / u[i];
-          let t1 = (c[i] - h[i] - p[i]) * inv, t2 = (c[i] + h[i] - p[i]) * inv;
+          let t1 = (-h[i] - p[i]) * inv, t2 = (h[i] - p[i]) * inv;
           if (t1 > t2) { const swap = t1; t1 = t2; t2 = swap; }
           if (t1 > tmin) tmin = t1;
           if (t2 < tmax) tmax = t2;
@@ -159,7 +167,7 @@ export function compileSceneField(source) {
   }
   const scene = structuredClone(source);
   const region = scene.regions[0];
-  const solids = scene.entities.filter((e) => SOLID_KINDS.includes(e.kind)).map(solidOf);
+  const solids = scene.entities.filter((e) => SOLID_KINDS.includes(e.kind)).map(primitiveOf);
   const spawns = scene.entities.filter((e) => e.kind === 'spawn');
   if (spawns.length !== 1) throw new Error('Scene field requires exactly one spawn');
 
@@ -187,13 +195,23 @@ export function compileSceneField(source) {
   //     max(min(a, b), k) = min(max(a, k), max(b, k))
   // so the scoped form is a strict generalisation rather than a different
   // operation that happens to agree in one case.
-  const modifiers = [
+  const allModifiers = [
     ...carved.map((s) => ({ solid: s, sign: -1 })),
     ...intersected.map((s) => ({ solid: s, sign: 1 })),
   ];
-  const modified = modifiers.length > 0;
   const modsFor = new Map(added.map((a) =>
-    [a.id, modifiers.filter((m) => m.solid.target === null || m.solid.target === a.id)]));
+    [a.id, allModifiers.filter((m) => m.solid.target === null || m.solid.target === a.id)]));
+  const signature = (s) => JSON.stringify(s.kind === 'ball' ? [s.kind, s.center, s.radius]
+    : s.kind === 'box' ? [s.kind, s.center, s.halfExtent, s.frame]
+      : [s.kind, s.normal, s.offset]);
+  // Regularized exact duplicate subtraction is provably empty, unlike an
+  // arbitrary near-coincident pair. Remove it from BOTH field and ray queries
+  // and expose the retained IDs so hosts do not draw its zero-set shell.
+  const activeAdded = added.filter((a) => !modsFor.get(a.id).some((m) =>
+    m.sign < 0 && signature(a) === signature(m.solid)));
+  const modifiers = allModifiers.filter((m) => activeAdded.some((a) =>
+    m.solid.target === null || m.solid.target === a.id));
+  const modified = modifiers.length > 0;
 
   /**
    * The field, as a boolean expression over the authored solids.
@@ -211,33 +229,44 @@ export function compileSceneField(source) {
    * are standing in the doorway looking at the inside of the box that made it
    * -- so its normal is negated with the distance it came from.
    *
-   * EXACTNESS. `min` of two exact signed distances is still exact. `max` is
-   * NOT: it under-estimates near a concave seam, where the true nearest point
-   * is on neither surface but on the edge where they meet. That is safe for
-   * sphere tracing, which only needs a lower bound, and it is why a scene with
-   * any carve advertises `distance: 'bound'` rather than `'exact'`. See
-   * docs/rendering-contract.md.
+   * EXACTNESS. A union retains exact EXTERIOR distance, but overlapping
+   * interiors do not retain exact signed distance. Boolean max can also lose
+   * exterior exactness. The sign and conservative magnitude bound survive.
    */
   function nearest(p) {
     vector3(p);
     // Nothing to carve FROM is not the same as carving nothing: with no
     // additive solid the scene is empty space, and subtracting from empty
     // space leaves empty space.
-    if (!added.length) return { solid: null, distance: Infinity, negate: false };
-    let best = null, bestD = Infinity, negate = false;
-    for (const a of added) {
-      let d = a.distance(p), winner = a, flip = false;
+    if (!activeAdded.length) return { solid: null, distance: Infinity, negate: false };
+    let best = null, bestD = Infinity, negate = false, active = [];
+    for (const a of activeAdded) {
+      let d = a.distance(p), winner = a, flip = false, terms = [{ solid: a, sign: 1 }];
       for (const m of modsFor.get(a.id)) {
         const v = m.sign * m.solid.distance(p);
         // The sign is what makes the surface face the other way. A carved
         // face is the carving solid seen from INSIDE it, so its normal
         // flips; a clipping face is the clipping solid seen from outside,
         // so its normal does not.
-        if (v > d) { d = v; winner = m.solid; flip = m.sign < 0; }
+        if (v > d) { d = v; winner = m.solid; flip = m.sign < 0; terms = [m]; }
+        else if (v === d) terms.push(m);
       }
-      if (d < bestD) { bestD = d; best = winner; negate = flip; }
+      if (d < bestD) { bestD = d; best = winner; negate = flip; active = terms; }
+      else if (d === bestD) active.push(...terms);
     }
-    return { solid: best, distance: bestD, negate };
+    return { solid: best, distance: bestD, negate, active };
+  }
+
+  function normalSample(p) {
+    const { solid, active = [] } = nearest(p);
+    if (!solid) return { normal: null, unique: false, owner: null, reason: 'empty' };
+    const samples = active.map(({ solid: s, sign }) => {
+      const n = s.kind === 'plane' ? s.normalAt(p) : s.normal(p);
+      return { normal: n && n.map((x) => x * sign), unique: !!n && (!s.normalInfo || s.normalInfo(p).unique) };
+    });
+    const normal = samples[0].normal;
+    const unique = !!normal && samples.every((s) => s.unique && s.normal.every((x, i) => Math.abs(x - normal[i]) <= 1e-12));
+    return { normal, unique, owner: solid.id, reason: unique ? 'smooth' : normal ? 'nonsmooth' : 'undefined' };
   }
 
   // Connections become one-way aperture descriptors, two per portal. An
@@ -258,9 +287,9 @@ export function compileSceneField(source) {
   });
 
   // Where a modifier's target sits in the arrays the renderer loops over.
-  const addedBalls = added.filter((x) => x.kind === 'ball');
-  const addedBoxes = added.filter((x) => x.kind === 'box');
-  const addedPlanes = added.filter((x) => x.kind === 'plane');
+  const addedBalls = activeAdded.filter((x) => x.kind === 'ball');
+  const addedBoxes = activeAdded.filter((x) => x.kind === 'box');
+  const addedPlanes = activeAdded.filter((x) => x.kind === 'plane');
   // One number naming a solid across three arrays: ball i, box 200+i, plane
   // 100+i. The bands are wide enough that no scene can collide them, and the
   // shader compares owners as ints because it cannot compare strings.
@@ -290,9 +319,13 @@ export function compileSceneField(source) {
     // surface along the ray may be one that has been carved away -- so the
     // intersection becomes marched. Advertising this is the difference between
     // a conservative solver and a lying one.
-    capabilities: Object.freeze(modified
-      ? { distance: 'bound', intersection: 'marched', normal: 'exact-except-ball-center' }
-      : { distance: 'exact', intersection: 'exact', normal: 'exact-except-ball-center' }),
+    capabilities: Object.freeze({
+      distance: activeAdded.length === 1 && !modified ? 'exact' : 'bound',
+      exteriorDistance: modified ? 'bound' : 'exact',
+      interiorDistance: activeAdded.length === 1 && !modified ? 'exact' : 'magnitude-bound',
+      interiorSign: 'exact', intersection: 'analytic-with-numeric-guard',
+      normal: 'deterministic-contact', normalUniqueness: 'query-dependent',
+    }),
     /** Solids subtracted rather than added. Non-empty means the field is a bound. */
     carveCount: carved.length,
     /** Solids that CLIP their target rather than cutting it. Also a bound. */
@@ -322,6 +355,11 @@ export function compileSceneField(source) {
       .flatMap((m) => m.solid.center),
     modBoxHalvesUniform: () => modifiers.filter((m) => m.solid.kind === 'box')
       .flatMap((m) => m.solid.halfExtent),
+    modBoxFramesUniform: () => modifiers.filter((m) => m.solid.kind === 'box').flatMap((m) => m.solid.frame),
+    modBoxForwardsUniform: () => modifiers.filter((m) => m.solid.kind === 'box')
+      .flatMap((m) => [...m.solid.forward, 0]),
+    modBoxUpsUniform: () => modifiers.filter((m) => m.solid.kind === 'box')
+      .flatMap((m) => [...m.solid.up, 0]),
     modBoxOwners: () => modifiers.filter((m) => m.solid.kind === 'box')
       .map((m) => ownerIndex(m.solid)),
     modBoxSigns: () => modifiers.filter((m) => m.solid.kind === 'box').map((m) => m.sign),
@@ -360,6 +398,14 @@ export function compileSceneField(source) {
     /** Boxes as centre and half-extent, in step. Axis-aligned, so no frame. */
     boxCentersUniform: () => addedBoxes.flatMap((x) => x.center),
     boxHalvesUniform: () => addedBoxes.flatMap((x) => x.halfExtent),
+    boxFramesUniform: () => addedBoxes.flatMap((x) => x.frame),
+    // FORWARD AND UP ONLY, padded to vec4. The shader derives `right` by the
+    // same cross product the field does rather than being handed a third
+    // axis, because two places computing a basis is two places that can
+    // disagree about handedness -- and a flipped `right` mirrors the box on
+    // screen while collision keeps the original.
+    boxForwardsUniform: () => addedBoxes.flatMap((x) => [...x.forward, 0]),
+    boxUpsUniform: () => addedBoxes.flatMap((x) => [...x.up, 0]),
     ballCount: addedBalls.length,
     boxCount: addedBoxes.length,
     planeCount: addedPlanes.length,
@@ -382,6 +428,14 @@ export function compileSceneField(source) {
       // the wall were still there.
       return n && negate ? n.map((x) => -x) : n;
     },
+    normalSample,
+    /** Retained additive IDs after exact duplicate subtraction simplification. */
+    activeEntityIds: () => activeAdded.map((s) => s.id),
+    /** Owned CSG groups for hosts; cloned authored data, never mutable closures. */
+    groups: () => activeAdded.map((s) => ({
+      entity: structuredClone(scene.entities.find((e) => e.id === s.id)),
+      modifiers: modsFor.get(s.id).map((m) => structuredClone(scene.entities.find((e) => e.id === m.solid.id))),
+    })),
     /**
      * Cast a ray and say WHAT HAPPENED, not just how far.
      *
@@ -401,17 +455,18 @@ export function compileSceneField(source) {
      */
     rayCast(p, direction, {
       maxSteps = 2048, maxDistance = Math.max(region.extent * 8, 64), hitEpsilon = 1e-6,
+      method = 'analytic',
     } = {}) {
       vector3(p); vector3(direction, 'direction');
       if (Math.abs(Math.hypot(...direction) - 1) > 1e-8) throw new Error('Ray direction must be unit length');
+      if (!Number.isFinite(maxDistance) || maxDistance < 0) throw new Error('maxDistance must be finite and nonnegative');
+      if (!Number.isInteger(maxSteps) || maxSteps < 1) throw new Error('maxSteps must be a positive integer');
+      if (!Number.isFinite(hitEpsilon) || hitEpsilon <= 0) throw new Error('hitEpsilon must be positive and finite');
+      if (!['analytic', 'march'].includes(method)) throw new Error('method must be analytic or march');
       // No modifiers: every primitive solves in closed form and the nearest
       // one wins. This is the exact path, it stays exact, and it cannot be
       // exhausted because it does not iterate.
-      if (!modified) {
-        let best = Infinity;
-        for (const s of added) best = Math.min(best, s.rayHit(p, direction));
-        return { t: best, hit: best < Infinity, exhausted: false, steps: 0 };
-      }
+      if (method === 'analytic') return csgRayCast(activeAdded, modsFor, p, direction, maxDistance);
       // Otherwise the closed forms no longer answer the question -- the
       // nearest analytic surface may have been cut away, or lie outside an
       // intersection. Sphere-trace the expression: the distance is a lower
@@ -420,13 +475,15 @@ export function compileSceneField(source) {
       for (let step = 0; step < maxSteps; step++) {
         const at = [p[0] + direction[0] * t, p[1] + direction[1] * t, p[2] + direction[2] * t];
         const d = nearest(at).distance;
-        if (d < hitEpsilon) return { t, hit: true, exhausted: false, steps: step + 1 };
+        if (d < hitEpsilon) return { status: 'hit', method, t, hit: true, exhausted: false, steps: step + 1,
+          point: at, ...normalSample(at) };
         t += d;
         // Leaving the scene is a real miss and it is certain. Running out of
         // steps is not, which is why they return different things.
-        if (t > maxDistance) return { t: Infinity, hit: false, exhausted: false, steps: step + 1 };
+        if (t > maxDistance) return { status: 'miss', method, t: Infinity, hit: false, exhausted: false, steps: step + 1 };
       }
-      return { t: Infinity, hit: false, exhausted: true, steps: maxSteps };
+      return { status: 'indeterminate', reason: 'step-budget', method,
+        t: Infinity, hit: false, exhausted: true, steps: maxSteps };
     },
     /** Distance to the first surface, or Infinity. See `rayCast` for why. */
     rayHit(p, direction) {

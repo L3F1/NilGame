@@ -170,20 +170,34 @@ check('A MISS AND A GIVE-UP ARE DIFFERENT ANSWERS', () => {
   // to be there: nothing is there, or it ran out of steps while something
   // was. Collapsing them is the same mistake as a bound claiming to be exact.
   const f = compileSceneField(scenes.doorway);
-  // Starved on purpose. The wall IS there, so this must not read as a miss.
-  const starved = f.rayCast(SAIL.p, SAIL.u, { maxSteps: 16 });
+  // Starved on purpose, on the MARCHED path. A step budget is a property of
+  // marching; the analytic path does not iterate and so cannot be starved,
+  // which is asserted at the end rather than assumed.
+  const starved = f.rayCast(SAIL.p, SAIL.u, { maxSteps: 16, method: 'march' });
   assert.equal(starved.hit, false);
   assert.equal(starved.exhausted, true, 'ran out of steps, and says so');
   assert.equal(starved.steps, 16);
+  assert.equal(starved.status, 'indeterminate', 'not a miss: it never found out');
+  assert.equal(starved.reason, 'step-budget');
   // Straight up into empty sky: a real miss, and a certain one.
-  const sky = f.rayCast([0, -4, 1], [0, 0, 1]);
+  const sky = f.rayCast([0, -4, 1], [0, 0, 1], { method: 'march' });
   assert.equal(sky.hit, false);
   assert.equal(sky.exhausted, false, 'left the scene, which is not a give-up');
+  assert.equal(sky.status, 'miss', 'nothing there, and it knows');
   // And an ordinary hit reports neither.
-  const hit = f.rayCast(SAIL.p, SAIL.u);
+  const hit = f.rayCast(SAIL.p, SAIL.u, { method: 'march' });
   assert.equal(hit.hit, true);
   assert.equal(hit.exhausted, false);
   assert.ok(hit.steps > 0 && hit.steps < 2048);
+  // THE SAME RAY, ANALYTICALLY. This is the ray that started all of this: it
+  // needed about 300 bound-limited steps and the old fixed budget of 256 ran
+  // out one step short, so `rayHit` called a wall it had nearly touched
+  // "nothing there". The analytic path answers it without a budget at all.
+  const solved = f.rayCast(SAIL.p, SAIL.u, { maxSteps: 4 });
+  assert.equal(solved.hit, true, 'the analytic path has no step budget to run out of');
+  assert.equal(solved.exhausted, false);
+  assert.ok(Math.abs(solved.t - truth(f, SAIL.p, SAIL.u)) < CLOSE_TOL,
+    `analytic ${solved.t} vs truth ${truth(f, SAIL.p, SAIL.u)}`);
 });
 
 console.log(`\nmarch-truth: ${passed} checks passed, ${failed} failed\n`);

@@ -95,20 +95,30 @@ test('an uncarved surface keeps ITS normal', () => {
 });
 
 test('THE CONTRACT CHANGES WITH THE OPERATION', () => {
-  // `min` of exact distances is exact; `max` is not -- it under-estimates at a
-  // concave seam, where the true nearest point is on the edge where two
-  // surfaces meet rather than on either one. A field that kept claiming
-  // 'exact' would be lying, and clearance() is built on that claim.
+  // `min` of exact distances is exact OUTSIDE the union and not inside it,
+  // and `max` under-estimates at a concave seam where the true nearest point
+  // is on the edge where two surfaces meet rather than on either one. One
+  // word cannot carry all of that, which is why the field now reports the
+  // exterior distance, the interior distance and the sign separately -- the
+  // old single `distance: 'exact'` was making three claims and two of them
+  // were false for a union. clearance() is built on these claims.
   const doc = walled();
   doc.entities = doc.entities.filter((e) => e.id !== 'backface' && e.id !== 'wall');
   const plain = compileSceneField(doc);
-  assert.equal(plain.capabilities.distance, 'exact');
-  assert.equal(plain.capabilities.intersection, 'exact');
-  assert.equal(compileSceneField(walled()).capabilities.distance, 'bound',
+  assert.equal(plain.capabilities.distance, 'exact', 'one solid, nothing applied to it');
+  assert.equal(plain.capabilities.exteriorDistance, 'exact');
+  assert.equal(plain.capabilities.interiorDistance, 'exact');
+  const slab = compileSceneField(walled());
+  assert.equal(slab.capabilities.exteriorDistance, 'bound',
     'the slab is itself made by a carve');
   const cut = compileSceneField(walled({ doorway: { position: [0, 2.2, 0.6], radius: 0.9 } }));
   assert.equal(cut.capabilities.distance, 'bound');
-  assert.equal(cut.capabilities.intersection, 'marched');
+  assert.equal(cut.capabilities.exteriorDistance, 'bound');
+  assert.equal(cut.capabilities.interiorDistance, 'magnitude-bound');
+  // The SIGN survives every operation, and it is the claim collision actually
+  // depends on: "am I inside something" is answered exactly even where "how
+  // far" is only bounded.
+  assert.equal(cut.capabilities.interiorSign, 'exact');
 });
 
 test('THE SAFETY PROPERTY: a sphere-tracing step never lands inside', () => {
@@ -198,7 +208,11 @@ test('a document written before booleans means exactly what it did', () => {
   doc.entities = doc.entities.filter((e) => e.id !== 'backface');
   const f = compileSceneField(doc);
   assert.equal(f.carveCount, 0);
-  assert.equal(f.capabilities.distance, 'exact');
+  assert.equal(f.modifierCount, 0);
+  // Two half-spaces whose interiors overlap: outside the union the distance is
+  // still exact, and inside it is not, which is precisely the split the
+  // capability vocabulary now makes.
+  assert.equal(f.capabilities.exteriorDistance, 'exact');
   assert.ok(f.distance([0, 3, 0.5]) < 0, 'an uncarved half-space is infinitely thick');
 });
 
@@ -294,7 +308,8 @@ test('A GLOBAL INTERSECT IS REFUSED, and says why', () => {
 test('an intersect moves the capability, exactly as a carve does', () => {
   const f = compileSceneField(clipped());
   assert.equal(f.capabilities.distance, 'bound');
-  assert.equal(f.capabilities.intersection, 'marched');
+  assert.equal(f.capabilities.exteriorDistance, 'bound');
+  assert.equal(f.capabilities.interiorDistance, 'magnitude-bound');
   assert.equal(f.modifierCount, 1);
 });
 
@@ -306,9 +321,14 @@ test('A MISS AND A GIVE-UP ARE DIFFERENT ANSWERS', () => {
   const straight = f.rayCast([3, -1, 0.6], [0, 1, 0]);
   assert.equal(straight.hit, true);
   assert.equal(straight.exhausted, false);
-  const starved = f.rayCast([3, -1, 0.6], [0, 1, 0], { maxSteps: 2 });
+  // A step budget only means something on the MARCHED path. The analytic
+  // path does not iterate, so it cannot be starved -- which is the point of
+  // having it, and is asserted below rather than assumed.
+  const starved = f.rayCast([3, -1, 0.6], [0, 1, 0], { maxSteps: 2, method: 'march' });
   assert.equal(starved.hit, false);
   assert.equal(starved.exhausted, true, 'out of steps is not the same as nothing there');
+  const unstarvable = f.rayCast([3, -1, 0.6], [0, 1, 0], { maxSteps: 2 });
+  assert.equal(unstarvable.hit, true, 'the analytic path has no step budget to run out of');
   const sky = f.rayCast([0, -4, 1], [0, 0, 1]);
   assert.equal(sky.hit, false);
   assert.equal(sky.exhausted, false, 'leaving the scene is a certain miss');

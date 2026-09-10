@@ -46,14 +46,48 @@ normal capabilities, `engine/world/collision.js` consumes a distance bound plus
 a normal, and Godot reads the same ball documents.
 
 Booleans landed the same day and they MOVE THE CAPABILITY, which is the point
-of having one. `min` of two exact signed distances is still exact, so a union
-of authored solids keeps `distance: 'exact'`. `max` is not: at a concave seam
-the true nearest point lies on the edge where two surfaces meet rather than on
-either surface, so subtraction under-estimates. A scene containing any carve
-therefore advertises `distance: 'bound'` and `intersection: 'marched'`, and
-`rayHit` stops solving in closed form and sphere-traces instead -- because the
-nearest analytic surface along a ray may be one that has been carved away, and
-the closed form cannot know that.
+of having one. `max` under-estimates at a concave seam, where the true nearest
+point lies on the edge two surfaces meet along rather than on either surface,
+so subtraction and intersection both bound the distance rather than giving it.
+
+**CORRECTED 2026-09-09.** This section used to say that `min` of two exact
+signed distances is still exact, so a union keeps `distance: 'exact'`. That is
+true OUTSIDE the union and false inside it, and the field advertised `exact`
+on the strength of it. Two unit balls whose centres are one apart report -0.5
+at the midpoint; the true distance to the union's boundary there is 0.866. The
+error is an under-estimate, so nothing was unsafe -- but the claim was wrong,
+and `clearance()` is built on that claim. Found by Astra, reproduced against
+the previous commit before the fix.
+
+One word could not carry what was really several claims, so a field now
+reports them separately:
+
+| capability | what it promises |
+| --- | --- |
+| `exteriorDistance` | `exact` outside the solid, or `bound`. What a sphere tracer steps by. |
+| `interiorDistance` | `exact`, or `magnitude-bound` -- an under-estimate of depth. |
+| `interiorSign` | `exact` always. "Am I inside something" survives every operation. |
+| `intersection` | how a ray is resolved; `analytic-with-numeric-guard` today. |
+| `normal` | `deterministic-contact` -- a usable normal, not necessarily a unique one. |
+| `normalUniqueness` | `query-dependent`; ask `normalSample` at the point you care about. |
+| `distance` | the coarse legacy summary, kept so old callers still read something true. |
+
+`interiorSign` is the one collision actually depends on, and it is exact even
+where magnitude is only bounded. `normal` and `normalUniqueness` are split for
+the same reason: on an edge or a corner no normal is more correct than
+another, so a deterministic contact normal is the right thing to return AND
+the wrong thing to call unique. `normalSample` reports which it gave you.
+
+**A modified solid no longer forces the whole scene to march.** Each additive
+solid is compiled with the modifiers that apply to it, and `rayCast` resolves
+ray INTERVALS analytically per group -- so one carved wall does not cost every
+untouched ball its closed form. The marcher stays as a reference and a
+fallback, reachable with `method: 'march'`, and the two are compared against a
+brute-force reference in `march-truth.test.js` (agreement to 7e-15).
+
+`rayCast` also answers the range it was asked about. It previously ignored
+`maxDistance` on the analytic path and would report a hit at t = 1008 when
+asked for 64 -- also found by Astra, also reproduced before fixing.
 
 Under-estimating is the SAFE direction and that is why the bound is usable: a
 marcher that steps by a lower bound can never step through a surface. It is

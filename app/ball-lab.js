@@ -26,8 +26,10 @@ void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.0
 gl.attachShader(program, shader(gl.FRAGMENT_SHADER, BALL_FIRST_PERSON_GLSL));
 gl.linkProgram(program);
 if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
-const U = Object.fromEntries(['uBalls', 'uBallN', 'uBoxes', 'uBoxHalves', 'uBoxN',
-  'uModBoxes', 'uModBoxHalves', 'uModBoxOwner', 'uModBoxSign', 'uModBoxN',
+const U = Object.fromEntries(['uBalls', 'uBallN',
+  'uBoxes', 'uBoxHalves', 'uBoxFwd', 'uBoxUp', 'uBoxN',
+  'uModBoxes', 'uModBoxHalves', 'uModBoxFwd', 'uModBoxUp',
+  'uModBoxOwner', 'uModBoxSign', 'uModBoxN',
   'uPlanes', 'uPlaneN', 'uRes',
   'uEye', 'uFwd', 'uRight', 'uUp', 'uExtent', 'uSelected',
   'uPortals', 'uPortalNml', 'uPortalExit', 'uPortalMap', 'uPortalN',
@@ -187,10 +189,16 @@ function draw() {
   const { f, r, u } = basis();
   const balls = field.ballsUniform(), planes = field.planesUniform();
   const boxC = field.boxCentersUniform(), boxH = field.boxHalvesUniform();
+  const boxF = field.boxForwardsUniform(), boxU = field.boxUpsUniform();
   gl.uniform4fv(U.uBalls, balls.length ? balls : [0, 0, 0, -1]);
   gl.uniform1i(U.uBallN, field.ballCount);
   gl.uniform4fv(U.uBoxes, boxC.length ? vec4s(boxC) : [0, 0, 0, 0]);
   gl.uniform4fv(U.uBoxHalves, boxH.length ? vec4s(boxH) : [1, 1, 1, 0]);
+  // Identity orientation is forward +y, up +z -- the same default the field
+  // gives a box with no authored frame, so an unrotated box is bit-identical
+  // to what it drew before frames existed.
+  gl.uniform4fv(U.uBoxFwd, boxF.length ? boxF : [0, 1, 0, 0]);
+  gl.uniform4fv(U.uBoxUp, boxU.length ? boxU : [0, 0, 1, 0]);
   gl.uniform1i(U.uBoxN, field.boxCount);
   gl.uniform4fv(U.uPlanes, planes.length ? planes : [0, 0, 1, 0]);
   gl.uniform1i(U.uPlaneN, field.planeCount);
@@ -216,6 +224,7 @@ function draw() {
   const mbs = field.modBallSigns(), mpo = field.modPlaneOwners();
   const mxc = field.modBoxCentersUniform(), mxh = field.modBoxHalvesUniform();
   const mxo = field.modBoxOwners(), mxs = field.modBoxSigns();
+  const mxf = field.modBoxForwardsUniform(), mxu = field.modBoxUpsUniform();
   gl.uniform4fv(U.uModBalls, mb.length ? mb : [0, 0, 0, 0]);
   gl.uniform1iv(U.uModBallOwner, mbo.length ? mbo : [-1]);
   gl.uniform1fv(U.uModBallSign, mbs.length ? mbs : [-1]);
@@ -231,6 +240,8 @@ function draw() {
   gl.uniform4fv(U.uModBoxHalves, mxh.length ? vec4s(mxh) : [1, 1, 1, 0]);
   gl.uniform1iv(U.uModBoxOwner, mxo.length ? mxo : [-1]);
   gl.uniform1fv(U.uModBoxSign, mxs.length ? mxs : [-1]);
+  gl.uniform4fv(U.uModBoxFwd, mxf.length ? mxf : [0, 1, 0, 0]);
+  gl.uniform4fv(U.uModBoxUp, mxu.length ? mxu : [0, 0, 1, 0]);
   gl.uniform1i(U.uModBoxN, field.modBoxCount);
   // A uniform, not a constant, so the D3D compiler cannot unroll the march.
   gl.uniform1i(U.uMarchSteps, 160);
@@ -747,7 +758,9 @@ if (new URLSearchParams(location.search).has('check')) {
 
     // The contract the solver reads must follow the document, not lag it.
     check('the field now advertises a bound, not an exact distance',
-      carved.capabilities.distance === 'bound' && carved.capabilities.intersection === 'marched');
+      carved.capabilities.exteriorDistance === 'bound'
+      && carved.capabilities.interiorDistance === 'magnitude-bound'
+      && carved.capabilities.interiorSign === 'exact');
     check('and the readout tells the author', /carve/.test($('query').textContent));
 
     // A hole is only a hole if the field agrees. The carve sits 2.5 ahead of
@@ -781,7 +794,7 @@ if (new URLSearchParams(location.search).has('check')) {
     const boxed = compileSceneField(scene);
     check('add box adds a box', boxed.boxCount === 1);
     check('THE FIELD IS STILL EXACT with a box in it',
-      boxed.capabilities.distance === 'exact' && boxed.capabilities.intersection === 'exact');
+      boxed.capabilities.exteriorDistance === 'exact' && boxed.capabilities.interiorSign === 'exact');
     check('the new box is selected', selected === boxed.entities().at(-1).id);
     check('the inspector shows half-extent for a box', shownField('half-field'));
     check('and hides radius, which a box does not have', !shownField('radius-field'));
@@ -811,7 +824,7 @@ if (new URLSearchParams(location.search).has('check')) {
       cutter.op === 'subtract' && cutter.target === resized.id);
     check('a modifier box is counted as one', boxCut.modBoxCount === 1);
     check('and the field drops to a bound, as any modifier must',
-      boxCut.capabilities.distance === 'bound');
+      boxCut.capabilities.exteriorDistance === 'bound');
     draw();
     check('no GL errors marching a carved box', gl.getError() === gl.NO_ERROR);
     while (compileSceneField(scene).boxCount > 0) $('undo').click();
@@ -841,6 +854,46 @@ if (new URLSearchParams(location.search).has('check')) {
     draw();
     check('the box room loads and stays a room', compileSceneField(scene).boxCount === 3);
     shots.push({ name: 'boxes', data: canvas.toDataURL('image/png') });
+
+    // --- an ORIENTED box, which is where the two sides can silently part ---
+    // The field transforms a query into the box's own frame; the shader has
+    // to do the same, from the same forward and up, or a box collides turned
+    // and draws square. Nothing in Node can see that: the field is right on
+    // its own and the shader is right on its own, and only a picture taken
+    // with a rotation applied shows them disagreeing. So this check renders
+    // the SAME box twice, once turned, and requires the screen to change.
+    scene = await fetchFixture('oriented-room');
+    undo = []; redo = []; selected = null;
+    probe.position = [0, -5, 1.3]; probe.velocity = [0, 0, 0]; probe.grounded = true;
+    yaw = Math.PI / 2; pitch = -0.06;
+    draw();
+    const turnedField = compileSceneField(scene);
+    const crate = turnedField.entities().find((e) => e.id === 'crate');
+    check('the v2 fixture keeps its authored frame', !!crate.frame);
+    check('and a v2 document is accepted as it was written', turnedField.boxCount === 2);
+    const turnedShot = pixels();
+
+    // The same crate, frame removed. If the shader ignored the frame these
+    // two pictures would be identical, which is exactly the bug.
+    const square = compileSceneField(scene).document();
+    delete square.entities.find((e) => e.id === 'crate').frame;
+    commit(square);
+    draw();
+    check('A TURNED BOX DOES NOT DRAW LIKE A SQUARE ONE',
+      pixels().some((v, i) => v !== turnedShot[i]));
+    $('undo').click(); draw();
+
+    // And the two sides agree about WHERE it is: a ray fired down the camera
+    // axis hits the crate at the distance the field says, so what is drawn is
+    // what would be collided with.
+    const eye = probe.position.slice();
+    const aim = basis().f;
+    const cast = compileSceneField(scene).rayCast(eye, aim);
+    check('the field resolves the view ray analytically', cast.hit && !cast.exhausted);
+    check('and reports which solid it belongs to', typeof cast.owner === 'string');
+    shots.push({ name: 'oriented', data: canvas.toDataURL('image/png') });
+
+
     setPlaying(false);
     check('no GL errors', gl.getError() === gl.NO_ERROR);
   } catch (error) { err = error.stack; }

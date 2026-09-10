@@ -76,6 +76,14 @@ uniform int uBallN;
 // quietly borrowed for another purpose.
 uniform vec4 uBoxes[MAX_BOXES];
 uniform vec4 uBoxHalves[MAX_BOXES];
+// The construction frame, as forward and up. The third axis is derived here by
+// the same cross product the field uses, rather than being handed over as a
+// third axis: two places computing a basis is two places that can disagree
+// about handedness, and a flipped axis mirrors the box on screen while
+// collision keeps the original. Identity orientation is forward +y, up +z,
+// which is what every box authored before frames existed gets.
+uniform vec4 uBoxFwd[MAX_BOXES];
+uniform vec4 uBoxUp[MAX_BOXES];
 uniform int uBoxN;
 uniform vec4 uPlanes[MAX_PLANES];
 uniform int uPlaneN;
@@ -95,6 +103,8 @@ uniform float uModBallSign[MAX_MOD_BALLS];
 uniform int uModBallN;
 uniform vec4 uModBoxes[MAX_MOD_BOXES];
 uniform vec4 uModBoxHalves[MAX_MOD_BOXES];
+uniform vec4 uModBoxFwd[MAX_MOD_BOXES];
+uniform vec4 uModBoxUp[MAX_MOD_BOXES];
 uniform int uModBoxOwner[MAX_MOD_BOXES];
 uniform float uModBoxSign[MAX_MOD_BOXES];
 uniform int uModBoxN;
@@ -129,8 +139,13 @@ ${BALL_FIELD_GLSL}
 // axis independently. Inside, every overshoot is negative and the nearest
 // face is the largest of them. Six maxed half-spaces give a BOUND here, and
 // one bound anywhere makes the whole scene marched.
-float boxDistance(vec3 p,vec3 c,vec3 h){
-  vec3 q=abs(p-c)-h;
+// Columns are right, forward, up -- so v*B reads off the local components
+// and B*v puts a local vector back into the world, which is exactly what
+// the field's localDirection and worldDirection do.
+mat3 boxBasis(vec3 fwd,vec3 up){ return mat3(cross(fwd,up),fwd,up); }
+
+float boxDistance(vec3 p,vec3 c,vec3 h,mat3 B){
+  vec3 q=abs((p-c)*B)-h;
   return length(max(q,0.0))+min(max(q.x,max(q.y,q.z)),0.0);
 }
 
@@ -139,22 +154,23 @@ float boxDistance(vec3 p,vec3 c,vec3 h){
 // than the diagonal the gradient takes further out. Ties go to the lowest
 // axis, matching the field on the CPU side so the two can never disagree
 // about which way a wall faces.
-vec3 boxNormal(vec3 p,vec3 c,vec3 h){
-  vec3 d=p-c,q=abs(d)-h;
+vec3 boxNormal(vec3 p,vec3 c,vec3 h,mat3 B){
+  vec3 d=(p-c)*B,q=abs(d)-h;
   float m=max(q.x,max(q.y,q.z));
   vec3 sel=step(vec3(m),q);
   sel.y*=1.0-sel.x; sel.z*=(1.0-sel.x)*(1.0-sel.y);
   vec3 sgn=sign(d)+step(abs(d),vec3(0.0));   // never zero, so never a zero normal
-  return normalize(sel*sgn);
+  return normalize(B*(sel*sgn));             // back into the world
 }
 
 // Slab method, exact. step(abs(u),0.0) is 1 exactly where a direction
 // component is zero, which nudges the reciprocal off infinity: a ray parallel
 // to a pair of faces then reads a huge finite interval instead of computing
 // 0.0*inf, which is a NaN that would spread through the min and max.
-float boxRayHit(vec3 ro,vec3 u,vec3 c,vec3 h){
+float boxRayHit(vec3 ro,vec3 u,vec3 c,vec3 h,mat3 B){
+  vec3 lo0=(ro-c)*B; u=u*B;                  // the slab test is a local one
   vec3 inv=1.0/(u+step(abs(u),vec3(0.0))*1e-20);
-  vec3 t0=(c-h-ro)*inv,t1=(c+h-ro)*inv;
+  vec3 t0=(-h-lo0)*inv,t1=(h-lo0)*inv;
   vec3 lo=min(t0,t1),hi=max(t0,t1);
   float tmin=max(max(lo.x,lo.y),max(lo.z,0.0));
   float tmax=min(min(hi.x,hi.y),hi.z);
@@ -173,7 +189,8 @@ float modAdjust(float d, vec3 p, int owner){
   for(int j=0;j<MAX_MOD_BOXES;j++){
     if(j>=uModBoxN)break;
     if(uModBoxOwner[j]>=0 && uModBoxOwner[j]!=owner)continue;
-    d=max(d,uModBoxSign[j]*boxDistance(p,uModBoxes[j].xyz,uModBoxHalves[j].xyz));
+    d=max(d,uModBoxSign[j]*boxDistance(p,uModBoxes[j].xyz,uModBoxHalves[j].xyz,
+      boxBasis(uModBoxFwd[j].xyz,uModBoxUp[j].xyz)));
   }
   for(int j=0;j<MAX_MOD_PLANES;j++){
     if(j>=uModPlaneN)break;
@@ -196,7 +213,8 @@ float sceneDistance(vec3 p, out int owner){
   }
   for(int i=0;i<MAX_BOXES;i++){
     if(i>=uBoxN)break;
-    float d=modAdjust(boxDistance(p,uBoxes[i].xyz,uBoxHalves[i].xyz),p,200+i);
+    float d=modAdjust(boxDistance(p,uBoxes[i].xyz,uBoxHalves[i].xyz,
+      boxBasis(uBoxFwd[i].xyz,uBoxUp[i].xyz)),p,200+i);
     if(d<best){best=d;owner=200+i;}
   }
   for(int i=0;i<MAX_PLANES;i++){
@@ -246,7 +264,8 @@ void main(){
       }
       for(int i=0;i<MAX_BOXES;i++){
         if(i>=uBoxN)break;
-        float t=boxRayHit(eye,u,uBoxes[i].xyz,uBoxHalves[i].xyz);
+        float t=boxRayHit(eye,u,uBoxes[i].xyz,uBoxHalves[i].xyz,
+          boxBasis(uBoxFwd[i].xyz,uBoxUp[i].xyz));
         if(t<tSurf&&t>0.0){tSurf=t;owner=200+i;}
       }
       for(int i=0;i<MAX_PLANES;i++){
@@ -259,7 +278,8 @@ void main(){
         }
       }
       // Widest band first: a box is 200+i and satisfies the plane test too.
-      if(owner>=200)nSurf=boxNormal(eye+tSurf*u,uBoxes[owner-200].xyz,uBoxHalves[owner-200].xyz);
+      if(owner>=200)nSurf=boxNormal(eye+tSurf*u,uBoxes[owner-200].xyz,uBoxHalves[owner-200].xyz,
+        boxBasis(uBoxFwd[owner-200].xyz,uBoxUp[owner-200].xyz));
       else if(owner>=100)nSurf=uPlanes[owner-100].xyz;
       else if(owner>=0)nSurf=normalize(eye+tSurf*u-uBalls[owner].xyz);
     } else {

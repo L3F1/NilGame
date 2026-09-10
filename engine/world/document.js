@@ -3,7 +3,7 @@
 // playable scene, implement portal crossing or enable mixed-geometry rendering.
 import { createChart } from '../geometry/charts.js';
 
-export const SCENE_VERSION = 1;
+export const SCENE_VERSION = 2;
 
 function requireValue(condition, message) {
   if (!condition) throw new Error(message);
@@ -28,7 +28,7 @@ function identify(value, ids, path) {
 export function validateScene(scene) {
   fields(scene, ['format', 'version', 'id', 'units', 'regions', 'entities', 'connections'], 'scene');
   requireValue(scene.format === 'nil-scene', 'scene.format: expected nil-scene');
-  requireValue(scene.version === SCENE_VERSION, `scene.version: expected ${SCENE_VERSION}; migration required`);
+  requireValue(scene.version === 1 || scene.version === SCENE_VERSION, `scene.version: expected 1 or ${SCENE_VERSION}; migration required`);
   const ids = new Set();
   identify(scene.id, ids, 'scene.id');
   fields(scene.units, ['name', 'playerRadius'], 'units');
@@ -38,7 +38,7 @@ export function validateScene(scene) {
   requireValue(scene.regions.length > 0, 'regions: at least one region required');
   const charts = new Map();
   for (const region of scene.regions) {
-    fields(region, ['id', 'geometry', 'topology', 'extent'], 'region');
+    fields(region, ['id', 'geometry', 'topology', 'extent', ...(scene.version >= 2 ? ['floorId'] : [])], 'region');
     identify(region.id, ids, 'region.id');
     fields(region.geometry, ['kind', 'curvatureRadius'], `region ${region.id}.geometry`);
     positive(region.geometry.curvatureRadius, `region ${region.id}.curvatureRadius`);
@@ -49,26 +49,34 @@ export function validateScene(scene) {
   const entities = new Map();
   for (const entity of scene.entities) {
     fields(entity, ['id', 'regionId', 'kind', 'position', 'radius', 'halfExtent',
-      'forward', 'up', 'op', 'target'], 'entity');
+      'forward', 'up', 'op', 'target', ...(scene.version >= 2 ? ['frame'] : [])], 'entity');
     identify(entity.id, ids, 'entity.id');
     const chart = charts.get(entity.regionId);
     requireValue(chart, `entity ${entity.id}: unknown region ${entity.regionId}`);
-    requireValue(['ball', 'box', 'plane', 'spawn', 'objective', 'anchor'].includes(entity.kind),
+    requireValue(['ball', 'box', 'plane', 'spawn', 'objective', 'anchor', ...(scene.version >= 2 ? ['geodesic-cell'] : [])].includes(entity.kind),
       `entity ${entity.id}: unsupported kind`);
     vector(entity.position, `entity ${entity.id}.position`);
     chart.decode(entity.position);
     if (entity.kind === 'ball' || entity.kind === 'anchor') {
       positive(entity.radius, `entity ${entity.id}.radius`);
     } else requireValue(entity.radius === undefined, `entity ${entity.id}: radius only applies to balls and anchors`);
-    // A BOX is three half-extents from its centre, and it is AXIS-ALIGNED.
-    // That is not a simplification to be tidied up later: an orientation is a
-    // rotation, and a rotation is a rigid motion of the region the box lives
-    // in. In E3 that is the familiar 3x3, but this schema is meant to survive
-    // the other geometries, and in Nil or Sol there is no isometry carrying an
-    // axis-aligned box to a tilted one of the same shape -- the shape itself
-    // changes. Orientation is a question for the geometry layer to answer, not
-    // a field this schema can quietly accept and hand on.
-    if (entity.kind === 'box') {
+    // v1 boxes keep identity orientation. A v2 frame describes a construction
+    // at the center, not a promise of arbitrary rigid rotations in every metric.
+    if (entity.frame !== undefined) {
+      requireValue(['box', 'geodesic-cell'].includes(entity.kind), `entity ${entity.id}: frame applies to boxes and geodesic cells`);
+      fields(entity.frame, ['forward', 'up'], `entity ${entity.id}.frame`);
+      vector(entity.frame.forward, 'frame.forward'); vector(entity.frame.up, 'frame.up');
+      const f = entity.frame.forward, u = entity.frame.up;
+      requireValue(Math.abs(Math.hypot(...f)-1)<1e-8 && Math.abs(Math.hypot(...u)-1)<1e-8
+        && Math.abs(f.reduce((s,x,i)=>s+x*u[i],0))<1e-8, 'construction frame must be orthonormal');
+    }
+    if (entity.kind === 'geodesic-cell') {
+      requireValue(chart.kind === 's3', `entity ${entity.id}: geodesic-cell currently requires S3`);
+    }
+    if (entity.kind === 'box' && scene.version >= 2) {
+      requireValue(chart.kind === 'e3', `entity ${entity.id}: box requires E3; use an explicit geodesic-cell construction in S3`);
+    }
+    if (entity.kind === 'box' || entity.kind === 'geodesic-cell') {
       vector(entity.halfExtent, `box ${entity.id}.halfExtent`);
       for (let i = 0; i < 3; i++) {
         positive(entity.halfExtent[i], `box ${entity.id}.halfExtent[${i}]`);
@@ -84,7 +92,7 @@ export function validateScene(scene) {
     // happened. Absent means 'add', so every document written before booleans
     // existed keeps its meaning exactly.
     if (entity.op !== undefined) {
-      requireValue(['ball', 'box', 'plane'].includes(entity.kind),
+      requireValue(['ball', 'box', 'plane', 'geodesic-cell'].includes(entity.kind),
         `entity ${entity.id}: op applies to balls, boxes and planes, not ${entity.kind}`);
       requireValue(['add', 'subtract', 'intersect'].includes(entity.op),
         `entity ${entity.id}.op: expected "add", "subtract" or "intersect", `
@@ -117,7 +125,8 @@ export function validateScene(scene) {
         + 'cannot target itself');
     }
     const clearance = entity.kind === 'spawn' ? scene.units.playerRadius
-      : entity.kind === 'box' ? Math.hypot(...entity.halfExtent)   // its farthest corner
+      : entity.kind === 'box' ? Math.hypot(...entity.halfExtent)
+        : entity.kind === 'geodesic-cell' ? chart.curvatureRadius * Math.atan(Math.hypot(...entity.halfExtent.map(h=>Math.tan(h/chart.curvatureRadius))))
         : (entity.radius || 0);
     requireValue(Math.hypot(...entity.position) + clearance <= chart.maxDistance,
       `entity ${entity.id}: bounds straddle chart extent`);
@@ -147,6 +156,22 @@ export function validateScene(scene) {
     }
     entities.set(entity.id, entity);
   }
+  for (const region of scene.regions) {
+    if (region.floorId !== undefined) {
+      const floor = entities.get(region.floorId);
+      requireValue(floor?.kind === 'plane' && floor.regionId === region.id && (!floor.op || floor.op === 'add'),
+        `region ${region.id}: floorId must name its additive plane`);
+    }
+  }
+  for (const entity of entities.values()) {
+    if (entity.kind === 'geodesic-cell') {
+      const chart = charts.get(entity.regionId);
+      requireValue(entity.halfExtent.every(h=>h<Math.PI*chart.curvatureRadius/2), `cell ${entity.id}: face offsets must be below a hemisphere`);
+    }
+    if (entity.target !== undefined && entities.has(entity.target)) {
+      requireValue(entities.get(entity.target).regionId === entity.regionId, `entity ${entity.id}: modifier target belongs to another region`);
+    }
+  }
   requireValue(scene.entities.some((entity) => entity.kind === 'spawn'), 'entities: at least one spawn required');
   const connected = new Set();
   for (const connection of scene.connections) {
@@ -171,6 +196,13 @@ export function validateScene(scene) {
 
 export function parseScene(json) {
   return validateScene(JSON.parse(json));
+}
+
+/** Explicit migration: identity boxes retain their meaning; never re-embed. */
+export function upgradeScene(source) {
+  validateScene(source);
+  const next = structuredClone(source); next.version = SCENE_VERSION;
+  return validateScene(next);
 }
 
 /** Build model points for tooling. Rendering/collision need separate adapters. */

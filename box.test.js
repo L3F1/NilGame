@@ -172,8 +172,11 @@ test('A BOX SCENE STAYS EXACT; the same box as six clips does not', () => {
   // The whole case for the primitive, in one comparison.
   const c = [0, 0, 1], h = [1, 2, 1];
   const prim = compileSceneField(scene([ground, box('crate', c, h)]));
-  assert.equal(prim.capabilities.distance, 'exact');
-  assert.equal(prim.capabilities.intersection, 'exact');
+  // EXTERIOR distance is the claim the whole argument rests on: it is what a
+  // sphere tracer steps by and what the 1.0-unit shortfall below is measured
+  // in. The primitive keeps it exact; the clipped build cannot.
+  assert.equal(prim.capabilities.exteriorDistance, 'exact');
+  assert.equal(prim.capabilities.interiorSign, 'exact');
 
   // The construction an author would otherwise write: one half-space for the
   // first face, five clips bringing it back to a box.
@@ -189,7 +192,8 @@ test('A BOX SCENE STAYS EXACT; the same box as six clips does not', () => {
     }
   }
   const built = compileSceneField(scene([ground, ...faces], 'six-clips'));
-  assert.equal(built.capabilities.distance, 'bound', 'six clips can only promise a bound');
+  assert.equal(built.capabilities.exteriorDistance, 'bound',
+    'six clips can only promise a bound, even outside the solid');
   assert.equal(built.intersectCount, 5);
 
   // They describe the SAME SOLID -- the sign agrees everywhere ...

@@ -1,0 +1,12 @@
+{
+  "format":"nil-scene","version":2,"id":"oriented-room",
+  "units":{"name":"design-unit","playerRadius":0.25},
+  "regions":[{"id":"flat","geometry":{"kind":"e3","curvatureRadius":1},"topology":"cover","extent":16,"floorId":"floor"}],
+  "entities":[
+    {"id":"start","regionId":"flat","kind":"spawn","position":[0,-4,0.3]},
+    {"id":"floor","regionId":"flat","kind":"plane","position":[0,0,0],"up":[0,0,1]},
+    {"id":"crate","regionId":"flat","kind":"box","position":[-1.5,0,0.7],"halfExtent":[1,0.4,0.7],"frame":{"forward":[0.6,0.8,0],"up":[0,0,1]}},
+    {"id":"wall","regionId":"flat","kind":"box","position":[0,2,1.5],"halfExtent":[3,0.3,1.5]},
+    {"id":"door","regionId":"flat","kind":"box","position":[0,2,1],"halfExtent":[0.85,0.8,1.3],"op":"subtract","target":"wall"}
+  ],"connections":[]
+}

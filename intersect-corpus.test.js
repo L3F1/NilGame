@@ -52,10 +52,18 @@ for (const c of manifest.invalid) {
   });
 }
 
-const BOUND = { distance: 'bound', intersection: 'marched', normal: 'exact-except-ball-center' };
+// What a modified field promises. Split out of the single word `distance`
+// once an overlapping union was found advertising an exact signed distance it
+// did not have: outside the union `min` IS exact, inside it is not, and the
+// SIGN is exact either way. A modifier bounds the exterior too.
+const BOUND = {
+  distance: 'bound', exteriorDistance: 'bound', interiorDistance: 'magnitude-bound',
+  interiorSign: 'exact', intersection: 'analytic-with-numeric-guard',
+  normal: 'deterministic-contact', normalUniqueness: 'query-dependent',
+};
 function compiled(file) {
   const f = compileSceneField(load(clipRoot, file));
-  assert.deepEqual({ ...f.capabilities }, BOUND, `${file}: a clip must advertise bound/marched`);
+  assert.deepEqual({ ...f.capabilities }, BOUND, `${file}: a clip must advertise a bounded distance`);
   return f;
 }
 

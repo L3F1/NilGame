@@ -39,13 +39,13 @@
       }
     },
     {
-      "id": "version-2", "general": "reject", "ballHost": "reject",
-      "reason": "Only scene v1 is understood; newer versions require migration, not guessing.",
+      "id": "version-3", "general": "reject", "ballHost": "reject",
+      "reason": "Scene v1 and v2 are understood; a newer version requires migration, not guessing.",
       "reasonKind": "unsupported-version", "native": "reject",
       "nativeRule": "L34 format-version",
       "errorContains": "migration required",
       "document": {
-        "format": "nil-scene", "version": 2, "id": "lab",
+        "format": "nil-scene", "version": 3, "id": "lab",
         "units": { "name": "design-unit", "playerRadius": 0.07 },
         "regions": [
           { "id": "room", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 4 }

@@ -1,6 +1,6 @@
 {
   "format": "nil-scene",
-  "version": 2,
+  "version": 3,
   "id": "ball-lab",
   "units": {
     "name": "design-unit",

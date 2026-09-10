@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NilGame · Curved scene editor</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101a27;color:#e0edf0;font:15px system-ui;display:grid;grid-template-columns:minmax(0,1fr) 340px;height:100dvh}
+main{position:relative;min-height:300px;overflow:hidden}canvas{display:block;width:100%;height:100%}aside{overflow:auto;padding:18px}h1{font-size:22px;margin:0}h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#99b4c4;margin:22px 0 8px}p{line-height:1.45}small,.hint{color:#a6bac7}a{color:#8be2d7}label{display:block;margin:9px 0}input[type=number],select{width:100%;padding:7px;background:#1d2a3b;color:inherit;border:1px solid #4b6172;border-radius:4px}.row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}button{background:#22384b;color:inherit;border:1px solid #516b7e;border-radius:5px;padding:9px 11px;cursor:pointer;margin:3px 2px 3px 0}button:hover{background:#365169}button:disabled{opacity:.45;cursor:default}button.primary{background:#16645e;border-color:#50c1af}input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid #ffd590;outline-offset:2px}[hidden]{display:none!important}#boot{color:#ffb8a8;white-space:pre-wrap;overflow-wrap:anywhere}#status{color:#94e1cb;min-height:1.5em}#metrics{font-variant-numeric:tabular-nums;white-space:pre-line;font-size:13px;color:#b4d8e0}#view-label{position:absolute;left:16px;top:12px;pointer-events:none;background:#10202bd9;padding:8px 12px;border-radius:5px;max-width:calc(100% - 32px)}#crosshair{position:absolute;left:50%;top:50%;pointer-events:none;color:#e7f2f1;transform:translate(-50%,-50%)}#instructions{font-size:13px}input[type=file]{max-width:100%}
+@media(max-width:700px){body{display:block;height:auto}main{height:52dvh;min-height:260px}aside{overflow:visible}}
+</style>
+<script>function reportBoot(message){const el=document.getElementById('boot');if(el)el.textContent=String(message)}window.addEventListener('error',e=>reportBoot(e.message));window.addEventListener('unhandledrejection',e=>reportBoot(e.reason));</script>
+</head><body><main><canvas id="view" tabindex="0" aria-label="First-person curved scene preview"></canvas><div id="view-label">Loading scene…</div><div id="crosshair" aria-hidden="true">+</div></main><aside>
+<h1>Curved scene editor</h1><p class="hint">Build at a human scale, then walk the same surfaces. Each region keeps its own geometry.</p>
+<h2>Scene</h2>
+<label>Fixture<select id="fixture"><option value="s3-room">Spherical room</option><option value="connected-room">Connected E3 / S3 rooms</option><option value="oriented-room">Oriented E3 room</option></select></label>
+<label>Region<select id="regions"></select></label><label>Entity<select id="entities"></select></label>
+<h2 id="inspector-title">Inspector</h2><form id="editor">
+<label>Position — radial distance coordinates<span class="row"><input id="x" type="number" step="any" required aria-label="Position X"><input id="y" type="number" step="any" required aria-label="Position Y"><input id="z" type="number" step="any" required aria-label="Position Z"></span></label>
+<label id="radius-field">Intrinsic radius<input id="radius" type="number" step="any" min="0.001" aria-label="Intrinsic radius"></label>
+<label id="half-field"><span id="half-label">Half dimensions</span><span class="row"><input id="hx" type="number" step="any" min="0.001" aria-label="Half dimension X"><input id="hy" type="number" step="any" min="0.001" aria-label="Half dimension Y"><input id="hz" type="number" step="any" min="0.001" aria-label="Half dimension Z"></span></label>
+<label id="forward-field">Construction forward<span class="row"><input id="fx" type="number" step="any" aria-label="Forward X"><input id="fy" type="number" step="any" aria-label="Forward Y"><input id="fz" type="number" step="any" aria-label="Forward Z"></span></label>
+<label id="up-field">Construction up / plane normal<span class="row"><input id="ux" type="number" step="any" aria-label="Up X"><input id="uy" type="number" step="any" aria-label="Up Y"><input id="uz" type="number" step="any" aria-label="Up Z"></span></label>
+<p class="hint" id="frame-hint" hidden>Forward and up must be perpendicular unit vectors in the local tangent frame.</p>
+<button id="apply" class="primary" type="submit">Apply edit</button></form><button id="undo">Undo</button><button id="redo">Redo</button>
+<h2>Play</h2><button id="play" class="primary">Play from region spawn</button><button id="stop">Stop</button><button id="reset">Reset view</button><label><input id="gravity" type="checkbox" checked> Floor gravity</label>
+<p id="instructions" class="hint">WASD moves; mouse looks; Escape stops. Space jumps with gravity, or rises in flight. Shift descends in flight. Click the view to resume mouse control. Editing resets the player to the current region’s spawn.</p>
+<p id="metrics"></p><p id="status" role="status"></p><pre id="boot" role="alert"></pre>
+<h2>Scene file</h2><button id="save">Save JSON</button><label>Load JSON<input id="load" type="file" accept=".json,application/json"></label>
+<p><small><a href="../index.html">Geometry playground</a> · <a href="ball-lab.html">E3 reference editor</a></small></p>
+</aside><script type="module" src="../app/region-lab.js"></script></body></html>

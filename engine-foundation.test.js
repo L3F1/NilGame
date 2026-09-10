@@ -85,7 +85,7 @@ test('Scene survives JSON round trip and prepares points in the correct geometry
   assert.equal(points.get('flat-ball')[3], 1);
 });
 const invalidEdits = [
-  (s) => { s.version = 2; },
+  (s) => { s.version = 3; },
   (s) => { s.regions[0].geometry.kind = 'h2r'; },
   (s) => { s.regions[0].topology = 'torus'; },
   (s) => { s.entities[0].regionId = 'missing'; },
