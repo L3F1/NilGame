@@ -1,0 +1,19 @@
+{
+  "format": "nil-scene",
+  "version": 1,
+  "id": "carve-room",
+  "units": { "name": "design-unit", "playerRadius": 0.25 },
+  "regions": [
+    { "id": "r", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 20 }
+  ],
+  "entities": [
+    { "id": "ground", "regionId": "r", "kind": "plane", "position": [0, 0, 0], "up": [0, 0, 1] },
+    { "id": "wall", "regionId": "r", "kind": "plane", "position": [0, 2, 0], "up": [0, -1, 0] },
+    { "id": "start", "regionId": "r", "kind": "spawn", "position": [0, -1, 0.3] },
+    { "id": "backface", "regionId": "r", "kind": "plane", "op": "subtract", "target": "wall",
+      "position": [0, 2.4, 0], "up": [0, -1, 0] },
+    { "id": "door", "regionId": "r", "kind": "ball", "op": "add", "target": "wall",
+      "position": [0, 2.2, 0.6], "radius": 0.5 }
+  ],
+  "connections": []
+}

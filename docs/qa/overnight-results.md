@@ -933,3 +933,51 @@ no survivor-cleanup WARNING appeared in any `page-check` output
   shell, same as MUSE-19's interop finding.
 - No code changed; writes are this report, runbook timing cells,
   and the task's status line. Status: READY FOR REVIEW.
+
+## MUSE-21 — A corpus for booleans
+
+- Environment (this shell): `host-probe` verdict "browser checks run
+  THROUGH THE QUEUE here" (sandbox denies AF_UNIX + AF_VSOCK; worker
+  LeoPC linux pid 22617 still serving — pasted in full in the session,
+  not re-investigated per the queue). Baseline `node tools/test.js`
+  at `c3d4631` → 29/29, exit 0, before edits.
+- Rule inventory around `op`/`target`, read from the code: FIVE
+  rules. document.js: op on non-solids, misspelled op value, target
+  without a subtract, self-target. scene-field.js: target must name
+  an ADDED solid (one rule covering missing ids, non-solids, and
+  carve-on-carve). All five covered.
+- New files: `boolean-corpus.test.js` (auto-discovered by
+  tools/test.js, no registration edit needed), 7 valid docs under
+  `levels/fixtures/carve/` + manifest, 10 single-defect docs under
+  `levels/fixtures/invalid/` (NOT in the MUSE-13 manifest: its runner
+  only calls validateScene and the 3 field-level cases pass
+  validation by design — stated in the new manifest).
+- Invalid: op on spawn/objective/anchor, misspelled op, target on an
+  add, target with no op, self-target (all document-level,
+  message-checked); target naming nonexistent id, a spawn, another
+  subtract (all field-level: validateScene passes, compile refuses,
+  and the runner asserts that split). Refusals leave input
+  byte-identical; every base compiles.
+- Valid, each with capabilities asserted bound/marched: slab room;
+  fully-removed nub reads 0.5 free space with the floor unmoved;
+  two carves one target (carveCount 3, wall stands between);
+  carve-after-carve consistent (larger dominates); outside carve
+  bitwise identical to uncarved at 6 points; tangent carve reads 0
+  at the touch with solid beneath; explicit `target: null` cuts
+  globally — floor under the doorway holed (+0.2), far floor intact.
+  All spot numbers probed BEFORE pinning (`/tmp/probe-booleans.mjs`,
+  scratch).
+- Deliberately not cased, with reasons: `target: null` on an add
+  (same rule+message as target-without-op); target naming an anchor
+  (same code path as the spawn case, which is representative); the
+  pre-booleans default (boolean.test.js already pins op-absent).
+- Fail-demo (rule 5, scene-field.js target check neutralised in the
+  working copy): corpus refuses to pass —
+  `Missing expected exception: wrong refusal for [backface targets
+  nonesuch]`, exit 1. Rule restored, `git diff engine/` empty,
+  corpus 18/18, full suite 30/30 exit 0.
+  `engine/world/document.js`, `engine/world/scene-field.js`,
+  `boolean.test.js` unedited.
+- Checks: `node boolean-corpus.test.js` → 18 checks, exit 0;
+  `node tools/test.js` → 30/30, exit 0 (WSL node v22.23.2).
+  Status: READY FOR REVIEW.

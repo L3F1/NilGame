@@ -61,7 +61,8 @@ a design. That is a useful report, not a failure.
 
 ## MUSE-21 - A corpus for booleans
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@c3d4631, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Report: docs/qa/overnight-results.md (MUSE-21). 5 rules found, all covered: 10 message-checked invalid docs (7 document-level, 3 field-level with the layer split asserted) + 7 valid carve docs with capabilities pinned; fail-demo on the target rule (exit 1 without it, 18/18 with it); full suite 30/30. No engine edits.
 
 `op: add | subtract` and `target` landed in `e348791` with 14 tests. Those
 tests were written by the person who wrote the feature, which is the weakest

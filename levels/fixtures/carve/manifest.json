@@ -1,0 +1,75 @@
+{
+  "_note": "Boolean-corpus for MUSE-21: one defect per invalid document, each mutated from the valid base room.nil.json. errorContains is a literal substring of the refusal. level pins WHERE the refusal comes from: document-level cases throw in validateScene itself, field-level cases pass validation and throw in compileSceneField's target check (scene-field.js) — that split is the design, so the runner asserts it. Valid documents pin field behavior the lead's own 14 tests do not: full removal, shared targets, already-removed targets, no-effect and tangent carves, and the untargeted (global) carve. Invalid files live in ../invalid/ next to the MUSE-13 corpus but are NOT in its manifest, because its runner only calls validateScene and the field-level cases pass validation by design.",
+  "base": "room.nil.json",
+  "invalid": [
+    {
+      "file": "../invalid/boolean-op-on-spawn.nil.json",
+      "change": "spawn start carries op subtract",
+      "level": "document",
+      "errorContains": "op applies to balls and planes, not spawn"
+    },
+    {
+      "file": "../invalid/boolean-op-on-objective.nil.json",
+      "change": "added objective goal carrying op add",
+      "level": "document",
+      "errorContains": "op applies to balls and planes, not objective"
+    },
+    {
+      "file": "../invalid/boolean-op-on-anchor.nil.json",
+      "change": "added anchor gate (otherwise valid) carrying op subtract",
+      "level": "document",
+      "errorContains": "op applies to balls and planes, not anchor"
+    },
+    {
+      "file": "../invalid/boolean-op-misspelled.nil.json",
+      "change": "backface op substract",
+      "level": "document",
+      "errorContains": "expected \"add\" or \"subtract\""
+    },
+    {
+      "file": "../invalid/boolean-target-on-add.nil.json",
+      "change": "added ball door with op add and target wall",
+      "level": "document",
+      "errorContains": "target only applies to a subtract"
+    },
+    {
+      "file": "../invalid/boolean-target-without-op.nil.json",
+      "change": "added plane drift with target wall and no op at all",
+      "level": "document",
+      "errorContains": "target only applies to a subtract"
+    },
+    {
+      "file": "../invalid/boolean-target-self.nil.json",
+      "change": "backface targets backface",
+      "level": "document",
+      "errorContains": "a carve cannot target itself"
+    },
+    {
+      "file": "../invalid/boolean-target-nonexistent.nil.json",
+      "change": "backface targets nonesuch",
+      "level": "field",
+      "errorContains": "target nonesuch is not a solid in this scene"
+    },
+    {
+      "file": "../invalid/boolean-target-spawn.nil.json",
+      "change": "backface targets start, which is a spawn and not a solid",
+      "level": "field",
+      "errorContains": "target start is not a solid in this scene"
+    },
+    {
+      "file": "../invalid/boolean-target-subtract.nil.json",
+      "change": "added ball door with op subtract targeting backface, itself a carve",
+      "level": "field",
+      "errorContains": "target backface is not a solid in this scene"
+    }
+  ],
+  "valid": [
+    { "file": "room.nil.json", "note": "slab wall plus floor; the base every invalid case mutates" },
+    { "file": "removed-entirely.nil.json", "note": "a carve bigger than its target leaves free space, not a solid universe with a bite" },
+    { "file": "two-carves.nil.json", "note": "two carves may target the same solid" },
+    { "file": "carve-after-carve.nil.json", "note": "a carve may target a solid another carve already removed" },
+    { "file": "carve-outside.nil.json", "note": "a carve entirely outside its target changes nothing, bitwise" },
+    { "file": "carve-tangent.nil.json", "note": "a carve exactly tangent to its target reads as surface; the solid beneath survives" },
+    { "file": "carve-global.nil.json", "note": "explicit target null cuts every solid, including the floor — the global default made visible" }
+  ]
+}

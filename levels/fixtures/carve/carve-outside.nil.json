@@ -1,0 +1,19 @@
+{
+  "format": "nil-scene",
+  "version": 1,
+  "id": "carve-outside",
+  "units": { "name": "design-unit", "playerRadius": 0.25 },
+  "regions": [
+    { "id": "r", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 20 }
+  ],
+  "entities": [
+    { "id": "ground", "regionId": "r", "kind": "plane", "position": [0, 0, 0], "up": [0, 0, 1] },
+    { "id": "wall", "regionId": "r", "kind": "plane", "position": [0, 2, 0], "up": [0, -1, 0] },
+    { "id": "start", "regionId": "r", "kind": "spawn", "position": [0, -1, 0.3] },
+    { "id": "backface", "regionId": "r", "kind": "plane", "op": "subtract", "target": "wall",
+      "position": [0, 2.4, 0], "up": [0, -1, 0] },
+    { "id": "far", "regionId": "r", "kind": "ball", "op": "subtract", "target": "wall",
+      "position": [10, 10, 5], "radius": 0.5 }
+  ],
+  "connections": []
+}

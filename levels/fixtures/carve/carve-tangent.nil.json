@@ -1,0 +1,16 @@
+{
+  "format": "nil-scene",
+  "version": 1,
+  "id": "carve-tangent",
+  "units": { "name": "design-unit", "playerRadius": 0.25 },
+  "regions": [
+    { "id": "r", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 20 }
+  ],
+  "entities": [
+    { "id": "ground", "regionId": "r", "kind": "plane", "position": [0, 0, 0], "up": [0, 0, 1] },
+    { "id": "kiss", "regionId": "r", "kind": "ball", "op": "subtract", "target": "ground",
+      "position": [5, 5, 1], "radius": 1 },
+    { "id": "start", "regionId": "r", "kind": "spawn", "position": [5, 3, 0.3] }
+  ],
+  "connections": []
+}
