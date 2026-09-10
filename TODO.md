@@ -158,7 +158,30 @@ belongs to. The next items are its work item 3.
 - [ ] **The camera, and portal tests on curved segments.** The camera still
   discards roll, and `firstCrossing` still assumes a straight segment between
   two points. Both have to move behind the adapter before the S3 room.
-- [ ] **The S3 subset**: metric balls, oriented great-sphere half-spaces, the
+- [x] **The S3 field exists and has been walked.** Astra had already built it
+  (`sphereField` / `sphericalPrimitive` in `region-world.js`) and nothing
+  exercised it. `s3-room.test.js` now does, against independent closed forms.
+  The strongest is the FLAT LIMIT: the same authored room at curvature radius
+  10000 agrees with plain Euclidean arithmetic to **1.35e-8**, which catches a
+  missing or inverted curvature radius, a chord used where an arc belongs, or a
+  face built at the wrong angle -- none of which the fixture's own numbers
+  would reveal. Also pinned: the ball exact along a great circle, cell faces at
+  the authored ARCLENGTH along the cell's own construction axis, the bound
+  never overestimating, and up varying from point to point as it must.
+- [x] **Walk through a spherical doorway.** The discriminating pair: one ray
+  finds the opening and reaches the back wall, one meets the wall beside it and
+  stops outside. The solver is unchanged from E3 -- this is what the metric
+  seam bought.
+- [ ] **THE PHANTOM SURFACE OF A CARVE.** Found by walking the S3 room, and it
+  is not curvature-specific. Where a carving solid extends past the solid it
+  cuts, `max(d, -m)` reports the distance to the CARVER's boundary -- a surface
+  in open air belonging to nothing. Still a valid bound, still invisible, but a
+  walker reads a clearance from it and stops dead. Derived rule, confirmed by
+  sweep: a cutter must overhang its target by more than TWICE the player
+  radius (0.5 blocks, 0.7 walks, at radius 0.25). The general shape of the rule
+  across primitives is MUSE-33; then the editor should refuse or warn, the way
+  it now does for coincident faces.
+- [ ] **The S3 subset remainder**: oriented great-sphere half-spaces, the
   `geodesic-cell` construction, distances scaled by curvature radius, gravity
   from a chosen floor's signed-height field, transported camera frames with
   gravity alignment as an explicit walking policy. First level stays inside a

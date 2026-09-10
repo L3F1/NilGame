@@ -82,6 +82,29 @@ union: outside it, `min` of exact distances is the exact distance to the
 nearest solid, which is the distance to the union. That is the number a sphere
 tracer steps by, and it is what the box primitive was measured against.
 
+**THE PHANTOM SURFACE OF A CARVE, and the rule that follows from it.**
+Subtraction is `max(d, -m)`, and where the carving solid extends past the
+solid it cuts, that `-m` term is the distance to the CARVER's boundary -- a
+surface that is not part of anything, standing in open air. The value stays a
+valid lower bound, so nothing is unsafe and nothing is drawn there. But a
+walker reads a clearance from it, and if that clearance drops below the player
+radius the player is stopped by nothing at all.
+
+Found while walking the S3 room: the probe halted at y = 2.05, past the wall's
+far face, with the field reporting 0.2505 against a player radius of 0.25. It
+is not curvature-specific -- the same construction in E3 dips to 0.4 where the
+truth is 0.9, and only escapes because the cutter there happens to be deeper.
+
+The condition is derivable and was then confirmed by sweep. A probe travelling
+toward the carver's far face is stopped one radius short of it, and escapes
+only if the TARGET's own distance already exceeds a radius there. So
+
+    a cutter must overhang its target by MORE THAN TWICE the player radius.
+
+Measured with radius 0.25: an overhang of 0.5 blocks the player in mid-air, and
+0.7 walks through. Derived for an axis-aligned cutter meeting a flat face; the
+general shape of the rule is MUSE-33.
+
 **COINCIDENT FACES.** Two flat surfaces in exactly the same plane are the one
 configuration the field will not resolve, and it says so rather than picking:
 a ray across such a seam returns `status: 'indeterminate'`. MUSE-31 measured

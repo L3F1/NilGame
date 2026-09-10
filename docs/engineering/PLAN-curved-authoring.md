@@ -153,11 +153,20 @@ their policy is Astra's; a chord-shaped guess would sit in the way of it.
 
 **Still owed for this item, in order:**
 
-1. **The S3 scene field.** `compileSceneField` still refuses anything but one
-   E3 cover region, and this is the biggest remaining piece: metric balls,
-   oriented great-sphere half-spaces, the `geodesic-cell` construction,
-   distances scaled by curvature radius, and gravity from a chosen floor's
-   signed-height field.
+1. ~~**The S3 scene field.**~~ **DONE, and it already existed.** Astra had
+   built `sphereField` and `sphericalPrimitive` in `region-world.js`; nothing
+   exercised them. `s3-room.test.js` does, against independent closed forms --
+   the strongest being the flat limit, where the same authored room at
+   curvature radius 10000 agrees with Euclidean arithmetic to 1.35e-8. The
+   room compiles, the ball is exact along a great circle, cell faces sit at the
+   authored arclength along the cell's own construction axis, the bound never
+   overestimates, up varies from point to point, and a probe walks through the
+   doorway and is stopped by the wall beside it.
+
+   One defect found and fixed in the fixture: the doorway cutter overhung its
+   wall by only 0.5 against a player radius of 0.25, and the carver's own far
+   face -- a PHANTOM SURFACE in open air -- stopped the walker at y = 2.05.
+   Not curvature-specific; see the rendering contract and MUSE-33.
 2. **A transported camera frame.** `basis()` rebuilds the view from yaw and
    pitch against a fixed world up, which is what "discards roll" means -- and
    in S3 there is no global up to rebuild against. The frame has to be carried,
