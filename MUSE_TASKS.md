@@ -143,7 +143,7 @@ function, and the walker is the messenger rather than the patient.
 
 ## MUSE-41 - Does the refusal stay refused?
 
-Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only
+Status: READY FOR REVIEW (2026-09-10, branch main) | Owner: Muse | Reviewer: Astra | Node-only
 
 Your MUSE-39 found that a refused crossing left the walker standing exactly on
 the aperture plane, where the one-sided test declines to look, so the next frame

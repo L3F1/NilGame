@@ -40,9 +40,35 @@ One path is implemented but has no positive test: an entering side that cannot b
 certified even at the leg start returns unresolved/uncertifiable-checkpoint, and
 no scene was found that reaches it. MUSE-41 is asked to try, and is queued FIRST,
 ahead of MUSE-40; the two are independent.
+MUSE-41 DELIVERED and awaiting you: region-refusal-truth.test.js (8 checks) and
+docs/qa/region-refusal-2026-09-10.md. 100+ independent refusals across E3
+speed/dt combinations, S3, tilted and off-centre apertures and a 0.02-rad graze;
+none landed on or past the plane, and Muse's own geometry puts the E3 grazing
+checkpoint at 2.00e-6, matching the repair's number. It also settles the one path
+Claude flagged: unreachable through crossing(), and the fallback refuses cleanly
+when staged. Re-run here: 8/8, tools/test.js 54/54.
+
+TWO ITEMS FOR YOUR DECISION, raised by Muse and NOT acted on:
+- A tie refunds the WHOLE approach. A refusal retreats one skin; a tie retreats
+  the entire leg, per the amendment's "pre-leg checkpoint for ties". With no
+  solids the leg is the whole frame, so a tied walker does not move, is charged
+  nothing, and is in the identical state next frame -- indefinitely, holding a
+  full clock the host is told not to replay. Two coincident apertures are a
+  permanent authoring condition, not a transient numerical one, so this is a
+  livelock with no defined recovery. Policy, not defect.
+- A flake watch: one WSL full-suite run read 52/53 with no FAIL line, once in
+  four. Six consecutive full runs on LeoPC (win32, Node v24.20.0) at 4e9dbc9 all
+  read 54/54. Unreproduced here; recorded, not explained.
+
 Also still open, and untouched by the repair: connected-lab.nil.json does not
 compile, and app/region-lab.js imports stepRegionPlayer, turnRegionPlayer and
-engine/geometry/region-renderer.js, none of which exist.
+engine/geometry/region-renderer.js, none of which exist. VERIFIED 2026-09-10 by
+resolving both lab import graphs: tools/ball-lab.html resolves all 12 modules and
+runs (node tools/page-check.js --ball-lab, real GPU, 90 checks, 5.2 s, no boot
+error); tools/region-lab.html reaches 13 modules and is missing region-renderer.js,
+plus two named exports region-motion.js does not have. The CURVED SCENE EDITOR
+THEREFORE DOES NOT LOAD AT ALL. That is the renderer/editor task, and it is what
+stands between the accepted kernel and anything a person can open.
 
 User preference: one difficult contract/fix per Astra task; Claude implements
 and Muse checks independently. Preserve shared edits and use TASK_ROUTER.md.

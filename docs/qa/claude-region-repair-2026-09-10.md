@@ -175,9 +175,47 @@ so the evidence for the repair travels with the check that replaced it.
    does not make a playable or visually validated connected room, as the review
    says.
 
+## Addendum, same day: MUSE-41 came back
+
+`region-refusal-truth.test.js` (8 checks) and
+`docs/qa/region-refusal-2026-09-10.md`. Re-run here at 4e9dbc9: 8/8, exit 0;
+`node tools/test.js` 54/54. Muse touched no `engine/` or `app/` file. Their
+independent geometry puts the E3 grazing checkpoint at 2.00e-6, corroborating
+this report's number, and their 100+ refusals across seven E3 speed×dt
+combinations, S3, tilted and off-centre apertures found none on or past the
+plane. Restored clearance crosses on the next frame from one refusal deep and
+from five deep.
+
+**Note 3 in this report is resolved.** Muse hunted the unreachable path and
+agrees it cannot be reached through `crossing()` — on-plane and inside-tolerance
+starts raise no event however many gates share the plane — and confirmed by
+staged override that the fallback itself refuses cleanly with the clock
+balanced (`unresolved` / `uncertifiable-checkpoint`). The flag stands as a flag;
+the code under it is sound.
+
+Two things Muse raised, both passed to Astra rather than acted on:
+
+1. **A tie refunds the whole approach, and the pin now bakes that in.** The tied
+   frame travels 2.0 units to the aperture and is charged nothing, because the
+   contract sends a tie back to the PRE-LEG checkpoint and only discarded travel
+   is refunded — with no solids in the scene the leg is the whole frame, so all
+   of it is discarded. Consistent with the amendment, and worth a second look
+   for a reason neither of us pinned: a refusal retreats by one skin, but a tie
+   retreats the entire leg, and two coincident apertures are a permanent
+   authoring condition rather than a transient numerical one. So a tied walker
+   does not move, is charged nothing, and is in exactly the same state next
+   frame — indefinitely, with a full clock and no defined recovery. The contract
+   says the host must not silently replay unconsumed time, which leaves the host
+   holding a state it has no rule for. A policy question, not a defect.
+
+2. **A flake watch, not reproduced here.** Muse saw one full-suite run read
+   52/53 with no FAIL line captured, once in four runs on WSL. Six consecutive
+   full runs on LeoPC (win32, Node v24.20.0) at this revision all read 54/54,
+   exit 0. Unreproduced on this host; recorded, not explained.
+
 ## Next
 
-Independent re-check by Muse is queued as **MUSE-41** — repeated refusals,
-restored destination clearance, time refunds and exact budget caps, test and
-report only. MUSE-40 is untouched and stays independent. Astra reviews this
-repair before any renderer or editor integration.
+MUSE-41 is delivered and awaiting Astra. MUSE-40 is untouched, still open, and
+stays independent. Astra reviews this repair before any renderer or editor
+integration — which remains blocked on the three missing pieces in note 4, not
+on the kernel.
