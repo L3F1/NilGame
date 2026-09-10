@@ -173,12 +173,24 @@ belongs to. The next items are its work item 3.
   gameplay POLICIES, not a claim that two finite apertures are isometric.
   Acceptance is a short E3 -> S3 -> E3 route surviving traversal, editing and
   save/load.
-- [ ] **Warn on coincident faces.** The box-room fixture first drew a speckled
-  line across its doorway sill because the carving box's bottom face sat at
-  exactly z = 0, on the ground plane: two surfaces in the same place, and the
-  marcher cannot say which it is on. Sinking the cutter 0.2 below the floor
-  fixed it. That is an authoring hazard with a picture-only symptom, which is
-  the kind the editor should catch and say out loud.
+- [x] **Warn on coincident faces** -- and the interesting part is what the
+  warning turned out to be. The obvious design was "warn when two surfaces come
+  within X", and MUSE-31 measured that there is no such X: at an offset of
+  1e-12 the field is already clean, and at exactly zero it reports
+  `status: 'indeterminate'` rather than guessing. Coincidence is a DISCRETE
+  condition, not a proximity, so any threshold would have been a number
+  invented to fill a slot.
+  Two further things had to be true before a warning was useful. Sharing a
+  PLANE is not a defect -- a crate resting on the floor has its bottom face in
+  exactly the floor's plane, which is what resting on something means, and the
+  shipped fixture has six such pairs. And an exposed shared plane is not enough
+  either: in that fixture the wall's bottom face is in the floor's plane and
+  exposed inside the doorway, but its material there has been carved away, so
+  only one solid claims the surface.
+  So `coincidentFaces()` takes candidates from the document EXACTLY (equal face
+  planes, no tolerance anywhere) and confirms each by asking the field, which
+  answers with the flag rather than a distance. Every shipped fixture reports
+  none; the sill reports the pair by name.
 - [ ] **A viewport gizmo, in the browser.** Ours in either host -- Godot's
   `_set_handle` hands you a screen position and expects your own projection --
   so building it now costs nothing against a future migration and settles

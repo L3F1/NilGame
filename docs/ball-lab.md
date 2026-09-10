@@ -256,11 +256,27 @@ target, because cutting a rectangular doorway with a ball leaves a
 round-topped hole and an author who wanted a doorway has to undo and start
 over.
 
-**Watch for coincident faces.** The `box-room` fixture first drew a speckled
-line across its doorway sill: the carving box's bottom face sat at exactly
-z = 0, in the same place as the ground plane, and the marcher had no way to
-say which surface it was on. Sinking the cutter 0.2 below the floor fixed it.
-Nothing numeric caught this -- only the picture did.
+**Coincident faces are reported by name.** The `box-room` fixture first drew a
+speckled line across its doorway sill: the carving box's bottom face sat at
+exactly z = 0, in the same place as the ground plane, and the marcher had no
+way to say which surface it was on. Nothing numeric caught it -- only the
+picture did.
+
+It does now, and the way it does is worth knowing, because the obvious design
+was wrong. A warning of the form "these two surfaces are within X" needs an X,
+and there isn't one: at an offset of 1e-12 the field is already clean, and at
+exactly zero it reports that it cannot tell. Coincidence is a discrete
+condition rather than a proximity.
+
+Two things also had to be excluded. Sharing a PLANE is not a defect -- a crate
+resting on the floor has its bottom face in exactly the floor's plane, which is
+what resting on something means. Nor is an exposed shared plane enough: in this
+fixture the wall's bottom face is in the floor's plane and exposed inside the
+doorway, but the wall's material there has been carved away, so only one solid
+claims that surface.
+
+So the readout names the pair -- "door and ground SHARE A SURFACE exactly" --
+and tells you the fix, which is to move either one by any amount at all.
 
 ## Carving and clipping
 

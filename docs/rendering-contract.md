@@ -72,6 +72,26 @@ reports them separately:
 | `normalUniqueness` | `query-dependent`; ask `normalSample` at the point you care about. |
 | `distance` | the coarse legacy summary, kept so old callers still read something true. |
 
+`distance: 'exact'` is deliberately conservative: it holds only for a SINGLE
+unmodified solid. MUSE-29 found the claim "a scene of boxes stays exact" to be
+false for any union of two or more, and it is -- two solids that merely TOUCH
+already break interior exactness, because a point deep in one can have its
+nearest own-surface point on a face that is interior to the union. The claim a
+room actually relies on is `exteriorDistance`, which stays exact for a whole
+union: outside it, `min` of exact distances is the exact distance to the
+nearest solid, which is the distance to the union. That is the number a sphere
+tracer steps by, and it is what the box primitive was measured against.
+
+**COINCIDENT FACES.** Two flat surfaces in exactly the same plane are the one
+configuration the field will not resolve, and it says so rather than picking:
+a ray across such a seam returns `status: 'indeterminate'`. MUSE-31 measured
+the shape of it, and the finding is that there is NO threshold -- at an offset
+of 1e-12 the field is already clean, and the marcher's speckle appears only at
+exactly zero. `field.coincidentFaces()` reports the pairs, taking candidates
+from the document by exact plane equality and confirming each with the flag.
+Sharing a plane is not itself a defect: a crate resting on a floor shares its
+plane, the seam is buried, and nothing is ambiguous.
+
 `interiorSign` is the one collision actually depends on, and it is exact even
 where magnitude is only bounded. `normal` and `normalUniqueness` are split for
 the same reason: on an edge or a corner no normal is more correct than

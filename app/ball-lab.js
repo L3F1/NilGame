@@ -262,13 +262,26 @@ function draw() {
   const cuts = field.modifierCount
     ? `, ${field.carveCount} carve${field.carveCount === 1 ? '' : 's'}`
       + `, ${field.intersectCount} clip${field.intersectCount === 1 ? '' : 's'}`
-      + ` (distance is a ${field.capabilities.distance})` : '';
+      + ` (distance is a ${field.capabilities.exteriorDistance} outside)` : '';
+  // COINCIDENT SURFACES. The box-room fixture once drew a speckled line across
+  // its doorway sill because a carving box's face sat in exactly the floor's
+  // plane. The obvious warning was "these two are too close", and the
+  // measurement (MUSE-31) says there is no such distance: at 1e-12 the field
+  // is clean, and at exactly zero it reports it cannot tell. So the field
+  // finds the exact candidates and confirms them, and this just says so --
+  // naming the pair, because "something is wrong somewhere" is not a warning
+  // an author can act on. Not measured while playing: it is an authoring aid.
+  const overlaps = playing ? [] : field.coincidentFaces();
+  const seam = overlaps.length
+    ? ` — ${overlaps[0].a} and ${overlaps[0].b} SHARE A SURFACE exactly`
+      + `${overlaps.length > 1 ? ` (+${overlaps.length - 1} more)` : ''}`
+      + '; move either one by any amount' : '';
   $('query').textContent = `${field.solidCount} solid${field.solidCount === 1 ? '' : 's'}${gates}.`
     + `${cuts}`
     + ` Player clearance ${gap.toFixed(3)}${gap < 0 ? ' — OVERLAPPING' : ''}`
     + `${probe.grounded ? ', on the ground' : ''}`
     + `${transited ? `, ${transited} transit${transited === 1 ? '' : 's'}` : ''}`
-    + `.${note ? ' ' + note : ''}`;
+    + `.${note ? ' ' + note : ''}${seam}`;
   $('undo').disabled = !undo.length; $('redo').disabled = !redo.length;
 }
 

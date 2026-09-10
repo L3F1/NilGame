@@ -269,6 +269,79 @@ test('STAND ON A BOX, WALK OFF IT, LAND ON THE FLOOR', () => {
   assert.equal(st.grounded, true);
 });
 
+// --- coincident faces ------------------------------------------------------
+
+test('SHARING A PLANE IS NOT A DEFECT; sharing a SURFACE is', () => {
+  // A crate resting on the floor has its bottom face in exactly the floor's
+  // plane. That is what resting on something MEANS, it is what every one of
+  // these fixtures does, and warning about it would be noise an author learns
+  // to ignore. The seam is buried -- solid on both sides -- so the union has
+  // no surface there and nothing has to decide anything.
+  const resting = compileSceneField(scene([
+    ground,
+    box('crate', [0, 0, 0.6], [0.6, 0.6, 0.6]),      // bottom face exactly at z = 0
+    box('slab', [3, 0, 0.25], [1, 1, 0.25]),         // and so is this one
+  ]));
+  assert.deepEqual(resting.coincidentFaces(), [], 'resting on the floor is not a defect');
+});
+
+test('a carve that opens a seam ONTO the floor is reported, by name', () => {
+  // The box-room case. The carving box's bottom face is exactly the floor's
+  // plane AND the carve exposes it, so two solids claim one surface and the
+  // field cannot say which a ray met.
+  const flush = compileSceneField(scene([
+    ground,
+    box('wall', [0, 2, 1.4], [4, 0.3, 1.4]),
+    box('door', [0, 2, 0.9], [0.8, 1, 0.9], { op: 'subtract', target: 'wall' }),
+  ]));
+  const found = flush.coincidentFaces();
+  assert.ok(found.length > 0, 'an exactly coincident sill must be reported');
+  const named = found.map((c) => [c.a, c.b].sort().join('~'));
+  assert.ok(named.includes('door~ground'), `expected the sill pair, got ${named.join(', ')}`);
+  assert.ok(found[0].at && found[0].at.length === 3, 'and a place to look at');
+});
+
+test('THERE IS NO THRESHOLD: 1e-12 of separation is already clean', () => {
+  // The measured result (MUSE-31), pinned so it cannot quietly become a
+  // tolerance. Coincidence is a discrete condition, not a proximity. If some
+  // future change makes near-coincidence misbehave, the honest response is a
+  // new finding, not an epsilon added here.
+  const sill = (offset) => compileSceneField(scene([
+    ground,
+    box('wall', [0, 2, 1.4], [4, 0.3, 1.4]),
+    box('door', [0, 2, 0.9 + offset], [0.8, 1, 0.9], { op: 'subtract', target: 'wall' }),
+  ]));
+  assert.ok(sill(0).coincidentFaces().length > 0, 'exactly zero is the defect');
+  for (const offset of [1e-12, -1e-12, 1e-9, -1e-9, 1e-4, 0.2, -0.2]) {
+    assert.deepEqual(sill(offset).coincidentFaces(), [],
+      `offset ${offset} must be clean, not merely closer to clean`);
+  }
+});
+
+test('an ORIENTED box shares a surface only when it really does', () => {
+  // The face planes of a turned box are not axis-aligned, so a detector that
+  // compared half-extents instead of world face planes would miss this
+  // entirely -- and would also report a turned box resting on the floor,
+  // whose bottom face is no longer horizontal at all.
+  const turned = (frame) => {
+    // A construction frame is a v2 field; v1 documents mean exactly what they
+    // always did and the validator says so.
+    const doc = scene([
+      ground,
+      box('wall', [0, 2, 1.4], [4, 0.3, 1.4]),
+      box('door', [0, 2, 0.9], [0.8, 1, 0.9], { op: 'subtract', target: 'wall', frame }),
+    ]);
+    doc.version = 2;
+    return compileSceneField(doc);
+  };
+  // Turned about the vertical axis: the bottom face is still the floor plane.
+  const spun = turned({ forward: [0.6, 0.8, 0], up: [0, 0, 1] });
+  assert.ok(spun.coincidentFaces().length > 0, 'a yaw keeps the bottom face flat on z = 0');
+  // Tipped: no face lies in z = 0 any more, so there is nothing to report.
+  const tipped = turned({ forward: [0, 0.8, 0.6], up: [0, -0.6, 0.8] });
+  assert.deepEqual(tipped.coincidentFaces(), [], 'a tilted face is not in the floor plane');
+});
+
 // --- the schema ------------------------------------------------------------
 
 test('the schema refuses a box that is not one', () => {

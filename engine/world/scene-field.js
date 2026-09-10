@@ -303,11 +303,128 @@ export function compileSceneField(source) {
     return x >= 0 ? 200 + x : -1;
   }
 
+  /**
+   * COINCIDENT FACES: two flat surfaces occupying exactly the same plane.
+   *
+   * This is the condition behind the speckled line the box-room fixture once
+   * drew across its doorway sill, and MUSE-31 measured what it actually is.
+   * It is NOT a proximity. At an offset of 1e-12 the field is already clean;
+   * at exactly zero, 21 of 41 rays across the sill come back
+   * `indeterminate`. So there is no "too close" distance to warn on, and a
+   * threshold would have been a number invented to fill a slot.
+   *
+   * What there IS, is an exact predicate. A face plane is (normal, offset),
+   * both computed from authored numbers, so two faces coincide when those are
+   * EQUAL -- not near, equal. That is cheap, view-independent, and answerable
+   * from the document alone, which is what an editor needs and what a fan of
+   * camera rays cannot reliably give: whether a ray happens to cross the seam
+   * is a matter of where the author is standing.
+   *
+   * Only flat faces take part. A ball tangent to a plane touches at a point
+   * rather than sharing a surface, and is a different condition with a
+   * different symptom.
+   */
+  function facePlanes(s) {
+    if (s.kind === 'plane') return [{ n: s.normal, d: s.offset, at: null, span: Infinity }];
+    if (s.kind !== 'box') return [];
+    const axes = [s.frame.slice(0, 3), s.frame.slice(3, 6), s.frame.slice(6, 9)];
+    return axes.flatMap((a, i) => {
+      const along = dot3(s.center, a);
+      // `at` is the face centre and `span` its half-diagonal in the plane, so
+      // two faces can be checked for actually meeting rather than merely
+      // lying in the same infinite plane.
+      const other = [0, 1, 2].filter((k) => k !== i);
+      const span = Math.hypot(...other.map((k) => s.halfExtent[k]));
+      return [+1, -1].map((sign) => ({
+        n: a, d: along + sign * s.halfExtent[i],
+        at: s.center.map((c, k) => c + sign * s.halfExtent[i] * a[k]),
+        span, axes: other.map((k) => ({ dir: axes[k], half: s.halfExtent[k] })),
+      }));
+    });
+  }
+  // A plane and its opposite describe the same SET, so compare a canonical
+  // form -- otherwise a floor written as up +z and a box face facing -z would
+  // never be seen to coincide, which is exactly the case that bites.
+  function canonicalFace({ n, d }) {
+    const lead = n.find((x) => x !== 0) ?? 1;
+    return lead < 0 ? `${n.map((x) => -x).join()}|${-d}` : `${n.join()}|${d}`;
+  }
+  /**
+   * SHARING A PLANE IS NOT THE HAZARD. A crate resting on the floor shares the
+   * plane z = 0 with it, and that is ordinary authoring, not a defect -- the
+   * shipped box-room fixture has six such pairs and draws perfectly. The seam
+   * there is BURIED: solid on both sides, so the union has no surface at that
+   * plane at all and nothing has to decide which face a ray met.
+   *
+   * Nor is an EXPOSED shared plane enough on its own. In the shipped fixture
+   * the wall's bottom face lies in the floor's plane and is exposed inside the
+   * doorway -- but the wall's material there has been carved away, so only one
+   * solid actually claims that surface and nothing is ambiguous. That fixture
+   * renders perfectly, and a warning on it would be noise an author learns to
+   * ignore.
+   *
+   * So the document supplies CANDIDATES exactly and cheaply, and the field
+   * CONFIRMS them with the signal MUSE-31 identified: a ray cast straight onto
+   * the seam comes back `indeterminate` when, and only when, the faces are
+   * exactly coincident. Measured on the box-room sill: flagged at offset 0,
+   * clean at 1e-12 and at every other offset tried. No threshold anywhere --
+   * the candidate test is exact equality and the confirmation is the field's
+   * own admission that it cannot tell.
+   */
+  function ambiguousAt(point, n) {
+    const reach = Math.max(region.extent * 0.05, 0.5);
+    for (const sign of [1, -1]) {
+      const from = point.map((x, i) => x + n[i] * reach * sign);
+      const dir = n.map((x) => -x * sign);
+      try {
+        if (api.rayCast(from, dir, { maxDistance: reach * 4 }).status === 'indeterminate') return true;
+      } catch { /* a probe that cannot start says nothing either way */ }
+    }
+    return false;
+  }
+  function sharedSamples(faceA, faceB) {
+    // Sample the smaller face; an unbounded plane has none of its own.
+    const bounded = faceA.axes ? faceA : faceB;
+    if (!bounded.axes) return [];
+    const other = faceA.axes && faceB.axes && faceB.span < faceA.span ? faceB : bounded;
+    const points = [];
+    for (const su of [-0.6, 0, 0.6]) for (const sv of [-0.6, 0, 0.6]) {
+      points.push(other.at.map((c, k) =>
+        c + su * other.axes[0].half * other.axes[0].dir[k]
+          + sv * other.axes[1].half * other.axes[1].dir[k]));
+    }
+    return points;
+  }
+  function coincidentFaces() {
+    const byPlane = new Map();
+    for (const s of solids) {
+      for (const face of facePlanes(s)) {
+        const key = canonicalFace(face);
+        if (!byPlane.has(key)) byPlane.set(key, []);
+        byPlane.get(key).push({ id: s.id, face });
+      }
+    }
+    const found = [];
+    for (const [plane, entries] of byPlane) {
+      if (entries.length < 2) continue;
+      for (let i = 0; i < entries.length; i++) {
+        for (let j = i + 1; j < entries.length; j++) {
+          const A = entries[i], B = entries[j];
+          if (A.id === B.id) continue;
+          const n = A.face.n;
+          const where = sharedSamples(A.face, B.face).filter((q) => ambiguousAt(q, n));
+          if (where.length) found.push({ a: A.id, b: B.id, plane, at: where[0] });
+        }
+      }
+    }
+    return found;
+  }
+
   const ball = scene.entities.find((e) => e.kind === 'ball') || null;
   const plane = scene.entities.find((e) => e.kind === 'plane') || null;
   const planeSolid = solids.find((s) => s.kind === 'plane') || null;
 
-  return Object.freeze({
+  const api = Object.freeze({
     id: scene.id,
     regionId: region.id,
     extent: region.extent,
@@ -429,6 +546,14 @@ export function compileSceneField(source) {
       return n && negate ? n.map((x) => -x) : n;
     },
     normalSample,
+    /**
+     * Pairs of entities sharing a face plane EXACTLY. Empty is the normal
+     * case; anything here is a place the field cannot say which surface a ray
+     * met, and it reports `indeterminate` rather than guessing. Moving either
+     * solid by any amount at all fixes it -- see the note on `coincidentFaces`
+     * for why there is no threshold to report instead.
+     */
+    coincidentFaces,
     /** Retained additive IDs after exact duplicate subtraction simplification. */
     activeEntityIds: () => activeAdded.map((s) => s.id),
     /** Owned CSG groups for hosts; cloned authored data, never mutable closures. */
@@ -490,6 +615,7 @@ export function compileSceneField(source) {
       return this.rayCast(p, direction).t;
     },
   });
+  return api;
 }
 
 /**
