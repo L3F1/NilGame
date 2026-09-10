@@ -207,7 +207,7 @@ Known limit: `aimAlong` recovers yaw and pitch and therefore **drops roll**.
 That is correct for a walker whose up is the world's up and wrong the moment an
 aperture is tilted, so it is a limit of this camera and not of `mapVector`.
 
-## Carving
+## Carving and clipping
 
 Select a ball or a plane, press **Carve**, and a subtracting ball appears in
 front of you TARGETING what you had selected. Carving with nothing selected is
@@ -220,7 +220,21 @@ readout says when the field has stopped being exact:
 
     2 solids, 1 portal, 1 carve (distance is a bound). Player clearance 0.412
 
-That readout is not decoration. A carve changes what the field PROMISES --
+**Clipping is the other half.** `op: 'intersect'` keeps the part of its target
+that is also inside the clipping solid, which is how a wall becomes a slab you
+can walk through: one clip, rather than a carve whose job is to undo most of
+the first plane. The two operations share one path and differ only in sign --
+`max(d, -m)` keeps what is outside, `max(d, +m)` keeps what is inside -- and
+that single line of difference also decides the normal, because a carved face
+is the modifying solid seen from INSIDE it and a clipped face is the same solid
+seen from outside.
+
+A global clip is REFUSED. Subtraction without a target removes material, which
+is visible and recoverable; intersection without one deletes everything OUTSIDE
+itself, and for a plane that is half the world. Same shape of operation, very
+different blast radius when it is a mistake.
+
+That readout is not decoration. A modifier changes what the field PROMISES --
 `distance` becomes a bound and `intersection` becomes marched -- and a solver
 that trusted the old promise would be trusting a lie. See the
 [rendering contract](rendering-contract.md).

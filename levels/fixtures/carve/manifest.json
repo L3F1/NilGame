@@ -24,19 +24,19 @@
       "file": "../invalid/boolean-op-misspelled.nil.json",
       "change": "backface op substract",
       "level": "document",
-      "errorContains": "expected \"add\" or \"subtract\""
+      "errorContains": "expected \"add\", \"subtract\" or \"intersect\""
     },
     {
       "file": "../invalid/boolean-target-on-add.nil.json",
       "change": "added ball door with op add and target wall",
       "level": "document",
-      "errorContains": "target only applies to a subtract"
+      "errorContains": "target only applies to a subtract or an intersect"
     },
     {
       "file": "../invalid/boolean-target-without-op.nil.json",
       "change": "added plane drift with target wall and no op at all",
       "level": "document",
-      "errorContains": "target only applies to a subtract"
+      "errorContains": "target only applies to a subtract or an intersect"
     },
     {
       "file": "../invalid/boolean-target-self.nil.json",

@@ -88,10 +88,21 @@ The previous backlog is preserved in
   function 160 times and never link. Measured cold on a real GPU: 1.8 s for the
   page with 69 checks, against 0.9 s with 57 before, so the marching path
   roughly doubled the link and is nowhere near the budget.
-- [ ] **Intersection** (`op: 'intersect'`). Subtraction and union cover most
-  authoring; intersection is what makes a BOX from six planes, which is the
-  primitive an author actually reaches for and the reason a wall currently has
-  to be a half-space cut back by a second plane.
+- [x] **Intersection** (`op: 'intersect'`). A wall you can walk through is now
+  one clip instead of a carve whose job was to undo most of the first plane.
+  Subtraction and intersection share one path and differ only in SIGN --
+  `max(d, -m)` keeps what is outside, `max(d, +m)` keeps what is inside -- so
+  the winner-tracking that decides the normal exists once rather than twice.
+  A global intersect is REFUSED: subtraction without a target removes material,
+  which is visible and recoverable, but intersection without one deletes
+  everything outside itself, and for a plane that is half the world.
+- [x] **`rayCast` separates a miss from a give-up.** Found by MUSE-25's
+  brute-force reference: a grazing ray needed about 300 steps to reach a wall
+  at 40.4, the fixed budget of 256 ran out one step short, and `rayHit`
+  answered "nothing there" about a wall it had nearly touched. The budget is
+  larger and the result now says whether it left the scene or ran out.
+- [ ] **A box primitive**, now that intersection exists. Six clipped planes is
+  correct and is not what an author wants to type.
 - [ ] **A viewport gizmo, in the browser.** Ours in either host -- Godot's
   `_set_handle` hands you a screen position and expects your own projection --
   so building it now costs nothing against a future migration and settles

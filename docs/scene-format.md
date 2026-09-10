@@ -130,3 +130,19 @@ Two limits worth knowing before you author against this:
   far side off. Intersection would make this one operation instead of two.
 - Any carve changes what the field PROMISES: `distance` becomes a bound rather
   than exact, and `intersection` becomes marched. See the rendering contract.
+
+### `op: "intersect"`
+
+A solid may also CLIP its target: the result keeps the part of the target that
+is also inside the clipping solid. `max(d, -m)` keeps what is outside `m`;
+`max(d, +m)` keeps what is inside it. The two are one operation with a sign.
+
+This is how a wall becomes a slab you can walk through — one clip, rather than
+a carve whose job is to undo most of the first plane. It is also what makes a
+box out of six planes, though six clips is correct rather than pleasant and a
+box primitive is still wanted.
+
+**An intersect must name a target.** A subtract without one removes material,
+which is visible and recoverable. An intersect without one deletes everything
+*outside* itself, and for a plane that is half the world — so it is refused
+rather than guessed at.

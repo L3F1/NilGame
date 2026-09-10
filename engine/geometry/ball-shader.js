@@ -59,8 +59,8 @@ precision highp float;
 #define MAX_BALLS 16
 #define MAX_PLANES 4
 #define MAX_PORTALS 8
-#define MAX_CARVE_BALLS 8
-#define MAX_CARVE_PLANES 4
+#define MAX_MOD_BALLS 8
+#define MAX_MOD_PLANES 4
 // How many apertures one ray may pass through. Four is enough to see a portal
 // through a portal through a portal, which is the case that looks wrong when a
 // renderer cheats; beyond that the far side is smaller than a pixel anyway.
@@ -69,17 +69,24 @@ uniform vec4 uBalls[MAX_BALLS];
 uniform int uBallN;
 uniform vec4 uPlanes[MAX_PLANES];
 uniform int uPlaneN;
-// CARVES: solids SUBTRACTED from the scene. Each names the solid it cuts, or
-// -1 for one that cuts everything. Balls and planes are kept in separate
-// arrays rather than one array with a kind flag, because a branch on kind
-// inside the innermost loop is re-emitted at every inline site and that is the
-// exact shape of the 212-second link.
-uniform vec4 uCarveBalls[MAX_CARVE_BALLS];
-uniform int uCarveBallOwner[MAX_CARVE_BALLS];
-uniform int uCarveBallN;
-uniform vec4 uCarvePlanes[MAX_CARVE_PLANES];
-uniform int uCarvePlaneOwner[MAX_CARVE_PLANES];
-uniform int uCarvePlaneN;
+// MODIFIERS: solids that change another solid rather than adding to the
+// scene. Both operations are a max against the modifying distance and differ
+// only in SIGN --
+//     -1  subtract   max(d, -m)   keep what is OUTSIDE m
+//     +1  intersect  max(d, +m)   keep what is INSIDE m
+// -- so one loop covers both. Each names the solid it applies to, or -1 for
+// one that applies to everything. Balls and planes stay in separate arrays
+// rather than one array with a kind flag, because a branch on kind inside the
+// innermost loop is re-emitted at every inline site, and that is the exact
+// shape of the 212-second link.
+uniform vec4 uModBalls[MAX_MOD_BALLS];
+uniform int uModBallOwner[MAX_MOD_BALLS];
+uniform float uModBallSign[MAX_MOD_BALLS];
+uniform int uModBallN;
+uniform vec4 uModPlanes[MAX_MOD_PLANES];
+uniform int uModPlaneOwner[MAX_MOD_PLANES];
+uniform float uModPlaneSign[MAX_MOD_PLANES];
+uniform int uModPlaneN;
 uniform vec4 uPortals[MAX_PORTALS];       // aperture centre, radius
 uniform vec4 uPortalNml[MAX_PORTALS];     // aperture normal, pointing OUT
 uniform vec4 uPortalExit[MAX_PORTALS];    // where the far aperture sits
@@ -101,19 +108,19 @@ uniform int uSelected;      // index into uBalls, or -1
 out vec4 fragColor;
 ${BALL_FIELD_GLSL}
 
-// A solid's own distance, then every carve that applies to it. Subtraction is
-// max against the NEGATED carving solid: a point survives when it is inside
-// what was added and outside everything cut away.
-float carveAdjust(float d, vec3 p, int owner){
-  for(int j=0;j<MAX_CARVE_BALLS;j++){
-    if(j>=uCarveBallN)break;
-    if(uCarveBallOwner[j]>=0 && uCarveBallOwner[j]!=owner)continue;
-    d=max(d,-(length(p-uCarveBalls[j].xyz)-uCarveBalls[j].w));
+// A solid's own distance, then every modifier that applies to it. The sign
+// carries the operation: a point survives when it is inside what was added,
+// outside everything subtracted, and inside everything intersected.
+float modAdjust(float d, vec3 p, int owner){
+  for(int j=0;j<MAX_MOD_BALLS;j++){
+    if(j>=uModBallN)break;
+    if(uModBallOwner[j]>=0 && uModBallOwner[j]!=owner)continue;
+    d=max(d,uModBallSign[j]*(length(p-uModBalls[j].xyz)-uModBalls[j].w));
   }
-  for(int j=0;j<MAX_CARVE_PLANES;j++){
-    if(j>=uCarvePlaneN)break;
-    if(uCarvePlaneOwner[j]>=0 && uCarvePlaneOwner[j]!=owner)continue;
-    d=max(d,-(dot(p,uCarvePlanes[j].xyz)-uCarvePlanes[j].w));
+  for(int j=0;j<MAX_MOD_PLANES;j++){
+    if(j>=uModPlaneN)break;
+    if(uModPlaneOwner[j]>=0 && uModPlaneOwner[j]!=owner)continue;
+    d=max(d,uModPlaneSign[j]*(dot(p,uModPlanes[j].xyz)-uModPlanes[j].w));
   }
   return d;
 }
@@ -126,12 +133,12 @@ float sceneDistance(vec3 p, out int owner){
   float best=1e20; owner=-1;
   for(int i=0;i<MAX_BALLS;i++){
     if(i>=uBallN)break;
-    float d=carveAdjust(length(p-uBalls[i].xyz)-uBalls[i].w,p,i);
+    float d=modAdjust(length(p-uBalls[i].xyz)-uBalls[i].w,p,i);
     if(d<best){best=d;owner=i;}
   }
   for(int i=0;i<MAX_PLANES;i++){
     if(i>=uPlaneN)break;
-    float d=carveAdjust(dot(p,uPlanes[i].xyz)-uPlanes[i].w,p,100+i);
+    float d=modAdjust(dot(p,uPlanes[i].xyz)-uPlanes[i].w,p,100+i);
     if(d<best){best=d;owner=100+i;}
   }
   return best;
@@ -164,8 +171,8 @@ void main(){
   for(int bounce=0;bounce<MAX_BOUNCES;bounce++){
     float tSurf=1e20; int owner=-1; vec3 nSurf=vec3(0.0,0.0,1.0);
 
-    if(uCarveBallN+uCarvePlaneN==0){
-      // NOTHING IS CARVED, so every primitive still solves in closed form and
+    if(uModBallN+uModPlaneN==0){
+      // NOTHING MODIFIES ANYTHING, so every primitive still solves in closed form and
       // the nearest one wins. This is the exact path and it stays exact --
       // the capability the field advertises says so, and the renderer must
       // not quietly stop matching it.
@@ -186,9 +193,10 @@ void main(){
       if(owner>=0&&owner<100)nSurf=normalize(eye+tSurf*u-uBalls[owner].xyz);
       else if(owner>=100)nSurf=uPlanes[owner-100].xyz;
     } else {
-      // SOMETHING IS CARVED, so a closed form would happily return a surface
-      // that has been cut away. Sphere-trace the expression instead: the
-      // distance is a lower bound, which is exactly what tracing needs.
+      // SOMETHING MODIFIES SOMETHING, so a closed form would happily return a
+      // surface that has been cut away or clipped off. Sphere-trace the
+      // expression instead: the distance is a lower bound, which is exactly
+      // what tracing needs.
       float t=0.0; int o=-1; float d=0.0;
       for(int step=0;step<4096;step++){
         if(step>=uMarchSteps)break;
@@ -247,7 +255,7 @@ void main(){
       // aliases into moire rings. Same rule as the H^2 x R floor checker.
       float sharp=1.0/(1.0+tSurf*tSurf*0.03);
       vec3 floorColor=mix(vec3(.42,.50,.58),vec3(.13,.17,.23),mix(1.0,line,sharp));
-      // A carved face on a plane is not flat, so shade it by its own normal
+      // A modified face on a plane is not flat, so shade it by its own normal
       // rather than letting the grid pretend it is the untouched floor.
       float lit=0.55+0.45*max(dot(nSurf,normalize(vec3(-.5,-1.0,1.0))),0.0);
       float fade=clamp(tSurf/max(uExtent,1e-6),0.0,1.0);

@@ -67,8 +67,20 @@ export function validateScene(scene) {
     if (entity.op !== undefined) {
       requireValue(['ball', 'plane'].includes(entity.kind),
         `entity ${entity.id}: op applies to balls and planes, not ${entity.kind}`);
-      requireValue(['add', 'subtract'].includes(entity.op),
-        `entity ${entity.id}.op: expected "add" or "subtract", got ${JSON.stringify(entity.op)}`);
+      requireValue(['add', 'subtract', 'intersect'].includes(entity.op),
+        `entity ${entity.id}.op: expected "add", "subtract" or "intersect", `
+        + `got ${JSON.stringify(entity.op)}`);
+      // AN INTERSECT MUST SAY WHAT IT CLIPS. Subtraction without a target
+      // removes material, which is visible and recoverable; intersection
+      // without one deletes everything OUTSIDE itself, and for a plane that
+      // is half the world. Same shape of operation, very different blast
+      // radius when it is a mistake, so this one is refused rather than
+      // guessed at.
+      if (entity.op === 'intersect') {
+        requireValue(entity.target !== undefined,
+          `entity ${entity.id}: an intersect must name the solid it clips `
+          + '(a global intersect would delete everything outside it)');
+      }
     }
     // WHAT A CARVE CUTS. Absent, it cuts everything -- which sounds simpler
     // and is the wrong default for authoring: cutting a doorway through a wall
@@ -76,8 +88,8 @@ export function validateScene(scene) {
     // the author is left standing over a hole wondering what they did. So a
     // carve may name the one solid it applies to.
     if (entity.target !== undefined) {
-      requireValue(entity.op === 'subtract',
-        `entity ${entity.id}: target only applies to a subtract`);
+      requireValue(entity.op === 'subtract' || entity.op === 'intersect',
+        `entity ${entity.id}: target only applies to a subtract or an intersect`);
       requireValue(entity.target !== entity.id,
         `entity ${entity.id}: a carve cannot target itself`);
     }

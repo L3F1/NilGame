@@ -188,7 +188,7 @@ test('op is refused on kinds that are not solids', () => {
   assert.throws(() => compileSceneField(doc), /op applies to balls and planes/);
   const bad = walled();
   bad.entities.find((e) => e.id === 'wall').op = 'invert';
-  assert.throws(() => compileSceneField(bad), /expected "add" or "subtract"/);
+  assert.throws(() => compileSceneField(bad), /expected "add", "subtract" or "intersect"/);
 });
 
 test('a document written before booleans means exactly what it did', () => {
@@ -209,6 +209,109 @@ test('a carve must name a solid that exists, and not itself', () => {
   const self = walled();
   self.entities.find((e) => e.id === 'backface').target = 'backface';
   assert.throws(() => compileSceneField(self), /cannot target itself/);
+});
+
+// --- intersection ----------------------------------------------------------
+
+/**
+ * The same room, but the wall is a SLAB made by clipping rather than by
+ * cutting. This is the whole case for intersection: a plane is a half-space,
+ * so a wall you can walk through needs a second surface, and with subtraction
+ * that costs a carve whose job is to undo most of the first plane. Clipping
+ * says what is meant -- keep the part of the wall that is also below y = 2.4.
+ */
+function clipped({ doorway = null } = {}) {
+  const doc = walled({ doorway });
+  const back = doc.entities.find((e) => e.id === 'backface');
+  back.op = 'intersect';
+  back.up = [0, 1, 0];          // solid side flips: keep y < 2.4 rather than cut y > 2.4
+  return doc;
+}
+
+test('INTERSECTION MAKES A SLAB IN ONE OPERATION', () => {
+  const f = compileSceneField(clipped());
+  assert.equal(f.intersectCount, 1);
+  assert.equal(f.carveCount, 0, 'no carve needed at all');
+  assert.ok(f.distance([0, 2.2, 0.5]) < 0, 'inside the slab');
+  assert.ok(f.distance([0, 3.0, 0.5]) > 0, 'past it');
+  assert.ok(f.distance([0, 1.5, 0.5]) > 0, 'before it');
+});
+
+test('a clip is SCOPED, like a carve', () => {
+  // The clipping plane covers y > 2.4 everywhere. Applied to the whole scene
+  // it would delete the floor beyond the wall -- and unlike a carve, which
+  // removes material you can see going, a clip deletes everything OUTSIDE
+  // itself, which for a plane is half the world.
+  const f = compileSceneField(clipped());
+  assert.ok(f.distance([0, 6, -0.5]) < 0, 'the floor survives past the wall');
+  assert.deepEqual(f.normal([0, 6, -0.01]).map((x) => +x.toFixed(9)), [0, 0, 1]);
+});
+
+test('A CLIPPED FACE KEEPS ITS NORMAL; a carved one flips', () => {
+  // The single line of difference between the two operations, and the one
+  // that decides which way a walker slides. A carved face is the carving
+  // solid seen from INSIDE it; a clipped face is the clipping solid seen
+  // from outside, so only one of them turns around.
+  const clip = compileSceneField(clipped());
+  // The far face of the slab, at y = 2.4, belongs to the clipping plane.
+  const n = clip.normal([0, 2.39, 0.5]);
+  assert.ok(n[1] > 0.99, `expected the back face to point +y, got ${n.map((x) => x.toFixed(2))}`);
+
+  const cut = compileSceneField(walled());
+  // The same face made by subtraction instead. Its normal comes from the
+  // carving half-space, flipped.
+  const m = cut.normal([0, 2.39, 0.5]);
+  assert.ok(m[1] > 0.99, `expected the same outward face, got ${m.map((x) => x.toFixed(2))}`);
+});
+
+test('a doorway through a CLIPPED wall is still walkable', () => {
+  // Clipping and carving have to compose: the slab is made by an intersect
+  // and the doorway by a subtract, both targeting the same wall.
+  const f = compileSceneField(clipped({ doorway: { position: [0, 2.2, 0.45], radius: 0.9 } }));
+  assert.equal(f.intersectCount, 1);
+  assert.equal(f.carveCount, 1);
+  let st = { position: [0, -1, 0.25], velocity: [0, 0, 0], radius: 0.25, grounded: true };
+  for (let i = 0; i < 240; i++) {
+    const out = stepWalker(f, space, st, 1 / 60, { want: [0, 2.5, 0] });
+    st = { ...st, position: out.position, velocity: out.velocity, grounded: out.grounded };
+    assert.ok(clearance(f, st.position, st.radius) >= -1e-3, `step ${i} sank`);
+  }
+  assert.ok(st.position[1] > 2.5, `expected to be through, got y=${st.position[1].toFixed(2)}`);
+  assert.equal(st.grounded, true);
+});
+
+test('A GLOBAL INTERSECT IS REFUSED, and says why', () => {
+  // Not symmetry for its own sake: subtraction without a target removes
+  // material, which is visible and recoverable; intersection without one
+  // deletes everything outside itself. Same shape, very different blast
+  // radius when it is a mistake, so this one is refused rather than guessed.
+  const doc = clipped();
+  delete doc.entities.find((e) => e.id === 'backface').target;
+  assert.throws(() => compileSceneField(doc),
+    /must name the solid it clips[\s\S]*delete everything outside/);
+});
+
+test('an intersect moves the capability, exactly as a carve does', () => {
+  const f = compileSceneField(clipped());
+  assert.equal(f.capabilities.distance, 'bound');
+  assert.equal(f.capabilities.intersection, 'marched');
+  assert.equal(f.modifierCount, 1);
+});
+
+test('A MISS AND A GIVE-UP ARE DIFFERENT ANSWERS', () => {
+  // rayHit returns one number and so has one way to say "no hit", but a
+  // marcher has two reasons to be there. An independent brute-force check
+  // caught the marcher calling a wall it had nearly reached "nothing there".
+  const f = compileSceneField(clipped({ doorway: { position: [0, 2.2, 0.6], radius: 0.9 } }));
+  const straight = f.rayCast([3, -1, 0.6], [0, 1, 0]);
+  assert.equal(straight.hit, true);
+  assert.equal(straight.exhausted, false);
+  const starved = f.rayCast([3, -1, 0.6], [0, 1, 0], { maxSteps: 2 });
+  assert.equal(starved.hit, false);
+  assert.equal(starved.exhausted, true, 'out of steps is not the same as nothing there');
+  const sky = f.rayCast([0, -4, 1], [0, 0, 1]);
+  assert.equal(sky.hit, false);
+  assert.equal(sky.exhausted, false, 'leaving the scene is a certain miss');
 });
 
 console.log(`\nbooleans: ${passed} passed, ${failed} failed\n`);

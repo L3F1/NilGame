@@ -83,22 +83,37 @@ export function compileSceneField(source) {
   const spawns = scene.entities.filter((e) => e.kind === 'spawn');
   if (spawns.length !== 1) throw new Error('Scene field requires exactly one spawn');
 
-  const added = solids.filter((x) => x.op !== 'subtract');
+  const added = solids.filter((x) => (x.op || 'add') === 'add');
   const carved = solids.filter((x) => x.op === 'subtract');
+  const intersected = solids.filter((x) => x.op === 'intersect');
   const addedIds = new Set(added.map((x) => x.id));
-  for (const c of carved) {
+  for (const c of [...carved, ...intersected]) {
     if (c.target !== null && !addedIds.has(c.target)) {
       throw new Error(`entity ${c.id}: target ${c.target} is not a solid in this scene`);
     }
   }
-  // Which carves apply to which solid, worked out once. A carve with no
-  // target applies to all of them, and that is EQUIVALENT to applying it to
-  // the union afterwards, because max distributes over min:
+  // MODIFIERS: everything that is not simply added. Both operations are a
+  // `max` against the modifying solid and differ only in SIGN --
+  //
+  //     subtract   max(d, -m)    keep what is outside m
+  //     intersect  max(d, +m)    keep what is inside m
+  //
+  // so they share one path rather than two nearly identical ones. That is not
+  // a tidiness argument: two copies of this loop would be two places for the
+  // winner-tracking to disagree, and the winner decides the normal.
+  //
+  // A modifier with no target applies to every solid, and that is EQUIVALENT
+  // to applying it to the union afterwards, because max distributes over min:
   //     max(min(a, b), k) = min(max(a, k), max(b, k))
   // so the scoped form is a strict generalisation rather than a different
   // operation that happens to agree in one case.
-  const carvesFor = new Map(added.map((a) =>
-    [a.id, carved.filter((c) => c.target === null || c.target === a.id)]));
+  const modifiers = [
+    ...carved.map((s) => ({ solid: s, sign: -1 })),
+    ...intersected.map((s) => ({ solid: s, sign: 1 })),
+  ];
+  const modified = modifiers.length > 0;
+  const modsFor = new Map(added.map((a) =>
+    [a.id, modifiers.filter((m) => m.solid.target === null || m.solid.target === a.id)]));
 
   /**
    * The field, as a boolean expression over the authored solids.
@@ -132,9 +147,13 @@ export function compileSceneField(source) {
     let best = null, bestD = Infinity, negate = false;
     for (const a of added) {
       let d = a.distance(p), winner = a, flip = false;
-      for (const c of carvesFor.get(a.id)) {
-        const cut = -c.distance(p);
-        if (cut > d) { d = cut; winner = c; flip = true; }
+      for (const m of modsFor.get(a.id)) {
+        const v = m.sign * m.solid.distance(p);
+        // The sign is what makes the surface face the other way. A carved
+        // face is the carving solid seen from INSIDE it, so its normal
+        // flips; a clipping face is the clipping solid seen from outside,
+        // so its normal does not.
+        if (v > d) { d = v; winner = m.solid; flip = m.sign < 0; }
       }
       if (d < bestD) { bestD = d; best = winner; negate = flip; }
     }
@@ -158,14 +177,14 @@ export function compileSceneField(source) {
     return [a, b];
   });
 
-  // Where a carve's target sits in the arrays the renderer loops over.
+  // Where a modifier's target sits in the arrays the renderer loops over.
   const addedBalls = added.filter((x) => x.kind === 'ball');
   const addedPlanes = added.filter((x) => x.kind === 'plane');
-  function ownerIndex(carve) {
-    if (carve.target === null) return -1;             // cuts everything
-    const b = addedBalls.findIndex((x) => x.id === carve.target);
+  function ownerIndex(mod) {
+    if (mod.target === null) return -1;               // applies to everything
+    const b = addedBalls.findIndex((x) => x.id === mod.target);
     if (b >= 0) return b;
-    const p = addedPlanes.findIndex((x) => x.id === carve.target);
+    const p = addedPlanes.findIndex((x) => x.id === mod.target);
     return p >= 0 ? 100 + p : -1;
   }
 
@@ -185,11 +204,15 @@ export function compileSceneField(source) {
     // surface along the ray may be one that has been carved away -- so the
     // intersection becomes marched. Advertising this is the difference between
     // a conservative solver and a lying one.
-    capabilities: Object.freeze(carved.length
+    capabilities: Object.freeze(modified
       ? { distance: 'bound', intersection: 'marched', normal: 'exact-except-ball-center' }
       : { distance: 'exact', intersection: 'exact', normal: 'exact-except-ball-center' }),
     /** Solids subtracted rather than added. Non-empty means the field is a bound. */
     carveCount: carved.length,
+    /** Solids that CLIP their target rather than cutting it. Also a bound. */
+    intersectCount: intersected.length,
+    /** Everything that is not simply added: any of these makes the field a bound. */
+    modifierCount: modifiers.length,
     /**
      * Carves as uniform arrays, plus the OWNER each one cuts.
      *
@@ -199,14 +222,18 @@ export function compileSceneField(source) {
      * do a string comparison per sample, which it cannot; handing it the
      * position in the array is the same information in the form the loop needs.
      */
-    carveBallsUniform: () => carved.filter((x) => x.kind === 'ball')
-      .flatMap((x) => [...x.center, x.radius]),
-    carveBallOwners: () => carved.filter((x) => x.kind === 'ball').map(ownerIndex),
-    carvePlanesUniform: () => carved.filter((x) => x.kind === 'plane')
-      .flatMap((x) => [...x.normal, x.offset]),
-    carvePlaneOwners: () => carved.filter((x) => x.kind === 'plane').map(ownerIndex),
-    carveBallCount: carved.filter((x) => x.kind === 'ball').length,
-    carvePlaneCount: carved.filter((x) => x.kind === 'plane').length,
+    modBallsUniform: () => modifiers.filter((m) => m.solid.kind === 'ball')
+      .flatMap((m) => [...m.solid.center, m.solid.radius]),
+    modBallOwners: () => modifiers.filter((m) => m.solid.kind === 'ball')
+      .map((m) => ownerIndex(m.solid)),
+    modBallSigns: () => modifiers.filter((m) => m.solid.kind === 'ball').map((m) => m.sign),
+    modPlanesUniform: () => modifiers.filter((m) => m.solid.kind === 'plane')
+      .flatMap((m) => [...m.solid.normal, m.solid.offset]),
+    modPlaneOwners: () => modifiers.filter((m) => m.solid.kind === 'plane')
+      .map((m) => ownerIndex(m.solid)),
+    modPlaneSigns: () => modifiers.filter((m) => m.solid.kind === 'plane').map((m) => m.sign),
+    modBallCount: modifiers.filter((m) => m.solid.kind === 'ball').length,
+    modPlaneCount: modifiers.filter((m) => m.solid.kind === 'plane').length,
     document: () => structuredClone(scene),
     solidCount: solids.length,
     /** One-way aperture descriptors, two per connection. Holes, not solids. */
@@ -257,29 +284,55 @@ export function compileSceneField(source) {
       // the wall were still there.
       return n && negate ? n.map((x) => -x) : n;
     },
-    rayHit(p, direction) {
+    /**
+     * Cast a ray and say WHAT HAPPENED, not just how far.
+     *
+     * `rayHit` returns a number, so it has exactly one way to say "no hit" --
+     * and a marcher has two reasons to reach that state. Either nothing is
+     * there, or it ran out of steps while something WAS there. Those are not
+     * the same answer and collapsing them is the same mistake as a distance
+     * bound that claims to be exact: it reports a certainty it does not have.
+     *
+     * Found by an independent check against a brute-force reference: one
+     * grazing ray needed about 300 bound-limited steps to reach a wall at
+     * 40.4, the fixed budget of 256 ran out one step short, and the marcher
+     * said "nothing there" about a wall it had nearly reached.
+     *
+     * Returns { t, hit, exhausted, steps }. `exhausted` is the honest answer
+     * to "should I believe this miss".
+     */
+    rayCast(p, direction, {
+      maxSteps = 2048, maxDistance = Math.max(region.extent * 8, 64), hitEpsilon = 1e-6,
+    } = {}) {
       vector3(p); vector3(direction, 'direction');
       if (Math.abs(Math.hypot(...direction) - 1) > 1e-8) throw new Error('Ray direction must be unit length');
-      // No carves: every primitive solves in closed form and the nearest one
-      // wins. This is the exact path and it stays exact.
-      if (!carved.length) {
+      // No modifiers: every primitive solves in closed form and the nearest
+      // one wins. This is the exact path, it stays exact, and it cannot be
+      // exhausted because it does not iterate.
+      if (!modified) {
         let best = Infinity;
         for (const s of added) best = Math.min(best, s.rayHit(p, direction));
-        return best;
+        return { t: best, hit: best < Infinity, exhausted: false, steps: 0 };
       }
-      // With carves the nearest analytic surface may have been cut away, so
-      // the closed forms no longer answer the question. Sphere-trace the
-      // expression instead: the distance is a lower bound, which is exactly
-      // the guarantee tracing needs, and the capability says so.
+      // Otherwise the closed forms no longer answer the question -- the
+      // nearest analytic surface may have been cut away, or lie outside an
+      // intersection. Sphere-trace the expression: the distance is a lower
+      // bound, which is exactly the guarantee tracing needs.
       let t = 0;
-      for (let step = 0; step < 256; step++) {
+      for (let step = 0; step < maxSteps; step++) {
         const at = [p[0] + direction[0] * t, p[1] + direction[1] * t, p[2] + direction[2] * t];
         const d = nearest(at).distance;
-        if (d < 1e-6) return t;
+        if (d < hitEpsilon) return { t, hit: true, exhausted: false, steps: step + 1 };
         t += d;
-        if (t > 1e6) break;
+        // Leaving the scene is a real miss and it is certain. Running out of
+        // steps is not, which is why they return different things.
+        if (t > maxDistance) return { t: Infinity, hit: false, exhausted: false, steps: step + 1 };
       }
-      return Infinity;
+      return { t: Infinity, hit: false, exhausted: true, steps: maxSteps };
+    },
+    /** Distance to the first surface, or Infinity. See `rayCast` for why. */
+    rayHit(p, direction) {
+      return this.rayCast(p, direction).t;
     },
   });
 }

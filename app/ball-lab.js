@@ -29,8 +29,8 @@ if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProg
 const U = Object.fromEntries(['uBalls', 'uBallN', 'uPlanes', 'uPlaneN', 'uRes',
   'uEye', 'uFwd', 'uRight', 'uUp', 'uExtent', 'uSelected',
   'uPortals', 'uPortalNml', 'uPortalExit', 'uPortalMap', 'uPortalN',
-  'uCarveBalls', 'uCarveBallOwner', 'uCarveBallN',
-  'uCarvePlanes', 'uCarvePlaneOwner', 'uCarvePlaneN', 'uMarchSteps']
+  'uModBalls', 'uModBallOwner', 'uModBallSign', 'uModBallN',
+  'uModPlanes', 'uModPlaneOwner', 'uModPlaneSign', 'uModPlaneN', 'uMarchSteps']
   .map((n) => [n, gl.getUniformLocation(program, n)]));
 
 const params = new URLSearchParams(location.search);
@@ -136,7 +136,8 @@ function drawList(field) {
     // A carve reads as a carve in the list. Two entities of the same kind
     // where one is cut out of the other and nothing on screen says which is
     // the sort of thing an author discovers by deleting the wrong one.
-    const mark = e.op === 'subtract' ? ` minus${e.target ? ` ${e.target}` : ' (all)'}` : '';
+    const mark = e.op === 'subtract' ? ` minus ${e.target || '(all)'}`
+      : e.op === 'intersect' ? ` clips ${e.target}` : '';
     li.innerHTML = `<span>${e.id}</span><span class="kind">${e.kind}${mark}</span>`;
     li.onclick = () => { selected = e.id; draw(); };
     list.appendChild(li);
@@ -189,16 +190,21 @@ function draw() {
   gl.uniform4fv(U.uPortalExit, exits.length ? exits : [0, 0, 0, 0]);
   gl.uniformMatrix3fv(U.uPortalMap, false, maps.length ? maps : new Array(9).fill(0));
   gl.uniform1i(U.uPortalN, field.portalCount);
-  // Carves, with the index of the solid each one cuts. When there are none the
-  // shader takes its exact closed-form path, exactly as before -- so a scene
-  // that carves nothing renders by the same route it always did.
-  const cb = field.carveBallsUniform(), cp = field.carvePlanesUniform();
-  gl.uniform4fv(U.uCarveBalls, cb.length ? cb : [0, 0, 0, 0]);
-  gl.uniform1iv(U.uCarveBallOwner, field.carveBallOwners().length ? field.carveBallOwners() : [-1]);
-  gl.uniform1i(U.uCarveBallN, field.carveBallCount);
-  gl.uniform4fv(U.uCarvePlanes, cp.length ? cp : [0, 0, 1, 0]);
-  gl.uniform1iv(U.uCarvePlaneOwner, field.carvePlaneOwners().length ? field.carvePlaneOwners() : [-1]);
-  gl.uniform1i(U.uCarvePlaneN, field.carvePlaneCount);
+  // Modifiers, with the solid each one applies to and the SIGN that says
+  // which operation it is. When there are none the shader takes its exact
+  // closed-form path, exactly as before -- so a scene that modifies nothing
+  // renders by the same route it always did.
+  const mb = field.modBallsUniform(), mp = field.modPlanesUniform();
+  const mbo = field.modBallOwners(), mps = field.modPlaneSigns();
+  const mbs = field.modBallSigns(), mpo = field.modPlaneOwners();
+  gl.uniform4fv(U.uModBalls, mb.length ? mb : [0, 0, 0, 0]);
+  gl.uniform1iv(U.uModBallOwner, mbo.length ? mbo : [-1]);
+  gl.uniform1fv(U.uModBallSign, mbs.length ? mbs : [-1]);
+  gl.uniform1i(U.uModBallN, field.modBallCount);
+  gl.uniform4fv(U.uModPlanes, mp.length ? mp : [0, 0, 1, 0]);
+  gl.uniform1iv(U.uModPlaneOwner, mpo.length ? mpo : [-1]);
+  gl.uniform1fv(U.uModPlaneSign, mps.length ? mps : [-1]);
+  gl.uniform1i(U.uModPlaneN, field.modPlaneCount);
   // A uniform, not a constant, so the D3D compiler cannot unroll the march.
   gl.uniform1i(U.uMarchSteps, 160);
   // Which BALL is selected, as an index into the ball array the shader loops
@@ -210,8 +216,10 @@ function draw() {
   drawList(field);
   const gap = clearance(field, probe.position, probe.radius);
   const gates = field.portalCount ? `, ${field.portalCount / 2} portal${field.portalCount === 2 ? '' : 's'}` : '';
-  const cuts = field.carveCount ? `, ${field.carveCount} carve${field.carveCount === 1 ? '' : 's'}`
-    + ` (distance is a ${field.capabilities.distance})` : '';
+  const cuts = field.modifierCount
+    ? `, ${field.carveCount} carve${field.carveCount === 1 ? '' : 's'}`
+      + `, ${field.intersectCount} clip${field.intersectCount === 1 ? '' : 's'}`
+      + ` (distance is a ${field.capabilities.distance})` : '';
   $('query').textContent = `${field.solidCount} solid${field.solidCount === 1 ? '' : 's'}${gates}.`
     + `${cuts}`
     + ` Player clearance ${gap.toFixed(3)}${gap < 0 ? ' — OVERLAPPING' : ''}`
