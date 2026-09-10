@@ -42,6 +42,64 @@ export const REGION_MOTION_DEFAULTS = Object.freeze({
   skin: 1e-4, maxSteps: 96, maxContacts: 4, maxCrossings: 8,
 });
 
+/**
+ * The budget one CORRECTION RESUME may spend. Fresh, explicit, and small.
+ *
+ * It is not a movement budget and it is not shared with one: a resume spends
+ * queries and ZERO gameplay time, and the movement request that owed the debt
+ * had its own budget and its own clock, both of which are finished with.
+ */
+export const CORRECTION_RESUME_DEFAULTS = Object.freeze({ skin: 1e-4, maxSteps: 24 });
+
+/**
+ * The continuations this module has actually issued.
+ *
+ * A `pendingLift` describes a debt; it is not AUTHORITY TO MOVE A PLAYER. An
+ * object with the right fields can be written by anyone, and a resume that
+ * accepted one would let a host push a walker a chosen distance in a chosen
+ * direction through a door marked "numerical repair". So a resume moves nobody
+ * unless the continuation it is handed is one this module made, and a
+ * continuation is spent the moment it is used -- which is also what stops the
+ * same one being applied twice to two different states.
+ *
+ * This is a WeakSet and not a registry: it answers "did I issue this?" and
+ * nothing else. There is no key, no lookup, no lifetime to manage, and a
+ * continuation nobody holds any more is collected without being cleaned up.
+ */
+const ISSUED = new WeakSet();
+
+/**
+ * Issue the continuation that a debt-carrying result hands back.
+ *
+ * It pins EVERYTHING the resume is not allowed to re-derive: which compiled
+ * world (by identity, because two compiles of the same document are different
+ * scenes as far as a floor is concerned), which region, the exact endpoint,
+ * the player radius, and the residual as a distance plus a unit tangent AT
+ * that endpoint. Arrays are snapshots. If the residual cannot be turned into a
+ * usable direction, no continuation is issued at all: the debt is still
+ * reported, and the host's only recovery is a reset.
+ */
+function issueContinuation(world, regionId, radius, position, velocity, camera, space, pendingLift) {
+  if (!pendingLift) return null;
+  let direction;
+  try {
+    // The lift went along `normal`; the settle goes back down it.
+    direction = space.normalize(position, pendingLift.normal.map((x) => -x));
+    space.validateTangent(position, direction);
+    if (!direction.every(Number.isFinite)) return null;
+  } catch { return null; }
+  const continuation = Object.freeze({
+    world, regionId, radius, camera,
+    position: Object.freeze(position.slice()),
+    velocity: Object.freeze(velocity.slice()),
+    distance: pendingLift.distance,
+    normal: Object.freeze([...pendingLift.normal]),
+    direction: Object.freeze(direction),
+  });
+  ISSUED.add(continuation);
+  return continuation;
+}
+
 function requirePositive(x, name) {
   if (!Number.isFinite(x) || x <= 0) throw new Error(`${name} must be a positive finite number`);
 }
@@ -312,6 +370,12 @@ export function moveRegionProbe(world, state, dt, options = {}) {
     time: Object.freeze({ travel: travelTime, rest: restTime, correction: 0 }),
     events: Object.freeze(events), contactSamples: Object.freeze(contactSamples),
     crossings, steps: stepsUsed, contacts: contactsUsed, pendingLift, limitingContact,
+    // Owing a correction and being ABLE to finish it are two facts, and a host
+    // needs both: a debt whose continuation could not be issued has exactly one
+    // recovery, and it is not this operation.
+    continuation: issueContinuation(world, regionId, radius, position, velocity,
+      frame, world.regions.get(regionId).space, pendingLift),
+    corrected: 0,
   });
 
   // ZERO TIME IS THE IDENTITY, and it is checked before any geometry is
@@ -454,4 +518,177 @@ export function moveRegionProbe(world, state, dt, options = {}) {
     break;
   }
   return finish();
+}
+
+/**
+ * Finish a correction the walker was left owing. A SEPARATE OPERATION.
+ *
+ * This is not `moveRegionProbe` run again with the refused frame's leftover
+ * time, and the residual is not a velocity. The unspent time of the request
+ * that owed this debt was discarded when it was reported and stays discarded:
+ * a correction is a numerical repair and costs NO GAMEPLAY TIME, only queries.
+ * So there is no gravity here, no input, no portal transit, no fresh lift and
+ * no contact slide -- one swept query in the correction phase, along the
+ * direction the settle was already going, for the distance it still owed.
+ *
+ * `suspended` is the previous result, whole. Its `continuation` is the
+ * authority; `state` is checked against it, because a host that moved the
+ * walker and then asked to finish an old floor's correction is describing two
+ * different walkers. Calls are functional: the host replaces its suspended
+ * result with the returned one, and the continuation just used is spent, so
+ * the same one cannot be applied twice to two successive states.
+ *
+ * `status` adds one value to `moveRegionProbe`'s set:
+ *   'stale-continuation'  the scene, the endpoint or the authority no longer
+ *                         match; NOTHING was changed and no new continuation is
+ *                         issued, because an old floor's correction must never
+ *                         be applied to a new scene
+ */
+export function resumeRegionCorrection(world, suspended, options = {}) {
+  if (!world || !(world.regions instanceof Map) || !Array.isArray(world.portals)) {
+    throw new Error('world must be a compiled region world');
+  }
+  if (!suspended || typeof suspended !== 'object') {
+    throw new Error('suspended must be a region motion result');
+  }
+  const continuation = suspended.continuation;
+  if (!continuation || typeof continuation !== 'object') {
+    // Asking to finish a correction that is not owed is a host bug, not a
+    // refusal: there is no state to report on and nothing to recover from.
+    throw new Error('this result owes no resumable correction');
+  }
+  const settings = { ...CORRECTION_RESUME_DEFAULTS, ...options };
+  requirePositive(settings.skin, 'skin');
+  requireCount(settings.maxSteps, 'maxSteps');
+
+  const previous = suspended.state;
+  /** A result in `moveRegionProbe`'s shape. Zero time, always: see above. */
+  const result = ({ status, detail = null, state = previous, pendingLift = suspended.pendingLift,
+    issue = null, corrected = 0, events = [], contactSamples = [], steps = 0 }) => Object.freeze({
+    status, detail, state,
+    timeConsumed: 0, timeRemaining: 0,
+    time: Object.freeze({ travel: 0, rest: 0, correction: 0 }),
+    events: Object.freeze(events), contactSamples: Object.freeze(contactSamples),
+    crossings: 0, steps, contacts: 0, pendingLift, limitingContact: null,
+    continuation: issue, corrected,
+  });
+  const stale = (detail) => result({ status: 'stale-continuation', detail });
+
+  // AUTHORITY, then identity, then the endpoint -- in that order, because a
+  // forged continuation must not get as far as being compared against a real
+  // scene. Every one of these is a `stale-continuation`, which changes nothing
+  // and offers the host a reset rather than a retry.
+  if (!ISSUED.has(continuation)) return stale('not-issued-or-already-spent');
+  if (continuation.world !== world) return stale('world-recompiled');
+  const region = world.regions.get(continuation.regionId);
+  if (!region || region.space !== continuation.camera?.space) return stale('region-changed');
+  if (!previous || previous.regionId !== continuation.regionId) return stale('region-changed');
+  if (previous.radius !== continuation.radius) return stale('radius-changed');
+  // The camera is compared by IDENTITY: two frames with equal components that
+  // arrived by different routes are different frames on a sphere, and this is
+  // the same rule the coordinator applies to a space.
+  if (previous.camera !== continuation.camera) return stale('endpoint-moved');
+  if (previous.position.length !== continuation.position.length
+    || [...previous.position].some((x, i) => x !== continuation.position[i])) {
+    return stale('endpoint-moved');
+  }
+
+  // Spent from here on, whatever happens next. A resume that failed still
+  // asked its questions, and re-presenting the same authority afterwards is
+  // precisely the double-apply this is here to prevent.
+  ISSUED.delete(continuation);
+
+  const space = region.space;
+  const outbound = world.portals.filter((p) => p.fromRegionId === continuation.regionId);
+  const swept = sweep(region.field, space, {
+    from: [...continuation.position],
+    direction: [...continuation.direction],
+    distance: continuation.distance,
+    radius: continuation.radius,
+    skin: settings.skin,
+    maxSteps: settings.maxSteps,
+    events: regionEvents(region, outbound, continuation.radius, settings.skin / 2),
+    phase: 'correction',
+  });
+
+  /** Re-issue the SAME residual at the SAME endpoint, nothing having moved. */
+  const reissue = () => issueContinuation(world, continuation.regionId, continuation.radius,
+    [...continuation.position], [...continuation.velocity], continuation.camera, space,
+    { distance: continuation.distance, normal: [...continuation.normal] });
+
+  if (swept.event) {
+    // A CORRECTION MAY NOT CROSS ANYTHING. Same rule as the settle inside a
+    // movement request: none of a correction that reached an aperture or a
+    // chart edge is kept, so the walker is exactly where they were and the
+    // debt is exactly what it was. No continuation is re-issued, because
+    // pressing again would ask the identical question and get the identical
+    // answer; the recovery is an edit or a reset, and both are the host's.
+    return result({
+      status: 'unresolved', detail: 'correction-boundary', steps: swept.steps,
+      events: [Object.freeze({
+        kind: swept.event.kind, regionId: continuation.regionId, phase: 'correction',
+        distance: swept.event.distance, limit: swept.event.limit ?? swept.event.distance,
+        at: Object.freeze(swept.event.at.slice()),
+        stoppedAt: Object.freeze([...continuation.position]),
+        portalId: swept.event.portal?.id ?? null,
+        toRegionId: swept.event.portal?.toRegionId ?? null,
+        competitors: swept.event.competitors ?? null,
+      })],
+    });
+  }
+  if (swept.hit && !swept.normal) {
+    // A contact with no usable normal is not a landing, and calling it one
+    // would clear a debt by declaring the ground to be wherever the query gave
+    // up. Unresolved, never completed.
+    return result({ status: 'unresolved', detail: 'degenerate-contact', steps: swept.steps });
+  }
+
+  // Commit: transport velocity and camera along the legs the correction really
+  // walked, by the sweep's own composed map, and let `mapFrame` re-validate.
+  let position, velocity, camera;
+  try {
+    position = swept.position.slice();
+    space.validatePoint(position);
+    velocity = swept.carry([...continuation.velocity]);
+    space.validateTangent(position, velocity);
+    camera = mapFrame(continuation.camera, position, swept.carry, space);
+    if (!position.every(Number.isFinite) || !velocity.every(Number.isFinite)) {
+      throw new Error('correction produced a non-finite state');
+    }
+  } catch (error) {
+    return result({ status: 'unresolved', detail: 'transport-invalid', steps: swept.steps });
+  }
+  const state = Object.freeze({
+    regionId: continuation.regionId, radius: continuation.radius, camera,
+    position: Object.freeze(position),
+    velocity: Object.freeze(velocity),
+  });
+  const contactSamples = swept.hit
+    ? [Object.freeze({ regionId: continuation.regionId,
+      position: Object.freeze(position.slice()), normal: Object.freeze(swept.normal.slice()) })]
+    : [];
+
+  if (swept.stalled) {
+    // THE RESIDUAL SURVIVES AT THE NEW ENDPOINT, carried there like everything
+    // else. Not the original distance and not the original direction: what is
+    // left of the one, pointing where the other now points.
+    const owed = Object.freeze({
+      regionId: continuation.regionId,
+      distance: Math.max(0, continuation.distance - swept.travelled),
+      normal: Object.freeze(swept.carry([...continuation.normal])),
+    });
+    return result({
+      status: 'budget-exhausted', detail: 'steps', state, pendingLift: owed,
+      corrected: swept.travelled, steps: swept.steps, contactSamples,
+      issue: issueContinuation(world, continuation.regionId, continuation.radius,
+        position, velocity, camera, space, owed),
+    });
+  }
+  // Either the whole residual was walked, or a real surface stopped it partway
+  // -- which is a landing, and is what the settle was for. The same outcome the
+  // uninterrupted settle inside `moveProbe` reaches, by the same query.
+  return result({
+    status: 'complete', detail: swept.hit ? 'contact' : null, state,
+    pendingLift: null, corrected: swept.travelled, steps: swept.steps, contactSamples,
+  });
 }

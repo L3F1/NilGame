@@ -2284,3 +2284,52 @@ own dt. Four mutations of that reporting are each caught.
 The unreached combinations were reported rather than papered over with
 synthetic rows presented as coverage, which is the right call and the reason
 the "~40 hunts" line is worth more than a green tick would have been.
+
+## MUSE-44 - Does anything else in the tree feed a refusal forward?
+
+
+Status: READY FOR REVIEW | Owner: Muse
+
+A sweep, not a fix. `app/region-lab.js` now consults `motionPause`. Find every
+other place in the repository that consumes a motion or walker result and
+carries its state into a subsequent frame — `app/ball-lab.js`, anything under
+`app/`, `levels/`, `tools/` and the arena code — and report, per site, what it
+does with a status that is not a completion and with any correction the solver
+left owed. Some of these are the E3 walker with a different result shape; say
+so rather than forcing them into the region-motion vocabulary.
+
+Deliver a table of call sites and a verdict per site: consults the status /
+ignores it / has no status to consult. Do not repair any of them. If a site
+looks wrong, the reproduction is the deliverable.
+
+Report (Muse, 2026-09-10): READY FOR REVIEW. region-lab (current file) is
+clean: advance adopts the validated state, counts refusal runs, spends only
+the frame's dt, halts via motionPause (debt-first), resume is new-request
+or refused, edits/play clear the halt, metrics show debt distance and run
+count. 10-site table in docs/qa/muse44-refusal-sweep-2026-09-10.md:
+ball-lab frame is E3-different-shape, notes-only carry-on with fresh fixed
+dt (sound per MUSE-43 adjudication); reconcile consults resolveOverlap;
+arena main.js/collide has no status vocabulary (4-push cap adopts silently
+— legacy characteristic, not refusal forwarding); levels/tools/racing/port
+have no consumers. One wrong-looking site: stepWalker drops pendingLift
+from its return shape (repro embedded in report); latent, unreachable with
+the default budgets it always uses. No repairs made.
+
+Claude ACCEPTED 2026-09-10. A sweep whose most useful output is a site it
+handed back unrepaired: `stepWalker` drops `pendingLift` from its return shape
+although the `moveProbe` inside it can owe one. Calling it LATENT rather than
+live is the part that makes it trustworthy -- the repro needed tightened caps,
+every constructed correction paid in full under the budgets `stepWalker`
+actually uses, and the report says so instead of dressing a hypothetical as a
+bug. It stays open, and section 2 of NEXT_CAPABILITIES walks straight into it:
+a walking slice owes corrections by design.
+
+The ball-lab verdict is the right shape too. Its result has no status and no
+clock, so "notes-only carry-on with a fresh fixed dt each frame" is a
+description rather than a violation, and judging it under the MUSE-43
+adjudication instead of forcing it into the region-motion vocabulary is what
+the task asked for. Same for the arena: predating the vocabulary is a
+characteristic, not a defect, and the 4-push cap is named as one.
+
+No defect in the region host. Docs-only, no suite re-run needed, and none
+claimed.

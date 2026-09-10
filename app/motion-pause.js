@@ -45,10 +45,22 @@
  * Should this result END the flying session?
  *
  * Returns `null` to carry on, or a frozen reason the host can put on screen.
- * `resumable` says whether an explicit retry is even offerable: a competing-event
- * conflict can be steered or edited away, whereas an owed correction cannot be
- * resumed by anything that exists yet, so its only sound exit is a reset to a
- * validated spawn.
+ *
+ * Two different questions, and a host needs both answers:
+ *
+ *   `resumable` -- may NORMAL PLAY start again from here? A competing-event
+ *   conflict can be steered or edited away, so yes, as a new request. An owed
+ *   correction never can: the walker is somewhere the solver had not finished
+ *   putting them, and flying on spends the debt without paying it.
+ *
+ *   `finishable` -- can the DEBT ITSELF be discharged? That is
+ *   `resumeRegionCorrection`, a separate operation with its own budget and no
+ *   gameplay time at all, and it needs the continuation the kernel issued
+ *   alongside the debt. A debt without one -- the scene was recompiled, or the
+ *   residual could not be turned into a usable direction -- has exactly one
+ *   recovery left, and it is a reset to a validated spawn.
+ *
+ * Only after the debt clears does `resumable` become the live question again.
  */
 export function motionPause(result) {
   if (!result || typeof result !== 'object' || typeof result.status !== 'string') {
@@ -60,15 +72,23 @@ export function motionPause(result) {
   // reads zero, and in every one of those the walker is standing somewhere the
   // solver had not finished putting them.
   if (result.pendingLift) {
+    const owed = `${result.pendingLift.distance.toExponential(3)} in ${result.pendingLift.regionId}`;
+    const finishable = !!result.continuation;
     return Object.freeze({
       kind: 'debt',
       resumable: false,
+      finishable,
       status: result.status,
       detail: result.detail ?? null,
-      text: `Movement stopped owing a correction of ${result.pendingLift.distance.toExponential(3)} `
-        + `in ${result.pendingLift.regionId} (${where}). The settle was never applied, and there `
-        + 'is no correction-resume API, so flying on from here would spend the debt without '
-        + 'paying it. Reset to the region spawn, or edit the scene that stranded the player.',
+      text: `Movement stopped owing a correction of ${owed} (${where}). The settle was never `
+        + 'applied, so flying on from here would spend the debt without paying it. '
+        + (finishable
+          ? 'Finish the correction first -- it is a separate operation with its own budget and '
+            + 'no gameplay time -- and only then resume play. A reset to the region spawn also '
+            + 'clears it.'
+          : 'No continuation was issued for this debt, so it cannot be finished from here: the '
+            + 'scene changed under it, or the residual has no usable direction. Reset to the '
+            + 'region spawn, or edit the scene that stranded the player.'),
     });
   }
   if (result.status === 'unresolved') {
@@ -81,6 +101,7 @@ export function motionPause(result) {
     return Object.freeze({
       kind: 'unresolved',
       resumable: true,
+      finishable: false,
       status: result.status,
       detail: result.detail ?? null,
       competing: Object.freeze(competing),

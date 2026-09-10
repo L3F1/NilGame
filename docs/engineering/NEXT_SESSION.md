@@ -1,52 +1,63 @@
 # Fresh-chat handoff for Astra
 
-2026-09-10, inspected bb7c868. Check status/log before edits; current mouse/fixture
-fix and Muse deliverables are uncommitted. Preserve shared work. User prefers
-one difficult contract/fix from Astra, bounded implementation by Claude, Muse QA.
+Updated 2026-09-10 at c4d0aa2. Decision-only pass after Claude's pause/input work;
+check current status/log and preserve shared edits. User had 5% weekly allowance
+and wants bounded lead decisions, Claude implementation and Muse independent QA.
 
-Latest review: docs/qa/astra-editor-input-2026-09-10.md.
-- Oriented-room doorway blocked at y=1.44995: cutter depth .8 gave exactly 2r
-  overhang. Changed depth to 1.1; both E3 doorway fixtures pass walk-through/back.
-- Both editors now share arena-style mouse protection: pointer lock, 250ms
-  acquisition settle, spike rejection, per-frame accumulation/cap, transition clears.
-  Hardware-specific snapping remains subject to user retry; no real DPI device test.
-- MUSE-42 accepted as scoped QA, archived. Reference sampler is not a proved
-  lower bound; test-local certificate still needs production patch/scope validation.
-- 59/59 Node suites, E3 browser 90, S3 browser 36, real GPU. Saved images inspected.
-  Queue worker restarted (old 2672; replacement 38432) and accepts --region-lab.
+Read WORKING_RULES.md then NEXT_CAPABILITIES.md's assigned section, not old logs.
+Astra agrees with the corrected claim: blocked-exit/domain-exit can owe a floor
+correction; debt-first pause handling is mandatory. Focused suites rerun: pause
+9/9 and independent pause truth 5/5. Full 61/61 and browser 65/101 are attributed
+Claude evidence, not rerun here. Physical high-DPI snapping remains unverified.
 
-Claude's pause/reset job is DONE and awaiting review:
-docs/qa/claude-pause-input-2026-09-10.md.
-- New app/motion-pause.js holds the host decision with no DOM in it, so Node and
-  the page test one table. Pauses on ANY pendingLift (not resumable: no
-  correction-resume API exists) and on unresolved (resumable, competing gate IDs
-  named). NOT pauses: domain-exit, blocked-exit, stopped, and budget-exhausted
-  with no debt -- each leaves a settled state and the next frame is a new request.
-- region-lab: halt panel with Reset to region spawn and Resume as a new request;
-  a halted session issues no further movement request at all. Resume does not
-  respawn and does not replay refused time.
-- Pointer-lock/spike lifecycle covered end to end in BOTH editors through the
-  real handlers. document.pointerLockElement is shadowed for that block and
-  restored; an OS mouse stream is still covered by nothing.
-- 61/61 Node suites, S3 browser 65 (was 36), E3 browser 101 (was 90), real GPU
-  through the queue worker 38432. Every mutation caught; three of Claude's own
-  checks were found passing while lying and are written up in the report.
-- MUSE-43 done and ACCEPTED: independent derivation of the pause table from the
-  contract before opening the module. Verdict: the shipped table is the one the
-  contract asks for. Two things came back. (a) A blocked-exit CAN carry an
-  unpaid correction, and so can a domain-exit -- Claude's prose saying those
-  statuses "leave a settled state" was wrong about three of four; the code was
-  right because debt is checked first, and both comment and report now say so.
-  (b) Debt-free budget exhaustion carries on only on condition of loud
-  reporting and fresh-budget retries; that is now closed -- region-lab counts
-  the run of consecutive refusals and shows it, and a check flies out through
-  the chart edge for 24 frames asserting each is charged exactly its own dt.
-- MUSE-44 still open: a sweep for any other site in the tree that feeds a
-  refusal forward. Not started.
+Accepted decisions are in NEXT_CAPABILITIES.md:
+1. Next Claude task: explicit correction-resume operation, same existing sweep,
+   immutable world/endpoint continuation, zero gameplay time, partial/stale/event
+   outcomes, full frame transport and separate Finish correction host action.
+   Changing resumable:false alone is insufficient.
+2. Next walking slice: one S3 region with one designated unmodified great-sphere
+   floor, intrinsic support/gravity and explicit local-up camera policy.
+3. Portals show destination geodesics via the same point/tangent map as motion;
+   zero-radius sight queries, bounded traversal, honest unresolved visuals.
+4. Spawn/objective authoring markers are overlays, not SDF/collision primitives.
 
-Next Astra job: review that host recovery behavior and user feedback on doorway/
-snaps; then define curved gravity/support and correction resumption. Do not build
-a second solver. Region renderer exists now: consult current code rather than
-older missing-module reports. Clearances retain three outcomes; no universal
-peel margin or automatic cross-geometry asset conversion. Nested-cutter
-conservatism remains separate and open. Read TASK_ROUTER.md selectively.
+SECTION 1 IS DONE and awaiting review: docs/qa/claude-correction-resume-2026-09-10.md.
+- resumeRegionCorrection(world, suspended, options) in region-motion.js. One
+  correction-phase sweep, zero gameplay time in every field, the refused frame's
+  clock still discarded. It moves nobody without a frozen continuation the kernel
+  issued -- compiled world by identity, region, endpoint, camera by identity,
+  radius, residual as distance plus unit tangent -- held in a WeakSet and SPENT
+  ON USE, which makes double-apply impossible without any registry.
+- Endings: completed clears the debt; a real contact stops there and also clears
+  it, which is what moveProbe's own settle does; stalled keeps the residual at
+  the new endpoint with fresh authority; degenerate or non-finite is unresolved;
+  an aperture is the existing correction-phase refusal with nothing kept;
+  recompile, moved endpoint, changed radius or spent authority is
+  stale-continuation and changes nothing.
+- Host: Finish correction is a SEPARATE button from Resume. motionPause answers
+  `finishable` as well as `resumable`. Clearing a debt does not restart play --
+  two decisions, and the second is the author's. A scene edit clears the pause.
+- 62/62 Node, correction-resume 10/10, S3 browser 83 (was 65), ball-lab 101.
+  Whole resume vs two partial resumes: 0.00e+0 apart, cameras to 1e-12. Eight
+  kernel and seven host mutations, every one caught -- after two of my own
+  checks were found vacuous and one search was found never to have run. All
+  three are written up; the fixture lesson is the useful one.
+- FINDING to push on if you disagree: a resumed correction cannot reach the
+  chart edge BY CONSTRUCTION. A settle retraces the lift, so it can only newly
+  meet things strictly between the lifted point and the contact it lifted off,
+  and a chart extent is a convex geodesic ball with the walker interior at both
+  ends. An aperture can sit in that gap and is checked; no test claims the
+  domain half, because it would be claiming something untrue.
+- MUSE-44 ACCEPTED and archived. Its stepWalker finding stays open: pendingLift
+  is dropped from that return shape although the inner moveProbe can owe one.
+  Latent under the budgets stepWalker uses; section 2 walks into it.
+- MUSE-45 queued: independent audit of the continuation's authority, the resumed
+  path against an uninterrupted settle, the clock, and that chart-edge finding.
+
+Sections 2 and 3 NOT started. Stop for review before either.
+Next Astra reviews correction resumption and evidence, then authorizes the
+single-floor walking slice. Marker overlays may be a separate small UI task.
+
+Existing constraints: finite renderer caps, connected fixture domain mismatch,
+nested-cutter conservatism, no certified whole-scene exactness from sampled
+clearance truth. Browser queue capability is dynamic; run host-probe.

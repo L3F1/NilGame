@@ -97,6 +97,19 @@ test('AN UNPAYABLE SETTLE ENDS THE SESSION, and cannot be resumed', () => {
   assert.match(pause.text, /correction/i);
   assert.ok(pause.text.includes('sphere'), 'the debt names the region it is owed in');
   assert.ok(pause.text.includes(out.pendingLift.distance.toExponential(3)));
+  // FINISHABLE IS A DIFFERENT QUESTION FROM RESUMABLE. The debt can be
+  // discharged by `resumeRegionCorrection` because the kernel issued the
+  // authority to do it; normal play still may not start until it is.
+  assert.equal(pause.finishable, true);
+  assert.ok(out.continuation, 'and the authority is what makes it finishable');
+  assert.match(pause.text, /Finish the correction/);
+  // Strip the continuation and the same debt has one recovery left.
+  const orphan = motionPause({ ...out, continuation: null });
+  assert.equal(orphan.kind, 'debt');
+  assert.equal(orphan.finishable, false);
+  assert.equal(orphan.resumable, false);
+  assert.match(orphan.text, /Reset to the region spawn/);
+  assert.ok(!/Finish the correction/.test(orphan.text));
 });
 
 test('and the clock is not what gives it away', () => {

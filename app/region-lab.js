@@ -13,7 +13,7 @@
 // found. Two regions, a portal, or E3 all mean the picture would be a claim
 // about somewhere the walker cannot get to from here.
 import { compileRegionWorld, editRegionEntity } from '../engine/world/region-world.js';
-import { moveRegionProbe } from '../engine/world/region-motion.js';
+import { moveRegionProbe, resumeRegionCorrection } from '../engine/world/region-motion.js';
 import { turn } from '../engine/world/camera-frame.js';
 import { motionPause } from './motion-pause.js';
 import { createMouseLook } from './mouse-look.js';
@@ -70,8 +70,13 @@ function updateHalt() {
   $('halt').hidden = !halted;
   if (!halted) return;
   $('halt-text').textContent = halted.text;
-  // A debt has no resume: there is no correction-resume API to resume WITH,
-  // so the only sound exit is a reset to a spawn the compiler validated.
+  // TWO DIFFERENT ACTIONS, and offering the wrong one is the whole hazard.
+  // `Finish correction` discharges the DEBT -- a separate operation, its own
+  // budget, no gameplay time. `Resume` restarts NORMAL PLAY, and may not be
+  // offered while anything is owed, because play from a half-corrected state
+  // is the debt being spent rather than paid.
+  $('finish').hidden = !halted.finishable;
+  $('finish').disabled = !halted.finishable;
   $('resume').disabled = !halted.resumable;
 }
 /** The one recovery the contract requires to always be on offer. */
@@ -283,6 +288,43 @@ $('entities').onchange = guarded(() => { selectedId = $('entities').value; updat
 $('play').onclick = guarded(() => startPlay()); $('stop').onclick = () => { stop(); draw(); };
 $('reset').onclick = guarded(resetToSpawn);
 $('halt-reset').onclick = guarded(resetToSpawn);
+/**
+ * Discharge the debt, and nothing else.
+ *
+ * The refused request's unspent time was discarded when it was reported and is
+ * not handed to this: a correction costs queries and no gameplay time. The
+ * result REPLACES the suspended one atomically, so the continuation just spent
+ * cannot be presented again, and a partial correction comes back still owed --
+ * with a fresh continuation at its new endpoint, so pressing again continues
+ * rather than restarting.
+ */
+function finishCorrection(options) {
+  if (!halted || !halted.finishable) return motion;
+  const out = resumeRegionCorrection(world, motion, options);
+  motion = out;
+  if (out.status !== 'stale-continuation') {
+    state = { ...out.state, position: [...out.state.position], velocity: [...out.state.velocity] };
+  }
+  halted = motionPause(out);
+  if (!halted) {
+    // Debt cleared. Play does NOT resume by itself: clearing a debt and
+    // choosing to fly again are two decisions, and the second is the author's.
+    halted = Object.freeze({ kind: 'corrected', resumable: true, finishable: false,
+      status: out.status, detail: out.detail,
+      text: `Correction finished: ${out.corrected.toExponential(3)} settled in `
+        + `${out.steps} ${out.steps === 1 ? 'query' : 'queries'}, no gameplay time spent. `
+        + 'Nothing is owed now, so play can resume as a new request.' });
+  }
+  updateHalt(); draw();
+  message(out.status === 'stale-continuation'
+    ? `The correction could not be finished: ${out.detail}.`
+    : `Correction ${out.pendingLift ? 'partly ' : ''}applied.`);
+  return out;
+}
+// `options` exists for the same reason `advance`'s does: a check tightens the
+// kernel's own budget to reach a PARTIAL correction in a real scene. The button
+// always passes nothing and gets CORRECTION_RESUME_DEFAULTS.
+$('finish').onclick = guarded(() => finishCorrection());
 $('resume').onclick = guarded(() => {
   if (!halted) return;
   if (!halted.resumable) throw new Error(halted.text);
@@ -510,13 +552,112 @@ export async function runRegionEditorChecks() {
     check('a halted session issues no further movement request',
       motion === heldMotion && held.every((x, i) => x === state.position[i]));
     keys.clear();
-    check('and an owed correction is not offered a resume, because none exists',
+    check('and normal play is not offered while anything is owed',
       $('resume').disabled);
     $('halt-reset').click();
     check('reset returns the player to the validated spawn and clears the pause',
       !halted && $('halt').hidden && !playing
       && [...world.spawn(selectedRegion).position].every((x, i) => Math.abs(x - state.position[i]) < 1e-12));
 
+    // FINISHING THE CORRECTION, which is a different action from resuming play.
+    //
+    // A walker resting on the floor drives at the far wall, is lifted clear so
+    // it can slide, and the step budget runs out before the settle. The lift
+    // really happened and the walker really is hovering, so the residual has
+    // free space to travel through -- unlike the buried case above, where the
+    // settle meets the floor it is already inside and completes at zero.
+    startPlay({ pointer: false });
+    state = strandAt([0, 1, 0.2501]);
+    keys.clear(); keys.add('KeyW');
+    advance(1 / 60, { maxSteps: 8 });
+    keys.clear();
+    check('a starved settle leaves the walker hovering, owing a real distance',
+      !!motion.pendingLift && motion.pendingLift.distance > 1e-3
+      && region.field.distance([...state.position]) - state.radius > 1e-3);
+    check('and the debt comes with the authority to finish it',
+      !!motion.continuation && halted?.kind === 'debt' && halted.finishable === true);
+    check('so the page offers Finish correction, and still refuses to resume play',
+      !$('finish').hidden && !$('finish').disabled && $('resume').disabled);
+
+    const owed = motion.pendingLift.distance, hovering = [...state.position];
+    const suspended = motion;
+    $('finish').click();
+    check('ONE press discharges the debt', motion.status === 'complete' && !motion.pendingLift);
+    check('and it cost no gameplay time at all',
+      motion.timeConsumed === 0 && motion.timeRemaining === 0);
+    const settled = region.space.distance(hovering, [...state.position]);
+    check('the walker moved by the residual, along it rather than by a velocity',
+      Math.abs(settled - motion.corrected) < 1e-9 && motion.corrected > 1e-3
+      && motion.corrected <= owed + 1e-15);
+    check('the settled walker is resting on the surface, not inside it',
+      region.field.distance([...state.position]) - state.radius > -1e-3);
+    check('play does not restart by itself, but is now offerable',
+      !playing && halted?.kind === 'corrected' && !halted.finishable && !$('resume').disabled);
+    // The host CANNOT apply one continuation twice: the result it replaced its
+    // suspended one with holds a different authority, and the spent one is
+    // refused by the kernel even presented directly.
+    const replay = resumeRegionCorrection(world, suspended);
+    check('and the spent continuation cannot be applied a second time',
+      replay.status === 'stale-continuation');
+    check('a stale resume changes nothing and keeps the debt it could not pay',
+      !!replay.pendingLift && replay.continuation === null
+      && [...replay.state.position].every((x, i) => x === hovering[i]));
+    // A DEBT WITH NO AUTHORITY LEFT offers only a reset. The host is built so
+    // this cannot be reached by clicking -- every handler replaces the
+    // suspended result -- so the panel is rendered from the real stale result
+    // through the page's own `motionPause` and `updateHalt`, and put back after.
+    const live = halted;
+    halted = motionPause(replay); updateHalt();
+    check('an unfinishable debt hides Finish correction and leaves only a reset',
+      halted.kind === 'debt' && halted.finishable === false && $('finish').hidden
+      && $('resume').disabled && !$('halt-reset').disabled);
+    halted = live; updateHalt();
+    $('resume').click();
+    check('resuming after the debt clears is a new request', playing && !halted);
+    stop();
+
+    // A PARTIAL correction: pressed with a budget too small, it comes back
+    // still owed, at a NEW endpoint, with fresh authority -- so pressing again
+    // continues rather than starting over.
+    startPlay({ pointer: false });
+    state = strandAt([0, 1, 0.2501]);
+    keys.clear(); keys.add('KeyW');
+    advance(1 / 60, { maxSteps: 8 });
+    keys.clear();
+    const whole = owed, path = [];
+    let presses = 0;
+    while (halted?.finishable && presses < 20) {
+      const before = motion.pendingLift.distance;
+      finishCorrection({ maxSteps: 1 });
+      presses++;
+      path.push(motion.corrected);
+      if (motion.pendingLift) {
+        check('a partial correction takes exactly what it walked off the residual',
+          Math.abs(motion.pendingLift.distance - (before - motion.corrected)) < 1e-15);
+        check('and hands back fresh authority at its new endpoint', !!motion.continuation);
+      }
+    }
+    check('repeated partial corrections converge on a cleared debt',
+      presses > 1 && !motion.pendingLift && motion.status === 'complete');
+    check('and together they walk the same distance the single press did',
+      Math.abs(path.reduce((a, b) => a + b, 0) - whole) < 1e-3);
+    stop(); resetToSpawn();
+
+    // A scene edit is the other recovery, and it must not leave a debt
+    // pointing at a floor that is no longer compiled.
+    startPlay({ pointer: false });
+    state = strandAt([0, 1, 0.2501]);
+    keys.clear(); keys.add('KeyW');
+    advance(1 / 60, { maxSteps: 8 });
+    keys.clear();
+    check('a debt is owed before the edit', !!halted && halted.kind === 'debt');
+    selectEntity(world.document().entities.find(e => e.kind === 'ball').id);
+    $('radius').value = 0.7; submit();
+    check('an edit recompiles the scene and clears the pause with it',
+      !$('boot').textContent && !halted && $('halt').hidden && !playing);
+    $('undo').click();
+
+    region = world.regions.get(state.regionId);
     startPlay({ pointer: false });
     state = strandAt([-1.5, 0, 0.75]);        // dead centre of the metric ball
     keys.clear(); keys.add('KeyW');

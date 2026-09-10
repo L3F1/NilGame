@@ -65,30 +65,65 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-44 only. MUSE-43 accepted and archived to
-[docs/qa/muse-log.md](docs/qa/muse-log.md); its one condition — loud reporting
-of a debt-free refusal and fresh-budget retries — is closed in `region-lab`
-(a run counter, and a check that every refused frame is charged its own dt).
-Its Q1 answer corrected a claim in Claude's report: a `blocked-exit` CAN carry
-an unpaid correction, so "these statuses leave a settled state" was wrong about
-three of the four. The code was right anyway, because debt is checked first.
+Order: MUSE-45 only. MUSE-44 accepted and archived to
+[docs/qa/muse-log.md](docs/qa/muse-log.md); its `stepWalker` finding stands
+open and section 2 of `docs/engineering/NEXT_CAPABILITIES.md` will walk into
+it. What changed since: `resumeRegionCorrection` now exists in
+`engine/world/region-motion.js` and `region-lab` has a `Finish correction`
+action separate from resuming play — `docs/qa/claude-correction-resume-2026-09-10.md`.
+Both were checked by the person who wrote them, which is what MUSE-45 is for.
 
-## MUSE-44 — Does anything else in the tree feed a refusal forward?
+## MUSE-45 — Is a resumed correction the correction that was owed?
 
-A sweep, not a fix. `app/region-lab.js` now consults `motionPause`. Find every
-other place in the repository that consumes a motion or walker result and
-carries its state into a subsequent frame — `app/ball-lab.js`, anything under
-`app/`, `levels/`, `tools/` and the arena code — and report, per site, what it
-does with a status that is not a completion and with any correction the solver
-left owed. Some of these are the E3 walker with a different result shape; say
-so rather than forcing them into the region-motion vocabulary.
+Independent audit. No engine, app or tool changes; report defects, do not fix
+them. Three questions, in this order.
 
-Deliver a table of call sites and a verdict per site: consults the status /
-ignores it / has no status to consult. Do not repair any of them. If a site
-looks wrong, the reproduction is the deliverable.
+**1. Is the continuation actually authority, or only a shape?** The operation
+refuses to move anyone without a continuation this module issued, spends it on
+use, and pins the compiled world, region, endpoint, camera, radius and residual.
+Try to defeat that. A structural clone, a frozen copy, a continuation from a
+different debt in the same scene, one from a different scene, one presented
+after the state moved by 1e-16, one presented twice, one presented against a
+recompile of the identical document. For each: did the walker move, and by how
+much? A single case where a walker moves on authority the kernel did not issue
+is the most valuable thing you could hand back.
+
+**2. Is the resumed path the path the settle would have walked?** Claude checks
+one whole resume against two one-step resumes and reports 0.00e+0 apart. Derive
+your own reference instead of reusing that one: for the same scene and start,
+compare where the walker ends up when the settle runs UNINTERRUPTED inside
+`moveRegionProbe` (give it a budget that finishes) against where it ends up
+when the settle is starved and then resumed. Those two should be the same
+walker. Sweep budgets, radii, floor orientations, both E3 and S3, and several
+curvature radii. Report the worst disagreement you find and the configuration
+that produced it. Also check the CAMERA, not only the position: a resumed
+correction that transports the frame differently is the failure that would
+never show up in a coordinate.
+
+**3. Is the clock really untouched?** The operation claims zero gameplay time
+and claims the refused request's unspent time stays discarded. Verify both
+independently: over a corpus, that no resume returns nonzero time in any field,
+and — the harder one — that a debt-then-resume sequence never lets a walker
+cover more ground per unit of dt than an uninterrupted run of the same scene
+would. That is the property the zero-time rule exists to protect, and it is not
+the same statement as "the fields read 0".
+
+**One claim of Claude's to adjudicate, in your own words.** The report argues
+that a resumed correction CANNOT reach a chart edge, by construction: a settle
+retraces the lift, so it can only newly meet things strictly between the lifted
+point and the contact it lifted off, and a chart extent is a convex geodesic
+ball with the walker interior at both ends. An aperture can sit in that gap and
+is checked; a chart edge, the argument says, cannot. Either construct a
+counterexample — a scene where a resumed correction returns a `domain` event —
+or say the argument holds and say what you tried. Do not take it on trust; the
+last two Claude findings you audited each turned up something.
+
+Deliver `correction-resume-truth.test.js` (yours, independent of
+`correction-resume.test.js` — do not read it before writing your reference),
+plus a report with the corpus counts and the worst numbers.
 
 ---
 
-Both tasks: report defects, do not fix them. Every number carries its command
-and host. Paste `node tools/host-probe.js` output and do not investigate the
-environment further.
+Report defects, do not fix them. Every number carries its command and host.
+Paste `node tools/host-probe.js` output and do not investigate the environment
+further.
