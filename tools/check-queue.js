@@ -2,6 +2,7 @@
 //
 //   node tools/check-queue.js --serve                 (on Windows, once)
 //   node tools/check-queue.js page-check --ball-lab   (anywhere, incl. WSL)
+//   node tools/check-queue.js page-check --region-lab
 //   node tools/check-queue.js --list
 //
 // WHY THIS EXISTS, and why it is a file queue rather than anything cleverer.
@@ -62,7 +63,7 @@ const PRESETS = ['fight', 'hoops', 'grapple', 'sphere', 'light', 'dropper',
 export const ALLOWED = {
   'page-check': {
     script: 'tools/page-check.js',
-    bare: ['--worlds', '--ball-lab', '--sw', '--warm'],
+    bare: ['--worlds', '--ball-lab', '--region-lab', '--sw', '--warm'],
     valued: { '--timeout': numeric(900) },
     note: 'boots the page in a real browser and runs its in-page checks',
   },

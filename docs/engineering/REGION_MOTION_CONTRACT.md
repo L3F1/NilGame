@@ -181,5 +181,19 @@ support needs its own swept/local proof, not an endpoint-down sample through a f
   zero permits zero work of that kind, including corrections and contacts.
 
 CPU motion acceptance does not establish rendered portal parity or GPU performance.
+Host recovery policy (Astra review, 2026-09-10): an unresolved competing-event
+result ends this movement request. Do not retry its unconsumed time in a tight
+loop, choose the first portal, or erase source state. Show the competing IDs and
+retain the edit controls. New steering away from the conflict, a scene edit or
+an explicit retry is a NEW request; the old time is discarded, never accumulated.
+An unchanged request can remain blocked indefinitely: this is a persistent
+authoring conflict, not proof that the numerical solver should eventually pick
+a destination. The editor must permit editing/removing either conflicting gate.
+No kernel change to deterministic tie refusal is required.
+
+An exhausted zero-time correction can coexist with timeRemaining=0. Hosts must
+inspect status and pendingLift, not just the clock. Until a correction-resume
+API is implemented, pause play and offer an explicit reset to a validated spawn;
+do not silently drop debt or feed only out.state back as if the move completed.
 The editor, renderer, gravity walker, saved runtime state and connected playable
 room are later integrations, not success claims for this bounded task.

@@ -1,0 +1,152 @@
+# The first curved viewport: one S3 region, drawn and flown
+
+Claude, 2026-09-10. Assignment: "Claude: next bounded task" in
+`docs/qa/astra-integration-review-2026-09-10.md`.
+
+Base: 382ef0d plus Astra's uncommitted settle fix and clearance contract, which
+are **preserved untouched** — `engine/world/collision.js` carries only Astra's
+`back.stalled` block, and `settle-budget.test.js` runs green as delivered.
+Host: LeoPC (win32), Node v24.20.0. `node tools/host-probe.js`: Chrome starts,
+browser checks run DIRECTLY here, queue worker on LeoPC pid 2672.
+
+## What was built
+
+**`engine/geometry/region-shader.js`** (new) — the S3 field written twice: as
+GLSL, and as JavaScript for a test to check the GLSL against. `packRegionScene`
+flattens one region's compiled render data into the flat arrays the shader
+indexes; `packedSample` / `packedNormal` are the reference, written in the
+shader's shape rather than in the nicest JavaScript, because a reference that
+reorganises the computation is checking something else.
+
+The packing is where a renderer goes wrong — a carve grouped against the wrong
+solid, a face plane off by one, a sign dropped so a doorway fills in. None of
+that raises an error; it produces a picture that looks fine and a wall you fall
+through. So it lives in a module with no pixels in it and is checked in Node
+against `field.distance` directly.
+
+**`engine/geometry/region-renderer.js`** (new) — owns the GL context and nothing
+else. A full-screen triangle, sphere-traced along GREAT CIRCLES:
+`cos(t/R)·eye + sin(t/R)·dir`, the same advance `metric-space.stepWithTransport`
+gives the walker. The camera's three vectors *are* the view — they are unit
+tangents at the eye and a pixel direction is a combination of them — so there is
+no view matrix, nothing is rebuilt from a yaw and a pitch, and roll survives to
+the screen.
+
+**`app/region-lab.js`** — rewritten around `moveRegionProbe`. The missing
+`stepRegionPlayer` / `turnRegionPlayer` were **not** stubbed: a three-component
+world-up walker fed four-vectors would look plausible and be standing on
+nothing. Free flight only, no gravity, no jump. Every motion result is shown in
+the metrics panel — status, detail, unspent time, owed settle, events — and the
+leftover time of a refusal is never replayed.
+
+**`tools/region-lab.html`** — retitled, gravity control removed, and the two
+unsupported fixtures listed on purpose so the refusal path is reachable from the
+UI. **`tools/page-check.js`**, **`tools/shader-check.js`**,
+**`tools/check-queue.js`** — `--region-lab` wiring, the S3 program added to the
+standard shader check, and the flag allowed through the queue.
+
+Three drawing decisions worth naming. The chart edge is painted its own colour
+and never shaded as a face, because it is where the numbers stop and not a wall.
+The floor checker is drawn on AUTHORED coordinates, so the tiles are square in
+the document and visibly widen with distance on screen — the curvature is the
+thing you can see. And a scene with two regions, a portal, or an E3 metric is
+refused by name rather than drawn: half a connected scene is a claim about
+somewhere the walker cannot reach from here.
+
+## Evidence
+
+| check | result |
+|---|---|
+| `node tools/test.js` | **57/57 suites**, exit 0 (56 before, plus `region-render`) |
+| `node region-render.test.js` | 8/8 |
+| `node tools/scene-check.js levels/fixtures/s3-room.nil.json` | passed, 1 region, 9 entities, 0 portals |
+| `node tools/shader-check.js` | `S3 region viewport: compiled and linked` |
+| `node tools/page-check.js --region-lab` | **36 checks**, no page error, no boot panel, no GL error |
+| `node tools/page-check.js --ball-lab` | 90 checks — the E3 lab is unchanged |
+| `git diff --check` | clean |
+
+**Field/render parity, the load-bearing one.** Over a 3388-point grid through
+the authored room, the packed scene the shader marches against and the
+`field.distance` the walker collides with disagree by **0.0** — not "within
+tolerance", exactly zero, because the packing carries the field's own numbers at
+full precision. Owner agreement over 1372 non-seam samples, 41 of them the
+carved doorway; 1575 normals unit and tangent at their own points, 51 of them on
+a carved face with the sign flipped. The march path matches
+`space.step` to 1e-15, and a straight chord over the same span leaves the unit
+sphere by more than 0.5.
+
+**Real GPU.** `Google Inc. (NVIDIA) / ANGLE (NVIDIA GeForce RTX 5070 Ti,
+Direct3D11)`, cold shader cache. **0.63 ms/frame over 30 frames at 604×505 with
+160 march steps.** That is wall-clock with a one-pixel readback barrier after
+every frame; the first attempt used `gl.finish()` and reported 0.00 ms for
+twenty frames of a marcher, which is not a number anybody should have believed.
+1024 fragment uniform vectors available against the 224 WebGL2 guarantees.
+Narrowing the scene to float32 for upload costs at most **2.79e-8** — the one
+error the GPU pays that the Node reference does not.
+
+**Images inspected**, all three, regenerated by
+`node tools/page-check.js --region-lab` (root PNGs are gitignored):
+
+- `page-check-shot-s3-authored-room.png` — the room from the spawn: checkered
+  floor with tiles visibly widening into the distance, the enlarged ball
+  highlighted as the selected entity, the green far wall with the carved doorway
+  standing open, side walls, and the chart edge as a red band across the top.
+- `page-check-shot-s3-flown-forward.png` — the same room from further in, after
+  30 frames of `moveRegionProbe`.
+- `page-check-shot-s3-rolled.png` — after six roll inputs: the horizon is
+  tilted and holds, and the doorway now shows the chart edge THROUGH it, so the
+  carve is a real hole rather than a darker patch of wall.
+
+## A process note, because it is the more useful half
+
+Two checks in the first version of this suite passed without the thing under
+test having happened. The frame loop is disabled while checking, so nothing
+redrew after the flight; the post-flight readback compared a stale canvas
+against a pre-flight one, and it passed only because an unrelated radius edit
+had changed the pixels in between. The two screenshots were pixel-identical and
+that is what gave it away — the check said the view had changed and the picture
+said it had not.
+
+Both are fixed by drawing explicitly at each comparison point, and there is now
+a check that the camera's position tracks the player's. It is worth recording
+because it is the failure mode a renderer check is most prone to: the assertion
+is about pixels, and pixels persist.
+
+## Findings for Astra — reported, not fixed
+
+1. **The renderer's capacity is well under `REGION_LIMITS`**, deliberately: 16
+   primitives, 72 face planes, 12 groups, against the scene format's 64/192. The
+   cap is driven by the WebGL2 GUARANTEE of 224 fragment uniform vectors, not by
+   this GPU, which offers 1024. The authored room uses 7 primitives and 31
+   planes. A scene that does not fit is refused with the number it needed.
+
+2. **`objective` and `spawn` entities are not drawn.** `renderData()` emits only
+   ball / box / plane / geodesic-cell, so `s-goal` in the S3 fixture is
+   invisible. Correct for a collision field, wrong for an author looking for
+   their objective. Marker rendering is not in this slice's scope.
+
+3. **The queue worker needs a restart to accept the new flag.** Pid 2672 was
+   started before `tools/check-queue.js` learned `--region-lab`, so
+   `node tools/check-queue.js page-check --region-lab` is refused by the worker
+   with the old flag list. `check-queue.test.js` passes 7/7 with the change.
+   The direct run is the stronger evidence anyway — real GPU, cold cache — and
+   host-probe's verdict on this host is that direct is the documented route.
+   Restarting the worker (`node tools/check-queue.js --serve`) is one command
+   and I left it to the user rather than killing their process.
+
+4. **`connected-room` never existed.** The previous lab's fixture list named it;
+   there is no such file. `connected-lab.nil.json` is the nearest thing and
+   still does not compile (S3 extent 2 exceeds a hemisphere at R=1). Both
+   findings from the first report stand.
+
+5. **No cross-region rendering, no curved gravity, no clearance UI**, as scoped.
+   `CURVED_CLEARANCE_CONTRACT.md` is untouched and is a separate task.
+
+## Next
+
+Astra reviews this slice. The obvious follow-ups, none of them started: a
+curved support policy (which is what gravity is waiting on), cross-region
+rendering through an aperture, and marker rendering for non-solid entities. An
+independent Muse check of render/field parity from a corpus it derives itself
+would be worth having before any of them — the parity here is checked by the
+person who wrote both sides — but the assignment says stop, so nothing is queued.

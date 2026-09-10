@@ -22,6 +22,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { SPACES } from '../engine/geometry/registry.js';
 import { BALL_PREVIEW_GLSL, BALL_FIRST_PERSON_GLSL } from '../engine/geometry/ball-shader.js';
+import { REGION_S3_GLSL } from '../engine/geometry/region-shader.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -51,6 +52,14 @@ try {
   process.exit(1);
 }
 
+// The S3 viewport builds its geometry from gl_VertexID, so it brings its own
+// trivial vertex stage rather than borrowing the arena's.
+const REGION_VIEWPORT_VERT = `#version 300 es
+void main() {
+  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}
+`;
 const programs = [
   // Every geometry is a SEPARATE program, because which one it is is a
   // #define and not a uniform. Each has to be checked and timed on its own:
@@ -60,6 +69,9 @@ const programs = [
   ['lines', mod.LINE_VERT, mod.LINE_FRAG],
   ['editable E3 ball', mod.VERT, BALL_PREVIEW_GLSL],
   ['editable E3 ball, first person', mod.VERT, BALL_FIRST_PERSON_GLSL],
+  // The S3 viewport supplies its own full-screen-triangle vertex stage, so
+  // it is paired with a trivial one here rather than the arena's.
+  ['S3 region viewport', REGION_VIEWPORT_VERT, REGION_S3_GLSL],
 ];
 
 const page = `<!DOCTYPE html><meta charset="utf-8"><body><pre id="o"></pre><script>

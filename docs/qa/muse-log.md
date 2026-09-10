@@ -2105,3 +2105,60 @@ function, and the walker is the messenger rather than the patient.
 - Acceptance: the sampling reference described well enough to rebuild, the
   bound/truth ratio field, the named winning term at the collapse, the
   curvature-vs-clearance separation, and a one-line verdict.
+
+
+## MUSE-41 - Does the refusal stay refused?
+
+Status: READY FOR REVIEW (2026-09-10, branch main) | Owner: Muse | Reviewer: Astra | Node-only
+
+Your MUSE-39 found that a refused crossing left the walker standing exactly on
+the aperture plane, where the one-sided test declines to look, so the next frame
+carried them straight through a portal that had just said no. Astra accepted it,
+amended the contract, and Claude repaired it: the final approach is now
+provisional, and a refusal rolls back to a checkpoint the PORTAL ITSELF certifies
+is on the entering side. Claude checked that with sixteen mutations, and all
+sixteen are caught -- by the person who wrote the repair.
+
+The repair also tightened two budget rules Astra called out: corrections now draw
+on the same step allowance as travel, and a contact cap of `n` buys exactly `n`
+contact responses rather than `n + 1`.
+
+- Allowed writes: extend `region-motion-truth.test.js` (it is yours) or add a new
+  `region-refusal-truth.test.js`, plus a dated report under `docs/qa/`. Do NOT
+  edit anything under `engine/` or `app/`, and do not change checks you did not
+  write.
+- **Repeated refusals.** Many fresh frames against a blocked exit, in E3 and S3,
+  at several speeds and `dt` values, upright/tilted/off-centre apertures, and at
+  grazing incidence where the checkpoint sits micrometres from the plane. For
+  every frame: source ownership, no crossing, and `portal.signedHeight` of the
+  returned position strictly above the tolerance the crossing test uses. Go
+  looking for ONE frame that lands on or past it.
+- **Restored clearance.** Clear the obstruction and check the next frame crosses,
+  from the state the refusal left. Then try it from a state several refusals
+  deep. A repair that quietly arms something on refusal would show up here as a
+  crossing that needs two frames instead of one.
+- **Time refunds.** Only the DISCARDED travel may come back. First frame charges
+  the approach it really made; later frames, already at the checkpoint, charge
+  nothing. Audit `consumed + remaining == dt` every frame and check that a long
+  run of refusals never accumulates time it did not spend -- or loses time it did.
+- **Exact budget caps.** `maxSteps: n` must spend at most `n`, corrections
+  included; `maxContacts: 0` must record zero responses while still reporting the
+  contact it met as a diagnostic; `maxContacts: k` must buy exactly `k`. Sweep a
+  range of caps against a scene that contacts, lifts, slides and settles, and
+  report any cap where the spend exceeds it.
+- **Work counters are not refunded.** A rolled-back approach still queried the
+  field. Check that steps and contacts spent on a refused approach stay spent,
+  and that a walker refusing every frame cannot use rollback to buy unbounded
+  work inside one call.
+- Fail-demo in an isolated copy, restore, then run `node region-motion.test.js`,
+  `node region-motion-truth.test.js` and `node tools/test.js` and paste all three.
+- Claude flagged one path as implemented but UNREACHABLE: the case where even the
+  leg start cannot be certified on the entering side, which should return
+  `unresolved` / `uncertifiable-checkpoint`. Try to construct a scene that
+  reaches it. If you cannot, say what you tried -- that is a real result either
+  way, and it is the kind of thing a corpus finds and an author never does.
+- Acceptance: the repeated-refusal table, the restored-clearance result, the
+  time audit, the budget sweep with any overrun named, and a verdict on the
+  unreachable path.
+
+Astra 2026-09-10: ACCEPTED at reviewed 382ef0d; rerun 8/8, complementary motion corpora 46/46 and 21/21. See docs/qa/astra-integration-review-2026-09-10.md.

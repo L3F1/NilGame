@@ -5,6 +5,7 @@
 //   node tools/page-check.js --sw     SwiftShader instead of the real driver
 //   node tools/page-check.js --worlds all presets, resets, menu and resolution
 //   node tools/page-check.js --ball-lab editable scene-v1 E3 primitive
+//   node tools/page-check.js --region-lab the single-region S3 viewport
 //
 // Serves the project over HTTP and loads index.html as a REAL ES module graph,
 // the way Live Server does, then lets the page run twenty frames and report on
@@ -46,6 +47,8 @@ const warm = process.argv.includes('--warm');
 const sw = process.argv.includes('--sw');
 const worlds = process.argv.includes('--worlds');
 const ballLab = process.argv.includes('--ball-lab');
+const regionLab = process.argv.includes('--region-lab');
+const lab = ballLab || regionLab;
 let timeoutMs;
 try {
   timeoutMs = parseReportTimeoutMs(process.argv);
@@ -102,6 +105,7 @@ const srv = createServer((req, res) => {
   if (url === '/' || url === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     if (ballLab) { res.end(readFileSync(join(ROOT, 'tools/ball-lab.html'), 'utf8')); return; }
+    if (regionLab) { res.end(readFileSync(join(ROOT, 'tools/region-lab.html'), 'utf8')); return; }
     res.end(readFileSync(join(ROOT, 'index.html'), 'utf8').replace('</head>', probe + '</head>'));
     return;
   }
@@ -147,7 +151,7 @@ const session = await runBrowserSession({
       '--no-first-run', '--no-default-browser-check', '--disable-background-networking',
       ...(sw ? ['--enable-unsafe-swiftshader', '--use-angle=swiftshader']
              : ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist']),
-      ballLab ? '--window-size=960,600' : '--window-size=640,400', `http://127.0.0.1:${PORT}/${ballLab ? '?check=1' : ''}`,
+      lab ? '--window-size=960,600' : '--window-size=640,400', `http://127.0.0.1:${PORT}/${lab ? '?check=1' : ''}`,
     ], { stdio: ['ignore','ignore','pipe'], windowsHide: true,
       // POSIX only: the child becomes its process-group leader, so cleanup
       // owns the whole tree by construction (PID == PGID). Windows spawn
@@ -203,12 +207,23 @@ if (!report) {
 }
 
 const first = (report.hud || '').split('\n')[0].trim();
-console.log(`${ballLab ? 'ball editor checks' : worlds ? 'world suite time' : `time to ${FRAMES} frames`} : ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+const label = ballLab ? 'ball editor checks' : regionLab ? 'S3 viewport checks' : worlds ? 'world suite time' : `time to ${FRAMES} frames`;
+console.log(`${label} : ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 console.log('page error        :', report.err || '(none)');
 console.log('boot panel        :', report.boot ? report.boot.split('\n').slice(0, 3).join(' / ') : '(hidden - good)');
 console.log('hud first line    :', first || '(EMPTY - the module never ran)');
 console.log('centre pixel      :', report.px);
-if (report.checks) console.log(`${ballLab ? 'ball editor' : 'world/input'} checks : ${report.checks.length} passed`);
+if (report.checks) console.log(`${ballLab ? 'ball editor' : regionLab ? 'S3 viewport' : 'world/input'} checks : ${report.checks.length} passed`);
+// Frame time is only meaningful with the hardware and the resolution beside
+// it, so the page reports all three together or none of them.
+if (report.timing) {
+  const t = report.timing;
+  console.log(`gpu               : ${t.vendor} / ${t.renderer}`);
+  console.log(`frame time        : ${(t.totalMs / t.frames).toFixed(2)} ms over ${t.frames} frames`
+    + ` at ${t.resolution[0]}x${t.resolution[1]}, ${t.steps} march steps`);
+  console.log(`uniform capacity  : ${t.fragmentUniformVectors} fragment vectors available`
+    + `; scene narrowed to float32 by at most ${t.narrowing === null ? 'n/a' : t.narrowing.toExponential(2)}`);
+}
 // SCREENSHOTS, when the page offers them. Numeric checks pass happily on a
 // view that is upside down or drawing the floor above the horizon -- that is
 // not hypothetical, it happened here and only a picture caught it.
@@ -238,5 +253,5 @@ if (session.cleanup === 'failed') problems.push(`browser cleanup failed: ${sessi
 
 console.log(problems.length
   ? `\nFAIL ${problems.join('; ')}`
-  : `\nok   ${ballLab ? 'ball editor checks passed' : worlds ? 'all world transitions and input checks passed' : `the page started, ran ${FRAMES} frames, and its numbers are finite`}`);
+  : `\nok   ${ballLab ? 'ball editor checks passed' : regionLab ? 'S3 viewport checks passed' : worlds ? 'all world transitions and input checks passed' : `the page started, ran ${FRAMES} frames, and its numbers are finite`}`);
 process.exit(problems.length ? 1 : 0);

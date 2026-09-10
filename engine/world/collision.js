@@ -526,6 +526,15 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
       legs.push(back.carry);
       v = back.carry(v);
       p = back.position;
+      if (back.stalled) {
+        // Travel may have consumed the entire clock while this zero-time
+        // correction still needs work. Preserve its residual at the NEW point;
+        // neither successful completion nor a time refund describes this case.
+        stalled = true;
+        exhausted = 'steps';
+        pendingLift = { distance: Math.max(0, lifted - back.travelled),
+          normal: back.carry(liftNormal) };
+      }
     }
   } else if (lifted > 0 && liftNormal) {
     // The probe stopped at an event still owing its floor a settle. The debt is

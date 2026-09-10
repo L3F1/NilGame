@@ -65,74 +65,37 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: **nothing is open.** MUSE-40 is accepted and logged; MUSE-41 is delivered
-and waiting on Astra, not on you. Do not re-run or extend it. The next batch
-follows Astra's review of the region-motion repair.
+Order: **MUSE-42**. MUSE-41 accepted by Astra and archived. Claude is separately
+building a single-region S3 viewport; do not edit its files.
 
-WHAT CHANGED UNDER THIS QUEUE, 2026-09-10 (third turn). Read before starting:
+## MUSE-42 - Independent checks for intrinsic clearance
 
-- **MUSE-40 is accepted and moved to the log**, and its verdict is worth reading
-  even though the task is closed: the S3 distance bound is EXACT, and the 77x is
-  a walk whose true clearance is negative. See `docs/qa/muse-log.md`.
-- **Your MUSE-38 correction is the reason to trust the rest of it.** You went
-  back and said which two numbers in your own report were wrong and why. That is
-  the second time this queue has produced a correction rather than a defence,
-  and it is the habit worth keeping.
-- **The ball lab's camera was fixed** (`app/ball-lab.js`): it yawed about the
-  frame's own up while clamping against world z, so ordinary mouse circles piled
-  up 6.5 degrees of roll each. Nothing under `engine/` changed.
-- Baseline is 55 suites.
+Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only
 
-## MUSE-41 - Does the refusal stay refused?
+Read docs/engineering/CURVED_CLEARANCE_CONTRACT.md and only the relevant S3
+cell/reference helpers. MUSE-40 proved the sampled hallway was face-limited;
+it did not establish global field exactness. No empirical peel fitting needed.
 
-Status: READY FOR REVIEW (2026-09-10, branch main) | Owner: Muse | Reviewer: Astra | Node-only
+Allowed writes: new curved-clearance-truth.test.js, a dated docs/qa report,
+and this task's status/report. No engine/app/schema changes.
 
-Your MUSE-39 found that a refused crossing left the walker standing exactly on
-the aperture plane, where the one-sided test declines to look, so the next frame
-carried them straight through a portal that had just said no. Astra accepted it,
-amended the contract, and Claude repaired it: the final approach is now
-provisional, and a refusal rolls back to a checkpoint the PORTAL ITSELF certifies
-is on the entering side. Claude checked that with sixteen mutations, and all
-sixteen are caught -- by the person who wrote the repair.
+Check the analytic center-local face-height relation against an independently
+parameterized great-sphere face and metric distance. Include translated and
+rotated cells, R=0.5/8/10000, multiple offsets, nonzero along-face coordinates,
+and explicit distinction between scene-origin coordinates and center-local ones.
 
-The repair also tightened two budget rules Astra called out: corrections now draw
-on the same step allowance as travel, and a contact cap of `n` buys exactly `n`
-contact responses rather than `n + 1`.
+Test the face-foot exactness certificate: outside a single cell, a nearest face
+foot contained in ALL half-spaces attains the bound. Include face-interior
+positive cases and corner/jamb cases where containment fails and exactness must
+NOT be claimed. Singular/near-ambiguous projection is unresolved. Do not apply a
+single-cell certificate to modified/union scenes without a separate proof.
 
-- Allowed writes: extend `region-motion-truth.test.js` (it is yours) or add a new
-  `region-refusal-truth.test.js`, plus a dated report under `docs/qa/`. Do NOT
-  edit anything under `engine/` or `app/`, and do not change checks you did not
-  write.
-- **Repeated refusals.** Many fresh frames against a blocked exit, in E3 and S3,
-  at several speeds and `dt` values, upright/tilted/off-centre apertures, and at
-  grazing incidence where the checkpoint sits micrometres from the plane. For
-  every frame: source ownership, no crossing, and `portal.signedHeight` of the
-  returned position strictly above the tolerance the crossing test uses. Go
-  looking for ONE frame that lands on or past it.
-- **Restored clearance.** Clear the obstruction and check the next frame crosses,
-  from the state the refusal left. Then try it from a state several refusals
-  deep. A repair that quietly arms something on refusal would show up here as a
-  crossing that needs two frames instead of one.
-- **Time refunds.** Only the DISCARDED travel may come back. First frame charges
-  the approach it really made; later frames, already at the checkpoint, charge
-  nothing. Audit `consumed + remaining == dt` every frame and check that a long
-  run of refusals never accumulates time it did not spend -- or loses time it did.
-- **Exact budget caps.** `maxSteps: n` must spend at most `n`, corrections
-  included; `maxContacts: 0` must record zero responses while still reporting the
-  contact it met as a diagnostic; `maxContacts: k` must buy exactly `k`. Sweep a
-  range of caps against a scene that contacts, lifts, slides and settles, and
-  report any cap where the spend exceeds it.
-- **Work counters are not refunded.** A rolled-back approach still queried the
-  field. Check that steps and contacts spent on a refused approach stay spent,
-  and that a walker refusing every frame cannot use rollback to buy unbounded
-  work inside one call.
-- Fail-demo in an isolated copy, restore, then run `node region-motion.test.js`,
-  `node region-motion-truth.test.js` and `node tools/test.js` and paste all three.
-- Claude flagged one path as implemented but UNREACHABLE: the case where even the
-  leg start cannot be certified on the entering side, which should return
-  `unresolved` / `uncertifiable-checkpoint`. Try to construct a scene that
-  reaches it. If you cannot, say what you tried -- that is a real result either
-  way, and it is the kind of thing a corpus finds and an author never does.
-- Acceptance: the repeated-refusal table, the restored-clearance result, the
-  time audit, the budget sweep with any overrun named, and a verdict on the
-  unreachable path.
+Use the existing independent nearest-point reference where applicable; report
+reference tolerances and convergence. Vary face length to distinguish changing
+the supporting sphere from changing only the clipped face extent. Provide a
+counterexample to treating negative conservative clearance as proof of collision.
+
+Acceptance: seeded checks with non-vacuous positive and refusal cases, isolated
+fail-demo targeting a sign/chart/containment error, restored focused tests and
+tools/test.js. Describe limits; no universal safe-distance or step-cost claim.
+If the proposed contract is wrong, report a minimal counterexample, not a fix.
