@@ -110,13 +110,62 @@ The previous backlog is preserved in
   Measured: the six-clip build under-reports by up to 1.0 unit on a 2x4x2 box,
   and that shortfall is what a marcher pays for one short step at a time.
   AXIS-ALIGNED, deliberately -- see the note in `document.js`.
-- [ ] **An oriented box.** An orientation is a rotation and a rotation is a
-  rigid motion of the region, so this is a question for the geometry layer,
-  not a field the schema can accept and pass on. In E3 it is the familiar 3x3;
-  in Nil or Sol there is no isometry carrying an axis-aligned box to a tilted
-  one of the same shape, so the honest answer there may be that the primitive
-  is a different shape rather than the same one turned. Worth deciding BEFORE
-  the schema grows a `forward`/`up` on boxes that only E3 can honour.
+- [x] **An oriented box.** The previous entry here reasoned from "Nil and Sol
+  have no isometry carrying an axis-aligned box to a tilted one of the same
+  shape" to "the schema must not carry a frame at all". Astra corrected it: a
+  local CONSTRUCTION frame is not automatically a rigid motion of the
+  surrounding space, and the two questions are separable. So scene v2 carries
+  an optional orthonormal `frame`, E3 boxes take arbitrary rigid orientations,
+  and each geometry says what it can honour -- S3 gets an explicitly named
+  `geodesic-cell` rather than a silently reinterpreted box, and Nil/Sol stay
+  unsupported until their adapters define and verify them.
+  The shader derives the third axis by the same cross product the field uses
+  rather than being handed it: a flipped axis would mirror the box on screen
+  while collision kept the original, and no Node test can see that.
+- [x] **Query guarantees say what they mean** (Astra). One `distance: 'exact'`
+  was making several claims at once and two were false for a union. Now
+  `exteriorDistance`, `interiorDistance`, `interiorSign`, `intersection`,
+  `normal` and `normalUniqueness` are separate. Two defects fixed with it: an
+  overlapping union advertised an exact signed distance it did not have (two
+  unit balls one apart report -0.5 at the midpoint where the truth is 0.866),
+  and the analytic `rayCast` ignored `maxDistance` (a hit at t = 1008 when
+  asked for 64). Both reproduced against the previous commit before fixing.
+- [x] **A modifier no longer makes the whole scene march.** Each additive
+  solid compiles with the modifiers that apply to it and ray intervals resolve
+  analytically per group, so one carved wall does not cost every untouched
+  ball its closed form. The marcher stays as reference and fallback under
+  `method: 'march'`; the two agree with a brute-force reference to 7e-15.
+
+See [the plan](docs/engineering/PLAN-curved-authoring.md) for the phase this
+belongs to. The next items are its work item 3.
+
+- [ ] **Measure what the GPU actually pays.** The 20-50x carve figure is CPU
+  `rayHit` throughput from `tools/carve-bench.js`, not frame time, and the
+  analytic group path has changed the shape of the question. Wanted: CPU query
+  time and real frame time, separately, over rooms, doorways, overlapping
+  solids, mostly-unmodified scenes and grazing rays, with cold compilation and
+  exhausted-ray counts. **No GPU path gets promoted on CPU throughput alone.**
+- [ ] **Make collision and the camera geometry-agnostic, BEFORE S3 fields.**
+  `engine/world/collision.js` still has three-component Euclidean dot
+  products, portal tests that assume straight segments, and a camera that
+  discards roll. Geometry adapters own point/tangent validation, metric
+  products, geodesic advancement and transport; velocity and camera frames
+  travel along the actual movement segments.
+- [ ] **The S3 subset**: metric balls, oriented great-sphere half-spaces, the
+  `geodesic-cell` construction, distances scaled by curvature radius, gravity
+  from a chosen floor's signed-height field, transported camera frames with
+  gravity alignment as an explicit walking policy. First level stays inside a
+  supported open-hemisphere patch, and a numerical-domain exit must be handled
+  explicitly -- **an authoring extent must not silently become a collision
+  wall.**
+- [ ] **One authored S3 room**: a passage, an obstacle, a short route, with
+  editing, walking, undo and reload all working, and clearance and intrinsic
+  measurements on screen.
+- [ ] **Independently compiled regions and an E3-S3 portal.** Radial aperture
+  coordinates in the two anchor frames; preserving speed and player radius are
+  gameplay POLICIES, not a claim that two finite apertures are isometric.
+  Acceptance is a short E3 -> S3 -> E3 route surviving traversal, editing and
+  save/load.
 - [ ] **Warn on coincident faces.** The box-room fixture first drew a speckled
   line across its doorway sill because the carving box's bottom face sat at
   exactly z = 0, on the ground plane: two surfaces in the same place, and the

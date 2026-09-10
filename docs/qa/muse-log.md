@@ -1305,8 +1305,15 @@ no-op clip and the two document orders BITWISE, and checking that every refusal
 leaves its input byte-identical, are both stronger than asked for.
 
 MUSE-28 answered a question nobody had measured: the solver stalls on a bound
-at 0.0014 of steps against 0.0006 exact -- noise scale, and in the unexpected
-direction. A clean verdict is only worth reading if the check could have
+at 0.0006 of steps against 0.0014 EXACT -- noise scale, and in the unexpected
+direction.
+
+CORRECTION 2026-09-09 (Opus): the two figures were written round the wrong way
+in this entry and in the commit message for `31281bc`. Muse's report has exact
+0.0014 versus bound 0.0006. Reversed, it reads as the bound stalling more,
+which is the result that was expected and did not happen. The bound stalls
+slightly LESS, and neither figure is far enough from the other to conclude
+anything except that the feared penalty did not appear. Caught by Astra. A clean verdict is only worth reading if the check could have
 failed, and the inside-geometry start tripping SINK on step 0 is what makes it
 worth reading.
 

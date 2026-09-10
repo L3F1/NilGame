@@ -79,9 +79,27 @@ clipped planes describe the same solid and can only promise a bound, and one
 bound anywhere makes the whole scene marched. `box.test.js` has the argument
 in full.
 
-## MUSE-31 - Coincident faces: find the threshold
+## MUSE-31 - Coincident faces: characterise, and do not force a number
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+Status: OPEN (REVISED 2026-09-09) | Owner: Muse | Reviewer: Opus | Node-only
+
+**REVISION, from Astra.** The first version of this task asked you to find a
+threshold. That framing pushes toward producing a number whether or not one
+exists, so three things are now explicit:
+
+1. **Failing to reproduce the artifact in Node is a VALID RESULT** and a
+   complete answer to this task. The symptom was seen on a GPU. If the CPU
+   field is well behaved across the whole sweep, say so and stop -- that
+   finding is worth more than a threshold extracted from a signal you had to
+   go looking for.
+2. **A legitimate change of normal across an edge is not a defect.** A box has
+   edges; neighbouring rays that land on different faces SHOULD report
+   different normals. Only a discontinuity that cannot be explained by the
+   geometry counts.
+3. **Do not derive a universal editor warning distance from one camera or one
+   epsilon.** If the behaviour tracks view distance, grazing angle or
+   `hitEpsilon`, then there is no document-level constant to warn on, and
+   saying that plainly is the deliverable.
 
 The `box-room` fixture first drew a SPECKLED LINE across its doorway sill.
 The carving box's bottom face sat at exactly z = 0, in the same place as the
@@ -89,8 +107,10 @@ ground plane; two surfaces occupy one location and the marcher cannot say
 which it is on. Sinking the cutter 0.2 below the floor fixed it. Nothing
 numeric caught this -- only the picture did.
 
-There is a TODO to have the editor WARN about this, and that warning needs a
-number: how close is too close. Nobody knows it. You are finding it.
+There is a TODO to have the editor WARN about this. Whether such a warning
+can exist AT ALL -- whether "too close" is a property of the document or only
+of a particular view -- is the actual question. Answering "it is not a
+document property" closes the TODO just as well as a number would.
 
 - Allowed writes: a new `coincident.test.js`, `docs/qa/overnight-results.md`,
   this task's status and report. Do NOT edit anything under `engine/` or
@@ -111,12 +131,19 @@ number: how close is too close. Nobody knows it. You are finding it.
   `hitEpsilon`. A threshold that is really a function of one of those is not a
   constant the editor can warn on, and saying so is a better answer than a
   number that only holds for one scene.
-- Report the threshold as a RANGE with the sweep that produced it, not a
-  single value. If it turns out to depend on the view rather than the
-  geometry, say that plainly -- it would mean the editor cannot warn from the
-  document alone, which changes what gets built.
-- Acceptance: the chosen defect signal stated as a sentence, the sweep, the
-  range, and a fail-demo showing the check catching a scene it should.
+- Report any threshold as a RANGE with the sweep that produced it, never a
+  single value, and never one extrapolated past the conditions you swept.
+- NOTE THE FIELD HAS CHANGED UNDER THIS TASK. `rayCast` now resolves ray
+  intervals analytically per solid group by default and reports `status`,
+  `owner` and `normal`; the marcher is reachable with `method: 'march'`. Sweep
+  BOTH, and report them separately -- if the analytic path is clean where the
+  marcher is not, that is the most useful thing this task could find, because
+  it says the artifact belongs to marching rather than to the geometry.
+- Acceptance: the chosen defect signal stated as a sentence BEFORE the sweep,
+  the sweep itself, and either a characterised range or a clear statement that
+  no document-level threshold exists. A fail-demo only if you found a signal
+  to demonstrate; if you found none, show instead that your check WOULD fire
+  on a scene you construct to be genuinely bad.
 
 ## MUSE-29 - A corpus for boxes
 

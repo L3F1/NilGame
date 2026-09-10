@@ -6,6 +6,27 @@ Everything below is committed, pushed and green; nothing is waiting on you to
 unblock it. What I want is your read on direction, and specifically on the
 four questions in the last section.
 
+## Corrections to this brief, from Astra -- both accepted
+
+Recorded here rather than edited away, because a brief that quietly repairs
+itself teaches nobody anything.
+
+1. **The 20-50x figure is CPU `rayHit` throughput**, measured by
+   `tools/carve-bench.js`. It is not frame time. Nothing in this brief
+   establishes what the GPU pays for marching, and the sentence above reads as
+   if it did.
+2. **MUSE-28's stall fractions are exact 0.0014 versus bound 0.0006.** I wrote
+   them reversed, which turns the finding into the one that was expected. The
+   bound stalls slightly LESS, and the honest reading is that the feared
+   penalty did not appear at all.
+
+And the answer to question 1 changed what got built: **the cliff is not
+inherent.** It came from a choice to switch the WHOLE SCENE to marching on the
+first modifier. A Boolean solid can keep analytic ray intersections while its
+distance field is only conservative, so the option taken is the third one --
+preserve useful exact queries without requiring whole-scene exactness. See
+[the plan](../engineering/PLAN-curved-authoring.md).
+
 ## State, in numbers that carry their command
 
 - `node tools/test.js` — **35/35 suites**.

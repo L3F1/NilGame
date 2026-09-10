@@ -212,19 +212,44 @@ aperture is tilted, so it is a limit of this camera and not of `mapVector`.
 `kind: 'box'` is three half-extents from a centre, and it is a PRIMITIVE
 rather than sugar over six clipped planes. The distinction is the whole point.
 Six clips describe the same solid correctly, and every clip is a `max`, which
-under-reports near a concave seam -- so the six-clip build is a BOUND, and one
-bound anywhere makes the whole scene marched. The shape an author reaches for
-most would have been the one that costs most. Measured on a 2x4x2 box, the
-clipped construction under-reports the distance by up to 1.0 unit where the
-primitive is exact; that shortfall is what a marcher pays for, one short step
-at a time.
+under-reports near a concave seam -- so the six-clip build can only promise a
+BOUND on the exterior distance, which is the number a sphere tracer steps by.
+Measured on a 2x4x2 box, the clipped construction under-reports by up to 1.0
+unit where the primitive is exact; that shortfall is what a marcher pays for,
+one short step at a time.
 
-A box is AXIS-ALIGNED, and that is not a corner waiting to be tidied up. An
-orientation is a rotation, and a rotation is a rigid motion of the region the
-box lives in. In E3 that is the familiar 3x3, but in Nil or Sol there is no
-isometry carrying an axis-aligned box to a tilted one OF THE SAME SHAPE -- the
-shape itself changes. So orientation is a question for the geometry layer to
-answer, not a field the schema can quietly accept and hand on.
+(The original argument here added "and one bound anywhere makes the whole
+scene marched". That WAS true and is no longer: each additive solid now
+compiles with the modifiers that apply to it and ray intervals resolve
+analytically per group, so one carved wall does not cost every untouched ball
+its closed form. The case for the primitive did not depend on it -- the
+shortfall above is the case.)
+
+**A box can be turned, and the schema is careful about what that means.**
+Scene v2 gives an entity an optional `frame` of orthonormal `forward` and
+`up`. That is a CONSTRUCTION frame -- it says how the shape is built at its
+own centre -- and it is deliberately not a claim that turning the shape is an
+isometry of the surrounding space.
+
+The distinction earns its keep immediately. In E3 the two coincide, so an
+oriented box is just a box you turned. In Nil or Sol there is no isometry
+carrying an axis-aligned box to a tilted one OF THE SAME SHAPE, so a frame
+there would be a promise the geometry cannot keep. The schema therefore stores
+the frame and lets each geometry say what it honours: E3 boxes take arbitrary
+rigid orientations, S3 gets an explicitly named `geodesic-cell` built from a
+centre, a frame and face offsets rather than a silently reinterpreted box, and
+Nil and Sol stay unsupported until their adapters define and verify them.
+Changing a region's geometry never silently distorts an object.
+
+A v1 document loads unchanged with identity orientation; `upgradeScene`
+migrates explicitly rather than re-embedding anything.
+
+The renderer derives the third axis by the same cross product the field uses,
+rather than being handed it. Two places computing a basis is two places that
+can disagree about handedness, and a flipped axis mirrors the box on screen
+while collision keeps the original -- a divergence no Node test can see, which
+is why `page-check --ball-lab` renders the same crate twice, once turned, and
+requires the picture to change.
 
 **Carve a box with a box.** The `Carve` button matches the cutter to the
 target, because cutting a rectangular doorway with a ball leaves a
@@ -264,10 +289,13 @@ is visible and recoverable; intersection without one deletes everything OUTSIDE
 itself, and for a plane that is half the world. Same shape of operation, very
 different blast radius when it is a mistake.
 
-That readout is not decoration. A modifier changes what the field PROMISES --
-`distance` becomes a bound and `intersection` becomes marched -- and a solver
-that trusted the old promise would be trusting a lie. See the
-[rendering contract](rendering-contract.md).
+That readout is not decoration. A modifier changes what the field PROMISES,
+and a solver that trusted the old promise would be trusting a lie. What
+changes is narrower than it used to be, because one word was making several
+claims at once: `exteriorDistance` drops to a bound, `interiorDistance` to a
+magnitude bound, and `interiorSign` -- "am I inside something", which is what
+collision actually asks -- stays exact through every operation. See the
+[rendering contract](rendering-contract.md) for the full table.
 
 The renderer follows the same split rather than approximating it. With nothing
 carved it takes the exact closed-form path it always did, so an uncarved scene
