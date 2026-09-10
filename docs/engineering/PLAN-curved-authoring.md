@@ -143,8 +143,27 @@ composition of the sweep's legs is checked to equal one long transport; and
 the patch boundary is checked to be a REPORTED distance rather than a
 collision.
 
-**Still owed for this item:** the camera still discards roll, and portal tests
-still assume straight segments. Then the S3 field itself.
+**Portals are now refused outside E3 rather than approximated.**
+`apertureCrossing` interpolates linearly between two points -- the geodesic in
+flat space, and in S3 not even a point ON the sphere. It would not throw; it
+would return a plausible crossing in the wrong place. Since everything else in
+the solver is geometry-correct, that was the one remaining place a curved world
+could quietly misbehave, so `sweep` refuses. Curved apertures are item 4 and
+their policy is Astra's; a chord-shaped guess would sit in the way of it.
+
+**Still owed for this item, in order:**
+
+1. **The S3 scene field.** `compileSceneField` still refuses anything but one
+   E3 cover region, and this is the biggest remaining piece: metric balls,
+   oriented great-sphere half-spaces, the `geodesic-cell` construction,
+   distances scaled by curvature radius, and gravity from a chosen floor's
+   signed-height field.
+2. **A transported camera frame.** `basis()` rebuilds the view from yaw and
+   pitch against a fixed world up, which is what "discards roll" means -- and
+   in S3 there is no global up to rebuild against. The frame has to be carried,
+   the way velocity now is, with gravity alignment an explicit walking policy
+   rather than an assumption baked into the reconstruction.
+3. **The room itself**, once those two exist.
 
 The S3 subset: metric balls and oriented great-sphere half-spaces;
 conservative Boolean composition and the defined cells; physical distances

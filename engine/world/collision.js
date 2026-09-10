@@ -153,6 +153,19 @@ export function sweep(field, space, {
   if (!Number.isFinite(distance) || distance < 0) throw new Error('distance must be a nonnegative finite number');
   if (Math.abs(space.norm(from, direction) - 1) > 1e-8) throw new Error('direction must be a unit vector');
 
+  // A PORTAL TEST THAT ASSUMES A STRAIGHT LINE, IN A SPACE THAT HAS NONE.
+  // `apertureCrossing` interpolates linearly between two points, which is the
+  // geodesic in E3 and is not one anywhere else -- in S3 the interpolated
+  // point is not even on the sphere. It would not throw; it would return a
+  // plausible crossing at the wrong place. Refusing is the honest state until
+  // curved apertures are designed (plan item 4), because everything else in
+  // this module is now geometry-correct and a silent chord would be the one
+  // remaining place a curved world quietly misbehaves.
+  if (portals.length && space.kind !== 'e3') {
+    throw new Error(`Portals are E3-only: the aperture test assumes a straight `
+      + `segment, which is not a geodesic in ${space.kind}`);
+  }
+
   let position = from.slice(), travelled = 0, u = direction.slice();
   const transits = [];
   let blocked = null;

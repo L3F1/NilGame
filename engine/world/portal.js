@@ -89,7 +89,19 @@ export function portalPair(anchorA, anchorB, meta = {}) {
 }
 
 /**
- * Where a straight segment crosses an aperture, or null.
+ * Where a STRAIGHT segment crosses an aperture, or null.
+ *
+ * "Straight" is load-bearing and is why `sweep` refuses to use this outside
+ * E3. The test below interpolates linearly between `from` and `to`, which is
+ * the geodesic in flat space and is not one anywhere else -- on a sphere a
+ * linearly interpolated point is not even ON the sphere. It would still
+ * return a plausible-looking crossing, which is the worst kind of wrong.
+ *
+ * Curved apertures are plan item 4 and their POLICY is Astra's: radial
+ * aperture coordinates in the two anchor frames, and preserving speed and
+ * player radius stated as gameplay decisions rather than dressed up as an
+ * isometry between two finite discs. Approximating it here first would put a
+ * chord-shaped guess in the way of that design.
  *
  * ENTERING ONLY: the crossing counts when the segment goes from the front of
  * the disc (positive side of the normal) to the back. A traveller leaving

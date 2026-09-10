@@ -220,5 +220,29 @@ test('THE DOMAIN LIMIT IS REPORTED, NEVER TURNED INTO A WALL', () => {
   near(out.travelled, 0.2, 1e-9, 'and it travels the whole way');
 });
 
+test('A PORTAL IN A CURVED SPACE IS REFUSED, not approximated', () => {
+  // The aperture test interpolates linearly between two points. That is the
+  // geodesic in E3 and nothing here: an interpolated point between two points
+  // of S3 is not even on the sphere. It would not throw -- it would return a
+  // plausible crossing in the wrong place, which is the kind of wrong that
+  // survives review. Everything else in the solver is now geometry-correct,
+  // so this is the one remaining place a curved world could quietly
+  // misbehave, and it says so instead.
+  const from = space.step(q, space.normalize(q, [0, 1, 0, 0]), 2.5);
+  const dir = space.normalize(from, space.logAt(from, q));
+  const aperture = {
+    center: space.step(q, space.normalize(q, [0, 1, 0, 0]), 1.8),
+    normal: space.normalize(from, space.logAt(from, q)), radius: 0.5,
+    mapPoint: (p) => p, mapVector: (v) => v, exitNormal: [0, 1, 0, 0],
+  };
+  assert.throws(() => sweep(field, space, {
+    from, direction: dir, distance: 1.0, radius: r, portals: [aperture],
+  }), /E3-only|straight segment/);
+  // And with no portals the same sweep is fine, so it is the aperture that is
+  // refused rather than the geometry.
+  const fine = sweep(field, space, { from, direction: dir, distance: 1.0, radius: r });
+  assert.equal(fine.hit, false);
+});
+
 console.log(`\ncurved collision: ${passed} passed, ${failed} failed\n`);
 if (failed) process.exit(1);
