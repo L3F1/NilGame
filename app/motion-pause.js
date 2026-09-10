@@ -24,12 +24,22 @@
 // walker who eventually arrives somewhere no single motion could have taken
 // them. Both look like ordinary flight right up until they are wrong.
 //
-// Deliberately NOT pauses: `domain-exit`, `blocked-exit`, `stopped`, and a
-// `budget-exhausted` carrying no debt. Each of those is an honest limit that
-// leaves a fully settled state -- the contract's "budget exhaustion stays at
-// the last validated state with remaining time reported" -- and the next frame
-// asking again with a fresh budget is a new request, not a replayed one. They
-// are reported loudly and they do not end the session.
+// Deliberately NOT pauses: `domain-exit`, `blocked-exit`, `stopped` and
+// `budget-exhausted` -- WHEN THEY CARRY NO DEBT, which is a real condition and
+// not a turn of phrase. MUSE-43 produced a `blocked-exit` still owing a floor
+// lift (a walker descending onto a floor reaches a plugged aperture before the
+// settle is paid) and a `domain-exit` owing one as well. This function pauses
+// on those, because the debt is checked FIRST and before any status is looked
+// at. An earlier draft of this comment said each of these statuses "leaves a
+// fully settled state"; that was wrong about three of the four, and only the
+// ordering below made the code right anyway.
+//
+// Debt-free, they are honest limits -- the contract's "budget exhaustion stays
+// at the last validated state with remaining time reported" -- and the next
+// frame asking again is a new request, not a replayed one. That carry-on is
+// sound ONLY while the host reports the refusal loudly and starts each retry
+// with a fresh budget and no accumulated time; `region-lab.js` counts the run
+// of consecutive refusals for exactly that reason.
 
 /**
  * Should this result END the flying session?

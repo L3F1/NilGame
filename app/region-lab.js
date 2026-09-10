@@ -31,6 +31,15 @@ let loadSequence = 0, raf, motion = null;
 // the frame. While it is set the host issues no further requests: only an
 // explicit control -- resume, reset, an edit or a fixture load -- starts one.
 let halted = null;
+// Consecutive frames whose request did NOT simply complete.
+//
+// A debt-free refusal is allowed to carry on -- the state is settled and the
+// next frame is a new request with a fresh budget -- but only while the host
+// says so out loud. A single refused frame among sixty is a flicker in a
+// metrics panel and reads as nothing; fifty in a row is a walker pinned
+// against something, and the difference is the only thing that tells an author
+// which they are looking at. MUSE-43 accepted the carry-on ON THIS CONDITION.
+let refusalRun = 0;
 const ids3 = ['x', 'y', 'z'];
 const read3 = ids => ids.map(id => {
   const text = $(id).value.trim(), value = Number(text);
@@ -68,7 +77,7 @@ function updateHalt() {
 /** The one recovery the contract requires to always be on offer. */
 function resetToSpawn() {
   stop(); state = world.spawn(selectedRegion);
-  motion = null; halted = null; updateHalt(); draw();
+  motion = null; halted = null; refusalRun = 0; updateHalt(); draw();
   message('Player reset to the validated region spawn.');
 }
 
@@ -126,7 +135,8 @@ function motionLine() {
   const owed = motion.pendingLift ? `, settle of ${motion.pendingLift.distance.toFixed(4)} still owed` : '';
   const events = motion.events.length ? `, ${motion.events.map(e => e.kind).join('/')}` : '';
   const held = halted ? `PAUSED (${halted.kind}) — ` : '';
-  return `${held}${motion.status}${detail}${left}${owed}${events}`;
+  const run = refusalRun > 1 ? `, ${refusalRun} frames running` : '';
+  return `${held}${motion.status}${detail}${left}${owed}${events}${run}`;
 }
 function draw() {
   if (!world || !state) return;
@@ -165,7 +175,7 @@ function install(document, { history = false, resetHistory = false } = {}) {
   stop(); world = next; state = spawn; selectedRegion = state.regionId; motion = null;
   // A scene edit is one of the recoveries the contract names, so it clears
   // any pause: the document that stranded the player is no longer loaded.
-  halted = null; updateHalt();
+  halted = null; refusalRun = 0; updateHalt();
   refresh();
 }
 const FIXTURES = ['s3-room', 'oriented-room', 'portal-room'];
@@ -203,7 +213,7 @@ function historyStep(from, to) {
 }
 function startPlay({ pointer = true } = {}) {
   state = world.spawn(selectedRegion); playing = true; keys.clear(); motion = null;
-  halted = null; updateHalt();
+  halted = null; refusalRun = 0; updateHalt();
   mouseLook.reset(document.pointerLockElement === canvas, performance.now());
   $('play').textContent = 'Restart from region spawn'; draw();
   if (pointer && !checking) canvas.requestPointerLock?.()?.catch?.(failure);
@@ -235,6 +245,11 @@ function advance(dt, options) {
   // always passes nothing, and gets REGION_MOTION_DEFAULTS.
   const result = moveRegionProbe(world, { ...state, velocity }, dt, options);
   motion = result;
+  // `dt` is this frame's own clock and nothing else: the refused request's
+  // unspent time was discarded when it was reported, so a run of refusals
+  // cannot bank time and spend it in one late frame.
+  refusalRun = result.status === 'complete' || result.status === 'stopped'
+    ? 0 : refusalRun + 1;
   // The leftover time of a refusal is NOT replayed. The host shows it, and the
   // author steers, edits or resets.
   state = { ...result.state, position: [...result.state.position], velocity: [...result.state.velocity] };
@@ -274,7 +289,7 @@ $('resume').onclick = guarded(() => {
   // A NEW REQUEST from the state the kernel validated, NOT a respawn and NOT a
   // replay: the refused request's unspent time stays discarded, and the clock
   // starts again from this frame.
-  halted = null; motion = null; playing = true; keys.clear(); lastTime = null;
+  halted = null; motion = null; refusalRun = 0; playing = true; keys.clear(); lastTime = null;
   mouseLook.reset(document.pointerLockElement === canvas, performance.now());
   updateHalt(); message('New movement request from the last validated state.'); draw();
 });
@@ -519,6 +534,54 @@ export async function runRegionEditorChecks() {
       && beforeResume.every((x, i) => x === state.position[i]));
     stop(); keys.clear();
     resetToSpawn();
+
+    // A REFUSAL THAT CARRIES ON, and is said out loud while it does.
+    //
+    // MUSE-43 derived the pause table from the contract independently and
+    // agreed with it everywhere except one row: debt-free budget exhaustion,
+    // where their reading said pause and the shipped policy carries on. They
+    // adjudicated against the contract in favour of carrying on, ON CONDITION
+    // that the host reports the refusal loudly and starts each retry with a
+    // fresh budget and no accumulated time. This is that condition, checked.
+    //
+    // The refusal is real and it persists: flown out through the top of the
+    // chart, the walker is stopped just inside and stays there, and every
+    // further frame is refused the same way. Nothing is stranded, nothing is
+    // owed, and an author who cannot see it happening has no way to tell this
+    // from ordinary flight into a wall.
+    startPlay({ pointer: false });
+    state = strandAt([0, 0, 7.6]);
+    // Aim at the chart edge rather than along the room's forward.
+    const outward = region.space.frame([...state.position])[2];
+    state = { ...state,
+      camera: createCameraFrame(region.space, [...state.position],
+        { forward: outward, up: region.space.frame([...state.position])[1] }) };
+    keys.clear(); keys.add('KeyW');
+    let refusals = 0, clockExact = true;
+    for (let i = 0; i < 24; i++) {
+      advance(1 / 60);
+      if (motion.status !== 'complete' && motion.status !== 'stopped') refusals++;
+      // No accumulation: each frame's clock is that frame's own dt, so a run
+      // of refusals cannot bank time and spend it in one late frame.
+      if (Math.abs(motion.timeConsumed + motion.timeRemaining - 1 / 60) > 1e-12) clockExact = false;
+    }
+    draw();
+    check('flying out of the chart is refused, and stays refused, frame after frame',
+      refusals > 10 && motion.status === 'domain-exit');
+    check('with nothing owed, so it carries on rather than ending the session',
+      !motion.pendingLift && !halted && playing);
+    check('EVERY refused frame is charged its own dt and banks nothing',
+      clockExact && motion.timeRemaining > 0);
+    check('and the run is on the page, so a pinned walker is not a flicker',
+      / \d+ frames running/.test($('metrics').textContent));
+    const runShown = Number(/ (\d+) frames running/.exec($('metrics').textContent)[1]);
+    check('the run counts the refusals rather than the frames', runShown === refusals);
+    keys.clear();
+    advance(1 / 60);
+    draw();
+    check('and a frame that completes clears the run',
+      motion.status === 'stopped' && !/frames running/.test($('metrics').textContent));
+    stop(); resetToSpawn();
 
     // POINTER LOCK AND SPIKES, through the page's own listeners.
     //

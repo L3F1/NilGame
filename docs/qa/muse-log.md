@@ -2210,3 +2210,77 @@ single-start descent trapped 0.048 high at NT=32 during probing; durable
 reference uses top-4 multi-start with a 1e-6 16v32 convergence gate.
 
 Astra ACCEPTED 2026-09-10: scoped QA evidence, not a general certificate. Rerun in 59/59 full suite; see docs/qa/astra-editor-input-2026-09-10.md.
+
+## MUSE-43 - Is the pause table the one the contract asks for?
+
+
+Status: READY FOR REVIEW | Owner: Muse
+
+**Do not read `app/motion-pause.js` until you have written your own table.**
+That is the whole method: derive, from `docs/engineering/REGION_MOTION_CONTRACT.md`
+alone, which `moveRegionProbe` outcomes must END a host's movement session and
+which must not, and which of the ending ones a host may offer an explicit retry
+for. Write that table down in your report, with the contract line each row
+rests on, BEFORE you open the module.
+
+Then build a corpus and compare. Sweep real results out of the kernel — several
+fixtures, several start states including ones inside solids and on chart edges,
+`maxSteps` / `maxContacts` / `maxCrossings` from 0 upward, dt from 0 to
+something large — and tabulate `status × detail × (pendingLift ? owed : none) ×
+timeRemaining`, with a count for each combination reached. Then run
+`motionPause` over the same corpus and report every disagreement with your
+table, plus every combination your table covers that the corpus never reached.
+
+Deliver: `motion-pause-truth.test.js` (yours, independent of
+`motion-pause.test.js`), a report, and — most valuable — any row where your
+reading of the contract and the shipped policy differ. If they agree everywhere,
+say so and say how much of the space you actually reached; an unreached
+combination is a finding, not a gap to paper over.
+
+Report (Muse, 2026-09-10): READY FOR REVIEW. Verdict: YES, the shipped table
+is the one the contract asks for, with one pre-registered row of mine
+corrected. Derived my table from the contract alone first (in the report),
+then swept the kernel (14 distinct status x detail x debt x clock combos,
+counts in report) and ran motionPause over 16 pinned cases. Agree
+everywhere except debt-free budget exhaustion: I pre-registered PAUSE,
+shipped carries on; the contract mandates only a validated state with
+honest time there, so shipped stands, conditional on loud reporting and
+fresh-budget retries (host-loop side, MUSE-44 territory). Q1: blocked-exit
+CAN carry debt (floor-lift refusal, rem=0.100) and the policy pauses on the
+debt. Q2: complete|owed never produced in ~40 hunts but synthetic rows prove
+debt-first handles it by construction. Unreached findings: complete|owed,
+stopped|owed, any debt with zero clock, uncertifiable-checkpoint.
+New motion-pause-truth.test.js (5/5). No engine/app/tool changes; no defect
+to fix. Details: docs/qa/muse43-pause-audit-2026-09-10.md.
+
+Two specific things worth aiming at. First: is `blocked-exit` really not a
+pause? Claude decided it is not, on the grounds that a refused crossing retains
+a certified source state. Check whether the contract supports that, and whether
+a `blocked-exit` can ever arrive carrying an unpaid correction. Second: can a
+result carry `pendingLift` with `status === 'complete'`? If it can, a host
+reading only the status would fly straight on, and the whole policy rests on
+the debt being checked first.
+
+Claude ACCEPTED 2026-09-10. The method is what makes this worth having: the
+table was written down from REGION_MOTION_CONTRACT alone and put in the report
+BEFORE `app/motion-pause.js` was opened, so the one disagreement is a real
+disagreement and not a rationalisation. It was adjudicated against the contract
+rather than against the code, and it went against the pre-registered row, which
+is the harder direction to go.
+
+Two things came back that the shipped work needed. Q1 corrects a claim in
+`docs/qa/claude-pause-input-2026-09-10.md`: a `blocked-exit` can arrive still
+owing a floor lift (a walker descending onto a floor reaches a plugged aperture
+before the settle is paid, rem=0.100), and so can a `domain-exit`. The prose
+saying those statuses "leave a fully settled state" was wrong about three of the
+four; the code was right anyway because the debt is checked first, and both the
+module comment and the report now say so. And the condition attached to
+debt-free budget exhaustion -- loud reporting, fresh-budget retries, no
+accumulated time -- is now closed in the host: `region-lab` counts the run of
+consecutive refusals and shows it, and a browser check flies out through the
+chart edge for 24 frames and asserts every one of them is charged exactly its
+own dt. Four mutations of that reporting are each caught.
+
+The unreached combinations were reported rather than papered over with
+synthetic rows presented as coverage, which is the right call and the reason
+the "~40 hunts" line is worth more than a green tick would have been.

@@ -34,11 +34,18 @@ to carry on or a frozen reason to stop. Two rules:
   `resumable: true`: steering, editing or an explicit retry is a NEW request,
   and the refused request's unspent time stays discarded.
 
-**Deliberately not pauses**: `domain-exit`, `blocked-exit`, `stopped`, and a
-`budget-exhausted` carrying no debt. Each leaves a fully settled state — the
-contract's "budget exhaustion stays at the last validated state with remaining
-time reported" — and the next frame asking again with a fresh budget is a new
-request, not a replayed one. That discrimination is the load-bearing part: a
+**Deliberately not pauses**: `domain-exit`, `blocked-exit`, `stopped` and
+`budget-exhausted` — *when they carry no debt*. Debt-free they are honest
+limits — the contract's "budget exhaustion stays at the last validated state
+with remaining time reported" — and the next frame asking again with a fresh
+budget is a new request, not a replayed one.
+
+> **Corrected 2026-09-10, after MUSE-43.** This paragraph first said each of
+> those statuses "leaves a fully settled state". That is wrong about three of
+> the four: Muse produced a `blocked-exit` still owing a floor lift, and a
+> `domain-exit` owing one too. The code was right anyway — the debt is checked
+> first and before any status is looked at — but the sentence was not, and it
+> is the kind of sentence someone would later build on. That discrimination is the load-bearing part: a
 policy that pauses on every non-`complete` status makes the editor unusable and
 a policy that reads only the clock misses the case the contract warns about.
 
@@ -71,9 +78,9 @@ still covered by nothing**, so a hardware-specific snap would not appear here.
 
 | check | result |
 |---|---|
-| `node tools/test.js` | **60/60 suites**, exit 0 (59 before, plus `motion-pause`) |
+| `node tools/test.js` | **61/61 suites**, exit 0 (59 before, plus `motion-pause` and Muse's `motion-pause-truth`) |
 | `node motion-pause.test.js` | 9/9 |
-| `node tools/check-queue.js page-check --region-lab` | **59 checks** (36 before), no page error, no boot panel |
+| `node tools/check-queue.js page-check --region-lab` | **65 checks** (36 before), no page error, no boot panel |
 | `node tools/check-queue.js page-check --ball-lab` | **101 checks** (90 before), no page error |
 | `node tools/shader-check.js` | S3 region viewport compiled and linked |
 | `node tools/scene-check.js levels/fixtures/s3-room.nil.json` | passed, 1 region, 9 entities |
@@ -186,6 +193,52 @@ through undo/redo and a JSON round trip, the carved doorway standing open onto
 what is behind it, and the chart edge as a red band across the top. Level and
 centred is the point — the roll from the earlier block is gone because the
 reset went back to a validated spawn.
+
+## Addendum, after MUSE-43: the condition Muse attached
+
+Muse derived the pause table from the contract before opening the module and
+agreed with it everywhere except one row — debt-free budget exhaustion, where
+their reading said pause and the shipped policy carries on. They adjudicated
+against the contract in favour of carrying on, **on condition that the host
+reports the refusal loudly and starts each retry with a fresh budget and no
+accumulated time**. That condition lives in the host loop, not in
+`motionPause`, and it is now closed.
+
+`region-lab` counts the run of consecutive frames whose request did not simply
+complete, and shows it: `domain-exit, 0.0104 s unspent, 17 frames running`. A
+single refused frame among sixty is a flicker in a metrics panel and reads as
+nothing; fifty in a row is a walker pinned against something, and only the run
+tells an author which they are looking at.
+
+The check flies out through the top of the chart, where the walker is stopped
+just inside and every further frame is refused the same way — a real,
+persistent, debt-free refusal, not a constructed one. Over 24 frames it
+asserts that the refusals persist, that nothing is owed and the session does
+not end, that **every frame's `timeConsumed + timeRemaining` is exactly that
+frame's own dt** (so a run cannot bank time and spend it late), that the run
+appears in the metrics text, that the number shown is the count of refusals
+rather than of frames, and that a completing frame clears it.
+
+| mutation | stopped by |
+|---|---|
+| the run is never counted | and the run is on the page, so a pinned walker is not a flicker |
+| the run never resets on a completion | the run counts the refusals rather than the frames |
+| the host replays the refused time | EVERY refused frame is charged its own dt and banks nothing |
+| the run is never shown | and the run is on the page, so a pinned walker is not a flicker |
+
+`--region-lab` is now **65 checks**, 61/61 Node suites including Muse's
+independent `motion-pause-truth.test.js`.
+
+**MUSE-43 verdict: accept.** The method held — the table was written down from
+the contract before the module was opened — the corpus reached 14 distinct
+`status × detail × debt × clock` combinations across 10 fixtures, and the one
+disagreement was adjudicated against the contract rather than against the code.
+Their Q1 answer corrects a claim of mine, recorded above. Their unreached
+combinations (`complete|owed`, `stopped|owed`, any debt with a zero clock,
+`uncertifiable-checkpoint`) are reported as findings rather than papered over,
+which is the right call: debt-first handles them by construction, and saying
+which rows the kernel never produced is more useful than a synthetic row
+claiming coverage.
 
 ## Findings for Astra — reported, not fixed
 

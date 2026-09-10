@@ -28,11 +28,21 @@ docs/qa/claude-pause-input-2026-09-10.md.
 - Pointer-lock/spike lifecycle covered end to end in BOTH editors through the
   real handlers. document.pointerLockElement is shadowed for that block and
   restored; an OS mouse stream is still covered by nothing.
-- 60/60 Node suites, S3 browser 59 (was 36), E3 browser 101 (was 90), real GPU
+- 61/61 Node suites, S3 browser 65 (was 36), E3 browser 101 (was 90), real GPU
   through the queue worker 38432. Every mutation caught; three of Claude's own
   checks were found passing while lying and are written up in the report.
-- MUSE-43/44 queued: an independent derivation of the pause table from the
-  contract, and a sweep for any other site that feeds a refusal forward.
+- MUSE-43 done and ACCEPTED: independent derivation of the pause table from the
+  contract before opening the module. Verdict: the shipped table is the one the
+  contract asks for. Two things came back. (a) A blocked-exit CAN carry an
+  unpaid correction, and so can a domain-exit -- Claude's prose saying those
+  statuses "leave a settled state" was wrong about three of four; the code was
+  right because debt is checked first, and both comment and report now say so.
+  (b) Debt-free budget exhaustion carries on only on condition of loud
+  reporting and fresh-budget retries; that is now closed -- region-lab counts
+  the run of consecutive refusals and shows it, and a check flies out through
+  the chart edge for 24 frames asserting each is charged exactly its own dt.
+- MUSE-44 still open: a sweep for any other site in the tree that feeds a
+  refusal forward. Not started.
 
 Next Astra job: review that host recovery behavior and user feedback on doorway/
 snaps; then define curved gravity/support and correction resumption. Do not build

@@ -65,44 +65,13 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-43 first, then MUSE-44. Both are independent audits of the host
-pause policy landed in `app/motion-pause.js`; neither may change engine, app or
-tool code. What changed: Claude implemented the contract's pause/reset policy in
-the S3 editor and added pointer-lock lifecycle coverage to both editors
-(`docs/qa/claude-pause-input-2026-09-10.md`). The parity between that policy and
-the contract was checked by the person who wrote the policy, which is exactly
-the arrangement these two tasks exist to break.
-
-## MUSE-43 — Is the pause table the one the contract asks for?
-
-**Do not read `app/motion-pause.js` until you have written your own table.**
-That is the whole method: derive, from `docs/engineering/REGION_MOTION_CONTRACT.md`
-alone, which `moveRegionProbe` outcomes must END a host's movement session and
-which must not, and which of the ending ones a host may offer an explicit retry
-for. Write that table down in your report, with the contract line each row
-rests on, BEFORE you open the module.
-
-Then build a corpus and compare. Sweep real results out of the kernel — several
-fixtures, several start states including ones inside solids and on chart edges,
-`maxSteps` / `maxContacts` / `maxCrossings` from 0 upward, dt from 0 to
-something large — and tabulate `status × detail × (pendingLift ? owed : none) ×
-timeRemaining`, with a count for each combination reached. Then run
-`motionPause` over the same corpus and report every disagreement with your
-table, plus every combination your table covers that the corpus never reached.
-
-Deliver: `motion-pause-truth.test.js` (yours, independent of
-`motion-pause.test.js`), a report, and — most valuable — any row where your
-reading of the contract and the shipped policy differ. If they agree everywhere,
-say so and say how much of the space you actually reached; an unreached
-combination is a finding, not a gap to paper over.
-
-Two specific things worth aiming at. First: is `blocked-exit` really not a
-pause? Claude decided it is not, on the grounds that a refused crossing retains
-a certified source state. Check whether the contract supports that, and whether
-a `blocked-exit` can ever arrive carrying an unpaid correction. Second: can a
-result carry `pendingLift` with `status === 'complete'`? If it can, a host
-reading only the status would fly straight on, and the whole policy rests on
-the debt being checked first.
+Order: MUSE-44 only. MUSE-43 accepted and archived to
+[docs/qa/muse-log.md](docs/qa/muse-log.md); its one condition — loud reporting
+of a debt-free refusal and fresh-budget retries — is closed in `region-lab`
+(a run counter, and a check that every refused frame is charged its own dt).
+Its Q1 answer corrected a claim in Claude's report: a `blocked-exit` CAN carry
+an unpaid correction, so "these statuses leave a settled state" was wrong about
+three of the four. The code was right anyway, because debt is checked first.
 
 ## MUSE-44 — Does anything else in the tree feed a refusal forward?
 
