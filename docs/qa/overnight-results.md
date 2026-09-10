@@ -1092,3 +1092,106 @@ no survivor-cleanup WARNING appeared in any `page-check` output
 - Checks: no code changed, so no suite re-run for this task; the
   table's Node rows were each freshly executed above
   (test.js 31/31 at 9 s wall among them). Status: READY FOR REVIEW.
+
+## MUSE-26 — A corpus for intersection
+
+- Environment: `host-probe` pasted at session start (sandboxed WSL,
+  Chrome dead both routes, win32 worker pid 40688 serving — not
+  re-investigated per the queue). Baseline `node tools/test.js` at
+  `d08307e` → 31/31 before edits.
+- Rule inventory around `intersect`, read from the code: SIX rules.
+  document.js: op on non-solids (shared), the three-valued op set,
+  intersect-must-name-target (new), target scope (shared), self
+  target (shared). scene-field.js: target-must-be-an-added-solid,
+  now covering both modifier kinds. All six covered.
+- New files: `intersect-corpus.test.js` (auto-discovered, no
+  registration edit), 9 valid docs under `levels/fixtures/clip/` +
+  manifest, 9 single-defect docs under `levels/fixtures/invalid/`
+  (in neither the MUSE-13 nor the MUSE-21 manifest, for the same
+  layer-split reason stated in both). The lead's 7 behavioral tests
+  cover slab/scoping/walk/global/capability/give-up; this corpus
+  covers refusal messages and clip-vs-carve geometries.
+- Invalid, all message-checked with inputs byte-identical after
+  refusal: global intersect (full WHY clause asserted, not just the
+  refusal), op on spawn/anchor/objective, self-target, missing id,
+  subtract target, intersect-on-intersect target (all three
+  field-level: validation passes, compile refuses, split asserted),
+  op `clip` misspelled (pins the three-valued message).
+- Valid, each with bound/marched asserted: clip-room base;
+  clipped-away (centre free); clip-noop (bitwise identical to base
+  at 5 points); two-clips (centre exactly 0); clip+carve in both
+  document orders (bitwise identical — max commutes); tangent clip
+  (touch reads 0, neighbours and old centre open — an external
+  tangent leaves one point); carve-face vs clip-face normals agree
+  EXACTLY ([0,0,-1] both ways at the matched sphere point).
+  Spot numbers probed before pinning (`/tmp/probe-clip.mjs`).
+- Deliberately not cased: target on an add for intersects (same
+  rule+message as MUSE-21's subtract case). One observation handed
+  back, not fixed: the self-target refusal says "carve" even when
+  the offender is an intersect or clip — shared message, stale
+  noun. Wording is the lead's.
+- Fail-demo (must-name-target neutralised): global intersect
+  accepted, `Missing expected exception`, exit 1. Restored,
+  `git diff engine/` empty, 16/16, full suite 32/32 exit 0.
+  `document.js`, `scene-field.js`, `boolean.test.js`,
+  `boolean-corpus.test.js` unedited.
+- Checks: `node intersect-corpus.test.js` → 16 checks, exit 0;
+  `node tools/test.js` → 32/32, exit 0 (WSL node v22.23.2).
+  Status: READY FOR REVIEW.
+
+## MUSE-27 — The modifier algebra, tested rather than asserted
+
+- New `modifier-algebra.test.js` (scenes built in-test, no fixtures).
+  Two added balls + ground; one global modifier vs the same modifier
+  duplicated per solid (ground copy included — the decomposition must
+  cover every added solid). 206 deterministic points per comparison:
+  grid over both solids and the gap plus a ±0.07 band hugging the
+  modifier boundary, where max is not exact. Distance AND normal.
+- Each property as a sentence: global-subtract EQUALS targeted
+  copies; global-intersect EQUALS targeted copies; carve-then-clip
+  EQUALS clip-then-carve on one target; the same carve twice EQUALS
+  once; a carve on A leaves B bitwise alone. All five CONFIRMED with
+  worst deviation exactly 0.00e+0 on both distance and normal — not
+  a near-miss with a tolerance, bitwise identity, seams included.
+- Fail-demo (global applies to the first solid only, in working
+  copy): exactly the 2 identity checks fail with concrete divergent
+  points (e.g. -0.057 vs -0.004 on the neglected solid), order /
+  idempotence / isolation still pass, exit 1. Restored, `git diff
+  engine/` empty, 5/5, full suite 33/33 exit 0. Nothing under
+  `engine/` edited.
+- Checks: `node modifier-algebra.test.js` → 5 checks, exit 0;
+  `node tools/test.js` → 33/33, exit 0 (WSL node v22.23.2).
+  Status: READY FOR REVIEW.
+
+## MUSE-28 — Walking on a bound
+
+- New `walk-bound.test.js` (scenes built in-test). 13 scenes: exact
+  boulder/wall/corner; bound doorway, clipped doorway,
+  global carve, thin membrane, narrow gap, carved corner; 4 seeded
+  scenes (mulberry32 seeds 11/22/33/44, printed in walk labels).
+  3-4 walks each (traverses, grazes, fast corner traps), 400 steps
+  at 1/60, probe radius 0.25. Every step asserts clearance ≥ -1e-3,
+  stall runs ≤ 60, finite position. A sink prints seed, scene JSON,
+  step and clearance and exits 1 immediately.
+- N=60 (one second at 60 Hz): walks are built to keep moving and
+  exact-field calibration never exceeds a run of 2, so a run past
+  60 means stuck, not trapped. Genuine head-on traps are excluded
+  by walk design — including the corner trap, which both fields
+  slide out of.
+- Verdict: NO SINK in 20,800 steps, all positions finite, max stall
+  run 2 anywhere. Stall fraction exact 0.0014 vs bound 0.0006 at
+  matched solid counts — noise scale, and in the unexpected
+  direction: the feared excess stalling did not appear. Resting
+  contact reports no stalls on either field (blocked sweeps return
+  hit, not stalled); stalled means step-budget exhaustion only.
+- Sensitivity is demonstrated, not asserted: a probe started inside
+  geometry reads clearance -0.14 and trips the SINK branch on step
+  0 (scratch probe, same check expression). The branch is live.
+- Calibration note: two probe walks that started inside a wall
+  solid sank as any solver must; both were walk-design errors
+  (starts outside free space), fixed by moving the starts, not the
+  solver. Thin-notch walks rest 0.075 short of the mouth with
+  clearance exactly 0 — conservative, safe, static.
+- Checks: `node walk-bound.test.js` → 13 scenes, 20800 steps,
+  13 walk checks, exit 0; `node tools/test.js` → 34/34, exit 0
+  (WSL node v22.23.2). Status: READY FOR REVIEW.

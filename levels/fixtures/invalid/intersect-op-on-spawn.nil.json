@@ -1,0 +1,15 @@
+{
+  "format": "nil-scene",
+  "version": 1,
+  "id": "clip-room",
+  "units": { "name": "design-unit", "playerRadius": 0.25 },
+  "regions": [
+    { "id": "r", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 20 }
+  ],
+  "entities": [
+    { "id": "ground", "regionId": "r", "kind": "plane", "position": [0, 0, 0], "up": [0, 0, 1] },
+    { "id": "mono", "regionId": "r", "kind": "ball", "position": [0, 0, 1.6], "radius": 1.5 },
+    { "id": "start", "regionId": "r", "kind": "spawn", "position": [4, 0, 0.3], "op": "intersect" }
+  ],
+  "connections": []
+}

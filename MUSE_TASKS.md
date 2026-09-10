@@ -69,7 +69,8 @@ each other. All three are Node-only; none needs a browser or a worker.
 
 ## MUSE-26 - A corpus for intersection
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@d08307e, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Report: docs/qa/overnight-results.md (MUSE-26). 6 rules found, all covered: 9 message-checked invalid docs (global with WHY asserted, kinds x3, self, missing, subtract/intersect targets, misspelled clip) + 7 valid clip docs with caps pinned; normals agree exactly ([0,0,-1] both ways); commute bitwise; fail-demo exit 1 without rule, 16/16 + suite 32/32 restored. Observation handed back: self-target message says carve for intersects. No engine edits.
 
 `op: 'intersect'` landed in `aaa8015` with seven tests, all written by the
 person who wrote the feature. MUSE-21 did this for subtraction and the pattern
@@ -104,7 +105,8 @@ matter are the ones where the two differ.
 
 ## MUSE-27 - The modifier algebra, tested rather than asserted
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@d08307e, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Report: docs/qa/overnight-results.md (MUSE-27). Identity holds BITWISE (worst deviation exactly 0, distance+normal, 206 seam-including points, both signs); order/idempotence/isolation likewise exact. Fail-demo (global to first solid only): only the 2 identity checks fail, exit 1; restored, diff empty, 5/5 + suite 33/33. No engine edits.
 
 `engine/world/scene-field.js` justifies its design in a comment:
 
@@ -143,7 +145,8 @@ when written and false after a refactor.
 
 ## MUSE-28 - Walking on a bound
 
-Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@d08307e, WSL node v22.23.2) | Reviewer: Opus | Node-only
+Report: docs/qa/overnight-results.md (MUSE-28). 13 scenes (9 hand + 4 seeded), 20,800 steps: zero sinks, positions finite, max stall run 2 vs N=60; stall fraction exact 0.0014 vs bound 0.0006 (noise scale, bound not worse). Sensitivity demo: inside-geometry start trips SINK branch step 0. Suite 34/34. No engine edits.
 
 The collision solver was built against an EXACT distance field. Carving and
 clipping made the distance a lower bound, and the walker has not been exercised

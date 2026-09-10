@@ -1,0 +1,19 @@
+{
+  "format": "nil-scene",
+  "version": 1,
+  "id": "clip-carve-ba",
+  "units": { "name": "design-unit", "playerRadius": 0.25 },
+  "regions": [
+    { "id": "r", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 20 }
+  ],
+  "entities": [
+    { "id": "ground", "regionId": "r", "kind": "plane", "position": [0, 0, 0], "up": [0, 0, 1] },
+    { "id": "mono", "regionId": "r", "kind": "ball", "position": [0, 0, 1.6], "radius": 1.5 },
+    { "id": "start", "regionId": "r", "kind": "spawn", "position": [4, 0, 0.3] },
+    { "id": "cap", "regionId": "r", "kind": "ball", "op": "intersect", "target": "mono",
+      "position": [0, 0, 0.6], "radius": 1.2 },
+    { "id": "door", "regionId": "r", "kind": "ball", "op": "subtract", "target": "mono",
+      "position": [0, 0, 2.2], "radius": 0.8 }
+  ],
+  "connections": []
+}

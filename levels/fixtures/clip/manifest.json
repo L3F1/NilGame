@@ -1,0 +1,72 @@
+{
+  "_note": "Intersection corpus for MUSE-26: one defect per invalid document, each mutated from the valid base clip-room.nil.json. errorContains is a literal substring of the refusal. level pins WHERE it refuses: document-level throws in validateScene, field-level passes validation and throws in compileSceneField's target check. Invalid files live in ../invalid/ but are NOT in the MUSE-13 manifest (its runner only calls validateScene; the field-level cases pass validation by design) nor in the MUSE-21 manifest (different operation). Valid documents pin where clipping differs from carving: full removal, no-op clips, shared targets, document-order independence, tangent boundary, and the normal-agreement case the sign exists for.",
+  "base": "clip-room.nil.json",
+  "invalid": [
+    {
+      "file": "../invalid/intersect-global.nil.json",
+      "change": "intersect wide names no target",
+      "level": "document",
+      "errorContains": "an intersect must name the solid it clips",
+      "whyContains": "a global intersect would delete everything outside it"
+    },
+    {
+      "file": "../invalid/intersect-op-on-spawn.nil.json",
+      "change": "spawn start carries op intersect",
+      "level": "document",
+      "errorContains": "op applies to balls, boxes and planes, not spawn"
+    },
+    {
+      "file": "../invalid/intersect-op-on-anchor.nil.json",
+      "change": "added anchor gate (otherwise valid) carrying op intersect",
+      "level": "document",
+      "errorContains": "op applies to balls, boxes and planes, not anchor"
+    },
+    {
+      "file": "../invalid/intersect-op-on-objective.nil.json",
+      "change": "added objective goal carrying op intersect",
+      "level": "document",
+      "errorContains": "op applies to balls, boxes and planes, not objective"
+    },
+    {
+      "file": "../invalid/intersect-target-self.nil.json",
+      "change": "narcissus targets narcissus",
+      "level": "document",
+      "errorContains": "a clip cannot target itself"
+    },
+    {
+      "file": "../invalid/intersect-target-nonexistent.nil.json",
+      "change": "wide targets nonesuch",
+      "level": "field",
+      "errorContains": "target nonesuch is not a solid in this scene"
+    },
+    {
+      "file": "../invalid/intersect-target-subtract.nil.json",
+      "change": "trim targets gouge, which is itself a subtract",
+      "level": "field",
+      "errorContains": "target gouge is not a solid in this scene"
+    },
+    {
+      "file": "../invalid/intersect-target-intersect.nil.json",
+      "change": "clip-b targets clip-a, which is itself an intersect",
+      "level": "field",
+      "errorContains": "target clip-a is not a solid in this scene"
+    },
+    {
+      "file": "../invalid/intersect-op-misspelled.nil.json",
+      "change": "wide op clip",
+      "level": "document",
+      "errorContains": "expected \"add\", \"subtract\" or \"intersect\""
+    }
+  ],
+  "valid": [
+    { "file": "clip-room.nil.json", "note": "one ball plus floor; the base every invalid case mutates" },
+    { "file": "clipped-away.nil.json", "note": "a disjoint clip leaves free space, not a solid universe" },
+    { "file": "clip-noop.nil.json", "note": "target wholly inside the clip: bitwise the unclipped field" },
+    { "file": "two-clips.nil.json", "note": "two clips may target the same solid" },
+    { "file": "clip-carve-ab.nil.json", "note": "clip plus carve on one target, carve first in the document" },
+    { "file": "clip-carve-ba.nil.json", "note": "same pair, clip first: order must not matter" },
+    { "file": "clip-tangent.nil.json", "note": "externally tangent clip leaves a single point" },
+    { "file": "carve-face.nil.json", "note": "doorway half of the normal-agreement pair" },
+    { "file": "clip-face.nil.json", "note": "clipped-cap half of the normal-agreement pair" }
+  ]
+}
