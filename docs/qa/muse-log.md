@@ -1563,3 +1563,205 @@ test. That is the right call every time. Corrected in the docs.
 MUSE-30's independent reference agreed to 1.8e-16 on distance and showed its
 discriminating power rather than asserting it, by catching a six-plane bound
 missing an outside corner by 0.037.
+
+
+## MUSE-33 - The phantom surface of a carve: find the real rule
+
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
+
+Report: docs/qa/overnight-results.md (MUSE-33). Rule CONFIRMED and BOUNDED:
+o > 2r releases a centered untilted walk (o*=2r within one 0.1 grid step,
+box/ball/tunnel/notch, thin/thick, oblique at small r, all S3 verdicts
+match E3). Tilted-25 and fat oblique ball release LATE (above 2r). Two
+configurations have NO safe overhang: oblique-30 and tilted-25 box cutters
+at r=0.5 in a 1.7-wide doorway halt with truth-room at every overhang
+through o=3.0. Fail-demo: o=0.6 tilted-25 (r=0.25) and o=1.1 ball-oblique
+(r=0.5) pass a 2r check and the walker halts in open air. Sink: field never
+overestimates (4.4e-16). phantom-carve 7/7 + suite 44/44. No engine edits.
+
+Walking the new S3 room turned up a live defect, and it is not
+curvature-specific. Subtraction is `max(d, -m)`. Where the carving solid
+extends PAST the solid it cuts, that `-m` term is the distance to the CARVER's
+own boundary -- a surface standing in open air that belongs to nothing. The
+value stays a valid lower bound and nothing is drawn there, so the renderer is
+innocent. But a walker reads a CLEARANCE from it, and when that clearance falls
+below the player radius the player is stopped dead by nothing at all.
+
+Observed: the S3 probe halted at y = 2.05, past the wall's far face, with the
+field reporting 0.2505 against a player radius of 0.25.
+
+I derived a rule and confirmed it in one configuration:
+
+    a cutter must overhang its target by MORE THAN TWICE the player radius
+
+reasoning that a probe is stopped one radius short of the carver's face and
+escapes only if the target's own distance already exceeds a radius there. At
+radius 0.25 an overhang of 0.5 blocks and 0.7 walks through.
+
+**One configuration is not a rule.** That derivation assumes an axis-aligned
+box cutter meeting a flat face head-on. Find out what is actually true.
+
+- Allowed writes: a new `phantom-carve.test.js`,
+  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
+  anything under `engine/` or `app/`.
+- Vary what the derivation assumed and see which parts of it survive: cutter
+  and target kinds (ball, box, plane, and geodesic-cell in S3), approach angle
+  (head-on versus oblique versus grazing), player radius, the SIZE of the
+  overhang relative to the target's own thickness, and an oriented cutter
+  whose faces are not parallel to the target's.
+- State the measured quantity before you sweep. "Blocked" needs a definition:
+  a sweep that reports `hit` where the true nearest material is further than
+  the probe radius is the obvious one, but say what you chose and why, and how
+  you compute the TRUE nearest material independently of the field.
+- The interesting answers, in order of usefulness: the rule is 2r for every
+  configuration; the rule is k*r for some other k you measure; the rule depends
+  on something other than the radius, in which case say what; or there are
+  configurations with no safe overhang at all, which would be the most
+  important finding of the four.
+- A ball cutter has no flat face and may behave completely differently. Say so
+  if it does rather than forcing it into the same rule.
+- Also worth knowing and cheap: does the phantom ever make the walker SINK
+  rather than stop? It should not -- the bound never overestimates -- but the
+  claim is worth one check.
+- Fail-demo: an authored scene that a check based on your rule accepts and that
+  the walker then fails to cross, or a demonstration that you could not
+  construct one.
+- Acceptance: the rule as a sentence with the sweep behind it, the
+  configurations where it does NOT hold, and an explicit statement of what an
+  editor could check from the document alone.
+
+## MUSE-34 - The S3 room, checked the way MUSE-30 checked the box
+
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
+
+Report: docs/qa/overnight-results.md (MUSE-34). Independent cell reference
+(great-sphere faces through transported axes, slab-coordinate membership,
+no poles): field never over-reports it (1680+ probes, 5 configs). Worst
+under-report: edge-diagonal 0.29 and corner-diagonal 0.36-0.42 per unit
+distance, IDENTICAL at R=2/8/10000 and at patch ratio 0.83 -- geometric
+(1-1/sqrt2, 1-1/sqrt3), not curvature-driven. Faces/inside/far agree to
+dust (<=5e-14). Fail-demo: flat chart arithmetic over-reports by 3.8e-2
+at R=2 (caught) and agrees to 1.8e-9 at R=10000 (hidden there -- why the
+curved check exists). s3-truth 5/5 + suite 45/45. No engine edits.
+
+`s3-room.test.js` has eight checks, written by the person who verified the
+field, and its strongest is the flat limit at R = 10000. That is a good check
+and it is one lead checking another lead's code with a third idea. MUSE-30 is
+the pattern for what comes next: an INDEPENDENT reference, finer than the
+thing it tests.
+
+- Allowed writes: a new `s3-truth.test.js`, `docs/qa/overnight-results.md`,
+  this task's status and report. Do NOT edit anything under `engine/`.
+- The reference for a `geodesic-cell` is the nearest point on its surface
+  found WITHOUT the plane construction: sample the cell's boundary, refine, and
+  measure great-circle distance. State your refinement and the resolution you
+  actually reached.
+- The cell distance is a BOUND, not exact, so the comparison is one-sided:
+  the field may under-report and must never over-report. Measure how MUCH it
+  under-reports and where -- near a face, near an edge, near a corner, deep
+  inside -- because that shortfall is what the walker pays for and nobody has
+  measured it in a curved space.
+- Sweep the curvature radius from nearly flat to tight enough that the room
+  fills a large fraction of the sphere. Report where, if anywhere, the
+  behaviour departs from the flat case by more than the geometry demands.
+- Include a cell whose half-extents approach the patch limit, which is where a
+  face's pole construction is most likely to lose precision.
+- Acceptance: the reference described well enough to rebuild, the one-sided
+  comparison with worst under-report and where, and the curvature sweep.
+
+## MUSE-35 - What does the marched path cost now?
+
+Status: READY FOR REVIEW | Owner: Muse (2026-09-10, main@08247fe, WSL node v22.23.2) | Reviewer: Opus | Node-only
+
+Report: docs/qa/overnight-results.md (MUSE-35). Re-measured honestly:
+new tools/raycast-bench.js compares method analytic vs march on the same
+5 scenes x 3 ray buckets with hits/misses/indeterminates separated
+(observed statuses, min/med/max, 3 runs stable). No cliff: first carve
+~1.2x analytic, march same order except grazing 3-5x (49 steps), worst
+22x one ray riding a coincident face plane (216 steps, 34us). Concentrated
+carves cheaper than spread (per-group win: 2.8 vs 3.7us). Analytic declines
+twice (indeterminate, march calls them miss); march never exhausts at
+default budget (0 indet). Dated report docs/qa/raycast-cost-2026-09-10.md
+retires the 20-50x row in measurements.md. Says nothing about frame time,
+by design. No engine edits.
+
+MUSE-23 measured a 20-50x cliff on the first carve, and that number is now
+stale in two ways at once: `rayCast` resolves ray intervals analytically per
+solid group by default, so a modifier no longer forces the whole scene to
+march; and the figure was CPU `rayHit` THROUGHPUT, which the lead then repeated
+as if it were frame time. It is not, and no GPU path may be promoted on CPU
+throughput alone.
+
+Re-measure the CPU half honestly. The GPU half needs a browser and is not
+yours.
+
+- Allowed writes: a new or updated bench under `tools/`, a dated report under
+  `docs/qa/`, `docs/qa/measurements.md`, `docs/qa/overnight-results.md`, this
+  task's status and report. Do NOT edit anything under `engine/` or `app/`.
+- Compare `method: 'analytic'` against `method: 'march'` on the same scenes and
+  the same rays, and report them separately. Scenes worth including: a room
+  with no modifiers, a room with one carve, a room with many, a scene where the
+  modifiers are concentrated on one solid while others are untouched (which is
+  the case the per-group change was made for), and grazing rays.
+- Report hit and miss rays SEPARATELY. A miss costs a marcher its whole budget
+  and costs the analytic path almost nothing, so mixing them produces a number
+  that describes neither.
+- Count `status: 'indeterminate'` results as their own category. A path that is
+  fast because it gives up is not fast.
+- Every number carries the command that produced it and the host it ran on.
+  Warm up, take several runs, report min/median/max rather than one figure.
+- Say plainly what the measurement does NOT establish -- specifically that it
+  says nothing about frame time -- so the next person to quote it has the
+  caveat attached to the number rather than in a paragraph they might skip.
+- Acceptance: the table, the method, the separation of hits/misses/give-ups,
+  and one sentence on what changed since MUSE-23 and why.
+
+**VERDICTS on MUSE-33, 34 and 35 -- 2026-09-10 (lead: Opus). All three
+accepted.** Committed as `b40f695`.
+
+MUSE-33 did the thing the task was written to make possible: it treated one
+confirmed configuration as a hypothesis rather than a rule, and went looking
+for where it stops. It found the answer named in the task as most valuable --
+configurations with NO safe overhang -- and did not soften it.
+
+The lead re-derived that claim against exact truth rather than Muse's sampler,
+because a headline deserves a second opinion: wall-minus-cutter decomposes
+into axis-aligned boxes, whose distances are closed forms. It agrees. At 30
+degrees with r = 0.5 the probe genuinely fits, with 0.086 of clearance the
+whole way through, and the solver halts it at every overhang out to 3.0.
+
+Three reported behaviours -- releases at 2r, releases late, never releases --
+turned out to be one mechanism: the walker is released only where the distance
+to the CUTTER's boundary already exceeds the player radius. The overhang rule
+is that condition when the MOUTH is the nearest cutter face; "no safe overhang"
+is when a SIDE face is nearer, which no overhang can move. Muse had the
+mechanism in hand and wrote it as a special case ("the void depth is capped by
+the jamb gap, 0.39 < r"); the number is exactly right. Generalised in the
+rendering contract, checked as a predicate against the solver over 372
+configurations.
+
+MUSE-34's reference is built the way the pattern demands: faces as great
+spheres through transported axes, membership in slab coordinates, so the
+asin-of-dot construction under test is never invoked by its own reference.
+1680+ probes, never an over-report. The shortfall is 1-1/sqrt(2) at an edge and
+about 1-1/sqrt(3) at a corner and IDENTICAL at R = 2, 8 and 10000 -- so
+curvature adds nothing to what `max` over half-spaces already costs, which is
+the finding.
+
+The lead mutation-checked it rather than taking the fail-demo on trust: scaling
+the cell face distance by 1.002 is caught by `s3-truth` and NOT by the
+lead-written `s3-room`, whose face checks sit at the zero crossing where a
+scale error vanishes. Both catch 1.005. That gap is the discriminating power
+the task existed to buy.
+
+MUSE-35 retired a number the lead had repeated wrongly, and its most valuable
+output was a disagreement it declined to reconcile. Analytic said
+`indeterminate` where march said `miss` on two rays; leaving both statuses in
+the table is what let the lead chase it down to a real bug -- a near-tangency
+six units BEHIND the ray origin was being clamped to the origin, so the cast
+refused from a standing start with an empty sky ahead. Fixed in `f8f8fd4`,
+pinned by a contract test that fails without it.
+
+That is the third time a Muse batch has found a defect by reporting something
+plainly instead of tidying it. It is worth naming as the pattern it is: when
+two methods that should agree do not, the gap IS the result.

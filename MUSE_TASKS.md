@@ -65,140 +65,131 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: **MUSE-33 first** -- it is a live authoring defect with a rule that has
-only been derived, not measured. Then 34, then 35. All three are Node-only;
-none needs a browser or a worker.
+Order: **MUSE-36 first** -- it checks a change the lead made to load-bearing
+code on the lead's own judgement, which is exactly the kind of change that
+should not be checked only by the person who made it. Then 37, then 38. All
+three are Node-only; none needs a browser or a worker.
 
-WHAT CHANGED UNDER THIS QUEUE, 2026-09-09. Read before starting:
+WHAT CHANGED UNDER THIS QUEUE, 2026-09-10. Read before starting:
 
-- **The curved side is real now.** `engine/geometry/metric-space.js` supports
-  `e3` and `s3`; `engine/world/collision.js` runs entirely through it, and
-  `engine/world/region-world.js` compiles a scene into per-region fields
-  including a spherical one. `s3-room.test.js` walks a probe through a doorway
-  on a sphere with the SAME solver E3 uses.
-- A metric takes the point it is evaluated at: `norm(p, v)`, `dot(p, u, v)`,
-  `project(p, u, n)`, `transport(p, q, v)`. A sweep returns `carry`, which
-  transports a vector along the path actually taken.
-- `field.coincidentFaces()` reports entity pairs sharing a surface exactly.
-- Portals are refused outside E3 on purpose: the aperture test assumes a
-  straight segment. That is not a bug to fix, it is a design (item 4) that has
-  not happened yet.
+- **An analytic cast no longer refuses over an ambiguity behind it.**
+  `engine/geometry/e3-ray-intervals.js`: `csgRayCast` used to clamp an
+  uncertain ray parameter to zero, so a near-tangency six units BEHIND the
+  origin reported as uncertainty at the origin and the whole cast returned
+  `indeterminate`. It now discards a `t` behind the origin by more than the
+  local tolerance and keeps the clamp for one that straddles it. Your MUSE-35
+  bench found this by reporting a disagreement instead of reconciling it.
+- **The phantom-carve rule generalised.** Your MUSE-33 sweep produced three
+  behaviours and they are one mechanism: the walker is released only where the
+  distance to the CUTTER's boundary already exceeds the player radius. The
+  overhang rule is that condition when the MOUTH is nearest; "no safe overhang"
+  is when a SIDE face is nearer, which no overhang moves. Written up in
+  `docs/rendering-contract.md`.
+- `s3-truth.test.js`, `phantom-carve.test.js` and `tools/raycast-bench.js` are
+  yours and are now in the tree; 45 suites is the baseline.
 
-## MUSE-33 - The phantom surface of a carve: find the real rule
+## MUSE-36 - Degenerate rays: is the analytic path still telling the truth?
 
 Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
 
-Walking the new S3 room turned up a live defect, and it is not
-curvature-specific. Subtraction is `max(d, -m)`. Where the carving solid
-extends PAST the solid it cuts, that `-m` term is the distance to the CARVER's
-own boundary -- a surface standing in open air that belongs to nothing. The
-value stays a valid lower bound and nothing is drawn there, so the renderer is
-innocent. But a walker reads a CLEARANCE from it, and when that clearance falls
-below the player radius the player is stopped dead by nothing at all.
+The lead changed how `csgRayCast` treats an uncertain ray parameter (above),
+reasoning that an ambiguity behind the origin carries no measure and so cannot
+move any forward interval. That reasoning is probably right, and it is exactly
+one person's reasoning about a module the renderer and the walker both sit on.
+Go after it.
 
-Observed: the S3 probe halted at y = 2.05, past the wall's far face, with the
-field reporting 0.2505 against a player radius of 0.25.
-
-I derived a rule and confirmed it in one configuration:
-
-    a cutter must overhang its target by MORE THAN TWICE the player radius
-
-reasoning that a probe is stopped one radius short of the carver's face and
-escapes only if the target's own distance already exceeds a radius there. At
-radius 0.25 an overhang of 0.5 blocks and 0.7 walks through.
-
-**One configuration is not a rule.** That derivation assumes an axis-aligned
-box cutter meeting a flat face head-on. Find out what is actually true.
-
-- Allowed writes: a new `phantom-carve.test.js`,
+- Allowed writes: a new `ray-degenerate.test.js`,
   `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
   anything under `engine/` or `app/`.
-- Vary what the derivation assumed and see which parts of it survive: cutter
-  and target kinds (ball, box, plane, and geodesic-cell in S3), approach angle
-  (head-on versus oblique versus grazing), player radius, the SIZE of the
-  overhang relative to the target's own thickness, and an oriented cutter
-  whose faces are not parallel to the target's.
-- State the measured quantity before you sweep. "Blocked" needs a definition:
-  a sweep that reports `hit` where the true nearest material is further than
-  the probe radius is the obvious one, but say what you chose and why, and how
-  you compute the TRUE nearest material independently of the field.
-- The interesting answers, in order of usefulness: the rule is 2r for every
-  configuration; the rule is k*r for some other k you measure; the rule depends
-  on something other than the radius, in which case say what; or there are
-  configurations with no safe overhang at all, which would be the most
-  important finding of the four.
-- A ball cutter has no flat face and may behave completely differently. Say so
-  if it does rather than forcing it into the same rule.
-- Also worth knowing and cheap: does the phantom ever make the walker SINK
-  rather than stop? It should not -- the bound never overestimates -- but the
-  claim is worth one check.
-- Fail-demo: an authored scene that a check based on your rule accepts and that
-  the walker then fails to cross, or a demonstration that you could not
-  construct one.
-- Acceptance: the rule as a sentence with the sweep behind it, the
-  configurations where it does NOT hold, and an explicit statement of what an
-  editor could check from the document alone.
+- Build an adversarial corpus of near-degenerate rays and run each one three
+  ways: `method: 'analytic'`, `method: 'march'`, and an INDEPENDENT reference
+  you write (bisect the field along the ray, or sample and refine -- state
+  which, and the resolution you reach). Two paths through the same module do
+  not make a reference.
+- Cases worth having, at minimum: exact tangency ahead of, behind, and
+  straddling the origin; tangency to a CUTTER versus to an additive solid; a
+  ray starting exactly on a surface, just inside it, just outside it; a ray
+  whose `maxDistance` lands exactly on the hit; a ray across coincident faces;
+  and grazes displaced by one ulp either side of tangency.
+- **Sort disagreements by what they cost.** A false MISS or a false HIT is a
+  correctness failure. A false `indeterminate` is only waste. Report them in
+  separate categories and say, for each, which answer the reference says is
+  right. Do not average them into a rate.
+- Probe the new guard directly. How far behind the origin must an ambiguity be
+  before the guard discards it, and is that boundary in the right place? The
+  most valuable possible result is a case where discarding a behind-the-ray
+  ambiguity produces a WRONG forward answer. Go looking for one specifically,
+  and if you cannot construct one, say what you tried.
+- Fail-demo: restore the old `Math.max(0, t)` in your working copy, show the
+  corpus catching it, restore, show it green.
+- Acceptance: the corpus, the reference described well enough to rebuild, the
+  disagreement table split by cost, and a verdict on the guard's boundary.
 
-## MUSE-34 - The S3 room, checked the way MUSE-30 checked the box
+## MUSE-37 - The carve predicate, past the box cutter
 
 Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
 
-`s3-room.test.js` has eight checks, written by the person who verified the
-field, and its strongest is the flat limit at R = 10000. That is a good check
-and it is one lead checking another lead's code with a third idea. MUSE-30 is
-the pattern for what comes next: an INDEPENDENT reference, finer than the
-thing it tests.
+The rule now reads: *a walk passes iff, everywhere the target is within r, the
+cutter's boundary is farther than r from the path.* The lead checked it as a
+predicate against the solver over 372 configurations and it agreed on every
+one -- but all 372 used a BOX cutter, a straight path and E3. The predicate is
+about to be handed to the editor, which will refuse people's rooms with it, so
+its failures need to be known before that rather than after.
 
-- Allowed writes: a new `s3-truth.test.js`, `docs/qa/overnight-results.md`,
-  this task's status and report. Do NOT edit anything under `engine/`.
-- The reference for a `geodesic-cell` is the nearest point on its surface
-  found WITHOUT the plane construction: sample the cell's boundary, refine, and
-  measure great-circle distance. State your refinement and the resolution you
-  actually reached.
-- The cell distance is a BOUND, not exact, so the comparison is one-sided:
-  the field may under-report and must never over-report. Measure how MUCH it
-  under-reports and where -- near a face, near an edge, near a corner, deep
-  inside -- because that shortfall is what the walker pays for and nobody has
-  measured it in a curved space.
-- Sweep the curvature radius from nearly flat to tight enough that the room
-  fills a large fraction of the sphere. Report where, if anywhere, the
-  behaviour departs from the flat case by more than the geometry demands.
-- Include a cell whose half-extents approach the patch limit, which is where a
-  face's pole construction is most likely to lose precision.
-- Acceptance: the reference described well enough to rebuild, the one-sided
-  comparison with worst under-report and where, and the curvature sweep.
+- Allowed writes: a new `carve-predicate.test.js`,
+  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
+  anything under `engine/` or `app/`.
+- Implement the predicate test-locally -- the distance from the path to the
+  cutter's boundary, over the stretch where the target is within r -- and
+  compare its verdict to what `sweep` actually does, across: ball cutters,
+  plane targets, geodesic-cell cutters in S3 with a geodesic path, oriented
+  cutters, and a target carved by SEVERAL cutters at once.
+- Several cutters is the case most likely to break it, and worth thinking
+  about before sweeping: with two cutters the field is a nest of `max`, and
+  "the cutter's boundary" is no longer one surface. Say what the predicate has
+  to become, then measure whether that version holds.
+- **Direction matters more than rate.** A predicate that REJECTS a walk which
+  would have worked costs an author a room they could have had. One that
+  ACCEPTS a walk that then fails puts a player in a wall. Count and report
+  those two separately, never as one accuracy figure.
+- Where it fails, characterise the failure rather than tabulating it: which
+  face was actually binding, and what the predicate thought was.
+- Acceptance: the predicate as you implemented it, the comparison split by
+  direction of error, the multi-cutter form with its evidence, and a plain
+  statement of which primitive combinations it is not yet safe to check.
 
-## MUSE-35 - What does the marched path cost now?
+## MUSE-38 - What does the S3 bound cost a walk?
 
 Status: OPEN | Owner: Muse | Reviewer: Opus | Node-only
 
-MUSE-23 measured a 20-50x cliff on the first carve, and that number is now
-stale in two ways at once: `rayCast` resolves ray intervals analytically per
-solid group by default, so a modifier no longer forces the whole scene to
-march; and the figure was CPU `rayHit` THROUGHPUT, which the lead then repeated
-as if it were frame time. It is not, and no GPU path may be promoted on CPU
-throughput alone.
+MUSE-34 measured the cell bound's shortfall as a fraction of distance -- 0.29
+at an edge, 0.36-0.42 at a corner -- and said the shortfall "is what the walker
+pays for". That was the right thing to say and it is still not a measurement of
+what the walker pays. A conservative bound costs STEPS: the solver advances by
+the distance it is promised, so a bound that under-reports by 40% near a seam
+advances 40% less on that step.
 
-Re-measure the CPU half honestly. The GPU half needs a browser and is not
-yours.
-
-- Allowed writes: a new or updated bench under `tools/`, a dated report under
-  `docs/qa/`, `docs/qa/measurements.md`, `docs/qa/overnight-results.md`, this
-  task's status and report. Do NOT edit anything under `engine/` or `app/`.
-- Compare `method: 'analytic'` against `method: 'march'` on the same scenes and
-  the same rays, and report them separately. Scenes worth including: a room
-  with no modifiers, a room with one carve, a room with many, a scene where the
-  modifiers are concentrated on one solid while others are untouched (which is
-  the case the per-group change was made for), and grazing rays.
-- Report hit and miss rays SEPARATELY. A miss costs a marcher its whole budget
-  and costs the analytic path almost nothing, so mixing them produces a number
-  that describes neither.
-- Count `status: 'indeterminate'` results as their own category. A path that is
-  fast because it gives up is not fast.
-- Every number carries the command that produced it and the host it ran on.
-  Warm up, take several runs, report min/median/max rather than one figure.
-- Say plainly what the measurement does NOT establish -- specifically that it
-  says nothing about frame time -- so the next person to quote it has the
-  caveat attached to the number rather than in a paragraph they might skip.
-- Acceptance: the table, the method, the separation of hits/misses/give-ups,
-  and one sentence on what changed since MUSE-23 and why.
+- Allowed writes: a new `s3-walk-cost.test.js` or a bench under `tools/`, a
+  dated report under `docs/qa/`, `docs/qa/measurements.md`,
+  `docs/qa/overnight-results.md`, this task's status and report. Do NOT edit
+  anything under `engine/` or `app/`.
+- The comparison that isolates the answer is the flat limit, and it is free:
+  the SAME document at curvature radius 10000 is Euclidean to 1.35e-8. Walk
+  identical routes in both, and the geometry is held fixed while curvature and
+  the spherical construction are the only things that vary.
+- Measure per route: steps to cross, arclength travelled against the geodesic
+  distance, the distribution of step sizes, and the stall fraction (steps
+  advancing less than some fraction of the radius -- state which fraction and
+  why).
+- Routes worth having: straight across open floor, along a wall at a few
+  clearances, into a corner, through the doorway, and one that grazes an edge
+  the whole way. The seam-heavy routes are the point; the open one is the
+  control.
+- Report the cost as a RATIO to the flat case per route rather than as absolute
+  step counts, so it stays meaningful when the room changes.
+- If a route costs far more than MUSE-34's shortfall predicts, that is the
+  finding: say so and characterise where the steps went, rather than reporting
+  the ratio alone.
+- Acceptance: the routes, the per-route table against the flat control, the
+  stall definition, and one sentence on whether the bound's cost falls where
+  MUSE-34 said it would.
