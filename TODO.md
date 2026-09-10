@@ -10,6 +10,18 @@ The previous backlog is preserved in
 
 ## Immediate priorities after geometry coverage
 
+Current lead handoff: [NEXT_SESSION.md](docs/engineering/NEXT_SESSION.md).
+The next contract is region-owned motion using the existing transported solver
+and camera; it is now specified in
+[REGION_MOTION_CONTRACT.md](docs/engineering/REGION_MOTION_CONTRACT.md), with
+[Claude's bounded assignment](docs/engineering/CLAUDE_REGION_HANDOFF.md).
+The CPU coordinator is implemented in `engine/world/region-motion.js` and is
+awaiting independent review (MUSE-39) and Astra's acceptance; see
+[the report](docs/qa/claude-region-motion-2026-09-10.md). Renderer, editor and
+curved gravity are separate and unstarted. Cross-geometry camera mapping accepts an explicit destination
+space; this is groundwork, not completed connected-room gameplay.
+Use [TASK_ROUTER.md](docs/engineering/TASK_ROUTER.md) for focused reading.
+
 - [x] Fix the confirmed Sol/SL2R K-key fallback that creates hidden H3 course
   state despite Course off; preserve valid lab restart behavior.
 - [x] Build the first scene-data-to-Godot editable ball; see [the ball lab](docs/ball-lab.md) and the scoped

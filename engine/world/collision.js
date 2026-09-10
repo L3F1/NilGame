@@ -146,6 +146,7 @@ export function resolveOverlap(field, space, position, radius, {
 export function sweep(field, space, {
   from, direction, distance, radius,
   skin = DEFAULT_SKIN, maxSteps = DEFAULT_MAX_STEPS, portals = [],
+  events = null, phase = 'travel',
 }) {
   space.validatePoint(from);
   space.validateTangent(from, direction);
@@ -187,10 +188,39 @@ export function sweep(field, space, {
     position = segment.position;
     return segment;
   };
+  // AN EVENT IS ASKED FOR ON THE LEG ABOUT TO BE TRAVELLED, NEVER ON A CHORD.
+  // The provider is handed the point the probe is standing at, the unit
+  // tangent it is about to follow, and the distance this leg proposes -- so a
+  // curved leg is tested along the geodesic it actually is. Testing a chord
+  // between the endpoints of a whole move is the trap `firstCrossing` fell
+  // into: in S3 the interpolated point is not even on the sphere.
+  //
+  // The range is a contract, not a suggestion. An event reported outside
+  // [0, proposed] would let a provider round a crossing that lies BEYOND this
+  // leg into one that happened on it, which is a teleport with a plausible
+  // number attached. Refuse it rather than clamp it.
+  const eventOn = (proposed) => {
+    if (!events || !(proposed > 0)) return null;
+    const found = events({ position: position.slice(), direction: u.slice(), distance: proposed, phase });
+    if (found === null || found === undefined) return null;
+    if (!Number.isFinite(found.distance) || found.distance < 0 || found.distance > proposed) {
+      throw new Error('event distance must lie within the proposed leg');
+    }
+    return found;
+  };
+  const stopAtEvent = (found, step) => {
+    advanceBy(found.distance);
+    travelled += found.distance;
+    return {
+      position, travelled, hit: false, normal: null, stalled: false, steps: step,
+      transits, blocked, carry,
+      event: { ...found, phase, at: position.slice() },
+    };
+  };
   for (let step = 0; step < maxSteps; step++) {
     const remaining = distance - travelled;
     if (remaining <= 0) {
-      return { position, travelled, hit: false, normal: null, stalled: false, steps: step, transits, blocked, carry };
+      return { position, travelled, hit: false, normal: null, stalled: false, steps: step, transits, blocked, carry, event: null };
     }
     const gap = clearance(field, position, radius);
     if (gap <= skin) {
@@ -203,6 +233,11 @@ export function sweep(field, space, {
       // nudge is enough to get the normal advancement going again.
       if (n && space.dot(position, u, n) > 1e-9) {
         const nudge = Math.min(remaining, Math.max(skin * 4, 1e-4));
+        // The nudge is an ACTUAL leg, so it gets an actual event query. A
+        // portal set flush in the floor a probe is jumping off would otherwise
+        // be stepped straight over by the one leg nobody thought was travel.
+        const leaving = eventOn(nudge);
+        if (leaving) return stopAtEvent(leaving, step);
         advanceBy(nudge);
         travelled += nudge;
         continue;
@@ -210,12 +245,19 @@ export function sweep(field, space, {
       // Blocked. Report the surface normal at the contact, which is capability
       // (3) in the rendering contract -- a real normal, not the direction the
       // marcher happened to stop from.
-      return { position, travelled, hit: true, normal: n, stalled: false, steps: step, transits, blocked, carry };
+      return { position, travelled, hit: true, normal: n, stalled: false, steps: step, transits, blocked, carry, event: null };
     }
     // The only safe advance is one we have proved is free. Stop `skin` short so
     // the probe never lands exactly ON a surface, where the next clearance is
     // zero and the loop makes no progress.
     const advance = Math.min(remaining, gap - skin * 0.5);
+    // Events are asked BEFORE the legacy chord test and before the advance is
+    // taken. `advance` is a distance already proved free of surfaces, so an
+    // event inside it happened in open space -- which is exactly why a surface
+    // that blocks arrival wins without any priority rule being written: a
+    // blocking surface shortens `advance` until the event is out of reach.
+    const found = eventOn(advance);
+    if (found) return stopAtEvent(found, step);
     const next = space.step(position, u, advance);
 
     // PORTAL TRANSIT. Tested on the step the probe is about to take, not on
@@ -248,7 +290,7 @@ export function sweep(field, space, {
         return {
           position: at, travelled: travelled + reached,
           hit: true, normal: field.normal(at), stalled: false, steps: step,
-          transits, blocked, carry,
+          transits, blocked, carry, event: null,
         };
       }
       transits.push({ portal, entered: at, exited: eased });
@@ -268,7 +310,7 @@ export function sweep(field, space, {
   }
   return {
     position, travelled, hit: false, normal: null,
-    stalled: travelled < distance, steps: maxSteps, transits, blocked, carry,
+    stalled: travelled < distance, steps: maxSteps, transits, blocked, carry, event: null,
   };
 }
 
@@ -287,7 +329,7 @@ export function sweep(field, space, {
  */
 export function moveProbe(field, space, { position, velocity, radius }, dt, {
   skin = DEFAULT_SKIN, maxSteps = DEFAULT_MAX_STEPS, maxContacts = DEFAULT_CONTACTS,
-  portals = [],
+  portals = [], events = null,
 } = {}) {
   space.validatePoint(position);
   space.validateTangent(position, velocity);
@@ -296,21 +338,43 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
 
   let p = position.slice(), v = velocity.slice();
   const contacts = [];
-  let budget = space.norm(p, v) * dt;
-  let stalled = false, steps = 0;
+  const contactSamples = [];
+  const carryOrigin = position.slice();
+  // Transport is separate from contact response: a camera must follow every
+  // physical correction without having its forward vector projected into a wall.
+  const legs = [];
+  const carry = vector => {
+    space.validateTangent(carryOrigin, vector);
+    return legs.reduce((value, leg) => leg(value), vector.slice());
+  };
+  // TIME IS THE CLOCK; DISTANCE IS DERIVED FROM IT WHENEVER IT IS NEEDED.
+  //
+  // The old loop carried a distance budget and rescaled it by the speed ratio
+  // after a slide. That happens to equal `newSpeed * timeRemaining` and so was
+  // right -- but only by arithmetic coincidence, and it could not answer "how
+  // much of the frame is left?" at all. A region coordinator has to hand the
+  // unconsumed time back when it stops at an aperture, so the clock is the
+  // state now and `speed * timeRemaining` is recomputed as the distance each
+  // leg is allowed. Corrections (lift, settle) consume ZERO time: they are
+  // numerical repairs, not gameplay travel.
+  let timeRemaining = dt, timeTravelled = 0, timeRested = 0;
+  let stalled = false, steps = 0, atRest = false, exhausted = null;
+  let event = null, pendingLift = null;
   // How far the probe was lifted off its last contact, and along which normal,
   // so the settle at the end knows what to undo. See the LIFT note below.
   let lifted = 0, liftNormal = null;
   const transits = [];
   let blocked = null;
 
-  for (let bounce = 0; bounce <= maxContacts && budget > 0; bounce++) {
+  let bounce = 0;
+  for (; bounce <= maxContacts && timeRemaining > 0; bounce++) {
     const speed = space.norm(p, v);
-    if (speed <= 0) break;
+    if (speed <= 0) { atRest = true; break; }
+    if (steps >= maxSteps) { stalled = true; exhausted = 'steps'; break; }
     const u = space.normalize(p, v);
     const swept = sweep(field, space, {
-      from: p, direction: u, distance: budget, radius, skin,
-      maxSteps: maxSteps - steps, portals,
+      from: p, direction: u, distance: speed * timeRemaining, radius, skin,
+      maxSteps: maxSteps - steps, portals, events, phase: 'travel',
     });
     steps += swept.steps;
     for (const transit of swept.transits) transits.push(transit);
@@ -324,22 +388,32 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
     //
     // Transport preserves length by definition, so there is nothing to
     // renormalise -- and renormalising would hide a broken transport.
+    legs.push(swept.carry);
     v = swept.carry(v);
+    if (liftNormal) liftNormal = swept.carry(liftNormal);
     p = swept.position;
-    budget -= swept.travelled;
-    if (swept.stalled || steps >= maxSteps) { stalled = true; break; }
+    timeTravelled += swept.travelled / speed;
+    timeRemaining = Math.max(0, timeRemaining - swept.travelled / speed);
+    // YIELD THE EVENT BEFORE ANYTHING ELSE CAN MOVE THE PROBE. A settle that
+    // ran first would pull the probe off the aperture it had just reached, and
+    // the crossing would then be tested from a point the probe was never at.
+    if (swept.event) { event = swept.event; break; }
+    if (swept.stalled || steps >= maxSteps) { stalled = true; exhausted = 'steps'; break; }
     if (!swept.hit) break;
     const n = swept.normal;
     // A hit with no normal is a degenerate contact (the probe centre is at a
     // ball's centre). There is nothing to slide along, so stop rather than
     // invent a direction.
-    if (!n) { stalled = true; break; }
+    if (!n) { stalled = true; exhausted = 'degenerate-contact'; break; }
     contacts.push(n.slice());
+    // Raw normals belong at their contact points, not at the final position.
+    // Keep the legacy contacts array for E3 callers; curved callers use samples.
+    contactSamples.push({ position: p.slice(), normal: n.slice() });
     const slid = space.project(p, v, n);
     const slidSpeed = space.norm(p, slid);
     // Straight into the surface: all of the motion was normal to it, so there
     // is no tangent left and the probe simply stops.
-    if (slidSpeed <= 1e-12) { v = v.map(() => 0); break; }
+    if (slidSpeed <= 1e-12) { v = v.map(() => 0); atRest = true; break; }
 
     // LIFT BEFORE SLIDING, AND THIS IS THE ONE THAT MAKES WALKING POSSIBLE.
     //
@@ -353,32 +427,57 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
     // sideways motion", so lift clear of the contact first, slide there, and
     // settle back afterwards. The lift is itself a SWEPT query, so lifting
     // into a ceiling stops at the ceiling instead of tunnelling through it.
-    const lift = Math.min(0.25 * radius, Math.max(8 * skin, budget));
+    const lift = Math.min(0.25 * radius, Math.max(8 * skin, speed * timeRemaining));
     const liftDir = space.normalize(p, n);
     const up = sweep(field, space, {
       from: p, direction: liftDir, distance: lift, radius, skin, maxSteps: 8,
-    });   // no portals: a lift is a correction normal to a surface, not travel
+      // No legacy portals: a lift is a correction normal to a surface, not
+      // travel. It IS event-checked, and that is not the same thing -- a lift
+      // that walks silently across an aperture bypasses the one test that
+      // decides which region the probe is standing in.
+      events, phase: 'correction',
+    });
     steps += up.steps;
+    legs.push(up.carry);
     lifted = up.travelled;
     // The lift moved the probe, so the slide direction and the normal we will
     // settle back along both have to come with it.
     v = up.carry(slid);
     liftNormal = up.carry(liftDir);
     p = up.position;
-    // The remaining budget is the tangent part. Keeping the whole of it would
-    // let a probe skim a wall faster than it was travelling.
-    budget *= slidSpeed / speed;
+    if (up.event) { event = up.event; break; }
+    // The velocity is now only its tangent part, so the remaining TIME is
+    // unchanged and the next leg is shorter because the speed is lower. That
+    // is the whole of "tangential speed loss uses remaining time correctly";
+    // reusing the original distance as time would give the slide its lost
+    // speed back for free.
   }
+  if (bounce > maxContacts && timeRemaining > 0 && !event && !stalled && !atRest) exhausted = 'contacts';
   // Settle back onto whatever was lifted off, so the probe ends resting on the
   // surface rather than hovering a fraction above it. Swept again, so it stops
   // at the first thing it meets rather than being teleported down.
-  if (lifted > 0 && liftNormal) {
+  if (lifted > 0 && liftNormal && !event) {
     const back = sweep(field, space, {
       from: p, direction: liftNormal.map((x) => -x), distance: lifted, radius, skin, maxSteps: 16,
+      events, phase: 'correction',
     });
     steps += back.steps;
+    legs.push(back.carry);
     v = back.carry(v);
     p = back.position;
+    if (back.event) event = back.event;
+  } else if (lifted > 0 && liftNormal && event) {
+    // The probe stopped at an event still owing its floor a settle. The debt is
+    // REPORTED rather than paid: paying it would move the probe off the
+    // aperture, and a coordinator about to change regions has to be able to
+    // cancel it -- a source floor's correction means nothing in a destination.
+    pendingLift = { distance: lifted, normal: liftNormal.slice() };
   }
-  return { position: p, velocity: v, contacts, stalled, steps, transits, blocked };
+  if (atRest) { timeRested = timeRemaining; timeRemaining = 0; }
+  return {
+    position: p, velocity: v, contacts, contactSamples, stalled, steps, transits, blocked, carry,
+    event, pendingLift, atRest, exhausted,
+    timeConsumed: timeTravelled + timeRested, timeRemaining,
+    time: { travel: timeTravelled, rest: timeRested, correction: 0 },
+  };
 }

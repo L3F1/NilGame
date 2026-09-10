@@ -67,8 +67,10 @@ had accumulated before anyone noticed, each naming a different task as first.
 
 Order: **MUSE-36 first** -- it checks a change the lead made to load-bearing
 code on the lead's own judgement, which is exactly the kind of change that
-should not be checked only by the person who made it. Then 37, then 38. All
-three are Node-only; none needs a browser or a worker.
+should not be checked only by the person who made it. Then 37, then 38, and
+MUSE-39 LAST -- it reviews an implementation that landed after this queue
+opened, and it is the same kind of task for the same reason. All four are
+Node-only; none needs a browser or a worker.
 
 WHAT CHANGED UNDER THIS QUEUE, 2026-09-10. Read before starting:
 
@@ -193,3 +195,50 @@ advances 40% less on that step.
 - Acceptance: the routes, the per-route table against the flat control, the
   stall definition, and one sentence on whether the bound's cost falls where
   MUSE-34 said it would.
+
+## MUSE-39 - Region motion: is the clock honest and the crossing atomic?
+
+Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only | AFTER 36-38
+
+`engine/world/region-motion.js` now exists: `moveRegionProbe(world, state, dt,
+options)` owns which region a walker is in, how much of the frame's time is
+left, and whether a portal crossing is allowed to commit. It was written by
+Claude against `docs/engineering/REGION_MOTION_CONTRACT.md` and checked by
+`region-motion.test.js` (34 checks) plus an eight-way mutation matrix -- all of
+it by the person who wrote the code. Evidence and open findings:
+`docs/qa/claude-region-motion-2026-09-10.md`. Read the contract and the public
+API. **Do not read the implementation for your reference** -- derive it.
+
+- Allowed writes: a new `region-motion-truth.test.js` and a dated report under
+  `docs/qa/`. Do NOT edit anything under `engine/` or `app/`, and do not change
+  any existing check.
+- **Write an independent analytic reference for free flight and time.** For a
+  straight run at constant speed with no contact, the position after `dt` and
+  the arclength travelled are closed forms in both E3 and S3; a crossing costs
+  no time, so source arc + destination arc must equal `speed * dt` up to the
+  exit offset. Say what your reference is and how you derived it.
+- Cases worth having, at minimum: off-centre and tilted round trips; R = 0.5, 8
+  and 100; two S3 regions with DIFFERENT radii and the same-dimension trap that
+  goes with it; collision strictly before portal; blocked exits; a crossing that
+  lands exactly on the frame end; a legitimate return crossing; tied events;
+  and every budget exhausted.
+- **The clock is the thing to attack.** For every result, check
+  `timeConsumed + timeRemaining == dt`, and separately that `time.travel`,
+  `time.rest` and the zero-time corrections add up to what actually happened.
+  Rest time is not travel time. A correction is not either. Look specifically
+  for a path where time is consumed twice or refunded once.
+- **Check ownership and immutability on a FAILED commit.** After a refused
+  crossing the input state must be untouched, the returned state must still be
+  the source region, and no destination position, velocity or camera may appear
+  anywhere in the result. Try to find one that leaks.
+- Fail-demo: break one mechanism in an ISOLATED copy of the tree, show your
+  corpus catching it, restore, show it green. Then run
+  `node region-motion.test.js` and `node tools/test.js` and paste both.
+- Finding 4 in Claude's report says a refused crossing leaves the walker exactly
+  on the aperture plane, where the one-sided rule then declines to test it, so
+  they can walk through the plane into source space. **Confirm or refute that,
+  with a check.** It is a policy question for Astra either way -- report it, do
+  not fix it.
+- Acceptance: the reference described well enough to rebuild, the case table,
+  the time-accounting audit, a verdict on finding 4, and any disagreement with
+  the contract stated as a reproduction rather than a redesign.

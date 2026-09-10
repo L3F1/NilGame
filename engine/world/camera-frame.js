@@ -153,11 +153,19 @@ export function carryAlong(camera, segment) {
 /**
  * Map the frame through a portal, at the position it arrives at.
  *
- * `map` is the portal's own `mapVector`. Passing all three vectors keeps roll
- * through a tilted aperture, which recovering a yaw and a pitch cannot.
+ * `map` is the portal's own `mapVector` or region transit's `carry`.
+ * Cross-geometry callers MUST supply the destination space: vector length
+ * alone cannot identify a metric (two S3 regions may have different radii).
+ * The default preserves existing same-space callers. Mapping carries all three
+ * vectors, including roll; gravity alignment remains a separate policy.
  */
-export function mapFrame(camera, position, map) {
-  return make(camera.space, position, map(camera.forward), map(camera.up), map(camera.right));
+export function mapFrame(camera, position, map, destinationSpace = camera.space) {
+  destinationSpace.validatePoint(position);
+  const mapped = [camera.forward, camera.up, camera.right].map(v => map(v));
+  // Reorthonormalization repairs roundoff, not a map into the wrong tangent
+  // space. Reject that contract violation before projection can conceal it.
+  for (const v of mapped) destinationSpace.validateTangent(position, v);
+  return make(destinationSpace, position, ...mapped);
 }
 
 /**

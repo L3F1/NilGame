@@ -4,6 +4,7 @@ import { validateScene, upgradeScene } from './document.js';
 import { compileSceneField } from './scene-field.js';
 import { createMetricSpace } from '../geometry/metric-space.js';
 import { compileRegionPortals } from './region-portal.js';
+import { createCameraFrame } from './camera-frame.js';
 
 export const REGION_LIMITS = Object.freeze({ regions: 4, primitives: 64, planes: 192, portals: 8 });
 const dot = (a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
@@ -117,7 +118,16 @@ export function compileRegionWorld(source) {
   function spawn(regionId=scene.regions[0].id) {
     const region=regions.get(regionId);if(!region)throw new Error(`Unknown region ${regionId}`);
     const position=region.spawnPosition.slice();
-    return {regionId,position,velocity:position.map(()=>0),frame:region.space.frame(position),
+    // THE CANONICAL FRAME IS CONVERTED ONCE, HERE, AND NEVER AGAIN. space.frame
+    // is a CONSTRUCTION frame transported from the chart origin along a
+    // canonical path: rebuilding it at a move or a transit would hand two
+    // walkers who arrived by different routes the same basis, which is exactly
+    // what curvature denies, and would discard roll every time. From this point
+    // on the camera is carried, not reconstructed. `frame` stays for existing
+    // readers that want the raw construction basis.
+    const basis=region.space.frame(position);
+    return {regionId,position,velocity:position.map(()=>0),frame:basis,
+      camera:createCameraFrame(region.space,position,{forward:basis[1],up:basis[2]}),
       radius:scene.units.playerRadius,grounded:false,transits:0,stalled:false,blocked:null};
   }
   return Object.freeze({document:()=>structuredClone(scene),regions,portals,spawn,

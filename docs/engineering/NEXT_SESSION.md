@@ -1,86 +1,57 @@
-# Lead next session
+# Fresh-chat handoff for Astra
 
-Start from actual status. That working tree is now INTEGRATED: everything
-described below was reviewed, verified and pushed to origin/main on 2026-09-09,
-so start from a pull and the new HEAD rather than from b9b42e7. Read
-docs/qa/opus-integration-2026-09-09.md first for the verdicts, the one defect
-found at integration and the full verification table; then
-docs/qa/astra-review-2026-09-09.md for the preceding round. Preserve .codex/ and
-other agents' work. Do not repeat passed checks without a relevant change or
-unresolved concern.
+Updated 2026-09-10. Base inspected: 7c68a62; Astra's two latest tasks remain
+uncommitted in the shared tree. Claude/Muse may have progressed since this note:
+check git status and recent log before editing. Preserve .codex/ and shared work.
 
-Two environment facts to carry forward. Headless Chrome on the Windows host is
-WORKING again (real-GPU cold `page-check --worlds` gave 346 checks, exit 0), so
-the "headless is non-functional" verdict in overnight-results.md is history, not
-today's state. WSL's socketpair block is unchanged, so browser and GPU checks
-still run only from Windows while Node suites run on either host.
+User wants one difficult contract/fix from Astra, bounded implementation by
+Claude, independent checks by Muse, and small task-specific context loads.
+Do not resume the entire four-milestone plan in one turn.
 
-## Completed this session
+Read WORKING_RULES.md, REGION_MOTION_CONTRACT.md and Claude's latest short report.
+CLAUDE_REGION_HANDOFF.md is the assigned implementation scope. Other documents
+are selected via TASK_ROUTER.md, not a mandatory full-file reading list.
 
-- Windows page-check profile-lock failure fixed; real GPU 346 checks pass.
-  WSL's socket restriction is separate. POSIX process-tree cleanup is now
-  accepted and verified on a real POSIX host (29/29, grandchild reaped,
-  out-of-group sentinel untouched); its profiles are still not published for
-  warm reuse, because that needs one real Chrome run on POSIX and WSL cannot
-  launch one. A Windows-only hang and process leak in that suite's own probe was
-  found and fixed at integration - see the MUSE-06 verdict.
-- F4 closed: Sol/SL2R K restarts the lab without hidden H3 courses.
-- Scene-v1 E3 ball reaches browser/native authoring inspectors, signed
-  distance queries and a shared preview shader; edits, undo/redo, save/load
-  and unsupported-input rejection work. See docs/ball-lab.md.
+Completed by Astra:
+- camera-frame.mapFrame now takes an explicit destinationSpace; roll and metric
+  ownership survive E3/S3 and distinct-radius transfers. cross-region-frame.test.js.
+- moveProbe now returns actual path carry, including lift/settle, separate from
+  velocity projection; contactSamples retain contact point/normal. motion-carry.test.js
+  uses an independent per-leg transport formula and distinguishes endpoint transport.
+- Shared rules split without losing detailed safeguards; stale handoff archived.
+- Accepted region-motion policy written in REGION_MOTION_CONTRACT.md. Implementation
+  is pending Claude, NOT a completed connected-room runtime.
 
-## Main job: DONE - the first-person query boundary holds
+Delivered by Claude, 2026-09-10 (CPU only, awaiting review):
+- engine/world/region-motion.js: moveRegionProbe(world, state, dt, options).
+  Event-limited movement, one clock, transactional crossings, shared budgets.
+- collision.js sweep/moveProbe take an optional event provider queried on each
+  ACTUAL geodesic leg (travel, nudge, lift, settle) and carry explicit time.
+- region-world.spawn converts the construction basis into a carried camera once.
+- region-motion.test.js: 34 checks; tools/test.js 49/49. Evidence and six
+  findings in docs/qa/claude-region-motion-2026-09-10.md. Finding 4 is the one
+  open POLICY question: a refused crossing leaves the walker on the aperture
+  plane, where the one-sided rule then declines to test it.
 
-`engine/world/collision.js` is the portable, host-free collision contract:
-swept motion by conservative advancement, contact normals, spawn clearance and
-overlap resolution, consuming only the distance-bound and normal capabilities
-from docs/rendering-contract.md. 21 closed-form tests; the browser ball lab
-plays through it. The edit/play transaction policy is chosen and written down
-in docs/ball-lab.md - an edit is never refused for standing in the way; the
-probe is pushed clear, or respawns when there is no honest push.
+Important remaining gaps: walker.js is still three-component; legacy collision
+portals are E3-only; domain exits are not walls; lower-bound clearance failure is
+not proof of overlap. app/region-lab.js still imports stepRegionPlayer/
+turnRegionPlayer and engine/geometry/region-renderer.js, none of which this task
+was scoped to write; the lab does not load. levels/fixtures/connected-lab.nil.json
+does not compile (S3 extent 2 exceeds a hemisphere; charts.js and metric-space.js
+disagree about that limit).
+Do not build a second solver or assume a full region renderer already exists.
 
-Next, in order:
+Next Astra job: review Claude's region-motion implementation against the contract
+and Muse's independent evidence (MUSE-39, queued behind 36-38), focusing on event
+ordering, atomic rollback, remaining time, actual carry and destination clearance.
+Decide finding 4. Resolve demonstrated contract defects; the implementation is
+ready for review, so do not duplicate it.
+After acceptance, define the curved gravity/support policy; renderer/editor work
+can then be assigned separately. S3 bubble, host migration and new modes stay later.
 
-1. An authored FLOOR primitive, then gravity and ground contact. The lab's grid
-   is deliberately NOT in the collision field, because the document has no floor
-   entity; a field that disagrees with the picture is the failure this boundary
-   exists to prevent. This is the first schema addition since v1.
-2. Curved balls behind an H3/S3 `space` (step, transport, project) and metric
-   distance/normal. The solver already takes that interface; `e3Space`'s
-   transport is the identity and a curved space MUST override it or the probe
-   is silently steered.
-3. Selection, a gizmo and more than one entity, so the editor authors a scene.
-4. Then same-geometry authored portal transit, with swept crossing, remaining-
-   time integration and a blocked-exit policy - the sweep already returns
-   travelled distance, which is the remaining-time budget a crossing needs.
-
-Godot's flat physics may serve as an independent E3 control, not as an implicit
-solver for curved geometry. Keep the portable collision contract host-free.
-
-Then add H3/S3 metric balls behind explicit distance, ray-hit and normal
-capabilities. Account for curvature radius and point/frame types; do not infer
-these from host Transform3D. Native ball_document.gd currently mirrors a small
-subset validator; use shared conformance cases before extending either runtime.
-The scene validator/schema remains the reference. Avoid two evolving schemas
-or silently treating unsupported geometry as E3.
-
-After one usable edit/play loop, design same-geometry authored portal transit
-with swept crossing, remaining-time integration and blocked-exit policy. Only
-then extend to E3/S3 apertures. The S3 bubble needs a separately chosen boundary
-and terrain-transfer contract; a region switch alone cannot implement it.
-
-## Other migration gates
-
-Refresh H3/S3 native parity after current shader changes; measure real input
-latency and Sol/SL2R long-ray convergence. Test two native network instances.
-The E3 authoring slice does not settle Godot migration or whole-game parity.
-
-## Muse's help
-
-MUSE-06 and MUSE-07 are accepted and integrated. The open queue is MUSE-08
-(a cross-platform regression guard for the browser-test lifecycle, closing the
-defect that reached integration), MUSE-09 (shared JS/GDScript conformance cases
-for the two ball runtimes, which NEXT_SESSION asks for before either is
-extended) and MUSE-10 (a host/runtime runbook for the checks). All three are
-Node-only and run without Chrome. Keep geometry, collision guarantees, frame
-transport and connection policy with the lead.
+Evidence: docs/qa/astra-boundary-2026-09-10.md,
+docs/qa/astra-motion-contract-2026-09-10.md and
+docs/qa/claude-region-motion-2026-09-10.md. Browser availability is dynamic; run
+host-probe in the new execution session. Last probe found no queue worker.
+Existing MUSE-36..38 statuses were not changed or accepted by these tasks.
