@@ -105,13 +105,46 @@ handed it, so the two cannot disagree about handedness — a flipped axis would
 mirror the box on screen while collision kept the original, which no Node test
 can see. **Still owed:** S3 cell field/render implementation.
 
-### 3. The authored S3 room — **NEXT**
+### 3. The authored S3 room — **IN PROGRESS**
 
-Refactor collision and the camera boundary FIRST. Both still contain
-three-component Euclidean dot products, straight-segment portal tests, and a
-camera that discards roll. Geometry adapters must own point and tangent
-validation, metric products, geodesic advancement and transport; velocity and
-camera frames travel along the actual movement segments.
+Refactor collision and the camera boundary FIRST. Geometry adapters own point
+and tangent validation, metric products, geodesic advancement and transport;
+velocity and camera frames travel along the actual movement segments.
+
+**Collision: done.** `engine/world/collision.js` now consumes
+`createMetricSpace` and holds no Euclidean assumption of its own. `e3Space()`
+is the same adapter with `kind: 'e3'`, so every existing caller is unchanged --
+and every existing E3 walking, physics and portal test still passes, which is
+what makes the refactor faithful rather than merely green.
+
+Three things changed in substance rather than in shape:
+
+- **Points are no longer assumed to be three numbers.** An S3 point is a
+  four-vector on the unit sphere. Where a space is in hand the space validates;
+  `clearance` has no space and so checks only what it can, leaving the field as
+  the authority.
+- **The metric takes the point it is evaluated at.** `norm(p, v)`,
+  `dot(p, u, v)`, `project(p, u, n)`, `transport(p, q, v)`. Outside E3 an inner
+  product and a parallel transport are properties of a PLACE, not of a pair of
+  arrays.
+- **A sweep carries a vector along the path the probe actually took**, not
+  between its endpoints. Endpoint transport is transport along the shortest
+  geodesic joining them, and a probe that slid round a corner or crossed a
+  portal did not travel along that. Each leg contributes its carry and they
+  compose in path order. In E3 every carry is the identity, which is exactly
+  why this was invisible until now.
+
+`curved-collision.test.js` runs the solver against a metric ball in S3 with
+curvature radius 4 -- sweeping, overlap resolution, sliding, carrying -- with
+no change to the solver. Contact distances are checked against the
+great-circle closed form; a free move is checked to cover its arclength rather
+than its chord (they differ by ~8% there, which no tolerance would hide); the
+composition of the sweep's legs is checked to equal one long transport; and
+the patch boundary is checked to be a REPORTED distance rather than a
+collision.
+
+**Still owed for this item:** the camera still discards roll, and portal tests
+still assume straight segments. Then the S3 field itself.
 
 The S3 subset: metric balls and oriented great-sphere half-spaces;
 conservative Boolean composition and the defined cells; physical distances

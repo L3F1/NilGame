@@ -145,12 +145,19 @@ belongs to. The next items are its work item 3.
   time and real frame time, separately, over rooms, doorways, overlapping
   solids, mostly-unmodified scenes and grazing rays, with cold compilation and
   exhausted-ray counts. **No GPU path gets promoted on CPU throughput alone.**
-- [ ] **Make collision and the camera geometry-agnostic, BEFORE S3 fields.**
-  `engine/world/collision.js` still has three-component Euclidean dot
-  products, portal tests that assume straight segments, and a camera that
-  discards roll. Geometry adapters own point/tangent validation, metric
-  products, geodesic advancement and transport; velocity and camera frames
-  travel along the actual movement segments.
+- [x] **Collision is geometry-agnostic.** `collision.js` consumes
+  `createMetricSpace`; `e3Space()` is that adapter with `kind: 'e3'`, so no
+  caller changed and every existing E3 test still passes -- which is what
+  makes the refactor faithful rather than merely green. Points are no longer
+  assumed to be three numbers, the metric takes the point it is evaluated at,
+  and a sweep carries a vector ALONG THE PATH rather than between endpoints
+  (endpoint transport follows a geodesic the probe never travelled; in E3 the
+  two agree, which is why it was invisible). `curved-collision.test.js` runs
+  the solver against a metric ball in S3, checked against great-circle closed
+  forms.
+- [ ] **The camera, and portal tests on curved segments.** The camera still
+  discards roll, and `firstCrossing` still assumes a straight segment between
+  two points. Both have to move behind the adapter before the S3 room.
 - [ ] **The S3 subset**: metric balls, oriented great-sphere half-spaces, the
   `geodesic-cell` construction, distances scaled by curvature radius, gravity
   from a chosen floor's signed-height field, transported camera frames with

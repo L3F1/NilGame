@@ -34,20 +34,30 @@
 // distance is ideal; an underestimate is safe and merely slower.
 
 import { firstCrossing } from './portal.js';
+import { createMetricSpace } from '../geometry/metric-space.js';
 
 const DEFAULT_SKIN = 1e-4;
 const DEFAULT_MAX_STEPS = 96;
 const DEFAULT_CONTACTS = 4;
 
-function requireFinite(v, n, name) {
-  if (!Array.isArray(v) || v.length !== n || !v.every(Number.isFinite)) {
-    throw new Error(`${name} must contain ${n} finite numbers`);
-  }
-}
 function requirePositive(x, name) {
   if (!Number.isFinite(x) || x <= 0) throw new Error(`${name} must be a positive finite number`);
 }
-const dotv = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+/**
+ * A point, without saying how many components a point has.
+ *
+ * `clearance` is handed a position and a field and no geometry, so it is in no
+ * position to know whether three components or four is right -- an S3 point is
+ * a four-vector on the unit sphere. It checks the shape it can check and lets
+ * the FIELD be the authority on the rest, which is where that authority
+ * belongs. Everywhere a space IS available, `space.validatePoint` is used
+ * instead and it is stricter.
+ */
+function requirePoint(v, name) {
+  if (!Array.isArray(v) || (v.length !== 3 && v.length !== 4) || !v.every(Number.isFinite)) {
+    throw new Error(`${name} must contain three or four finite numbers`);
+  }
+}
 
 /**
  * The motion primitives a geometry has to supply. Everything above is written
@@ -64,23 +74,12 @@ const dotv = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
  *                      leaving the slide direction in the tangent plane.
  */
 export function e3Space() {
-  return Object.freeze({
-    kind: 'e3',
-    step: (p, u, t) => [p[0] + u[0] * t, p[1] + u[1] * t, p[2] + u[2] * t],
-    // A direction in flat space means the same thing at every point, so there
-    // is nothing to carry. Curved spaces MUST override this.
-    transport: (p, u) => u.slice(),
-    project(u, n) {
-      const d = u[0] * n[0] + u[1] * n[1] + u[2] * n[2];
-      return [u[0] - d * n[0], u[1] - d * n[1], u[2] - d * n[2]];
-    },
-    norm: (v) => Math.hypot(v[0], v[1], v[2]),
-  });
+  return createMetricSpace({ kind: 'e3' });
 }
 
 /** Free room around a point: how far the probe's SURFACE is from the scene. */
 export function clearance(field, position, radius) {
-  requireFinite(position, 3, 'position');
+  requirePoint(position, 'position');
   requirePositive(radius, 'radius');
   return field.distance(position) - radius;
 }
@@ -112,7 +111,7 @@ export function isClear(field, position, radius, skin = DEFAULT_SKIN) {
 export function resolveOverlap(field, space, position, radius, {
   skin = DEFAULT_SKIN, maxSteps = DEFAULT_MAX_STEPS,
 } = {}) {
-  requireFinite(position, 3, 'position');
+  space.validatePoint(position);
   requirePositive(radius, 'radius');
   let p = position.slice();
   if (clearance(field, p, radius) >= 0) return { position: p, status: 'clear', steps: 0 };
@@ -125,7 +124,11 @@ export function resolveOverlap(field, space, position, radius, {
     if (!n) return { position: position.slice(), status: 'trapped', steps: i };
     // Move out by the shortfall plus the skin. With an exact distance this
     // lands in one step; with an underestimate it converges.
-    p = space.step(p, n, -gap + skin);
+    // The normal is a direction, and a geodesic step wants a UNIT one. The
+    // field promises a unit normal in E3; normalising here through the metric
+    // means a curved space measures it with its own inner product rather than
+    // trusting a Euclidean length that means nothing there.
+    p = space.step(p, space.normalize(p, n), -gap + skin);
   }
   return clearance(field, p, radius) >= 0
     ? { position: p, status: 'pushed', steps: maxSteps }
@@ -144,19 +147,37 @@ export function sweep(field, space, {
   from, direction, distance, radius,
   skin = DEFAULT_SKIN, maxSteps = DEFAULT_MAX_STEPS, portals = [],
 }) {
-  requireFinite(from, 3, 'from');
-  requireFinite(direction, 3, 'direction');
+  space.validatePoint(from);
+  space.validateTangent(from, direction);
   requirePositive(radius, 'radius');
   if (!Number.isFinite(distance) || distance < 0) throw new Error('distance must be a nonnegative finite number');
-  if (Math.abs(space.norm(direction) - 1) > 1e-8) throw new Error('direction must be a unit vector');
+  if (Math.abs(space.norm(from, direction) - 1) > 1e-8) throw new Error('direction must be a unit vector');
 
   let position = from.slice(), travelled = 0, u = direction.slice();
   const transits = [];
   let blocked = null;
+  // HOW A VECTOR GETS FROM THE START OF THIS SWEEP TO THE END.
+  //
+  // Not by transporting between the two endpoints: that is transport along the
+  // shortest geodesic joining them, and the probe did not travel along that.
+  // It travelled along the path below -- many geodesic advances, possibly
+  // through a portal that turned it. So each leg contributes its own carry and
+  // they compose in path order. In E3 every carry is the identity and this
+  // reduces to exactly what the old code did, which is what lets the existing
+  // suite check the refactor rather than merely survive it.
+  const legs = [];
+  const carry = (v) => legs.reduce((acc, leg) => leg(acc), v);
+  const advanceBy = (t) => {
+    const segment = space.stepWithTransport(position, u, t);
+    legs.push(segment.carry);
+    u = segment.carry(u);
+    position = segment.position;
+    return segment;
+  };
   for (let step = 0; step < maxSteps; step++) {
     const remaining = distance - travelled;
     if (remaining <= 0) {
-      return { position, travelled, hit: false, normal: null, stalled: false, steps: step, transits, blocked };
+      return { position, travelled, hit: false, normal: null, stalled: false, steps: step, transits, blocked, carry };
     }
     const gap = clearance(field, position, radius);
     if (gap <= skin) {
@@ -167,18 +188,16 @@ export function sweep(field, space, {
       // projected onto the floor plane and the player never leaves the ground.
       // Moving away from the surface raises the clearance immediately, so one
       // nudge is enough to get the normal advancement going again.
-      if (n && dotv(u, n) > 1e-9) {
+      if (n && space.dot(position, u, n) > 1e-9) {
         const nudge = Math.min(remaining, Math.max(skin * 4, 1e-4));
-        const next = space.step(position, u, nudge);
-        u = space.transport(position, u, next);
-        position = next;
+        advanceBy(nudge);
         travelled += nudge;
         continue;
       }
       // Blocked. Report the surface normal at the contact, which is capability
       // (3) in the rendering contract -- a real normal, not the direction the
       // marcher happened to stop from.
-      return { position, travelled, hit: true, normal: n, stalled: false, steps: step, transits, blocked };
+      return { position, travelled, hit: true, normal: n, stalled: false, steps: step, transits, blocked, carry };
     }
     // The only safe advance is one we have proved is free. Stop `skin` short so
     // the probe never lands exactly ON a surface, where the next clearance is
@@ -193,8 +212,9 @@ export function sweep(field, space, {
     if (cross) {
       const { portal, t } = cross;
       const reached = advance * t;
-      const at = space.step(position, u, reached);
-      const carried = space.transport(position, u, at);
+      const toAperture = space.stepWithTransport(position, u, reached);
+      const at = toAperture.position;
+      const carried = toAperture.carry(u);
       const exitPoint = portal.mapPoint(at);
       const exitDir = portal.mapVector(carried);
 
@@ -211,13 +231,17 @@ export function sweep(field, space, {
       // say why rather than leaving the player mysteriously stopped.
       if (clearance(field, eased, radius) < 0) {
         blocked = { portal, at };
+        legs.push(toAperture.carry);   // it got as far as the aperture
         return {
           position: at, travelled: travelled + reached,
           hit: true, normal: field.normal(at), stalled: false, steps: step,
-          transits, blocked,
+          transits, blocked, carry,
         };
       }
       transits.push({ portal, entered: at, exited: eased });
+      // Reaching the aperture is a leg, and the portal map is another: a
+      // transit turns everything the probe is carrying, not just its heading.
+      legs.push(toAperture.carry, (v) => portal.mapVector(v));
       position = eased;
       u = exitDir;
       // The arclength travelled counts the whole way: a portal is a shortcut
@@ -226,13 +250,12 @@ export function sweep(field, space, {
       continue;
     }
 
-    u = space.transport(position, u, next);
-    position = next;
+    advanceBy(advance);
     travelled += advance;
   }
   return {
     position, travelled, hit: false, normal: null,
-    stalled: travelled < distance, steps: maxSteps, transits, blocked,
+    stalled: travelled < distance, steps: maxSteps, transits, blocked, carry,
   };
 }
 
@@ -253,14 +276,14 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
   skin = DEFAULT_SKIN, maxSteps = DEFAULT_MAX_STEPS, maxContacts = DEFAULT_CONTACTS,
   portals = [],
 } = {}) {
-  requireFinite(position, 3, 'position');
-  requireFinite(velocity, 3, 'velocity');
+  space.validatePoint(position);
+  space.validateTangent(position, velocity);
   requirePositive(radius, 'radius');
   if (!Number.isFinite(dt) || dt < 0) throw new Error('dt must be a nonnegative finite number');
 
   let p = position.slice(), v = velocity.slice();
   const contacts = [];
-  let budget = space.norm(v) * dt;
+  let budget = space.norm(p, v) * dt;
   let stalled = false, steps = 0;
   // How far the probe was lifted off its last contact, and along which normal,
   // so the settle at the end knows what to undo. See the LIFT note below.
@@ -269,27 +292,26 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
   let blocked = null;
 
   for (let bounce = 0; bounce <= maxContacts && budget > 0; bounce++) {
-    const speed = space.norm(v);
+    const speed = space.norm(p, v);
     if (speed <= 0) break;
-    const u = [v[0] / speed, v[1] / speed, v[2] / speed];
+    const u = space.normalize(p, v);
     const swept = sweep(field, space, {
       from: p, direction: u, distance: budget, radius, skin,
       maxSteps: maxSteps - steps, portals,
     });
     steps += swept.steps;
-    // A transit rotates the frame, so the velocity that comes out the far side
-    // is the mapped one, not the one we set off with.
-    for (const transit of swept.transits) {
-      transits.push(transit);
-      v = transit.portal.mapVector(v);
-    }
+    for (const transit of swept.transits) transits.push(transit);
     if (swept.blocked) blocked = swept.blocked;
-    // Carry the velocity to where the probe actually ended up before doing
-    // anything else with it. In E3 that is a no-op; in a curved space it is
-    // not, and getting it wrong steers the probe without anyone asking.
+    // CARRY THE VELOCITY ALONG THE PATH THE PROBE ACTUALLY TOOK, which is what
+    // `swept.carry` composes: every geodesic leg in order, and the portal map
+    // at each transit. Transporting between the two endpoints instead would
+    // be transport along a geodesic the probe never travelled, and in a curved
+    // space that steers it without anyone asking. In E3 the two agree, which
+    // is why this was invisible until now.
+    //
     // Transport preserves length by definition, so there is nothing to
-    // renormalise here -- and renormalising would hide a broken transport.
-    v = space.transport(p, v, swept.position);
+    // renormalise -- and renormalising would hide a broken transport.
+    v = swept.carry(v);
     p = swept.position;
     budget -= swept.travelled;
     if (swept.stalled || steps >= maxSteps) { stalled = true; break; }
@@ -300,11 +322,11 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
     // invent a direction.
     if (!n) { stalled = true; break; }
     contacts.push(n.slice());
-    const slid = space.project(v, n);
-    const slidSpeed = space.norm(slid);
+    const slid = space.project(p, v, n);
+    const slidSpeed = space.norm(p, slid);
     // Straight into the surface: all of the motion was normal to it, so there
     // is no tangent left and the probe simply stops.
-    if (slidSpeed <= 1e-12) { v = [0, 0, 0]; break; }
+    if (slidSpeed <= 1e-12) { v = v.map(() => 0); break; }
 
     // LIFT BEFORE SLIDING, AND THIS IS THE ONE THAT MAKES WALKING POSSIBLE.
     //
@@ -319,15 +341,17 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
     // settle back afterwards. The lift is itself a SWEPT query, so lifting
     // into a ceiling stops at the ceiling instead of tunnelling through it.
     const lift = Math.min(0.25 * radius, Math.max(8 * skin, budget));
+    const liftDir = space.normalize(p, n);
     const up = sweep(field, space, {
-      from: p, direction: n, distance: lift, radius, skin, maxSteps: 8,
+      from: p, direction: liftDir, distance: lift, radius, skin, maxSteps: 8,
     });   // no portals: a lift is a correction normal to a surface, not travel
     steps += up.steps;
     lifted = up.travelled;
-    liftNormal = n.slice();
+    // The lift moved the probe, so the slide direction and the normal we will
+    // settle back along both have to come with it.
+    v = up.carry(slid);
+    liftNormal = up.carry(liftDir);
     p = up.position;
-
-    v = slid;
     // The remaining budget is the tangent part. Keeping the whole of it would
     // let a probe skim a wall faster than it was travelling.
     budget *= slidSpeed / speed;
@@ -340,6 +364,7 @@ export function moveProbe(field, space, { position, velocity, radius }, dt, {
       from: p, direction: liftNormal.map((x) => -x), distance: lifted, radius, skin, maxSteps: 16,
     });
     steps += back.steps;
+    v = back.carry(v);
     p = back.position;
   }
   return { position: p, velocity: v, contacts, stalled, steps, transits, blocked };

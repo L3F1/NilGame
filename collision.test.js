@@ -171,7 +171,7 @@ test('an angled contact SLIDES instead of stopping', () => {
     position: [-2, -0.4, 0.25], velocity: [4, 0, 0], radius: r,
   }, 1);
   assert.ok(out.contacts.length >= 1, 'must touch the ball');
-  assert.ok(space.norm(out.velocity) > 0.1, 'keeps tangential speed');
+  assert.ok(space.norm(out.position, out.velocity) > 0.1, 'keeps tangential speed');
   const n = out.contacts[0];
   const into = out.velocity[0] * n[0] + out.velocity[1] * n[1] + out.velocity[2] * n[2];
   assert.ok(into > -1e-6, `velocity must not point into the surface (${into})`);
@@ -217,11 +217,35 @@ test('bad arguments are refused rather than producing NaN', () => {
 // --- the space abstraction itself ----------------------------------------
 
 test('e3 transport is the identity and project removes the normal part', () => {
-  assert.deepEqual(space.transport([1, 2, 3], [0, 1, 0], [9, 9, 9]), [0, 1, 0]);
-  assert.deepEqual(space.project([1, 1, 0], [1, 0, 0]), [0, 1, 0]);
+  // The metric now takes the POINT it is being evaluated at, because outside
+  // E3 an inner product and a parallel transport are properties of a place
+  // rather than of a pair of arrays. Signatures are (p, q, v) for transport
+  // and (p, u, n) for project.
+  assert.deepEqual(space.transport([1, 2, 3], [4, 5, 6], [9, 9, 9]), [9, 9, 9]);
+  assert.deepEqual(space.project([1, 2, 3], [1, 1, 0], [1, 0, 0]), [0, 1, 0]);
   // Projecting twice changes nothing: it is a projection, not a reflection.
-  const once = space.project([1, 1, 0], [1, 0, 0]);
-  assert.deepEqual(space.project(once, [1, 0, 0]), once);
+  const once = space.project([1, 2, 3], [1, 1, 0], [1, 0, 0]);
+  assert.deepEqual(space.project([1, 2, 3], once, [1, 0, 0]), once);
+  // A NON-UNIT normal must work: the field promises a direction, not a length,
+  // and dividing by the wrong length silently scales the slide.
+  assert.deepEqual(space.project([1, 2, 3], [1, 1, 0], [3, 0, 0]), [0, 1, 0]);
+});
+
+test('A SWEEP CARRIES A VECTOR ALONG THE PATH, not between its endpoints', () => {
+  // The distinction is invisible in E3 and is the whole reason the seam
+  // exists: transport between two endpoints is transport along the shortest
+  // geodesic joining them, and a probe that slid round a corner or went
+  // through a portal did not travel along that. `carry` composes the legs the
+  // probe actually took, in order.
+  const out = sweep(field, space, {
+    from: [-2, 0, 0.25], direction: [1, 0, 0], distance: 1.0, radius: r,
+  });
+  assert.equal(typeof out.carry, 'function', 'every sweep reports how to carry a vector');
+  // In flat space every leg is the identity, so carry is too -- and that is
+  // exactly what lets this whole suite check the refactor rather than merely
+  // survive it.
+  assert.deepEqual(out.carry([0, 1, 0]), [0, 1, 0]);
+  assert.deepEqual(out.carry([3, -2, 7]), [3, -2, 7]);
 });
 
 test('the solver never calls the field with anything but a 3-vector', () => {
