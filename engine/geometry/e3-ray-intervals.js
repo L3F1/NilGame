@@ -4,6 +4,8 @@
 // scene compiler. Newly collapsed Boolean intervals are indeterminate: a
 // one-dimensional ray interval cannot prove whether a coincident surface has
 // occupied volume beside it. Primitive tangencies remain legitimate contacts.
+// A reported `uncertainty` is a parameter on the COMPLETE ray line and may be
+// negative; csgRayCast alone decides what a value behind the origin means.
 // No field marching, DOM or renderer assumptions belong in this module.
 const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
 const at = (p, u, t) => p.map((x, i) => x + u[i] * t);
@@ -18,7 +20,7 @@ export function primitiveRayInterval(solid, p, u) {
   const e = event(solid);
   const result = (lo, hi) => ({ intervals: [{ lo, hi, enter: e, exit: e }], uncertainty: Infinity });
   const miss = () => ({ intervals: [], uncertainty: Infinity });
-  const unknown = (t = 0) => ({ intervals: [], uncertainty: Math.max(0, t) });
+  const unknown = (t = 0) => ({ intervals: [], uncertainty: t });
   if (solid.kind === 'ball') {
     const v = p.map((x, i) => x - solid.center[i]);
     const a = dot(u, u), middle = -dot(v, u) / a;
@@ -103,7 +105,17 @@ export function csgRayCast(added, modsFor, p, u, maxDistance) {
     return cached.get(s.id);
   };
   let best = Infinity, bestOwner = null, boundary = [], touch = false, uncertainty = Infinity;
-  const note = (t) => { uncertainty = Math.min(uncertainty, Math.max(0, t)); };
+  // An ambiguity BEHIND the origin cannot change what the ray meets ahead of
+  // it: the uncertain span carries no measure, so adding or removing a point
+  // at t < 0 leaves every forward interval exactly where it was. Clamping
+  // such a t to zero made a ray aimed AWAY from a tangency answer
+  // 'indeterminate' from a standing start -- a confident refusal on the
+  // easiest ray there is. The margin keeps an ambiguity that straddles the
+  // origin, where occupancy at t = 0 really is in doubt.
+  const note = (t) => {
+    if (t < -tolerance(t, 0)) return;
+    uncertainty = Math.min(uncertainty, Math.max(0, t));
+  };
   for (const base of added) {
     const primitive = get(base);
     note(primitive.uncertainty);

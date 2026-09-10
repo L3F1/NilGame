@@ -103,6 +103,18 @@ test('near-tangent cancellation cannot become a confident miss', () => {
   const hit = f.rayCast([-3, 1 + Number.EPSILON, 0], [1, 0, 0]);
   assert.equal(hit.status, 'indeterminate'); assert.equal(hit.reason, 'floating-point-boundary');
 });
+test('an ambiguity behind the ray does not forfeit the answer ahead of it', () => {
+  // The same hairline tangency as above, but the ray is aimed AWAY from it.
+  // Everything uncertain sits at negative t and the ray travels away from it
+  // forever, so nothing ahead is in doubt. Reporting the uncertainty at the
+  // origin instead of where it happens used to make this the easiest possible
+  // ray to refuse: a standing-start `indeterminate` with an empty sky ahead.
+  const f = compileSceneField(scene(sphere('ball')));
+  assert.equal(f.rayCast([-3, 1 + Number.EPSILON, 0], [-1, 0, 0]).status, 'miss');
+  // Straddling the origin is different, and must still decline: starting AT
+  // the grazing point, whether the origin is occupied is genuinely unknown.
+  assert.equal(f.rayCast([0, 1 + Number.EPSILON, 0], [1, 0, 0]).status, 'indeterminate');
+});
 test('tiny nonzero slopes still hit half-spaces', () => {
   const f = compileSceneField(scene(plane('ground', [0, 0, 0], [0, 0, 1])));
   near(f.rayCast([0, 0, 1e-12], [1, 0, -1e-13], { maxDistance: 20 }).t, 10);
