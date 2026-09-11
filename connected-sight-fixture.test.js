@@ -272,13 +272,16 @@ test('the authored anchors admit forward traversal from their own spawns', () =>
 test('refusals are reported, never traded for a shorter range', () => {
   const w = world();
   // A budget too small for the route refuses, and never spends past its cap.
-  for (const maxWork of [0, 1, 3, 5, 8, 20, 40, 43]) {
+  // This route screens both six-face cells without excluding either: 12 new
+  // work units, in addition to the previous 44. The budget is still exact.
+  for (const maxWork of [0, 1, 3, 5, 8, 20, 40, 43, 44, 55]) {
     const result = sight(w, ROUTE, { maxWork });
     assert.equal(result.status, 'unresolved');
     assert.equal(result.reason, 'work-budget');
     assert.ok(result.work <= maxWork, `spent ${result.work} of ${maxWork}`);
   }
-  assert.equal(sight(w, ROUTE, { maxWork: 44 }).status, 'hit');
+  const enough = sight(w, ROUTE, { maxWork: 56 });
+  assert.equal(enough.status, 'hit'); assert.equal(enough.work, 56);
   assert.equal(sight(w, ROUTE, { maxCrossings: 1 }).reason, 'crossing-budget');
   // Shortening the range does not turn the same ray into a different scene: it
   // is an honest miss at 11.39 and the same hit at 11.4.

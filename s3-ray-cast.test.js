@@ -142,7 +142,10 @@ test('AN INACTIVE FACE ROOT IS NOT A HIT, and the roots really were there', () =
     ]));
     const out = castSphericalRegion(region, origin, axes[1], { maxDistance: span(extent) });
     assert.equal(out.status, 'miss', `R=${R}: ${out.reason} ${out.detail}`);
-    assert.ok(out.events > 0, `the check is vacuous unless face roots existed (R=${R})`);
+    const raw = sphericalBoundaryEvents(space, region.field.primitives[0], origin, axes[1], { maxDistance: span(extent) });
+    assert.equal(raw.status, 'complete');
+    assert.ok(raw.events.length > 0, `the primitive really has inactive face roots (R=${R})`);
+    assert.equal(out.events, 0, 'full-span exclusion avoids requesting those irrelevant roots');
   }
 });
 
@@ -387,15 +390,21 @@ test('budgets are validated before they are spent, and refused when short', () =
   assert.equal(full.status, 'hit');
   assert.ok(full.work > 0 && full.events > 0);
 
-  // One cell is six atomic surfaces: six to classify and six to solve.
+  // This occupied route cannot exclude the cell: six screens, six
+  // classifications, six root solves, then one event to enter it.
   const short = castSphericalRegion(region, origin, axes[1], { ...range, maxWork: 11 });
   assert.equal(short.status, 'unresolved');
   assert.equal(short.reason, 'work-budget');
-  assert.ok(/12 work units/.test(short.detail), short.detail);
-  assert.equal(short.work, 0, 'and nothing was spent finding that out');
+  assert.equal(short.work, 6, 'only the six screens were spent');
   assert.ok(castSphericalRegion(region, origin, axes[1], { ...range, maxWork: 12 }).work<=12);
   assert.equal(castSphericalRegion(region, origin, axes[1], { ...range, maxWork: 12 }).status,
-    'unresolved', 'twelve pays for classify and solve but not for applying events');
+    'unresolved', 'twelve cannot pay for screening plus classification and roots');
+  for(let cap=0;cap<=18;cap++){
+    const answer=castSphericalRegion(region,origin,axes[1],{...range,maxWork:cap});
+    assert.equal(answer.status,'unresolved'); assert.ok(answer.work<=cap);
+  }
+  const exact=castSphericalRegion(region,origin,axes[1],{...range,maxWork:19});
+  assert.equal(exact.status,'hit'); assert.equal(exact.work,19);
 
   const noEvents = castSphericalRegion(region, origin, axes[1], { ...range, maxEvents: 0 });
   assert.equal(noEvents.status, 'unresolved');
@@ -469,6 +478,37 @@ test('decimal frame plane scales preserve roots without changing stored poles',(
  const out=castSphericalRegion(region,origin,axes[1],{maxDistance:6});assert.equal(out.status,'hit',out.detail);
  assert.ok(Math.abs(region.field.distance([...out.point]))<1e-9);
  assert.equal(JSON.stringify(primitive.planes),before);
+});
+test('a single exclusion witness can finish below the old unscreened admission cost', () => {
+  const {region,origin,axes} = orb(scene('cheap',8,8,[cell('ahead',[2,0,0],[.5,.5,.5])]));
+  const result = castSphericalRegion(region,origin,axes[0].map(x=>-x),{maxDistance:.5,maxWork:1,maxEvents:0});
+  assert.equal(result.status,'miss'); assert.equal(result.work,1); assert.equal(result.events,0);
+  const longer = castSphericalRegion(region,origin,axes[0],{maxDistance:3,maxWork:100});
+  assert.equal(longer.status,'hit'); near(longer.distance,1.5,1e-10);
+});
+test('on an authored face: an outside segment is excluded, a later cell encounter is not', () => {
+  const {region,space} = orb(scene('face-ray',8,8,[cell('mask',[0,2,0],[.5,.5,.5])]));
+  const primitive=region.field.primitives[0],pole=primitive.planes[0];
+  const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
+  const foot=q=>{const raw=q.map((x,i)=>x-dot(q,pole)/dot(pole,pole)*pole[i]);return raw.map(x=>x/Math.hypot(...raw));};
+  const p=foot(space.decode([2,-2,0])),target=foot(primitive.center);
+  const u=space.normalize(p,space.logAt(p,target));
+  assert.ok(Math.abs(dot(p,pole))<1e-14 && Math.abs(dot(u,pole))<1e-14);
+  assert.equal(sphericalBoundaryEvents(space,primitive,p,u,{maxDistance:.1}).status,'unresolved');
+  const short=castSphericalRegion(region,p,u,{maxDistance:.1,maxWork:100});
+  assert.equal(short.status,'miss'); assert.equal(short.events,0);
+  const long=castSphericalRegion(region,p,u,{maxDistance:space.distance(p,target)+.2,maxWork:100});
+  assert.equal(long.status,'unresolved'); assert.equal(long.reason,'primitive-events');
+  // The same absent cell propagates correctly through add/subtract/intersect.
+  for(const op of [undefined,'subtract','intersect']){
+    const document=scene('constant-'+(op||'add'),8,8,[
+      {id:'body',regionId:'orb',kind:'ball',position:space.encode(p),radius:.3},
+      cell('mask',[0,2,0],[.5,.5,.5],op?{op,...(op==='intersect'?{target:'body'}:{})}:{})]);
+    const world=compileRegionWorld(document),r=world.regions.get('orb');
+    const answer=castSphericalRegion(r,p,u,{maxDistance:.1,maxWork:100});
+    assert.equal(answer.status,op==='intersect'?'miss':'hit',op);
+    if(op!=='intersect'){assert.equal(answer.contact,'inside');assert.equal(answer.additiveOwner,'body');}
+  }
 });
 console.log(`s3 ray cast: ${passed} passed, ${failed} failed`);
 process.exitCode = failed ? 1 : 0;

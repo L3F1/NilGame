@@ -1,35 +1,30 @@
-# Fresh-chat handoff for Astra
+﻿# Fresh-chat handoff for Astra
 
-2026-09-11. Start with git status/log, WORKING_RULES, relevant TASK_ROUTER row.
-Reviewed Claude a1c0da7 fixture/tool (18/18), Muse52 (9/9), baseline76/76.
-Report: docs/qa/astra-exclusion-review-2026-09-11.md.
+2026-09-11. Read git status/log, WORKING_RULES, then the relevant TASK_ROUTER row.
 
-Implemented only engine/geometry/s3-cell-exclusion.js and focused tests:
-sufficient whole-ray exclusion by one spherical cell face, closed physical
-range <=piR, numerical guards, explicit unknown and budget accounting. Not yet
-wired into classifier. Read S3_EXCLUSION_CONTRACT.md; it is the active contract.
-Origin-only pruning is wrong; isolated mutation fails three new checks.
-No floating-point formal-proof or GPU performance claims.
+External-agent bridge installed and exercised. Read AGENT_BRIDGE.md. Claude and
+WSL Muse run in isolated clones; optional single read-only Codex CLI callback
+reviews results. It cannot wake this exact IDE chat. Local VS Code extension
+watches files without model calls. No automatic retries or periodic prompts.
+Claude hit its account limit. No further jobs are scheduled.
 
-Claude integrates constant-false cells into existing Boolean groups under
-CLAUDE_NEXT.md. Muse53 independently audits helper only. Check both before GPU
-work, especially authored-plane pose sweeps, longer ranges entering a previously
-excluded cell, intersects/subtractors, work caps, raw primitive versus scene
-refusals. The helper cannot fix every coplanar or distant coincident event.
+Astra finished Claude's partial spherical classifier draft: whole-segment cell
+exclusion becomes constant false in existing Boolean groups before occupancy and
+roots. Screening spends the shared budget; one-face exclusion costs one unit.
+Relevant coplanar cells still refuse. MUSE-53 revised helper audit accepted as
+sampled evidence, not a theorem. See ../qa/agent-bridge-integration-2026-09-11.md.
 
-Two CPU diagnostic images regenerated/inspected; far target visible through the
-curved passage. Domain exits dominate magenta background and remain explicitly
-unresolved. No sky policy or chart collision wall added. Packet carries region
-IDs even where reason colors do not. CPU ms are not GPU frame times.
+Next: representative CPU cost and authored-face pose sweeps before deciding GPU
+precision/traversal policy. Doorway work rose 33/33/38/40 to 45/45/50/52
+(min/median/p90/max): correctness improvement, not a universal speedup. Never copy
+JS double guards into GLSL float. Chart exits remain unresolved, not sky.
 
-Next Astra: review integration plus independent witnesses and pose refusal data,
-then decide GPU precision/traversal acceptance. JS double guards cannot be copied
-to GLSL float. Renderer/editor still single-region; cross-region walking support
-remains separate from tested connected CPU motion and single-floor S3 walking.
-Godot host experiment is not scene-v2 parity; preserve browser reference.
+Give Claude measurement/diagnostics and Muse independent classifier scoping
+checks with bounded allowed files. Astra owns the GPU numerical policy. Replace
+the completed first-batch manifest and CLAUDE_NEXT before dispatch; do not repeat
+completed work. User prioritizes token efficiency: active Astra review OR CLI
+callback, not both. Waiting subprocesses/file watchers generate no model tokens.
 
-User asked about automatic Claude/Muse handoffs. Local help verified claude.cmd
-(noninteractive) and Ubuntu muse exec --json / --prompt-file plus session-message.
-No jobs launched, permissions changed, or auto-wake bridge configured. CLI output
-can be collected in an active turn; waking this exact IDE thread requires a
-separate integration, not just a done file. See AGENT_SETUP.md automation section.
+Renderer/editor remain single-region. Connected CPU sight/motion and single-floor
+S3 walking are separate capabilities. Godot experiment is not scene-v2 parity;
+retain browser reference. Read subsystem docs only for the next actual task.

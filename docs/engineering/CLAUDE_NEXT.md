@@ -1,5 +1,9 @@
 # Claude's next bounded task: integrate whole-segment cell exclusion
 
+Completed 2026-09-11: Claude supplied a partial draft; Astra finished and checked
+the integration after Claude's account limit. Do not rerun this assignment.
+Next assignment direction: NEXT_SESSION.md.
+
 Start from Astra's exclusion commit. Read WORKING_RULES and
 S3_EXCLUSION_CONTRACT.md. Previous connected fixture accepted; see
 ../qa/astra-exclusion-review-2026-09-11.md. MUSE-53 independently owns the helper

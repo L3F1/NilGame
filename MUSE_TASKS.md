@@ -65,33 +65,7 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-53. MUSE-52 accepted and archived.
+Order: none. MUSE-53 accepted after revision and archived in docs/qa/muse-log.md.
 
-## MUSE-53 - Independent full-segment S3 cell exclusion audit
-Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only
-
-Read docs/engineering/S3_EXCLUSION_CONTRACT.md and the new helper
-engine/geometry/s3-cell-exclusion.js. Allowed writes:
-s3-cell-exclusion-truth.test.js, docs/qa/muse53-cell-exclusion.md,
-this task status/report only. Do not edit the helper, classifier or other tests.
-Claude concurrently owns classifier integration; test the helper directly so
-neither assignment depends on unreviewed work from the other.
-
-Verify exclusion witnesses on compiled translated/rotated cells at multiple R,
-including decimal frames and poses on authored face planes. Independently
-sample/refine the named witness face along the full physical segment; every
-excluded result must remain strictly outside it. Verify claimed lower values.
-Separate exact special cases from converged sampled evidence. Do not duplicate
-phase/atan2 extrema logic as the reference or normalize poles in the harness.
-
-Include rays outside at the origin but entering later, rays beginning inside,
-zero range, both endpoint touches, nearly coplanar cases, the pi*R limit, exact
-budgets and input drift. A lack of a single persistent face witness is UNKNOWN,
-not a bug or occupancy claim. Construct a case with an ambiguous face and a
-different valid full-span witness; also construct a related longer ray where
-that witness fails. State whether it actually resolves Claude's reported pose;
-do not assume this sufficient screen fixes every cutter-plane refusal.
-
-Include isolated targeted fail-demo, focused/full Node runs, command/host data.
-Counterexamples are the deliverable; do not repair production. Stop at READY FOR
-REVIEW. No renderer, UI, schema, workflow automation or environment diagnosis.
+No agent jobs are scheduled. Next bounded assignment direction is in
+docs/engineering/NEXT_SESSION.md. Do not repeat the completed bridge manifest.

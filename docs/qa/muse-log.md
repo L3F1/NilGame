@@ -2760,3 +2760,15 @@ actual command/host evidence. No kernel, renderer, schema or old-test changes.
 Return counterexamples unfixed. Stop at READY FOR REVIEW.
 
 Astra acceptance, 2026-09-11, base a1c0da7: code/report reviewed; focused 9/9 and baseline 76/76 rerun. Reference limitations retained; mutation evidence attributed to Muse. See astra-exclusion-review-2026-09-11.md. Existing runtime remains unchanged in the new helper commit.
+
+## MUSE-53 accepted ? 2026-09-11, Astra
+
+Base 7e61c4b, isolated bridge checkout, revised after automatic review. Accepted
+corrected plane-foot projection, far-end-only touch and reference allowance below
+the production guard. Sampling remains evidence, not a floating-point theorem;
+reviewer qualified libm wording without changing assertions. Report:
+[muse53-cell-exclusion.md](muse53-cell-exclusion.md). Host integration rerun:
+`node tools/test.js`, Windows LeoPC Node 24.20.0, 79/79 suites, including truth
+13/13. Muse reports isolated origin-only mutation 6/13 (seven failures); attributed
+evidence, not rerun by Astra. Classifier integration and remaining limits:
+[agent-bridge-integration-2026-09-11.md](agent-bridge-integration-2026-09-11.md).

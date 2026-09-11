@@ -25,6 +25,7 @@
 // needed for event updates. A signed field can still classify occupancy under
 // its sign guarantee; a small bound does not certify a surface location.
 import { sphericalBoundaryEvents, S3_RAY_ROUNDOFF } from '../geometry/s3-ray-events.js';
+import { excludeSphericalCell } from '../geometry/s3-cell-exclusion.js';
 
 const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
 const EPS = S3_RAY_ROUNDOFF;
@@ -85,8 +86,16 @@ function classify(surface, position, direction) {
  * -- which is a disjunction. Inverting each constraint and conjoining them
  * describes the intersection of the six outer half-spaces, which is a
  * different and usually empty region.
+ *
+ * AN EXCLUDED CELL IS FALSE, CONSTANTLY, for this segment. One of its faces
+ * was shown strictly outside over the whole closed range, so no surface of it
+ * was classified or solved and none is in `state`. The constant then flows
+ * through the SAME group expression: an empty base or intersect disables its
+ * group, an empty subtractor removes nothing. Nothing is removed from any other
+ * group's modifier list, and no face of it can become a surface or a normal.
  */
-function occupiedBy(primitive, state) {
+function occupiedBy(primitive, state, excluded) {
+  if (excluded.has(primitive.entity.id)) return false;
   const kind = primitive.entity.kind;
   if (kind === 'ball' || kind === 'plane') {
     return state.get(surfaceKey(primitive.entity.id, kind === 'ball' ? null : 0));
@@ -106,10 +115,10 @@ function occupiedBy(primitive, state) {
  * in exactly one. This function reads that structure rather than re-deriving
  * the scoping rule, so the two cannot disagree about which cutter bites what.
  */
-function groupOccupied(group, state) {
-  let occupied = occupiedBy(group.base, state);
+function groupOccupied(group, state, excluded) {
+  let occupied = occupiedBy(group.base, state, excluded);
   for (const modifier of group.modifiers) {
-    const inside = occupiedBy(modifier, state);
+    const inside = occupiedBy(modifier, state, excluded);
     occupied = and3(occupied, modifier.entity.op === 'subtract' ? not3(inside) : inside);
     if (occupied === false) return false;
   }
@@ -128,12 +137,15 @@ function groupOccupied(group, state) {
  *   'miss'        no solid in the range under the numerical screening policy
  *   'unresolved'  with a `reason`; never silently a miss
  *
- * WORK, in one unit: one atomic surface classified, one atomic surface solved
- * for roots, or one event applied to the Boolean. A region at the compile-time
- * caps (`REGION_LIMITS`: 64 primitives, 192 face planes) therefore costs at
- * most 192 + 64 surfaces to classify and the same again to solve -- about 512
+ * WORK, in one unit: one cell face screened for whole-segment exclusion, one
+ * atomic surface classified, one atomic surface solved for roots, or one event
+ * applied to the Boolean. A region at the compile-time caps (`REGION_LIMITS`:
+ * 64 primitives, 192 face planes) therefore costs at most 192 face screens,
+ * then 192 + 64 surfaces to classify and the same again to solve -- about 700
  * before a single event is applied, which is why the default allowance is 2048.
- * The cost is bounded by the SCENE, not by the ray, except for the events.
+ * The cost is bounded by the SCENE, not by the ray, except for the events and
+ * for which cells a screen removes; a removed cell costs its screen instead of
+ * its classification and roots.
  */
 export function castSphericalRegion(region, position, direction, options = {}) {
   const space = region?.space, field = region?.field;
@@ -174,9 +186,9 @@ export function castSphericalRegion(region, position, direction, options = {}) {
   if (Math.abs(dot(point,point)-1)>EPS || Math.abs(dot(heading,heading)-1)>EPS ||
       Math.abs(dot(point,heading))>EPS) return refuse('input-roundoff');
 
-  // LIMITS VALIDATED BEFORE ANYTHING IS SPENT. The classification and solving
-  // cost is known from the scene alone, so an impossible allowance is reported
-  // without doing the work it could not have paid for.
+  // Validate the scene inputs before screening. Admission for classification
+  // and roots follows screening: an excluded cell need not pay for work that
+  // will never run. Every screen still spends the same shared allowance.
   const surfaces = [];
   for (const primitive of field.primitives) {
     if (primitive.entity.kind==='ball') {
@@ -185,20 +197,43 @@ export function castSphericalRegion(region, position, direction, options = {}) {
     }
     for (const surface of surfacesOf(primitive, R)) surfaces.push({ primitive, ...surface });
   }
-  const initialCost=(maxDistance===0?1:2)*surfaces.length;
-  if (initialCost > maxWork) {
-    return refuse('work-budget', `this region needs ${initialCost} work units to classify `
-      + `and solve ${surfaces.length} atomic surfaces; the allowance is ${maxWork}`);
+  const perSurface=maxDistance===0?1:2;
+
+  // 1. Whole-segment cell exclusion, BEFORE any face is classified or solved,
+  // so an ambiguous face of a cell this segment never reaches cannot poison
+  // the origin Boolean or the root collection. One face strictly outside over
+  // the WHOLE closed range removes the cell for this segment and nothing else;
+  // a longer range on the same ray is screened afresh. No witness is not
+  // occupancy: that cell keeps the normal path, tangencies and all. Balls and
+  // lone planes are not screened. Each face screened is charged, checked
+  // before it is spent, and running out is a refusal, never an empty cell.
+  const excluded = new Set();
+  for (const primitive of field.primitives) {
+    if (primitive.entity.kind !== 'geodesic-cell') continue;
+    const screen = excludeSphericalCell(space, primitive, point, heading,
+      { maxDistance, maxWork: Math.min(6, maxWork - work) });
+    work += screen.work;
+    if (screen.status === 'excluded') excluded.add(primitive.entity.id);
+    else if (screen.reason === 'work-budget') {
+      return refuse('work-budget', `exhausted while screening ${primitive.entity.id}`);
+    }
+  }
+  const live = surfaces.filter(surface => !excluded.has(surface.primitive.entity.id));
+  if (work + perSurface * live.length > maxWork) {
+    return refuse('work-budget', `screening spent ${work} work units; classifying and solving `
+      + `the ${live.length} remaining atomic surfaces needs ${perSurface * live.length} more; `
+      + `the allowance is ${maxWork}`);
   }
 
-  // 1. Atomic occupancy at the origin, from the inequalities themselves.
+  // 2. Atomic occupancy at the origin, from the inequalities themselves.
   const state = new Map();
-  for (const surface of surfaces) {
+  for (const surface of live) {
     work++;
     state.set(surfaceKey(surface.primitive.entity.id, surface.face),
       classify(surface, point, heading));
   }
-  const sceneOccupied = () => field.groups.reduce((acc, group) => or3(acc, groupOccupied(group, state)), false);
+  const occupiedGroup = group => groupOccupied(group, state, excluded);
+  const sceneOccupied = () => field.groups.reduce((acc, group) => or3(acc, occupiedGroup(group)), false);
 
   const atOrigin = sceneOccupied();
   if (atOrigin === null) {
@@ -208,7 +243,7 @@ export function castSphericalRegion(region, position, direction, options = {}) {
     // AN OCCUPANCY CONVENTION, NOT A SURFACE. There is no boundary at t = 0 and
     // no normal belongs here; reporting one would be inventing a face for a
     // caller that asked where solid begins and was already in it.
-    const inside = field.groups.filter(g => groupOccupied(g, state) === true).map(g => g.base.entity.id);
+    const inside = field.groups.filter(g => occupiedGroup(g) === true).map(g => g.base.entity.id);
     return Object.freeze({
       status: 'hit', reason: null, detail: null, contact: 'inside',
       distance: 0, point: Object.freeze([...point]), tangent: Object.freeze([...heading]),
@@ -222,11 +257,14 @@ export function castSphericalRegion(region, position, direction, options = {}) {
     contact:null,distance:null,point:null,tangent:null,normal:null,surfaceOwner:null,
     face:null,additiveOwner:null,additiveOwners:Object.freeze([]),work,events:0});
 
-  // 2. Every primitive's candidates, under ONE shared event budget. A single
-  // unresolved list makes the whole cast unresolved: a partial collection
-  // cannot certify that the prefix before its first missing root is empty.
+  // 3. Every remaining primitive's candidates, under ONE shared event budget. A
+  // single unresolved list makes the whole cast unresolved: a partial collection
+  // cannot certify that the prefix before its first missing root is empty. An
+  // excluded cell requests no roots at all, so it can neither refuse nor spend
+  // events here.
   const events = [];
   for (const primitive of field.primitives) {
+    if (excluded.has(primitive.entity.id)) continue;
     work += surfacesOf(primitive, R).length;
     if (work > maxWork) return refuse('work-budget', 'exhausted while solving primitive roots');
     const found = sphericalBoundaryEvents(space, primitive, point, heading, {
@@ -239,7 +277,7 @@ export function castSphericalRegion(region, position, direction, options = {}) {
     if (events.length > maxEvents) return refuse('event-budget', 'more candidates than the allowance');
   }
 
-  // 3. Merge, and refuse overlap rather than ordering it. Two candidates whose
+  // 4. Merge, and refuse overlap rather than ordering it. Two candidates whose
   // guard intervals meet are not known to be distinguishable, and choosing
   // between them by primitive id would be an ordering the geometry never gave.
   events.sort((a, b) => a.distance - b.distance);
@@ -250,7 +288,7 @@ export function castSphericalRegion(region, position, direction, options = {}) {
     }
   }
 
-  // 4. Walk. Each event sets its OWN atomic surface -- from the transition the
+  // 5. Walk. Each event sets its OWN atomic surface -- from the transition the
   // solver reported, not by flipping a bit, so a state cannot drift out of step
   // with the geometry -- and then the whole Boolean is asked again. A face of a
   // cell whose other faces are still outside changes nothing, which is how an
@@ -267,7 +305,7 @@ export function castSphericalRegion(region, position, direction, options = {}) {
         `after ${event.primitiveId} at ${event.distance}, occupancy could not be decided`);
     }
     if (now !== true) continue;
-    const entered = field.groups.filter(g => groupOccupied(g, state) === true).map(g => g.base.entity.id);
+    const entered = field.groups.filter(g => occupiedGroup(g) === true).map(g => g.base.entity.id);
     // The surface belongs to the primitive whose root this is. A subtraction's
     // boundary faces INTO the carve, so a ray entering solid through it meets
     // the reversed normal -- the solid is on the other side of that surface
@@ -286,7 +324,7 @@ export function castSphericalRegion(region, position, direction, options = {}) {
     });
   }
 
-  // 5. Every candidate was found, every evaluation was definite, and the ray
+  // 6. Every candidate was found, every evaluation was definite, and the ray
   // was never inside anything. That is a claim, and it is only made here.
   return Object.freeze({
     status: 'miss', reason: null, detail: null, contact: null,
