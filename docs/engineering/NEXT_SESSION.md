@@ -37,22 +37,34 @@ SECTION 1 IS DONE and awaiting review: docs/qa/claude-correction-resume-2026-09-
 - Host: Finish correction is a SEPARATE button from Resume. motionPause answers
   `finishable` as well as `resumable`. Clearing a debt does not restart play --
   two decisions, and the second is the author's. A scene edit clears the pause.
-- 62/62 Node, correction-resume 10/10, S3 browser 83 (was 65), ball-lab 101.
+- 62/62 Node, correction-resume 11/11, S3 browser 83 (was 65), ball-lab 101.
   Whole resume vs two partial resumes: 0.00e+0 apart, cameras to 1e-12. Eight
   kernel and seven host mutations, every one caught -- after two of my own
   checks were found vacuous and one search was found never to have run. All
   three are written up; the fixture lesson is the useful one.
-- FINDING to push on if you disagree: a resumed correction cannot reach the
-  chart edge BY CONSTRUCTION. A settle retraces the lift, so it can only newly
-  meet things strictly between the lifted point and the contact it lifted off,
-  and a chart extent is a convex geodesic ball with the walker interior at both
-  ends. An aperture can sit in that gap and is checked; no test claims the
-  domain half, because it would be claiming something untrue.
+- RETRACTED, and this one matters more than the feature. I reported that a
+  resumed correction cannot reach the chart edge BY CONSTRUCTION, and MUSE-45
+  adjudicated that the argument holds. It does not. A settle only retraces the
+  lift when NOTHING SLID IN BETWEEN: the walker is lifted at one place, slides
+  while airborne, and settles somewhere it has never stood. Counterexample with
+  the floor BELOW the chart centre (extent 6, floor z = -5.9): starts at radius
+  5.9935, slides while lifted to 5.9740, settle aims at 6.0161 -- outside, and
+  never visited. Now a check, with a mutation that lets a domain event through
+  caught. THE CODE WAS RIGHT THROUGHOUT; only the claim was false. Not reached
+  in S3 across seven configurations, and I am not claiming impossible there.
 - MUSE-44 ACCEPTED and archived. Its stepWalker finding stays open: pendingLift
   is dropped from that return shape although the inner moveProbe can owe one.
   Latent under the budgets stepWalker uses; section 2 walks into it.
-- MUSE-45 queued: independent audit of the continuation's authority, the resumed
-  path against an uninterrupted settle, the clock, and that chart-edge finding.
+- MUSE-45 done and ACCEPTED with that one adjudication REVERSED. Its authority
+  audit (clone, cross-scene, recompile, 1e-16 endpoint shift, double apply: no
+  walker moved on authority the kernel did not issue), its independently
+  derived path reference (bit-exact including camera) and its clock audit
+  (ground covered per unit dt, not the fields) all stand. Its corpus could not
+  have reached the chart edge: every floor in it sits at the chart origin's own
+  level, so descending moves inward.
+- MUSE-46 queued, and it is the general form of that miss: sweep the tree for
+  claims of impossibility -- "cannot", "never", "by construction", "this branch
+  is dead" -- and test each. An unchecked true claim is a finding too.
 
 Sections 2 and 3 NOT started. Stop for review before either.
 Next Astra reviews correction resumption and evidence, then authorizes the

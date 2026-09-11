@@ -295,17 +295,68 @@ test('A RESUMED CORRECTION MAY NOT CROSS AN APERTURE, and keeps the debt when it
   console.log(`  settle refused at the hatch, ${debt.pendingLift.distance.toExponential(2)} still owed`);
 });
 
-// NOT TESTED, BECAUSE IT IS NOT REACHABLE: a resumed correction meeting the
-// CHART EDGE. A settle retraces the lift -- it travels back down the same
-// normal, no further than the lift went -- so the only things it can newly
-// meet lie strictly between the lifted point and the contact it lifted off.
-// The walker was at both of those points and inside the domain at both, and a
-// chart extent is a geodesic ball, which is convex: the segment between two
-// interior points has no exterior point on it. An aperture CAN sit in that gap,
-// which is the check above. A chart edge cannot. The kernel's own settle keeps
-// the same `back.event` branch for both, and it is right to -- an unreachable
-// branch that refuses is the correct shape -- but a check claiming to exercise
-// the domain half of it would be claiming something untrue.
+// A floor BELOW the chart centre, so that descending moves you OUTWARD in
+// radius. This is the scene that refutes the argument this file used to carry
+// (see the check below).
+const deepFloorScene = {
+  format: 'nil-scene', version: 2, id: 'deep-floor', units: UNITS,
+  regions: [{ id: 'room', geometry: { kind: 'e3', curvatureRadius: 1 },
+    topology: 'cover', extent: 6 }],
+  entities: [
+    { id: 'room-start', regionId: 'room', kind: 'spawn', position: [0, 0, -5.65] },
+    { id: 'ground', regionId: 'room', kind: 'plane', position: [0, 0, -5.9], up: [0, 0, 1] },
+  ],
+  connections: [],
+};
+
+test('A RESUMED CORRECTION CAN REACH THE CHART EDGE, and is refused there too', () => {
+  // THIS CHECK EXISTS BECAUSE THIS FILE ONCE ARGUED THE OPPOSITE. The argument
+  // was: a settle retraces the lift, so it can only newly meet things strictly
+  // between the lifted point and the contact it lifted off; the walker was at
+  // both, inside the domain at both; a chart extent is a convex geodesic ball;
+  // therefore no chart edge. The convexity is fine. The premise is not -- and
+  // it fails exactly when a SLIDE intervenes. The walker is lifted at one
+  // place, slides while airborne, and settles somewhere it has never stood, so
+  // the segment the settle walks is not a subsegment of the lift at all.
+  //
+  // With the floor below the chart centre, descending increases the radius,
+  // and the slide is what carries the walker to where the point below is
+  // outside the chart.
+  const world = compileRegionWorld(deepFloorScene);
+  const space = world.regions.get('room').space;
+  const start = [0, 2, -5.65];
+  assert.ok(space.withinDomain(start));
+  const camera = createCameraFrame(space, start, { forward: [0, 1, 0], up: [0, 0, 1] });
+  const debt = moveRegionProbe(world,
+    { regionId: 'room', radius: 0.25, position: start, camera, velocity: [0, 4, 0] },
+    1 / 60, { maxSteps: 10 });
+  assert.ok(debt.pendingLift && debt.continuation, 'the walker must be left hovering');
+  // The slide is the whole mechanism, so assert it happened.
+  assert.ok(debt.state.position[1] > start[1] + 1e-3,
+    `the walker must have slid while lifted (y ${debt.state.position[1]})`);
+  // And the point the settle aims at is somewhere the walker has never been.
+  const below = [...debt.state.position]
+    .map((x, i) => (i === 2 ? x - debt.pendingLift.distance : x));
+  assert.ok(space.withinDomain([...debt.state.position]), 'the endpoint is inside');
+  assert.ok(space.withinDomain(start), 'and so was the start');
+  assert.equal(space.withinDomain(below), false, 'but the settle target is outside the chart');
+
+  const out = resumeRegionCorrection(world, debt);
+  assert.equal(out.status, 'unresolved');
+  assert.equal(out.detail, 'correction-boundary');
+  assert.equal(out.events.length, 1);
+  assert.equal(out.events[0].kind, 'domain', 'a CHART EDGE, reached by a resumed correction');
+  assert.equal(out.events[0].phase, 'correction');
+  assert.equal(out.events[0].portalId, null);
+  assert.equal(out.corrected, 0, 'nothing of it is kept');
+  assert.deepEqual([...out.state.position], [...debt.state.position]);
+  assert.equal(out.state.camera, debt.state.camera);
+  assert.ok(out.pendingLift, 'and the debt is exactly what it was');
+  near(out.pendingLift.distance, debt.pendingLift.distance, 0);
+  assert.equal(out.continuation, null, 'with no authority to try the same thing again');
+  console.log(`  chart edge reached by a resumed settle at radius `
+    + `${Math.hypot(...below).toFixed(4)} (extent 6), ${out.pendingLift.distance.toExponential(2)} still owed`);
+});
 
 console.log(`correction resume: ${passed} passed, ${failed} failed`);
 process.exitCode = failed ? 1 : 0;

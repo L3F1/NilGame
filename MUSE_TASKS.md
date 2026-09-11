@@ -65,62 +65,57 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-45 only. MUSE-44 accepted and archived to
-[docs/qa/muse-log.md](docs/qa/muse-log.md); its `stepWalker` finding stands
-open and section 2 of `docs/engineering/NEXT_CAPABILITIES.md` will walk into
-it. What changed since: `resumeRegionCorrection` now exists in
-`engine/world/region-motion.js` and `region-lab` has a `Finish correction`
-action separate from resuming play — `docs/qa/claude-correction-resume-2026-09-10.md`.
-Both were checked by the person who wrote them, which is what MUSE-45 is for.
+Order: MUSE-46 only. MUSE-45 accepted with one adjudication reversed, and
+archived to [docs/qa/muse-log.md](docs/qa/muse-log.md). Its audit of the
+continuation's authority, the resumed path and the clock all stand. Its
+adjudication of the chart-edge claim does not: the claim is FALSE, and Claude
+falsified it after reading the verdict. A settle only retraces the lift when
+nothing slid in between; put the floor below the chart centre and the walker
+slides to where the point beneath it is outside the chart. It is now
+`correction-resume.test.js`, "A RESUMED CORRECTION CAN REACH THE CHART EDGE".
 
-## MUSE-45 — Is a resumed correction the correction that was owed?
+## MUSE-46 — Which other "cannot happen" claims are wrong?
 
-Independent audit. No engine, app or tool changes; report defects, do not fix
-them. Three questions, in this order.
+Two agents believed the same wrong argument at the same time last round, and
+what made it survive was its FORM: it was reasoned rather than measured, so it
+read as proof. The code was right throughout; only the claim was false. That is
+the failure mode this task is aimed at.
 
-**1. Is the continuation actually authority, or only a shape?** The operation
-refuses to move anyone without a continuation this module issued, spends it on
-use, and pins the compiled world, region, endpoint, camera, radius and residual.
-Try to defeat that. A structural clone, a frozen copy, a continuation from a
-different debt in the same scene, one from a different scene, one presented
-after the state moved by 1e-16, one presented twice, one presented against a
-recompile of the identical document. For each: did the walker move, and by how
-much? A single case where a walker moves on authority the kernel did not issue
-is the most valuable thing you could hand back.
+Sweep the repository for claims of impossibility or unreachability and test
+each one. They live in comments, contracts and QA reports, and they sound like:
+"cannot", "never", "impossible", "unreachable", "by construction", "no case
+where", "this branch is dead", "only ever", "always". Search for the words, but
+judge the claims, not the grep — a sentence that says "the probe never lands
+exactly on a surface" is a claim; a sentence that says "never mutates the
+caller's state" is a different kind and may be an invariant worth confirming
+rather than breaking.
 
-**2. Is the resumed path the path the settle would have walked?** Claude checks
-one whole resume against two one-step resumes and reports 0.00e+0 apart. Derive
-your own reference instead of reusing that one: for the same scene and start,
-compare where the walker ends up when the settle runs UNINTERRUPTED inside
-`moveRegionProbe` (give it a budget that finishes) against where it ends up
-when the settle is starved and then resumed. Those two should be the same
-walker. Sweep budgets, radii, floor orientations, both E3 and S3, and several
-curvature radii. Report the worst disagreement you find and the configuration
-that produced it. Also check the CAMERA, not only the position: a resumed
-correction that transports the frame differently is the failure that would
-never show up in a coordinate.
+For each claim you decide is worth testing, deliver one row:
 
-**3. Is the clock really untouched?** The operation claims zero gameplay time
-and claims the refused request's unspent time stays discarded. Verify both
-independently: over a corpus, that no resume returns nonzero time in any field,
-and — the harder one — that a debt-then-resume sequence never lets a walker
-cover more ground per unit of dt than an uninterrupted run of the same scene
-would. That is the property the zero-time rule exists to protect, and it is not
-the same statement as "the fields read 0".
+- where it is (file and line), and what exactly it asserts
+- whether the tree BACKS it: is there a check that would fail if it stopped
+  being true, or is the argument load-bearing and unchecked?
+- your attempt to break it, described concretely enough to repeat: which
+  scenes, which parameters, how many, and what the extremes were
+- verdict: HOLDS (and what you tried), FALSE (with the reproduction), or
+  UNTESTED (and why it resisted)
 
-**One claim of Claude's to adjudicate, in your own words.** The report argues
-that a resumed correction CANNOT reach a chart edge, by construction: a settle
-retraces the lift, so it can only newly meet things strictly between the lifted
-point and the contact it lifted off, and a chart extent is a convex geodesic
-ball with the walker interior at both ends. An aperture can sit in that gap and
-is checked; a chart edge, the argument says, cannot. Either construct a
-counterexample — a scene where a resumed correction returns a `domain` event —
-or say the argument holds and say what you tried. Do not take it on trust; the
-last two Claude findings you audited each turned up something.
+Prioritise claims that something DEPENDS on. A claim that a branch is dead is
+worth more than a claim that a number is small, because the dead branch is the
+one nobody maintains. Start with `engine/world/` — `collision.js`,
+`region-motion.js`, `region-portal.js`, `camera-frame.js` — then the contracts
+in `docs/engineering/`, then the QA reports.
 
-Deliver `correction-resume-truth.test.js` (yours, independent of
-`correction-resume.test.js` — do not read it before writing your reference),
-plus a report with the corpus counts and the worst numbers.
+Do not repair anything, including a claim you prove false: correcting the
+sentence is the author's job and the reproduction is yours. If a claim turns
+out to be true AND unchecked, say so and say what a check for it would cost —
+an unchecked true claim is a finding too, because it is one refactor away from
+being a false one.
+
+Deliver `impossibility-audit.test.js` holding the reproductions for anything you
+prove false, and a report with the table. If you find nothing false, the report
+is still the deliverable: a list of which impossibility claims are actually
+backed by a check and which rest on an argument is worth having on its own.
 
 ---
 

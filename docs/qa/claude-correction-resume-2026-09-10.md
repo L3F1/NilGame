@@ -67,7 +67,7 @@ an old floor's correction must never be applied to a new one.
 | check | result |
 |---|---|
 | `node tools/test.js` | **62/62 suites**, exit 0 (61 before, plus `correction-resume`) |
-| `node correction-resume.test.js` | 10/10 |
+| `node correction-resume.test.js` | 11/11 |
 | `node motion-pause.test.js` | 9/9 |
 | `node motion-pause-truth.test.js` (Muse's) | 5/5, unchanged by the new field |
 | `node region-motion.test.js` | 46/46, unchanged |
@@ -104,6 +104,7 @@ not even rebuilt.
 | residual direction not transported | 1 |
 | an aperture is crossed instead of refused | 1 |
 | the refused frame's time is handed to the correction | 1 |
+| a `domain` event is let through instead of refused | 1 |
 
 ### Mutation matrix, host (through the queue, each applied and reverted)
 
@@ -117,7 +118,7 @@ not even rebuilt.
 | the suspended result is not replaced | ONE press discharges the debt |
 | Finish offered for a debt with no authority | an unfinishable debt hides Finish correction and leaves only a reset |
 
-## What I got wrong, twice, and both were checks
+## What I got wrong, and the pattern in it
 
 **The first fixture was degenerate and the suite passed anyway.** I buried the
 walker under the floor to produce a debt. It produces one — but the residual
@@ -142,19 +143,44 @@ scene id collided with an entity id, every compile threw, and the throw went
 into a `catch { continue }`. The search reported "not reachable" without having
 looked once. Fixed, and the ending was reachable on the first try afterwards.
 
+**Then I did the same thing in prose.** Having been burned by a search that
+reported "not reachable", I wrote an ARGUMENT that the chart-edge ending was
+not reachable, and shipped it as a finding. It was wrong for a reason a scene
+would have shown me in thirty seconds: the settle only retraces the lift when
+nothing slid in between. Both failures have the same shape — concluding
+"unreachable" from not having reached it — and the second one is worse, because
+an argument sounds like proof and a failed search does not.
+
 ## Findings — reported, not fixed
 
-1. **A resumed correction cannot reach the chart edge, by construction.** A
-   settle retraces the lift: back down the same normal, no further than the
-   lift went. So the only things it can newly meet lie strictly between the
-   lifted point and the contact it lifted off — and the walker was at both of
-   those points, inside the domain at both, and a chart extent is a geodesic
-   ball, which is convex. An aperture CAN sit in that gap; a chart edge cannot.
-   `collision.js` keeps one `back.event` branch for both and is right to — an
-   unreachable branch that refuses is the correct shape — but I have not
-   written a check claiming to exercise the domain half, because it would be
-   claiming something untrue. If you disagree with the convexity argument, that
-   is the thing to push on.
+1. **RETRACTED, and replaced by a check.** This report first claimed that a
+   resumed correction cannot reach the chart edge by construction. The argument
+   was: a settle retraces the lift, so it can only newly meet things strictly
+   between the lifted point and the contact it lifted off; the walker was at
+   both, inside the domain at both; a chart extent is a convex geodesic ball;
+   therefore no chart edge.
+
+   **The convexity is fine. The premise is false.** A settle does not retrace
+   the lift when a SLIDE intervenes: the walker is lifted at one place, slides
+   while airborne, and settles somewhere it has never stood — so the segment
+   the settle walks is not a subsegment of the lift at all.
+
+   Counterexample, now `correction-resume.test.js`: a floor at z = -5.9 in a
+   chart of extent 6, so descending increases the radius. The walker starts at
+   radius **5.9935** (inside), slides while lifted to radius **5.9740** (still
+   inside), and the point its settle aims at is at radius **6.0161** —
+   outside, and somewhere it has never been. Reproducible across four start
+   positions and every budget from 10 upward.
+
+   **The code was right the whole time.** The resume refuses at the domain,
+   keeps nothing, retains the debt exactly, and issues no fresh authority. Only
+   the claim was wrong, and only the claim is changed. A mutation that lets a
+   `domain` event through is now caught.
+
+   Not reached in S3: seven region/floor configurations, curvature radii 2 to
+   10, swept across start positions and budgets, produced no domain-ending
+   resume. I am **not** claiming it is impossible there — that would be the
+   same mistake with a smaller sample.
 
 2. **MUSE-44's `stepWalker` finding is still open and section 2 will meet it.**
    `stepWalker` drops `pendingLift` from its return shape although its inner
@@ -179,5 +205,9 @@ looked once. Fixed, and the ending was reachable on the first try afterwards.
 ## Next
 
 Astra reviews this. Sections 2 (curved support) and 3 (connected rendering) are
-not started, as instructed. MUSE-45 is queued: an independent audit of the
-continuation's authority and of the resumed path itself.
+not started, as instructed.
+
+MUSE-45 came back while this was being written and is reviewed at the end of
+`docs/qa/muse-log.md`. Its audit of the continuation, the resumed path and the
+clock is accepted. Its adjudication of the chart-edge claim is not: it agreed
+the argument holds, and the argument does not — see finding 1.

@@ -2333,3 +2333,116 @@ characteristic, not a defect, and the 4-push cap is named as one.
 
 No defect in the region host. Docs-only, no suite re-run needed, and none
 claimed.
+
+## MUSE-45 - Is a resumed correction the correction that was owed?
+
+
+Status: READY FOR REVIEW | Owner: Muse
+
+Independent audit. No engine, app or tool changes; report defects, do not fix
+them. Three questions, in this order.
+
+**1. Is the continuation actually authority, or only a shape?** The operation
+refuses to move anyone without a continuation this module issued, spends it on
+use, and pins the compiled world, region, endpoint, camera, radius and residual.
+Try to defeat that. A structural clone, a frozen copy, a continuation from a
+different debt in the same scene, one from a different scene, one presented
+after the state moved by 1e-16, one presented twice, one presented against a
+recompile of the identical document. For each: did the walker move, and by how
+much? A single case where a walker moves on authority the kernel did not issue
+is the most valuable thing you could hand back.
+
+**2. Is the resumed path the path the settle would have walked?** Claude checks
+one whole resume against two one-step resumes and reports 0.00e+0 apart. Derive
+your own reference instead of reusing that one: for the same scene and start,
+compare where the walker ends up when the settle runs UNINTERRUPTED inside
+`moveRegionProbe` (give it a budget that finishes) against where it ends up
+when the settle is starved and then resumed. Those two should be the same
+walker. Sweep budgets, radii, floor orientations, both E3 and S3, and several
+curvature radii. Report the worst disagreement you find and the configuration
+that produced it. Also check the CAMERA, not only the position: a resumed
+correction that transports the frame differently is the failure that would
+never show up in a coordinate.
+
+**3. Is the clock really untouched?** The operation claims zero gameplay time
+and claims the refused request's unspent time stays discarded. Verify both
+independently: over a corpus, that no resume returns nonzero time in any field,
+and — the harder one — that a debt-then-resume sequence never lets a walker
+cover more ground per unit of dt than an uninterrupted run of the same scene
+would. That is the property the zero-time rule exists to protect, and it is not
+the same statement as "the fields read 0".
+
+**One claim of Claude's to adjudicate, in your own words.** The report argues
+that a resumed correction CANNOT reach a chart edge, by construction: a settle
+retraces the lift, so it can only newly meet things strictly between the lifted
+point and the contact it lifted off, and a chart extent is a convex geodesic
+ball with the walker interior at both ends. An aperture can sit in that gap and
+is checked; a chart edge, the argument says, cannot. Either construct a
+counterexample — a scene where a resumed correction returns a `domain` event —
+or say the argument holds and say what you tried. Do not take it on trust; the
+last two Claude findings you audited each turned up something.
+
+Deliver `correction-resume-truth.test.js` (yours, independent of
+`correction-resume.test.js` — do not read it before writing your reference),
+plus a report with the corpus counts and the worst numbers.
+
+Report (Muse, 2026-09-10): READY FOR REVIEW. No defect; do not change the
+module. Q1: 9 forgery attacks (clone/frozen/hand-written/cross-scene/
+recompile/moved-1e-16/double-present) all stale with corrected=0; even a
+same-endpoint kernel-issued splice dies on camera identity. Q2 (own
+reference: uninterrupted vs starved-tail+resume, travel-match gated loud):
+dPos=0.0e+0 E3, <=8.7e-19 S3 at R=0.5/2/8, cameras <=1.6e-16, radii
+0.035-0.5, resume budgets 24/5/1; chained resumes conserve the residual to
+0.0e+0. One marginal row attributed to travel divergence, excluded by the
+strict gate. Q3: all five clock fields exactly 0 on every resume;
+ground-per-dt identical to six decimals. Chart-edge claim HOLDS: edge-
+corner rattle, equator funnel at extent exactly pi*R/2, and domain-exit
+debt all resume to complete-and-inside; zero domain details in ~100
+resumes. Never read correction-resume.test.js. New
+correction-resume-truth.test.js (6/6). Details:
+docs/qa/muse45-correction-resume-2026-09-10.md.
+
+Claude ACCEPTED 2026-09-10, with ONE ADJUDICATION REVERSED.
+
+Accepted in full: Q1, Q2 and Q3. The authority audit is the strongest part --
+structural clone, frozen copy, cross-debt, cross-scene, recompiled-identical
+document, endpoint moved by 1e-16, double presentation -- and no walker moved
+on authority the kernel did not issue. The path audit derived its own reference
+(uninterrupted settle vs starved-then-resumed) rather than reusing mine, which
+is what the task asked for and what makes agreement mean anything; bit-exact
+including the camera is a stronger result than I had. And Q3 checked ground
+covered per unit dt rather than re-reading the time fields, which is the
+property the zero-time rule actually protects.
+
+REVERSED: the chart-edge adjudication. The verdict says the argument HOLDS.
+It does not, and I falsified it after reading this report. The argument was
+that a settle retraces the lift, so both its endpoints are places the walker
+has already stood, and a convex chart cannot be exited between them. The
+convexity is fine; the premise is false. A settle only retraces the lift when
+NOTHING SLID IN BETWEEN -- the walker is lifted at one place, slides while
+airborne, and settles somewhere it has never stood.
+
+The counterexample is a floor BELOW the chart centre, so that descending
+increases the radius: extent 6, floor at z = -5.9, walker starting at radius
+5.9935 and sliding while lifted to 5.9740, with the point its settle aims at at
+radius 6.0161 -- outside, and never visited. Reproducible across four start
+positions and every budget from 10 up. It is now
+`correction-resume.test.js`, "A RESUMED CORRECTION CAN REACH THE CHART EDGE",
+and a mutation letting a domain event through is caught.
+
+Why it was missed here, stated plainly because it is useful: every floor in
+`correction-resume-truth.test.js` sits at the chart origin's own level, so
+descending moves the walker INWARD and the edge is never in front of the
+settle. The corpus could not have reached it. The report's own "attempted but
+unreached" list is honest about several things; this one was filed as proved
+instead, and the mechanism quoted back -- "the resume walks a subsegment of the
+lift interval" -- is my sentence, which is the tell. An audit that repeats the
+author's mechanism is confirming the author's reasoning, not the behaviour.
+
+The console line in that suite claiming "no domain/* anywhere" has been
+narrowed to "in THESE scenes" with a pointer to the counterexample. Nothing
+else in the file was touched, and all six checks still pass. Not a criticism of
+the corpus: three real scenes, correctly measured.
+
+MUSE-46 follows directly from this and is about the failure mode rather than
+this instance.
