@@ -8,6 +8,14 @@ const world=compileRegionWorld(scene),data=packConnectedWorld(world);
 assert.deepEqual(data.counts,[29,9,8,4]);
 assert.ok(data.texture.every(Number.isFinite));
 const row=i=>[...data.texture.slice(i*4,i*4+4)];
+assert.deepEqual(row(128+data.ids.indexOf('curve')),[1,8,6,0],'GPU must select S3 with radius 8');
+assert.equal(row(128+data.ids.indexOf('entry'))[0],0);
+assert.equal(row(128+data.ids.indexOf('far'))[0],0);
+// Independent spherical right-triangle identity, visibly different from E3.
+const curved=world.regions.get('curve').space;
+const separation=curved.distance(curved.decode([3,0,0]),curved.decode([0,3,0]));
+assert.ok(Math.abs(separation-8*Math.acos(Math.cos(3/8)**2))<1e-10);
+assert.ok(Math.abs(separation-Math.sqrt(18))>.04,'curved region must not use flat distances');
 for(let i=0;i<data.counts[3];i++){
   const gate=row(132+i*10),back=row(132+gate[3]*10);
   assert.deepEqual(back.slice(0,2),[gate[1],gate[0]]);

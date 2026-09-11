@@ -12,7 +12,12 @@ try {
   const model=createConnectedPreview(await response.json()),coldStart=performance.now(),renderer=createConnectedRenderer(canvas,model.world);
   const mouse=createMouseLook(),keys=new Set();let playing=false,last=null;
   const dimensions=()=>{const width=Number(document.querySelector('#quality').value);return{width,height:width*3/4};};
-  function draw(){renderer.draw(model.state,dimensions());status.textContent=`${model.state.regionId} · ${model.motion}${model.halted?' — halted; reset to recover':''}`;}
+  function draw(){
+    renderer.draw(model.state,dimensions());
+    const space=model.world.regions.get(model.state.regionId).space;
+    const geometry=space.kind==='s3'?`S³ · radius ${space.curvatureRadius}`:'E³';
+    status.textContent=`${model.state.regionId} · ${geometry} · ${model.motion}${model.halted?' — halted; reset to recover':''}`;
+  }
   function stop(){playing=false;keys.clear();mouse.reset(false,performance.now());last=null;}
   document.querySelector('#controls').onclick=e=>{if(e.target.dataset.action){stop();document.exitPointerLock();model.act(e.target.dataset.action);draw();}};
   canvas.onclick=()=>{if(!model.halted)canvas.requestPointerLock()?.catch(e=>{status.textContent=`Mouse capture failed: ${e.message}`;});};
@@ -65,6 +70,13 @@ try {
     model.act('reset');const crossed=new Set([model.state.regionId]);
     for(let i=0;i<260;i++){model.advance(1/60,[0,1,0]);crossed.add(model.state.regionId);if(model.halted)throw Error('Sustained flight halted');if(i%40===20)compare('flight-'+i);}
     if(!crossed.has('curve')||!crossed.has('far'))throw Error('Continuous flight missed a region');checks.push('260 continuous movement frames');
+    model.act('reset');
+    for(let i=0;i<600;i++)model.advance(0,[0,0,0],{yaw:.04*Math.cos(i/15),pitch:.04*Math.sin(i/15)});
+    if(Math.abs(model.state.camera.right[2])>1e-9||model.state.camera.up[2]<=0)throw Error('Mouse loops rolled the preview');
+    checks.push('upright camera after 600 look updates');
+    // Aim slightly down for a useful structural image rather than the chart boundary.
+    model.advance(0,[0,0,0],{pitch:-.15-Math.asin(model.state.camera.forward[2])});
+    draw();shots.push({name:'upright-look',data:canvas.toDataURL()});
     for(const pose of poses){
       renderer.times.length=0;const timings=[],intervals=[];let previous;
       for(let i=0;i<90;i++){const timestamp=await new Promise(requestAnimationFrame);if(i>=15&&previous!==undefined)intervals.push(timestamp-previous);previous=timestamp;const t=performance.now();renderer.draw(pose.state,{...dimensions(),timer:i>=15});if(i>=15)timings.push(performance.now()-t);}

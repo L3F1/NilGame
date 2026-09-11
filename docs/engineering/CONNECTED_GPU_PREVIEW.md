@@ -46,7 +46,10 @@ on accumulated rounding across the whole renderer. Diagnostic readback disables
 dithering and keeps framebuffer alpha so packed distance bytes survive intact.
 
 CPU motion remains authoritative. Input uses the existing spike-filtered mouse
-accumulator; free-flight camera roll is intentional. Frame dt is capped at .04;
+accumulator. The preview now uses floor-relative upright look (pitch ±1.5), with
+roll alignment after successful transported motion. This is a camera-only policy,
+not gravity; the underlying free-flight frame kernel remains unchanged.
+Frame dt is capped at .04;
 unspent refusal time is not replayed. Any unresolved/debt-carrying motion halts
 and requires reset in this preview. Scene editing, walking support, assets,
 lighting systems and multiplayer integration remain separate work.

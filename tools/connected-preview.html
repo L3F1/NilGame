@@ -8,8 +8,12 @@ body{margin:24px auto;padding:0 18px;max-width:900px;background:#101a27;color:#e
 <p><a href="region-lab.html">Spherical editor</a> · <a href="ball-lab.html">Flat editor</a> · <a href="../index.html">Worlds</a></p>
 <p>Click the view for real-time flight: WASD, Space/Shift, mouse look; Escape releases the mouse.
 The GPU draws connected rays; the CPU handles collision and carried camera frames. Buttons take quarter-unit steps.
-There is no gravity. Blue: entry region; green: spherical room; gold: far region.
+There is no gravity; mouse look stays upright relative to each room's floor.
+Blue: E3 entry; green: S3 room (curvature radius 8); gold: E3 far room.
 Magenta means the sight query is unresolved, not sky or a wall.</p>
+<p>The middle room uses spherical rays and movement. Its two portals are about four units apart,
+so curvature is modest; great-sphere walls can still have straight-looking edges.
+This is a connected-room test, not a panorama of the whole sphere.</p>
 <p><a href="connected-cpu-preview.html">CPU reference preview</a> ? <label>Resolution <select id="quality"><option value="160">160 ? 120</option><option value="320" selected>320 ? 240</option><option value="480">480 ? 360</option></select></label></p>
 <canvas id="view" width="80" height="60" aria-label="Connected-region sight preview"></canvas>
 <div id="controls"><button data-action="forward">Forward (W)</button><button data-action="back">Back (S)</button>

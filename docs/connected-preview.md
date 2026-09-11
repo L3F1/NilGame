@@ -5,10 +5,18 @@ Worlds and both editors). It loads levels/fixtures/connected-sight.nil.json:
 E3 entry, spherical room, E3 far room.
 
 Click the canvas for real-time flight. WASD moves, Space/Shift rises/descends,
-mouse looks, Escape releases capture. Focus loss clears input. Flight carries
-roll; there is no gravity or upright-camera policy. Reset recovers from a refused
+mouse looks, Escape releases capture. Focus loss clears input. Mouse yaw follows
+the local floor up; pitch stops at ±1.5 radians. Movement transports the camera,
+then removes floor-relative roll without changing its heading. There is no gravity.
+Reset recovers from a refused
 motion request. Buttons retain quarter-unit steps for touch and reproducibility.
 Choose 160x120, 320x240 (default), or 480x360 resolution.
+
+The route is E3 → S3 (radius 8, chart extent 6) → E3. The middle room's short
+route and great-sphere walls make its curvature subtle. The HUD names the active
+geometry. Packing tests pin the GPU's S3 selector and radius; an independent
+spherical right-triangle identity distinguishes its metric from E3. Browser
+checks compare the shader's actual intersections against curved CPU queries.
 
 The WebGL2 renderer follows analytic E3/S3 rays through the portal frames. CPU
 motion retains collision, transported camera frames and explicit refusal/debt

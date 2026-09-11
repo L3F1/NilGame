@@ -11,6 +11,11 @@ and carried camera motion. Open tools/connected-preview.html (linked in menu and
 editors); click to capture mouse, WASD/Space/Shift flight, Escape release. CPU
 step reference retained at tools/connected-cpu-preview.html. No connected editing.
 
+Camera follow-up: the preview now uses floor-relative upright look, pitch ±1.5,
+and removes only roll after transported motion. It is still flight without
+gravity. See docs/qa/connected-camera-2026-09-11.md and connected-camera.test.js.
+HUD names E3/S3 and R=8; actual S3 packing/metric and GPU parity are checked.
+
 Read CONNECTED_GPU_PREVIEW.md before renderer edits: provisional float guards,
 bounded capacities, explicit unresolved results, no sky policy. GPU is a tested
 preview, not a formally certified universal query backend. Field/root/portal
