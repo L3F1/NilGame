@@ -1,7 +1,7 @@
 # Fresh-chat handoff for Astra
 
 2026-09-11. Read WORKING_RULES, inspect status, then relevant TASK_ROUTER row.
-Claude and Muse completed global-host/MUSE59 batch at base518fd48; both accepted.
+Global-host/MUSE59 batch accepted; latest MUSE60 portal-approach checks at52b70fd also accepted after lead report corrections.
 No jobs running. Manifest names completed work: replace before dispatch. Claude's
 only unexpected path was the lead-supplied contract after staging denial; known,
 reviewed and documented. No retries/heartbeat prompts.
@@ -20,6 +20,8 @@ fixed it under unchanged .001 tolerance. NVIDIA and SwiftShader 24,000-ray view
 corpora pass;11 extra hit refusals remain. Do not replace custom trig with native
 calls for speed without rerunning software and hardware parity. GPU medians
 .168-.182ms at320x240 on5070Ti (not end-to-end latency). See report for evidence.
+
+Latest user issue: second exit seems unusable. Added explicit front-side test placement, crosshair and actual-ray/body-fit guidance. See docs/qa/portal-guide-review.md. One-sided policy unchanged; exact user pose unknown. Try the new button if reproducing.
 
 Next lead task: investigate silhouette refusal bands/near-surface correctness.
 Thin magenta outlines remain around some balls, honestly unresolved. Build a

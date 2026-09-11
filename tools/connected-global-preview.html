@@ -18,12 +18,17 @@ and through portals, not a world up. Collisions or uncertain motion halt the pre
 <p>Magenta marks numerical/traversal uncertainty; thin silhouette outlines remain under investigation.
 Dark checkers mark the end of the flat region, including when viewed through a portal from inside S3.</p>
 <p><label>Resolution <select id="quality"><option value="160">160 × 120</option><option value="320" selected>320 × 240</option><option value="480">480 × 360</option></select></label></p>
-<canvas id="view" width="80" height="60" aria-label="Connected complete-S3 sight preview"></canvas>
+<div style="position:relative"><canvas id="view" width="80" height="60" aria-label="Connected complete-S3 sight preview" style="display:block"></canvas><span aria-hidden="true" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;color:white;text-shadow:0 0 2px black">+</span></div>
+<p id="portal-hint"></p>
+<p>Portals currently accept front-to-back crossings only. Aim through the centre: your body needs
+more clearance than a ray of light. In S3, a visible portal image may lie along a long route around
+the sphere; its viewing distance can differ from the shortest distance to the portal.</p>
 <p><label><input id="diagnostics" type="checkbox"> Highlight all unresolved rays (including region boundaries)</label></p>
 <div id="controls"><button data-action="forward">Forward (W)</button><button data-action="back">Back (S)</button>
 <button data-action="left">Look left (←)</button><button data-action="right">Look right (→)</button>
 <button data-action="up">Look up (↑)</button><button data-action="down">Look down (↓)</button>
 <button data-action="spawn-flat">Spawn in flat room</button><button data-action="spawn-sphere">Spawn in sphere</button>
+<button data-action="approach-exit">Try second exit (places you in front)</button>
 <button data-action="reset">Reset to spawn</button></div>
 <p id="status" role="status">Loading…</p><pre id="details"></pre>
 <script type="module" src="../app/connected-global-preview.js"></script></html>

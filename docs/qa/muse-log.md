@@ -2824,3 +2824,12 @@ Two allowed paths, unchanged base518fd48; scope verified. Range ladder, budgets,
 inside/grazing refusal and blocked exit passed on main with landmarks. Lead reran
 budget-guard-removal mutation in isolated scratch: failed; restored test passed.
 See muse59-connected-global.md and connected-global-gpu-review.md. No jobs running.
+
+## MUSE-60 accepted - 2026-09-11
+
+Base52b70fd, two allowed paths, scopeOK and HEAD unchanged. Focused6-block host
+rerun passed. Lead corrected report: derivative sign enforces entering direction;
+either radial guard alone protects this corpus, both removed fail. Lead reran
+three mutations and restored scratch; main engine unchanged. See
+muse60-portal-approach.md and portal-guide-review.md. First WSL launch failed
+before model startup; elevated bridge launch then completed. No jobs scheduled.

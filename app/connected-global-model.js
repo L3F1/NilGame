@@ -41,8 +41,16 @@ export function createConnectedGlobalPreview(document){
     state={...state,camera:createCameraFrame(space,p,{forward:aim,up})};
   }
   function spawn(regionId){
-    if(!['flat','sphere'].includes(regionId))throw Error('Unknown preview spawn');
-    const start=world.spawn(regionId);
+    if(!['flat','sphere','exit'].includes(regionId))throw Error('Unknown preview spawn');
+    let start=world.spawn(regionId==='exit'?'sphere':regionId);
+    if(regionId==='exit'){
+      // Explicit test placement on the entering side, not a portal teleport or
+      // an automatic correction of the player's ongoing movement.
+      const gate=world.portals.find(p=>p.fromId==='sphere-exit'),space=world.regions.get('sphere').space;
+      const leg=space.stepWithTransport(gate.center,gate.normal,2),up=leg.carry(gate.renderData().up);
+      start={...start,position:leg.position,velocity:leg.position.map(()=>0),
+        camera:createCameraFrame(space,leg.position,{forward:leg.carry(gate.normal.map(x=>-x)),up})};
+    }
     spawnRegion=regionId;state={...start,radius:start.radius??document.baseScene.units.playerRadius};
     referenceUp=state.camera.up.slice();halted=false;motion='spawn';
   }
@@ -60,6 +68,7 @@ export function createConnectedGlobalPreview(document){
     if(action==='reset')return spawn(spawnRegion);
     if(action==='spawn-flat')return spawn('flat');
     if(action==='spawn-sphere')return spawn('sphere');
+    if(action==='approach-exit')return spawn('exit');
     if(halted)return;
     if(['left','right','up','down'].includes(action))return look({
       yaw:action==='left'?.15:action==='right'?-.15:0,pitch:action==='up'?.15:action==='down'?-.15:0});
@@ -91,7 +100,23 @@ export function createConnectedGlobalPreview(document){
       :`E3 · bounded extent ${region.descriptor.extent}`;
     return `${state.regionId} · ${geometry} · ${motion}${halted?' — halted; reset to recover':''}`;
   }
-  return {world,act,advance,look:angles=>{if(!halted)look(angles);},sight,pixelSight,status,
+  function portalGuide(){
+    const space=world.regions.get(state.regionId).space;
+    const nearest=world.portals.filter(g=>g.fromRegionId===state.regionId)
+      .map(g=>({gate:g,distance:space.distance(state.position,g.center)})).sort((a,b)=>a.distance-b.distance)[0];
+    const name=id=>({'sphere-exit':'Second exit','sphere-entry':'Entry portal','flat-entry':'S3 entrance','flat-return':'S3 return'}[id]||id);
+    const ray=sight(state.camera.forward,64),crossing=ray.crossings[0];
+    const info={nearest:null,aimed:null,solid:ray.status==='hit'&&!crossing?ray.query.owner:null};
+    if(nearest)info.nearest={id:nearest.gate.fromId,name:name(nearest.gate.fromId),distance:nearest.distance,
+      side:nearest.gate.signedHeight(state.position)>1e-9?'front':'back / on plane'};
+    if(crossing){
+      const gate=world.portals.find(g=>g.fromId===crossing.fromId);
+      const clearance=gate.radius-space.distance(gate.center,crossing.entry)-state.radius;
+      info.aimed={id:gate.fromId,name:name(gate.fromId),distance:crossing.distance,clearance,bodyFits:clearance>=1e-7};
+    }
+    return info;
+  }
+  return {world,act,renderGuide:portalGuide,advance,look:angles=>{if(!halted)look(angles);},sight,pixelSight,status,
     get state(){return state;},get referenceUp(){return referenceUp;},get halted(){return halted;},
     get motion(){return motion;},get spawnRegion(){return spawnRegion;},get elevation(){return elevation();}};
 }

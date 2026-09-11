@@ -19,6 +19,12 @@ try {
   function draw(){
     renderer.draw(model.state,{...dimensions(),diagnostics:document.querySelector('#diagnostics').checked});
     status.textContent=model.status();
+    const guide=model.renderGuide(),near=guide.nearest,aim=guide.aimed;
+    document.querySelector('#portal-hint').textContent=[
+      near?`Nearest: ${near.name}, ${near.distance.toFixed(2)} units by shortest path, ${near.side} side.`:'',
+      aim?`Crosshair: ${aim.name} after ${aim.distance.toFixed(2)} units of forward travel. ${aim.bodyFits?'Body fits the aperture; destination checked on crossing.':'Too close to the rim for your body — aim nearer the centre.'}`:
+        guide.solid?`Crosshair hits solid ${guide.solid}; green balls are landmarks, not portals.`:'No entering portal on the crosshair ray. Approach a portal from its front side.'
+    ].join(' ');
   }
   function stop(){playing=false;keys.clear();mouse.reset(false,performance.now());last=null;}
   document.querySelector('#controls').onclick=e=>{if(e.target.dataset.action){stop();document.exitPointerLock();model.act(e.target.dataset.action);draw();}};
@@ -108,6 +114,12 @@ try {
     for(let i=0;i<600;i++)model.advance(0,[0,0,0],{yaw:.04*Math.cos(i/15),pitch:.04*Math.sin(i/15)});
     if(Math.abs(rollAgainst(model.state.camera,model.referenceUp))>1e-9)throw Error('Mouse loops rolled against carried up');
     checks.push('no roll after 600 look updates in complete S3');
+    document.querySelector('[data-action="approach-exit"]').click();
+    if(model.renderGuide().aimed?.id!=='sphere-exit'||!model.renderGuide().aimed.bodyFits)throw Error('Exit approach guide is wrong');
+    draw();shots.push({name:'exit-approach',data:canvas.toDataURL()});
+    for(let i=0;i<45&&model.state.regionId==='sphere';i++)model.advance(1/60,[0,1,0]);
+    if(model.halted||model.state.regionId!=='flat')throw Error('Second exit approach did not cross');
+    checks.push('explicit second-exit approach crosses via real-time controls');
     for(const pose of poses){
       renderer.times.length=0;const timings=[],intervals=[];let previous;
       for(let i=0;i<90;i++){const timestamp=await new Promise(requestAnimationFrame);if(i>=15&&previous!==undefined)intervals.push(timestamp-previous);previous=timestamp;const t=performance.now();renderer.draw(pose.state,{...dimensions(),timer:i>=15});if(i>=15)timings.push(performance.now()-t);}
