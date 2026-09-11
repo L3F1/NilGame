@@ -2,8 +2,9 @@
 // built here: the lead's renderer owns world.renderData().
 import {compileConnectedCoverWorld} from '../engine/world/connected-cover-world.js';
 import {createCameraFrame} from '../engine/world/camera-frame.js';
-import {moveRegionProbe} from '../engine/world/region-motion.js';
+import {moveRegionProbe,resumeRegionCorrection} from '../engine/world/region-motion.js';
 import {traceRegionSight} from '../engine/world/region-sight.js';
+import {motionPause} from './motion-pause.js';
 
 export const GLOBAL_FLIGHT_SPEED=4;
 export const GLOBAL_PITCH_LIMIT=1.5;
@@ -56,10 +57,20 @@ export function createConnectedGlobalPreview(document){
   }
   spawn('flat');
   function move(direction,speed,dt){
-    const before=state.camera,result=moveRegionProbe(world,{...state,velocity:direction.map(x=>x*speed)},dt);
+    const before=state.camera;
+    let result=moveRegionProbe(world,{...state,velocity:direction.map(x=>x*speed)},dt);
     motion=result.status+(result.detail?`/${result.detail}`:'');
-    // No replay of unspent time and no automatic correction: a halt or debt refuses.
-    halted=!!result.pendingLift||!['complete','stopped'].includes(result.status);
+    // One separately bounded zero-time settle, using the kernel-issued authority.
+    // Never resume event refusals automatically, loop on debt, or replay travel.
+    if(result.status==='budget-exhausted'&&result.pendingLift&&result.continuation){
+      result=resumeRegionCorrection(world,result);
+      motion+=` / correction:${result.status}`;
+    }
+    // Reuse the editor's debt-first policy. A debt-free work limit or plugged
+    // exit ends THIS request, not flight: the next frame can steer away with a
+    // fresh clock. Never replay timeRemaining or discard an owed correction.
+    // This preview still deliberately halts at the flat authoring extent.
+    halted=!!motionPause(result)||result.status==='domain-exit';
     state=result.state;
     if(state.camera!==before)referenceUp=carryReference(before,state.camera);
     return result;

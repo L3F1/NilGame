@@ -1,8 +1,12 @@
 # Fresh-chat handoff for Astra
 
 2026-09-11. Read WORKING_RULES, inspect status, use relevant TASK_ROUTER row.
-Latest Claude appearance-UI batch at4c51c4d is complete/accepted. No agents running;
-manifest records completed work, replace before dispatch. Do not retry old tasks.
+Latest fix: connected preview sphere contact halts. Read
+docs/qa/connected-contact-recovery.md. Uses existing motionPause and one bounded
+resumeRegionCorrection for budget debt; no leftover-time replay or kernel edit.
+Muse contact corpus is the next independent QA assignment; inspect bridge status.
+Latest Claude appearance-UI batch at4c51c4d is complete/accepted.
+Manifest now assigns MUSE-61 contact corpus; inspect status before dispatch/retry.
 Muse60 approach checks were previously accepted with lead report corrections.
 
 User confirmed the second-exit issue was confusing a spherical image with the

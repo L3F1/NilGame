@@ -68,5 +68,12 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: none. MUSE-60 accepted after lead report corrections; see docs/qa/muse-log.md.
-No jobs scheduled. Manifest records completed work; replace before dispatch.
+Order: MUSE-61 contact recovery corpus. MUSE-60 accepted; see docs/qa/muse-log.md.
+
+## MUSE-61 — OPEN: independent contact recovery corpus
+
+Assignment and allowed files: tools/agent-bridge-tasks.json, muse61-contact-corpus.
+Test E3/S3 ball contact at several frame rates, retreat, clearance and carried
+camera. Pin work-limit and correction paths. No app/kernel edits or browser runs
+from the clone; run only assigned focused Node tests. Report genuine refusals
+separately. Lead reviews before integration.

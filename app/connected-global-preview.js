@@ -208,6 +208,21 @@ try {
     for(let i=0;i<45&&model.state.regionId==='sphere';i++)model.advance(1/60,[0,1,0]);
     if(model.halted||model.state.regionId!=='flat')throw Error('Second exit approach did not cross');
     checks.push('explicit second-exit approach crosses via real-time controls');
+    for(const region of ['sphere','flat']){
+      model.act(`spawn-${region}`);model.look({yaw:-.5});
+      let limits=0;
+      for(let i=0;i<160;i++){
+        model.advance(.016,[0,1,0]);
+        if(model.motion.includes('budget-exhausted'))limits++;
+        if(model.halted)throw Error(`${region} contact halted: ${model.motion}`);
+      }
+      if(!limits)throw Error(`${region} contact did not exercise work limit`);
+      const from=[...model.state.position],space=model.world.regions.get(region).space;
+      for(let i=0;i<20;i++)model.advance(.016,[0,-1,0]);
+      if(model.halted||space.distance(from,model.state.position)<.5)throw Error(`${region} retreat failed`);
+      if(Math.abs(rollAgainst(model.state.camera,model.referenceUp))>1e-9)throw Error('Contact recovery rolled camera');
+      draw();checks.push(`${region} contact and retreat without reset, bounded recovery and upright camera`);
+    }
     for(const pose of poses){
       renderer.times.length=0;const timings=[],intervals=[];let previous;
       for(let i=0;i<90;i++){const timestamp=await new Promise(requestAnimationFrame);if(i>=15&&previous!==undefined)intervals.push(timestamp-previous);previous=timestamp;const t=performance.now();renderer.draw(pose.state,{...dimensions(),...appearance(),timer:i>=15});if(i>=15)timings.push(performance.now()-t);}
