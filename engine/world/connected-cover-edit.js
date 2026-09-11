@@ -46,3 +46,55 @@ export function removeConnectedBall(document, id) {
   list.splice(list.indexOf(entity),1);
   return next;
 }
+
+// These helpers produce detached candidates. The host must compile and validate
+// the ENTIRE candidate before publishing it (including clearance and GPU caps).
+export function addConnectedPortalPair(document, spec) {
+  const record=(value,keys)=>value&&typeof value==='object'&&!Array.isArray(value)
+    &&Object.keys(value).every(k=>keys.includes(k));
+  if(!record(spec,['id','radius','a','b']))throw Error('Invalid portal pair record');
+  const next=structuredClone(document),base=next.baseScene;
+  const ids=new Set([next.id,base.id,...base.regions.map(r=>r.id),...base.entities.map(e=>e.id),...base.connections.map(c=>c.id),
+    ...next.coverRegions.flatMap(r=>[r.id,...r.charts.map(c=>c.id),...r.entities.map(e=>e.id)]),...next.connections.map(c=>c.id)]);
+  function reserve(id){
+    if(typeof id!=='string'||! /^[a-z][a-z0-9_-]*$/.test(id)||ids.has(id))throw Error('Portal pair needs three globally unique lowercase IDs');
+    ids.add(id);
+  }
+  reserve(spec.id);
+  for(const end of [spec.a,spec.b]){
+    if(!record(end,['id','regionId','chartId','position','forward','up']))throw Error('Invalid portal endpoint record');
+    reserve(end.id);
+    const anchor={id:end.id,kind:'anchor',position:structuredClone(end.position),radius:spec.radius,
+      forward:structuredClone(end.forward),up:structuredClone(end.up)};
+    if(base.regions.some(r=>r.id===end.regionId)){
+      if(Object.hasOwn(end,'chartId'))throw Error('A bounded-region anchor must not name a cover chart');
+      base.entities.push({...anchor,regionId:end.regionId});
+    }else{
+      const region=next.coverRegions.find(r=>r.id===end.regionId);
+      if(!region||typeof end.chartId!=='string'||!region.charts.some(c=>c.id===end.chartId))throw Error('Choose an author chart owned by the anchor region');
+      region.entities.push({...anchor,chartId:end.chartId});
+    }
+  }
+  next.connections.push({id:spec.id,kind:'portal',a:spec.a.id,b:spec.b.id,velocity:'preserve-speed',scale:1});
+  return next;
+}
+
+export function reconnectConnectedPortals(document, edits) {
+  if(!Array.isArray(edits)||!edits.length)throw Error('Expected at least one connection edit');
+  const next=structuredClone(document),seen=new Set();
+  // Stage every replacement before compilation: a swap may have no valid
+  // intermediate graph. Rewritten base links migrate to the envelope, which
+  // can resolve both base and cover anchors. Untouched links keep ownership.
+  for(const edit of edits){
+    if(!edit||typeof edit!=='object'||Array.isArray(edit)||Object.keys(edit).some(k=>!['id','a','b'].includes(k))
+      ||typeof edit.a!=='string'||typeof edit.b!=='string'||seen.has(edit.id))throw Error('Invalid or duplicate connection edit');
+    seen.add(edit.id);
+    const list=next.baseScene.connections.some(c=>c.id===edit.id)?next.baseScene.connections:next.connections;
+    const index=list.findIndex(c=>c.id===edit.id);
+    if(index<0)throw Error(`Unknown connection ${edit.id}`);
+    const replacement={...list[index],a:edit.a,b:edit.b};
+    if(list===next.baseScene.connections){list.splice(index,1);next.connections.push(replacement);}
+    else list[index]=replacement;
+  }
+  return next;
+}

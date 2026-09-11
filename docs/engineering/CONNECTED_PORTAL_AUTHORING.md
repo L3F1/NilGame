@@ -1,4 +1,12 @@
-# Next contract: author portal pairs
+# Author portal pairs
+
+Implemented transaction APIs (2026-09-11):
+`model.addPortalPair({id,radius,a,b})`, where each endpoint is
+`{id,regionId,chartId?,position,forward,up}`; omit chartId for base regions.
+`model.reconnectPortals([{id,a,b}, ...])` takes existing connection and anchor
+IDs. These use the same installWorld/undo/load boundary as ball edits.
+Helpers in connected-cover-edit.js only create candidates; calling a helper
+alone does not validate a graph or publish an edit. Browser controls are pending.
 
 Use the existing connected-document transaction, not incremental runtime portal
 mutation. The final graph must compile and pass current-player/spawn checks and

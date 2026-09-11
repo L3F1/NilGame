@@ -1,10 +1,12 @@
 # Fresh-chat handoff for Astra
 
 2026-09-11. Read WORKING_RULES, inspect status, use relevant TASK_ROUTER row.
-Latest: ball creation/removal in Full S3 portals. Read CONNECTED_EDITING.md and
-docs/qa/connected-ball-authoring-review.md. Claude's ball UI batch is accepted.
-MUSE-62 is assigned portal-authoring contract checks; inspect bridge status before
-dispatch/retry. Manifest describes that task; do not rerun completed Claude work.
+Latest: portal-pair creation/reconnection transaction APIs, with history and
+atomic refusals. Read CONNECTED_PORTAL_AUTHORING.md and
+docs/qa/portal-authoring-review.md. MUSE-62 accepted as bounded compiler evidence.
+Inspect bridge status: Claude portal controls and MUSE-63 API checks are the
+next batch. Do not redispatch an active/completed task. UI integration remains
+pending review; API tests are not evidence that new controls render correctly.
 
 The complete E3/S3/E3 fixture now supports creating/removing balls, anchor position
 and paired radius, spawn position, undo/redo, JSON download/file-input load.
@@ -15,9 +17,9 @@ Halted motion forbids edits until reset. Delayed file reads cannot overwrite a
 newer file choice or property edit. Renderer.replaceWorld changes texture data,
 not shader programs. The model.world and renderer.packed properties are getters.
 
-Next milestone: create/reconnect explicit portal pairs through this transaction
-boundary. Read CONNECTED_PORTAL_AUTHORING.md, especially final-graph swaps and
-base-to-envelope migration. Form orientation is read-only;
+Next milestone: review/integrate portal controls using addPortalPair and
+reconnectPortals. Read CONNECTED_PORTAL_AUTHORING.md, especially final-graph swaps
+and base-to-envelope migration. Existing property-form orientation is read-only;
 no gizmos or global S3 floors/cells yet. CONNECTED_NEXT_MILESTONE.md gives the
 sequence. Bounded H3 is the next adapter test AFTER connected authoring; Nil/Sol
 require numerical contracts, not new shader tags. Godot remains a possible host.

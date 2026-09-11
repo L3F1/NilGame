@@ -68,12 +68,12 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-62. MUSE-61 accepted with corrections; see docs/qa/muse-log.md.
+Order: MUSE-63. MUSE-62 accepted with bounded claims; see docs/qa/muse-log.md.
 
-## MUSE-62 — OPEN: portal-authoring contract checks
+## MUSE-63 — OPEN: portal-authoring API checks
 
-Assignment/allowed paths: tools/agent-bridge-tasks.json, muse62-portal-authoring-truth.
-Use current compiled worlds to check pair creation, final-graph swaps,
-base-to-envelope migration and blocked destination behavior. No implementation
-or kernel repairs; report counterexamples. Focused Node test only, no browser
-or full suite from the isolated clone. Lead reviews before integration.
+Assignment/allowed paths: tools/agent-bridge-tasks.json, muse63-portal-api-checks.
+Exercise actual transaction APIs and history; seek adversarial final graphs and
+independent carried-frame evidence after save/load. Do not duplicate the whole
+lead suite. No implementation repairs; report counterexamples. Focused Node
+only, no browser or full suite from clone. Lead reviews before integration.

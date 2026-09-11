@@ -2841,3 +2841,13 @@ one completed correction, no halts. Lead added an assertion against unexpected
 halts (the original called all of them legitimate), corrected near-target labels
 and reran the isolated old-host mutation, exit1. Report and limitations:
 muse61-contact-corpus.md. Full Node suite including this test: 97/97.
+
+## MUSE-62 accepted with bounded claims — 2026-09-11
+
+Base2960a75, branch main, isolated bridge muse62-portal-authoring-truth.
+Lead read and reran portal-authoring-truth.test.js on Windows Node24.20.0.
+Centre-route/reverse/blocked-exit and invalid-graph checks passed. Document
+reconstruction is not host transaction evidence; the empty untouched-base check
+is vacuous, and unit camera axes do not prove orientation transport. Lead added
+actual API/history/nonempty migration checks separately. Review and limitations:
+portal-authoring-review.md. Full Node 101/101, existing GPU preview 37 checks.
