@@ -2789,3 +2789,13 @@ Local corrections: first-for-pose attribution, no unsupported GC explanation,
 strict own-option parsing, separate compile wall timing. Counts/work repeat
 identically; no GPU claims. Report: connected-cost-review-2026-09-11.md; Muse
 WSL evidence in muse55-connected-cost.md. No kernel files changed.
+
+## MUSE-56 — ACCEPTED, Astra, 2026-09-11
+
+Base 50e796b, isolated bridge run. Only assigned test/report changed. Reran
+global-s3-transport-truth.test.js: 8/8 on Windows Node 24.20.0. Independently
+reproduced identity-carry mutation: 5 pass / 3 fail, main engine untouched.
+Full geodesic closure, antipodes, 720-step parity and signed ±π/2 octant holonomy
+are covered at R=.5/8/10000. Small terminology/test-label corrections documented
+in docs/qa/muse56-global-transport.md; no assertions weakened. This verifies
+existing transport, not global rendering or the new cover's ray-query policy.

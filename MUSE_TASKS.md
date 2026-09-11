@@ -68,5 +68,8 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: none. MUSE-55 accepted; see docs/qa/muse-log.md.
-Claude remains paused while its weekly quota is full. No jobs scheduled.
+Order: none. MUSE-56 accepted; see docs/qa/muse-log.md.
+Claude remains paused while its weekly quota is full.
+
+No jobs scheduled. The bridge manifest records completed MUSE-56; replace it
+before dispatching another task.

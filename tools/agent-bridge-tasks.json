@@ -2,14 +2,14 @@
   "version": 1,
   "tasks": [
     {
-      "id": "muse-55",
+      "id": "muse-56",
       "agent": "muse",
-      "instruction": "Read AGENTS.md, MUSE.md and MUSE-55. Implement a bounded repeatable CPU connected-sight benchmark using existing sampleSight and POSES from tools/connected-sight-probe.js. Allowed writes tools/connected-sight-bench.js and docs/qa/muse55-connected-cost.md only. Do not change kernel, fixtures, existing tests or queue. Measure all three existing poses, grid 96x72, 2 warmups and 9 measured repeats, report min/median/p90/max wall sample milliseconds and query-only milliseconds separately, work distributions, counts by unresolved reason, at-budget counts. Include CPU model, OS, Node version, scene path, HEAD, grid/range/work defaults. Preserve first observed sample as cold-in-process (not shader or cold OS) separately. Confirm counts/work repeat identically across repeats; fail if not. Output concise JSON to a provided --out path; cap supported repeats and validate positive integers. No dependencies. Run benchmark once on your host and report observed numbers (not GPU frame times), then stop READY FOR REVIEW. No full test suite needed: standalone measurement tool only; node --check plus benchmark execution. Do not launch other agents. Keep report under 600 words.",
+      "instruction": "MUSE-56: independent full-circle transport evidence for EXISTING createMetricSpace in engine/geometry/metric-space.js. Read AGENTS.md and MUSE.md; this manifest is the complete assignment if the queue in your clone predates it. Allowed writes global-s3-transport-truth.test.js and docs/qa/muse56-global-transport.md only. No kernel, app, schema, other test or queue edits. Run host-probe once, do not investigate environment. Build deterministic tests of stepWithTransport on S3 at R=0.5,8,10000: full 2*pi*R loop returning point/direction/three carried tangent vectors, half-circle landing at antipode using segment carry (not endpoint transport), many short steps vs one full loop, and a closed triangular loop with NONZERO holonomy checked independently against spherical triangle area on a great S2. Use the three mutually orthogonal unit points e4,e1,e2, whose area is pi/2 on the unit sphere; transport along explicit pi/2 segments, compare signed rotation of an initial in-plane tangent to that area, include reversed loop. Maximum 12 checks, bounded runtime; check norms and tangency. Distinguish existing bounded withinDomain from globally defined step formula; do not relax patch guards. Demonstrate an isolated fail mutation such as identity carry, restore engine and verify git diff engine empty. Run focused test; report errors, command, host, revision and limitations in under 500 words. No browser, full suite, agent launches, commits or pushes. Return READY FOR REVIEW.",
       "allowedFiles": [
-        "tools/connected-sight-bench.js",
-        "docs/qa/muse55-connected-cost.md"
+        "global-s3-transport-truth.test.js",
+        "docs/qa/muse56-global-transport.md"
       ],
-      "report": "docs/qa/muse55-connected-cost.md"
+      "report": "docs/qa/muse56-global-transport.md"
     }
   ]
 }

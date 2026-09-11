@@ -2,7 +2,7 @@
 
 2026-09-11. Start with git status/log, WORKING_RULES and relevant TASK_ROUTER row.
 Claude remains paused while weekly quota is full: no prompts or quota probes.
-Muse's last job was accepted MUSE-55. No external jobs are scheduled. Bridge
+Muse's last job was accepted MUSE-56. No external jobs are scheduled. Bridge
 manifest names completed work; replace before dispatch. Read AGENT_BRIDGE only
 for orchestration. Idle watchers consume no model tokens; avoid duplicate review.
 
@@ -40,11 +40,15 @@ Reached chart exits use labeled dark checkers; numerical failures remain magenta
 and a diagnostic checkbox restores all-magenta unresolved display. See
 docs/qa/connected-boundaries-2026-09-11.md. Inactive/coincident face roots remain
 an open source of magenta seams, including crate/floor edges.
-User explicitly wants global S3 behavior like the original spherical modes:
-travel 2πR and return. The current bounded room cannot do this. Next substantive
-milestone is a global-S3 traversal/rendering fixture reusing original math, then
-connection to E3; establish coverage and ray-order contracts before expanding
-the authored GPU subset. Do not represent a background-color change as that work.
+User explicitly wants global S3 behavior: travel 2πR and return. The bounded
+browser room still cannot do this. GLOBAL_S3_CONTRACT.md now defines the opt-in
+runtime foundation in spherical-cover.js: global quaternion construction frame,
+explicit local charts, original segment carry, periodic additive-ball queries.
+It is not yet wired into scene-v2, collision or the GPU. No existing guard widened.
+Next: global-ball GPU/CPU landmark fixture and an actual full-loop control, using
+a carried reference-up look policy. Then global persistence and E3 connections.
+Muse's independent triangle-holonomy/full-loop tests were accepted; its isolated
+identity-carry mutation was rerun by Astra and failed the expected three checks.
 
 Godot remains a candidate host. This renderer removes a prerequisite, not the
 need for scene-v2/motion parity and host shader/resource adaptation. Existing
