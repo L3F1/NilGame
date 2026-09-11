@@ -2,13 +2,14 @@
   "version": 1,
   "tasks": [
     {
-      "id": "muse-54",
+      "id": "muse-55",
       "agent": "muse",
-      "instruction": "Read AGENTS.md, MUSE.md and MUSE-54 only. Audit documentation bloat and stale startup instructions. Allowed output docs/qa/muse54-archive-audit.md only; no deletes, moves, code edits or queue edits. Identify at most 8 concrete archive candidates with inbound-reference checks and replacement pointers. Separate obsolete operational instructions from valuable mathematical/test evidence. Include a ready-to-apply relocation list and identify stale manual launch prompts. Do not read whole historical archives. Use file inventories and targeted searches. Report under 700 words. This docs-only audit needs no full test suite, browser or environment diagnosis. Stop after report; do not launch other agents.",
+      "instruction": "Read AGENTS.md, MUSE.md and MUSE-55. Implement a bounded repeatable CPU connected-sight benchmark using existing sampleSight and POSES from tools/connected-sight-probe.js. Allowed writes tools/connected-sight-bench.js and docs/qa/muse55-connected-cost.md only. Do not change kernel, fixtures, existing tests or queue. Measure all three existing poses, grid 96x72, 2 warmups and 9 measured repeats, report min/median/p90/max wall sample milliseconds and query-only milliseconds separately, work distributions, counts by unresolved reason, at-budget counts. Include CPU model, OS, Node version, scene path, HEAD, grid/range/work defaults. Preserve first observed sample as cold-in-process (not shader or cold OS) separately. Confirm counts/work repeat identically across repeats; fail if not. Output concise JSON to a provided --out path; cap supported repeats and validate positive integers. No dependencies. Run benchmark once on your host and report observed numbers (not GPU frame times), then stop READY FOR REVIEW. No full test suite needed: standalone measurement tool only; node --check plus benchmark execution. Do not launch other agents. Keep report under 600 words.",
       "allowedFiles": [
-        "docs/qa/muse54-archive-audit.md"
+        "tools/connected-sight-bench.js",
+        "docs/qa/muse55-connected-cost.md"
       ],
-      "report": "docs/qa/muse54-archive-audit.md"
+      "report": "docs/qa/muse55-connected-cost.md"
     }
   ]
 }

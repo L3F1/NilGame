@@ -70,3 +70,10 @@ had accumulated before anyone noticed, each naming a different task as first.
 
 Order: none. MUSE-53 and MUSE-54 accepted; see docs/qa/muse-log.md.
 Claude is paused while its weekly quota is full. No retries or quota probes.
+
+## MUSE-55 ? Connected CPU query cost
+Status: OPEN | Owner: Muse | Reviewer: Astra
+
+Use the self-contained bounded instruction in tools/agent-bridge-tasks.json.
+Only allowed writes: tools/connected-sight-bench.js and
+docs/qa/muse55-connected-cost.md. No kernel edits, browser or full suite.
