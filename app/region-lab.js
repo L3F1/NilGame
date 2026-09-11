@@ -1,13 +1,10 @@
 // Host controls only: geometry, field queries and transported motion belong to
 // the kernel. Every edit compiles before committing to the document/history.
 //
-// THIS SLICE IS ONE S3 REGION AND FREE FLIGHT. There is no gravity control and
-// no jump, because a curved support policy does not exist yet: `walker.js` is
-// three-component world-up code and feeding it a four-vector would produce a
-// walker that looked plausible and was standing on nothing. Motion is
-// `moveRegionProbe` and only that -- the same coordinator the kernel tests
-// pin -- and the camera is the carried frame, turned about its own axes with
-// ROLL PRESERVED, because in free flight there is no up to be upright against.
+// One S3 region: free flight or authored-floor walking. spherical-walker.js
+// supplies gravity/support and uses the same region motion coordinator. The
+// legacy three-component walker is not used here. Free flight preserves roll;
+// walking transports the frame and aligns it toward the floor's local up.
 //
 // A scene this viewport cannot draw is refused with a message naming what it
 // found. Two regions, a portal, or E3 all mean the picture would be a claim
@@ -16,6 +13,13 @@ import { compileRegionWorld, editRegionEntity } from '../engine/world/region-wor
 import { moveRegionProbe, resumeRegionCorrection } from '../engine/world/region-motion.js';
 import { turn } from '../engine/world/camera-frame.js';
 import { motionPause } from './motion-pause.js';
+import { createSphericalWalker } from '../engine/world/spherical-walker.js';
+let walkingKernel, walkingWorld, jumpQueued = false;
+const walking = () => document.getElementById('locomotion').value === 'walk';
+function walker() {
+  if (walkingWorld !== world) { walkingKernel = createSphericalWalker(world); walkingWorld = world; }
+  return walkingKernel;
+}
 import { createMouseLook } from './mouse-look.js';
 const mouseLook = createMouseLook({sensitivity:.002});
 import { createRegionRenderer } from '../engine/geometry/region-renderer.js';
@@ -87,6 +91,7 @@ function resetToSpawn() {
 }
 
 function stop() {
+  jumpQueued = false;
   playing = false; keys.clear();
   mouseLook.reset(false, performance.now());
   if (document.pointerLockElement === canvas) document.exitPointerLock();
@@ -248,7 +253,10 @@ function advance(dt, options) {
   // `options` exists so a check can tighten the kernel's own budgets and get a
   // REAL refusal out of a real scene rather than a hand-built result. Play
   // always passes nothing, and gets REGION_MOTION_DEFAULTS.
-  const result = moveRegionProbe(world, { ...state, velocity }, dt, options);
+  const result = walking()
+    ? walker().step(state, dt, { wish: wish.slice(0,2), speed: SPEED, jump: jumpQueued, ...options })
+    : moveRegionProbe(world, { ...state, velocity }, dt, options);
+  if (dt > 0) jumpQueued = false;
   motion = result;
   // `dt` is this frame's own clock and nothing else: the refused request's
   // unspent time was discarded when it was reported, so a run of refusals
@@ -268,7 +276,8 @@ function advance(dt, options) {
 /** One frame's worth of accumulated mouse, applied once. */
 function applyLook() {
   const look = mouseLook.drain();
-  if (look.yaw || look.pitch) state = { ...state, camera: turn(state.camera, look) };
+  if (look.yaw || look.pitch) state = walking() ? walker().look(state, look)
+    : { ...state, camera: turn(state.camera, look) };
 }
 function tick(time) {
   const dt = lastTime === null ? 0 : Math.min(.04, Math.max(0, (time - lastTime) / 1000)); lastTime = time;
@@ -286,6 +295,13 @@ $('fixture').onchange = () => { clearError(); loadFixture($('fixture').value).ca
 $('regions').onchange = guarded(() => { stop(); selectedRegion = $('regions').value; state = world.spawn(selectedRegion); selectedId = undefined; refresh(); });
 $('entities').onchange = guarded(() => { selectedId = $('entities').value; updateInspector(); draw(); });
 $('play').onclick = guarded(() => startPlay()); $('stop').onclick = () => { stop(); draw(); };
+$('locomotion').onchange = guarded(() => {
+  resetToSpawn();
+  if (walking()) walker();
+  $('movement-help').textContent = walking()
+    ? 'Walking: WASD follows the local floor; Space jumps. Gravity aligns the camera. Only the designated unmodified floor supplies support.'
+    : 'Free flight: Space rises, Shift descends, Q/E roll. No gravity alignment.';
+});
 $('reset').onclick = guarded(resetToSpawn);
 $('halt-reset').onclick = guarded(resetToSpawn);
 /**
@@ -373,7 +389,8 @@ document.addEventListener('keydown', event => {
     event.preventDefault(); keys.add(event.code);
   }
   // Roll is a control here, not a side effect, because nothing else supplies one.
-  if (event.code === 'KeyQ' || event.code === 'KeyE') {
+  if (walking() && event.code === 'Space' && !event.repeat) jumpQueued = true;
+  if (!walking() && (event.code === 'KeyQ' || event.code === 'KeyE')) {
     state = { ...state, camera: turn(state.camera, { roll: event.code === 'KeyQ' ? .05 : -.05 }) };
     draw();
   }
@@ -864,6 +881,26 @@ export async function runRegionEditorChecks() {
     }
     clearError(); await loadFixture('s3-room');
     check('and the supported scene still loads afterwards', !$('boot').textContent);
+
+    $('locomotion').value = 'walk'; $('locomotion').dispatchEvent(new Event('change'));
+    startPlay({pointer:false});
+    for (let i=0;i<60;i++) advance(1/60);
+    check('walking settles on the authored spherical floor', walker().support(state).grounded && !halted);
+    keys.add('KeyW');
+    for (let i=0;i<130;i++) advance(1/60);
+    keys.clear();
+    check('walking crosses the authored spherical doorway',
+      world.regions.get(state.regionId).space.encode(state.position)[1] > 2 && !halted);
+    check('walking retains intrinsic floor height across the room', Math.abs(walker().support(state).clearance)<3e-4);
+    const beforeJump = walker().support(state).height;
+    document.dispatchEvent(new KeyboardEvent('keydown',{code:'Space',bubbles:true}));
+    advance(1/60);
+    document.dispatchEvent(new KeyboardEvent('keyup',{code:'Space',bubbles:true}));
+    check('Space jumps in walking mode instead of flying', walker().support(state).height>beforeJump+.03 && !walker().support(state).grounded);
+    state=walker().look(state,{yaw:Math.PI,pitch:-.08});
+    draw();shots.push({name:'s3-walking-doorway',data:canvas.toDataURL('image/png')});
+    $('locomotion').value='fly';$('locomotion').dispatchEvent(new Event('change'));
+    check('switching back to free flight resets to a valid spawn', !walking() && !playing && !halted);
 
     return { kind: 'region-lab-check', checks, err: null, shots, timing };
   } catch (error) {

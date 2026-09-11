@@ -57,6 +57,10 @@ Stop for review after this operation; do not start the next sections automatical
 
 ## 2. First curved support: an authored floor, not global Z
 
+Implemented first slice: engine/world/spherical-walker.js and editor Movement
+selector. Evidence and exact scope: docs/qa/astra-spherical-walking-2026-09-10.md.
+Independent follow-up is MUSE-47; broader support remains unsupported.
+
 The first walking slice is ONE bounded S3 region, one designated additive,
 unmodified great-sphere floor. Other solids obstruct motion but are not walkable
 supports in this first slice. Reject unsupported floor configurations visibly;

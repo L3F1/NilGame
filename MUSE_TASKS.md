@@ -65,60 +65,54 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-46 only. MUSE-45 accepted with one adjudication reversed, and
-archived to [docs/qa/muse-log.md](docs/qa/muse-log.md). Its audit of the
-continuation's authority, the resumed path and the clock all stand. Its
-adjudication of the chart-edge claim does not: the claim is FALSE, and Claude
-falsified it after reading the verdict. A settle only retraces the lift when
-nothing slid in between; put the floor below the chart centre and the walker
-slides to where the point beneath it is outside the chart. It is now
-`correction-resume.test.js`, "A RESUMED CORRECTION CAN REACH THE CHART EDGE".
+Order: MUSE-47, then MUSE-49, then MUSE-48. MUSE-46 accepted and archived by Astra.
+Current walking implementation: docs/qa/astra-spherical-walking-2026-09-10.md.
+Do not change engine/app code; report defects with executable reproductions.
 
-## MUSE-46 — Which other "cannot happen" claims are wrong?
+## MUSE-47 - Independent spherical support and walking audit
+Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only initially
 
-Two agents believed the same wrong argument at the same time last round, and
-what made it survive was its FORM: it was reasoned rather than measured, so it
-read as proof. The code was right throughout; only the claim was false. That is
-the failure mode this task is aimed at.
+Read NEXT_CAPABILITIES.md section 2 and the walking report/API. Allowed writes:
+spherical-walking-truth.test.js, dated QA report, this task's status/report.
+Independent references: intrinsic height on offset/tilted great-sphere floors,
+one-dimensional free fall, tangential metric speed and timestep refinement.
+Cover multiple R/player radii, long stationary support, jump/departure, corners,
+near-vertical camera aim, nonfloor obstacles, unsupported floor modifications,
+initial invalid/unproven clearance and domain outcomes. Verify no mutation of
+caller state, honest aggregate clock and finite substep budgets.
+Exercise a real owed correction, explicit resumption and subsequent walking.
+Do not infer safety from a green state flag: inspect geometry and request/debt.
+The host should jump on a new press, not every frame Space is held; use browser
+queue only if adding a real-handler check is necessary and coordinate with Claude.
+Fail-demo in an isolated copy, focused/full Node suites, reference limitations.
+No generalization from a sampled route to all support configurations.
 
-Sweep the repository for claims of impossibility or unreachability and test
-each one. They live in comments, contracts and QA reports, and they sound like:
-"cannot", "never", "impossible", "unreachable", "by construction", "no case
-where", "this branch is dead", "only ever", "always". Search for the words, but
-judge the claims, not the grep — a sentence that says "the probe never lands
-exactly on a surface" is a claim; a sentence that says "never mutates the
-caller's state" is a different kind and may be an invariant worth confirming
-rather than breaking.
+## MUSE-48 - Turn four sampled invariants into named regression checks
+Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only
 
-For each claim you decide is worth testing, deliver one row:
+Use MUSE-46's four missing checks, with their original input assumptions:
+thin-wall/ball swept safety, surface margin, post-portal side separation, and
+camera handedness. Allowed writes: invariant-evidence.test.js, dated QA report,
+this task's status/report. Keep deterministic seeds and non-vacuous counts.
+State which claims are conditional on a valid exterior distance bound and a
+non-overlapping start. Include curved cases where meaningful; distinguish
+measured margin from a theorem. Do not rewrite historical reports to claim
+universal proof. A counterexample is a deliverable, not permission to fix scope.
+Run a targeted fail-demo, restored checks and tools/test.js.
 
-- where it is (file and line), and what exactly it asserts
-- whether the tree BACKS it: is there a check that would fail if it stopped
-  being true, or is the argument load-bearing and unchecked?
-- your attempt to break it, described concretely enough to repeat: which
-  scenes, which parameters, how many, and what the extremes were
-- verdict: HOLDS (and what you tried), FALSE (with the reproduction), or
-  UNTESTED (and why it resisted)
+## MUSE-49 - Independent connected sight audit
+Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only
 
-Prioritise claims that something DEPENDS on. A claim that a branch is dead is
-worth more than a claim that a number is small, because the dead branch is the
-one nobody maintains. Start with `engine/world/` — `collision.js`,
-`region-motion.js`, `region-portal.js`, `camera-frame.js` — then the contracts
-in `docs/engineering/`, then the QA reports.
-
-Do not repair anything, including a claim you prove false: correcting the
-sentence is the author's job and the reproduction is yours. If a claim turns
-out to be true AND unchecked, say so and say what a check for it would cost —
-an unchecked true claim is a finding too, because it is one refactor away from
-being a false one.
-
-Deliver `impossibility-audit.test.js` holding the reproductions for anything you
-prove false, and a report with the table. If you find nothing false, the report
-is still the deliverable: a list of which impossibility claims are actually
-backed by a check and which rest on an argument is worth having on its own.
-
----
-
-Report defects, do not fix them. Every number carries its command and host.
-Paste `node tools/host-probe.js` output and do not investigate the environment
-further.
+After MUSE-47, before MUSE-48. Read docs/qa/astra-connected-sight-2026-09-10.md
+and NEXT_CAPABILITIES.md section 3. Allowed writes: region-sight-truth.test.js,
+docs/qa/muse49-sight-audit-2026-09-10.md, this task's status/report only.
+Test actual compiled worlds, not mocked crossing functions. Vary portal offset,
+orientation, S3 radius and aperture approach; check mapped tangents against
+independent frame/metric identities and remaining physical range. Cover thin
+objects, source occlusion, on-plane/near-plane ambiguity, competing gates,
+range endpoints, shared work and crossing exhaustion. Inspect segment/crossing
+records, not merely the final status. S3 surface-candidate is intentionally
+unresolved; do not label a small bound a proven hit. Negative/inside starts
+must not become a confident empty result. Treat conservative refusals separately
+from wrong positive claims. Include a failing isolated mutation, focused/full
+Node runs and reference limitations. Report defects, do not repair kernel code.

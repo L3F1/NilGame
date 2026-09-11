@@ -385,6 +385,12 @@ export function moveRegionProbe(world, state, dt, options = {}) {
     region = world.regions.get(regionId);
     const space = region.space;
     if (stepsUsed >= settings.maxSteps) { status = 'budget-exhausted'; detail = 'steps'; break; }
+    // Being stationary is not a certificate of valid placement. A negative
+    // signed field proves the center is in a solid, even for a conservative
+    // distance magnitude. Leave recovery explicit instead of reporting rest.
+    if (space.norm(position, velocity) === 0 && region.field.distance(position) < 0) {
+      status = 'unresolved'; detail = 'stationary-center-in-solid'; break;
+    }
     const outbound = world.portals.filter((p) => p.fromRegionId === regionId);
     const callTime = timeRemaining, frameBefore = frame;
     const result = moveProbe(region.field, space,

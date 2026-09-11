@@ -2446,3 +2446,74 @@ the corpus: three real scenes, correctly measured.
 
 MUSE-46 follows directly from this and is about the failure mode rather than
 this instance.
+
+
+## MUSE-46 — Which other "cannot happen" claims are wrong?
+
+Status: READY FOR REVIEW | Owner: Muse
+
+Two agents believed the same wrong argument at the same time last round, and
+what made it survive was its FORM: it was reasoned rather than measured, so it
+read as proof. The code was right throughout; only the claim was false. That is
+the failure mode this task is aimed at.
+
+Sweep the repository for claims of impossibility or unreachability and test
+each one. They live in comments, contracts and QA reports, and they sound like:
+"cannot", "never", "impossible", "unreachable", "by construction", "no case
+where", "this branch is dead", "only ever", "always". Search for the words, but
+judge the claims, not the grep — a sentence that says "the probe never lands
+exactly on a surface" is a claim; a sentence that says "never mutates the
+caller's state" is a different kind and may be an invariant worth confirming
+rather than breaking.
+
+For each claim you decide is worth testing, deliver one row:
+
+- where it is (file and line), and what exactly it asserts
+- whether the tree BACKS it: is there a check that would fail if it stopped
+  being true, or is the argument load-bearing and unchecked?
+- your attempt to break it, described concretely enough to repeat: which
+  scenes, which parameters, how many, and what the extremes were
+- verdict: HOLDS (and what you tried), FALSE (with the reproduction), or
+  UNTESTED (and why it resisted)
+
+Prioritise claims that something DEPENDS on. A claim that a branch is dead is
+worth more than a claim that a number is small, because the dead branch is the
+one nobody maintains. Start with `engine/world/` — `collision.js`,
+`region-motion.js`, `region-portal.js`, `camera-frame.js` — then the contracts
+in `docs/engineering/`, then the QA reports.
+
+Report (Muse, 2026-09-10): READY FOR REVIEW. 1 falsification: a resumed
+correction CAN reach the chart edge in S3 (wall edge-side, diagonal
+impact, 5.52e-2 lift, tangential slide to r=5.9678/6, resume reports
+unresolved/correction-boundary on a correction-phase domain event at
+0.0339 along the residual; nothing moves, debt intact, no reissue).
+Pinned in impossibility-audit.test.js (1/1). 9 holds tested by breaking:
+no tunneling (0/22, min gap skin/2), never lands on surface (min
+clearance skin/2), never lands on aperture (exit exactly -4.00e-4),
+handedness (0/2000 flips), degenerate never completes, rewind on leg
+(gap 0.00e+0), domain-before-portal, continuation single-use;
+bound-never-overestimates noted as input assumption (MUSE-40 per-scene).
+Backing graded: 4 holds want their stated check (tunnel fuzz,
+min-clearance, exit-height, turn-fuzz). Adjacent note: zero-velocity
+start at ball center adopts stopped at clearance -1.25 silently. No
+repairs made. Details:
+docs/qa/muse46-impossibility-sweep-2026-09-10.md.
+
+Do not repair anything, including a claim you prove false: correcting the
+sentence is the author's job and the reproduction is yours. If a claim turns
+out to be true AND unchecked, say so and say what a check for it would cost —
+an unchecked true claim is a finding too, because it is one refactor away from
+being a false one.
+
+Deliver `impossibility-audit.test.js` holding the reproductions for anything you
+prove false, and a report with the table. If you find nothing false, the report
+is still the deliverable: a list of which impossibility claims are actually
+backed by a check and which rest on an argument is worth having on its own.
+
+---
+
+Report defects, do not fix them. Every number carries its command and host.
+Paste `node tools/host-probe.js` output and do not investigate the environment
+further.
+
+Astra ACCEPTED 2026-09-10: S3 counterexample rerun 1/1; holds retained as scoped evidence only. Stationary center-in-solid triaged/fixed. See docs/qa/astra-spherical-walking-2026-09-10.md.

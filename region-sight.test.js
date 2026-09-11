@@ -1,0 +1,29 @@
+import assert from 'node:assert/strict';
+import { compileRegionWorld } from './engine/world/region-world.js';
+import { traceRegionSight } from './engine/world/region-sight.js';
+let passed=0,failed=0;
+function test(name,fn){try{fn();passed++;}catch(e){failed++;console.error(name,e);}}
+const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,`${a} != ${b}`);
+const anchor=(id,regionId,y,forward)=>({id,regionId,kind:'anchor',position:[0,y,0],forward:[0,forward,0],up:[0,0,1],radius:.8});
+function document(){return {format:'nil-scene',version:2,id:'sight-route',units:{name:'design-unit',playerRadius:.25},
+ regions:['a','b','c'].map(id=>({id,geometry:{kind:id==='b'?'s3':'e3',curvatureRadius:id==='b'?8:1},extent:6,topology:'cover'})),
+ entities:[...['a','b','c'].map(regionId=>({id:`spawn-${regionId}`,kind:'spawn',regionId,position:[0,0,0]})),
+ anchor('ab','a',1,-1),anchor('ba','b',0,1),anchor('bc','b',2,-1),anchor('cb','c',0,1),
+ {id:'target',kind:'ball',regionId:'c',position:[0,2,0],radius:.5}],
+ connections:[{id:'first',kind:'portal',a:'ab',b:'ba',velocity:'preserve-speed',scale:1},{id:'second',kind:'portal',a:'bc',b:'cb',velocity:'preserve-speed',scale:1}]};}
+const ray={regionId:'a',position:[0,0,0],direction:[0,1,0]};
+const run=(doc=document(),options={})=>traceRegionSight(compileRegionWorld(doc),ray,options);
+test('E3-S3-E3 physical range and ownership',()=>{const r=run();assert.equal(r.status,'hit');assert.equal(r.regionId,'c');near(r.distance,4.5);assert.equal(r.crossings.length,2);near(r.crossings[1].distance,3);near(r.direction[1],1);assert.equal(r.query.owner,'target');assert.deepEqual(ray.position,[0,0,0]);});
+test('range ends before destination ball',()=>{const r=run(document(),{maxDistance:4.49});assert.equal(r.status,'miss');near(r.distance,4.49);near(r.remainingDistance,0);});
+test('source solid occludes aperture',()=>{const d=document();d.entities.push({id:'front',kind:'ball',regionId:'a',position:[0,.6,0],radius:.1});const r=run(d);assert.equal(r.status,'hit');near(r.distance,.5);assert.equal(r.crossings.length,0);});
+test('no player exit offset skips a thin destination',()=>{const d=document();d.entities=d.entities.filter(e=>e.id!=='target');d.entities.push({id:'thin',kind:'box',regionId:'c',position:[0,.00002,0],halfExtent:[.1,.000005,.1]});d.entities.find(e=>e.id==='spawn-c').position=[1,0,0];const r=run(d);assert.equal(r.status,'hit');near(r.distance,3.000015);});
+test('shared work and crossing budgets refuse, never miss',()=>{for(const maxWork of [0,1,3,7]){const r=run(document(),{maxWork});assert.equal(r.status,'unresolved');assert.equal(r.reason,'work-budget');assert.ok(r.work<=maxWork);}const r=run(document(),{maxCrossings:1});assert.equal(r.reason,'crossing-budget');assert.equal(r.crossings.length,1);});
+test('domain exhaustion is not sky',()=>{const d=document();d.connections=[];d.entities=d.entities.filter(e=>e.kind!=='anchor');const r=run(d);assert.equal(r.reason,'domain-exit');near(r.distance,6);});
+test('ambiguous initial aperture side is refused',()=>{const w=compileRegionWorld(document());const r=traceRegionSight(w,{...ray,position:[0,1,0]});assert.equal(r.reason,'aperture-side');});
+test('S3 near-bound is a candidate, not a proven hit',()=>{const d=document();d.entities.push({id:'curved-ball',kind:'ball',regionId:'b',position:[0,1,0],radius:.2});const r=run(d);assert.equal(r.status,'unresolved');assert.equal(r.reason,'surface-candidate');near(r.candidate.distance,1.8);assert.equal(r.regionId,'b');});
+test('ray can use aperture rim that excludes player center',()=>{const w=compileRegionWorld(document()),gate=w.portals.find(p=>p.fromId==='ab');assert.equal(gate.crossing([.7,0,0],[0,1,0],1,.25),null);const r=traceRegionSight(w,{...ray,position:[.7,0,0]},{maxDistance:1.05});assert.equal(r.crossings.length,1);assert.equal(r.status,'miss');});
+test('coincident solid and aperture refuses arbitration',()=>{const d=document();d.entities.push({id:'wall',kind:'plane',regionId:'a',position:[0,1,0],up:[0,-1,0]});const r=run(d);assert.equal(r.reason,'solid-aperture-tie');});
+test('invalid budgets and nonunit rays rejected',()=>{assert.throws(()=>run(document(),{maxDistance:Infinity}));assert.throws(()=>run(document(),{maxWork:1.5}));assert.throws(()=>traceRegionSight(compileRegionWorld(document()),{...ray,direction:[0,2,0]}));});
+test('zero range and rounded endpoint never becomes a false miss',()=>{assert.equal(run(document(),{maxDistance:0}).status,'miss');const r=run(document(),{maxDistance:4.5});assert.equal(r.status,'unresolved');assert.equal(r.reason,'range-boundary');});
+test('competing aperture events remain unresolved',()=>{const d=document();d.entities.find(e=>e.id==='bc').regionId='a';d.entities.find(e=>e.id==='bc').position=[0,1,0];const r=run(d);assert.equal(r.reason,'aperture-tie');});
+console.log(`region sight: ${passed}/${passed+failed}`);if(failed)process.exitCode=1;

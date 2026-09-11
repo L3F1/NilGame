@@ -1,8 +1,9 @@
 # Claude assignment: implement the accepted region-motion contract
 
-Historical assignment, completed. Current next assignment (2026-09-10):
-NEXT_CAPABILITIES.md section 1, explicit correction resumption. The other sections
-are accepted direction but not a request to implement all capabilities together.
+Historical assignment, completed. Correction resumption and first spherical
+walking are now implemented. Current Claude follow-up:
+docs/engineering/CLAUDE_NEXT.md (editor overlays and bounded host-service proposal).
+Do not restart the old assignment below.
 
 From Astra, 2026-09-10. One bounded CPU kernel task; no full milestone expansion.
 

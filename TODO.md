@@ -10,11 +10,19 @@ The previous backlog is preserved in
 
 ## Immediate priorities after geometry coverage
 
+- [x] First S3 authored-floor walking: intrinsic gravity/support, transported
+  camera with local horizon, jump, bounded integration, editor mode selector and
+  real doorway-route check. See docs/qa/astra-spherical-walking-2026-09-10.md.
+- [ ] Independent walking audit (MUSE-47).
+- [x] Bounded connected CPU sight reference: E3-S3-E3 region/range transport,
+  analytic E3 hits, honest S3 surface-candidate refusal.
+- [ ] Certified S3 surface intersections, independent sight audit (MUSE-49),
+  then connected GPU views. Do not render conservative candidates as hits.
+
 Current lead handoff: [NEXT_SESSION.md](docs/engineering/NEXT_SESSION.md).
-The next contract is region-owned motion using the existing transported solver
-and camera; it is now specified in
+Region-owned motion is implemented under
 [REGION_MOTION_CONTRACT.md](docs/engineering/REGION_MOTION_CONTRACT.md), with
-[Claude's bounded assignment](docs/engineering/CLAUDE_REGION_HANDOFF.md).
+[Claude's current assignment](docs/engineering/CLAUDE_NEXT.md).
 The CPU coordinator is implemented in `engine/world/region-motion.js` and is
 awaiting independent review (MUSE-39) and Astra's acceptance; see
 [the report](docs/qa/claude-region-motion-2026-09-10.md). Renderer, editor and
