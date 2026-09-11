@@ -1,31 +1,31 @@
-# Claude next: authoring markers, then a bounded host-service proposal
+# Claude next: truthful marker visibility labels
 
-Read shared rules, NEXT_CAPABILITIES.md section 4 and the current region-lab
-marker/selection code. Do not reread historical region-motion assignments.
+Read WORKING_RULES and docs/qa/astra-muse47-49-review-2026-09-10.md Claude
+review section. Your marker selection/projection work remains; correct only
+its visibility query and labels. No kernel/schema/renderer primitive changes.
 
-1. Implement visible spawn/objective authoring markers in the S3 editor, using
-   overlays/list labels rather than field or shader primitives. Intrinsic
-   distance plus a selectable list entry is acceptable when projection is
-   ambiguous. Distinguish editor aids from solid visibility; hide in play.
-   Allow selection through the existing property/undo/save workflow. Do not
-   implement new objective gameplay or enlarge shader uniform capacity.
-   Allowed writes: app/region-lab.js, tools/region-lab.html, a focused marker test,
-   docs/qa/claude-markers-2026-09-10.md. No kernel/schema/geometry edits.
-   Test real selection, placement, undo, reload and play hiding through the
-   actual handlers. Use host-probe and the browser queue; save/inspect an image.
-   If selection already exists, reuse it rather than make a second transaction
-   path. Report unsupported persistence visibly; do not drop entity fields.
+Allowed files: app/region-lab.js, tools/region-lab.html, focused marker test,
+docs/qa/claude-marker-visibility-review.md.
 
-2. After marker checks, inspect experiments/godot/ball_document.gd and ball_lab.gd
-   against docs/host-capability-map.md. Write docs/qa/godot-host-slice-plan.md:
-   the smallest version-2 S3 document/inspector/custom-viewport prototype and its
-   parity checks. Identify native UI/undo/resource services to reuse. Do not
-   port math, add dependencies or start migration in this assignment.
+Replace markerOccluded's Boolean with clear / occluded / unknown:
+- Start at the actual eye; the 0.05 skip can hide thin nearby occluders.
+- A positive conservative bound below epsilon is unknown, not proven occlusion.
+- A negative field sample certifies solid occupancy (subject to field sign
+  contract); boundary/near-zero samples may remain unknown.
+- Only certify clear when safe exterior advances cover the target range.
+- Exhausted work, stall, invalid field or domain exits are unknown.
+- Keep every marker selectable. Style/label unknown as uncertain editor aid;
+  do not turn an uncertain occlusion query into a solid visual claim.
+- Do not import the connected sight API as if it solved S3 surface hits.
 
-The new region-sight.js is a partial CPU reference. S3 surface-candidate and
-range-boundary are unresolved; do NOT color them as surfaces or enable connected
-GPU views. Astra owns the next certified S3 ray/Boolean contract.
+Pin thin-eye obstruction, tiny positive conservative bound, exhaustion and
+clear/occupied cases, plus existing selection/undo/play-hiding handlers. Use
+host-probe and queue, save evidence; distinguish DOM screenshot from diagram.
+No invented GPU timing for the CPU hint. Report commands and limitations,
+commit explicit allowed paths once tested. Preserve all Muse work.
 
-Run focused checks and tools/test.js for implementation. Stage only your allowed
-files, commit the tested marker change separately from the host proposal, and
-report commands, failures, limitations and commit IDs. Preserve Muse's work.
+Host proposal received review corrections: Windows Godot binary exists;
+normal-chart vector length equals physical origin distance; JSON parity is
+structural/numeric, not serializer-byte identity. No native migration task yet.
+Astra's next kernel step remains certified S3 surface intersection after the
+walking-stability repair. Connected GPU rendering stays blocked.

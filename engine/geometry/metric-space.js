@@ -43,10 +43,21 @@ export function createMetricSpace({ kind, curvatureRadius = 1, maxDistance } = {
     return scalar(u, v);
   }
   function norm(p, v) { validateTangent(p, v); return Math.hypot(...v); }
-  function normalize(p, v) {
-    const length = norm(p, v);
+  // Remove representational radial error BEFORE normalizing a short tangent.
+  // Validation still rejects invalid callers; this does not widen its tolerance.
+  const tangentPart = (p, v) => {
+    const radial = scalar(p, v) / scalar(p, p);
+    return v.map((x, i) => x - radial * p[i]);
+  };
+  function unitTangent(p, v) {
+    const tangent = curved ? tangentPart(p, v) : v;
+    const length = Math.hypot(...tangent);
     if (!(length > 0)) throw new Error('Cannot normalize a zero tangent');
-    return v.map(x => x / length);
+    return tangent.map(x => x / length);
+  }
+  function normalize(p, v) {
+    validateTangent(p, v);
+    return unitTangent(p, v);
   }
   /** Remove the component of u along the tangent normal n (n need not be unit). */
   function project(p, u, n) {
@@ -84,22 +95,40 @@ export function createMetricSpace({ kind, curvatureRadius = 1, maxDistance } = {
   function unit(p, u) {
     if (Math.abs(norm(p, u) - 1) > tolerance) throw new Error('Geodesic direction must have unit physical norm');
   }
-  function stepWithTransport(p, u, travel) {
+  function advance(p, u, travel, withTransport) {
     unit(p, u);
     if (!Number.isFinite(travel)) throw new Error('Geodesic travel must be finite');
     // Capture inputs: mutating a caller's arrays later cannot change carry().
-    const start = p.slice(), initial = u.slice();
+    const input = withTransport ? p.slice() : p;
+    // Zero travel is an exact identity, including the caller's endpoint/token.
+    if (travel === 0) return withTransport ? { position: p.slice(), direction: u.slice(),
+      carry: v => { validateTangent(input, v); return v.slice(); } } : p.slice();
+    // Retraction of floating-point representatives onto the same sphere and
+    // tangent plane keeps repeated short contact legs from amplifying drift.
+    // This is not a physical collision correction or a reset of camera axes.
+    const startLength = curved ? Math.hypot(...p) : 1;
+    const start = curved ? p.map(x => x / startLength) : p.slice();
+    const initial = curved ? unitTangent(start, u) : u.slice();
     const angle = curved ? travel / R : 0, c = Math.cos(angle), s = Math.sin(angle);
-    const position = curved ? start.map((x, i) => c * x + s * initial[i]) : start.map((x, i) => x + travel * initial[i]);
-    const direction = curved ? initial.map((x, i) => c * x - s * start[i]) : initial.slice();
+    const rawPosition = curved ? start.map((x, i) => c * x + s * initial[i]) : start.map((x, i) => x + travel * initial[i]);
+    const positionLength = curved ? Math.hypot(...rawPosition) : 1;
+    const position = curved ? rawPosition.map(x => x / positionLength) : rawPosition;
+    // Field samplers only need a point. Do not construct/repair an unused
+    // direction or carry closure for every objective evaluation.
+    if (!withTransport) return position;
+    const direction = curved ? unitTangent(position, initial.map((x, i) => c * x - s * start[i])) : initial.slice();
     function carry(v) {
-      validateTangent(start, v);
-      const along = scalar(v, initial);
-      return curved ? v.map((x, i) => x + along * (direction[i] - initial[i])) : v.slice();
+      validateTangent(input, v);
+      if (!curved) return v.slice();
+      const tangent = tangentPart(start, v), along = scalar(tangent, initial);
+      // Linear carry for velocity, normals and all camera axes together. Never
+      // normalize each carried vector: that would destroy speeds and linearity.
+      return tangentPart(position, tangent.map((x, i) => x + along * (direction[i] - initial[i])));
     }
     return { position, direction, carry };
   }
-  const step = (p, u, travel) => stepWithTransport(p, u, travel).position;
+  const stepWithTransport = (p, u, travel) => advance(p, u, travel, true);
+  const step = (p, u, travel) => advance(p, u, travel, false);
   /** Physical displacement vector at p to the shortest-geodesic endpoint q. */
   function logAt(p, q) {
     validatePoint(p); validatePoint(q);

@@ -2517,3 +2517,41 @@ Paste `node tools/host-probe.js` output and do not investigate the environment
 further.
 
 Astra ACCEPTED 2026-09-10: S3 counterexample rerun 1/1; holds retained as scoped evidence only. Stationary center-in-solid triaged/fixed. See docs/qa/astra-spherical-walking-2026-09-10.md.
+
+
+## MUSE-47 - Independent spherical support and walking audit
+Status: ACCEPTED | Owner: Muse | Reviewer: Astra | Node-only initially
+
+Report (Muse, 2026-09-10): READY FOR REVIEW. References hold: height/up
+exact to 1e-9 (R=0.5/8/100, flat/tilted/offset); free fall converges
+first-order (ratio 4.00) and falls; metric speed 2.0000; rest 600/600
+grounded with zero drift; jump apex 1.1221, lands re-grounded, air jump
+no-op; obstacle blocks without becoming support; invalid/singular/domain
+starts visible; carved/ball floors refused; clock conserved, budgets
+finite, no input mutation; real debt (6.6e-3) resumed explicitly with
+zero clock, walking after grounded. Two defects with reproductions, no
+repairs: (1) pinning against a ball throws at ~frame 113 (radial drift
+4e-16→7e-13, tangency check, status owed not exception); (2) down-facing
+plane accepted as floorId, walker grounded 120/120 beneath a ceiling
+(§2 requires visible refusal). Both pinned in
+spherical-walking-truth.test.js (10/10) as labeled defect pins that flip
+on fix. Isolated gravity-sign fail-demo rose as expected, repo untouched.
+Details: docs/qa/muse47-walking-audit-2026-09-10.md.
+
+Read NEXT_CAPABILITIES.md section 2 and the walking report/API. Allowed writes:
+spherical-walking-truth.test.js, dated QA report, this task's status/report.
+Independent references: intrinsic height on offset/tilted great-sphere floors,
+one-dimensional free fall, tangential metric speed and timestep refinement.
+Cover multiple R/player radii, long stationary support, jump/departure, corners,
+near-vertical camera aim, nonfloor obstacles, unsupported floor modifications,
+initial invalid/unproven clearance and domain outcomes. Verify no mutation of
+caller state, honest aggregate clock and finite substep budgets.
+Exercise a real owed correction, explicit resumption and subsequent walking.
+Do not infer safety from a green state flag: inspect geometry and request/debt.
+The host should jump on a new press, not every frame Space is held; use browser
+queue only if adding a real-handler check is necessary and coordinate with Claude.
+Fail-demo in an isolated copy, focused/full Node suites, reference limitations.
+No generalization from a sampled route to all support configurations.
+
+
+Astra verdict, 2026-09-10: accepted with floor-orientation clarification; pinned-contact crash repaired and old throw pin converted to sustained success. See docs/qa/astra-muse47-49-review-2026-09-10.md.

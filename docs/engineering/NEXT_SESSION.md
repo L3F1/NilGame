@@ -1,38 +1,36 @@
 # Fresh-chat handoff for Astra
 
-2026-09-10. Read WORKING_RULES and TASK_ROUTER, then current status/diff/log.
-Latest implementation: docs/qa/astra-connected-sight-2026-09-10.md.
-User requested implementation, commits, bounded Claude/Muse prompts and a host
-readiness assessment. This batch includes the preceding uncommitted spherical
-walking slice and accepted MUSE-46 report/test; preserve shared work.
+2026-09-10, base d3160ba plus reviewed Muse work. Start with git status/log,
+WORKING_RULES and relevant TASK_ROUTER row; do not load old chat/history.
 
-Delivered: one-floor S3 walking in editor (gravity/jump/local-horizon look),
-stationary-center-in-solid refusal, and traceRegionSight CPU region traversal.
-The sight reference uses analytic E3 queries and conservative S3 empty travel.
-S3 surface-candidate is UNRESOLVED, not a hit. GPU connected rendering remains
-blocked; do not remove the single-region editor gate. At rounded E3 range
-endpoints, range-boundary is unresolved rather than a false miss.
+Latest review/fix: docs/qa/astra-muse47-49-review-2026-09-10.md.
+MUSE-47 accepted with clarification: designated floorId determines gravity;
+negative author-Z orientation is valid. Other surfaces never become supports.
+The real pinned-walking crash was fixed in metric-space.js: validate then remove
+radial roundoff before normalizing tiny tangents; retract nonzero geodesic legs,
+carry vectors linearly without speed normalization. Zero travel stays identity.
+Regression: 1200 ball-contact frames, 2733 contacts, radial error 1.11e-16.
+Old implementation in temp copy fails both new metric tests and walking check.
 
-Sight tests: central E3-S3-E3 4.5 physical-unit path, thin destination object,
-source occlusion, range/work/crossing budgets, domain and event refusal, body/ray
-aperture distinction. Exit-offset mutation fails 7/13. Browser queue rerun:
-88 S3 checks on RTX5070Ti, doorway image inspected. See report for commands and
-full-suite evidence (final rerun 66/66 suites passed). Host direct Chrome still blocked; queue PID38432 worked.
+MUSE-49 needs multiple curvature radii; MUSE-48 needs transported-frame/Gram
+checks, explicit ambiguous oracle band and precise evidence scope. Their current
+untracked suites/reports are preserved, not accepted. Full-suite totals include
+these pending deliveries, so green is not a review verdict. MUSE-50 is the
+independent transport-repair audit, after those revisions.
 
-Next Astra: design/implement certified S3 surface intersection. Use existing
-compiled primitive planes/centers. Great-sphere faces along a unit geodesic
-obey A*cos(t/R)+B*sin(t/R)=0; ball boundaries obey p(t).center=cos(radius/R).
-Roots alone are not Boolean hits: classify scoped additive/modifier occupancy,
-inside starts, tangencies, coincident roots, subtraction normals and ambiguity.
-Do not upgrade conservative distance guarantees. Add independent references,
-then extend connected CPU sight. Only after that give Claude GPU integration.
-Nested-cutter conservatism remains separate and unresolved.
+Claude markers: real-GPU region-lab 113 checks pass and marker test 4/4 passes,
+but visibility Boolean confuses conservative proximity/exhaustion with truth.
+Bounded correction assigned in CLAUDE_NEXT.md. No shader changes authorized by
+that assignment. Godot plan corrected: executable exists on Windows; radial
+chart vector norm is origin distance; JSON semantic parity, not byte identity.
 
-Claude task: docs/engineering/CLAUDE_NEXT.md (markers + bounded Godot-host plan).
-Muse: MUSE-47/48 remain open; new MUSE-49 independent sight audit goes after 47.
-Do not claim those tasks accepted before seeing their actual new deliverables.
-
-Host assessment updated in docs/host-capability-map.md; previous overstated/stale
-claims archived with retractions. Native prototype is scene-v1 ball subset,
-not parity with current version-2 S3 editor. Ready for a bounded host experiment,
-not wholesale migration. Keep browser reference and custom curved physics.
+Next Astra task: certified S3 surface intersections for traceRegionSight.
+Read NEXT_CAPABILITIES section 3 and astra-connected-sight report. Source fields
+already expose ball centers and great-sphere plane lists. Solve geodesic roots
+then classify scoped Boolean occupancy, inside starts, tangencies, coincident
+roots, subtraction normals, degenerate cases and range uncertainty. Do not call
+a tiny positive bound a hit. Keep conservative fallback and explicit unresolved.
+GPU connected sight must wait; no removing one-region editor gate yet.
+Nested-cutter conservatism remains separate. Browser reference stays active.
+Host probe still routes through queue PID38432, RTX5070Ti; direct sandbox Chrome
+failed. Read final validation counts in current review report, not old summaries.

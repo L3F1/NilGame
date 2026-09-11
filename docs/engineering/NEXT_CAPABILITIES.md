@@ -64,7 +64,11 @@ Independent follow-up is MUSE-47; broader support remains unsupported.
 The first walking slice is ONE bounded S3 region, one designated additive,
 unmodified great-sphere floor. Other solids obstruct motion but are not walkable
 supports in this first slice. Reject unsupported floor configurations visibly;
-do not silently treat carved floors, arbitrary balls or ceilings as this floor.
+do not silently treat carved floors, arbitrary balls or other contact surfaces
+as this floor. Clarification (Astra, MUSE-47 review): floorId defines the signed
+height and gravity orientation. A designated unmodified plane pointing toward
+negative author Z is supported; there is no separate global up against which
+it becomes a forbidden ceiling. Other planes do not become supports on contact.
 
 For unit point p and unit floor normal n, signed height is
 h(p)=R*asin(p.n); local up is normalize(n-(p.n)*p). Gravity is -g*up,

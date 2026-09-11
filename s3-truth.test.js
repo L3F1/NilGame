@@ -353,7 +353,26 @@ for (const cfg of CONFIGS) {
   check(`${cfg.name}: one-sided cell comparison`, () => {
     const doc = cellDoc(cfg.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase(), cfg.R, cfg.extent, cfg.pos, cfg.h, cfg.spawn);
     const region = compileRegionWorld(doc).regions.get('sphere');
-    const { space, field } = region;
+    const { field } = region;
+    // Test-local great-circle parameterization, independent of production
+    // retraction/short-vector repair. The coordinate-descent oracle must not
+    // inherit those rounding changes: they can send its strict-improvement
+    // search down a different long valley. Keep all grids, probes, stopping
+    // resolutions and field assertions unchanged. This is single-shot surface
+    // sampling, not the repeated integration exercised by metric-space tests.
+    const space = { ...region.space,
+      step(p, u, t) {
+        region.space.validateTangent(p, u);
+        assert.ok(Math.abs(norm4(u)-1)<1e-8);
+        const angle=t/cfg.R, c=Math.cos(angle), s=Math.sin(angle);
+        return p.map((x,i)=>c*x+s*u[i]);
+      },
+      normalize(p, v) {
+        region.space.validateTangent(p, v);
+        const length=norm4(v);assert.ok(length>0);
+        return v.map(x=>x/length);
+      },
+    };
     assert.ok(field.distance(region.spawnPosition) > 0, 'spawn must have room (compile already enforces)');
     const ent = doc.entities.find((e) => e.id === 'cell');
     const ref = refCell(space, ent);

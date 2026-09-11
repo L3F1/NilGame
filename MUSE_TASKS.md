@@ -65,30 +65,33 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-47, then MUSE-49, then MUSE-48. MUSE-46 accepted and archived by Astra.
+Order: MUSE-49 revision, MUSE-48 revision, then MUSE-50. MUSE-47 accepted and archived.
 Current walking implementation: docs/qa/astra-spherical-walking-2026-09-10.md.
 Do not change engine/app code; report defects with executable reproductions.
 
-## MUSE-47 - Independent spherical support and walking audit
-Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only initially
-
-Read NEXT_CAPABILITIES.md section 2 and the walking report/API. Allowed writes:
-spherical-walking-truth.test.js, dated QA report, this task's status/report.
-Independent references: intrinsic height on offset/tilted great-sphere floors,
-one-dimensional free fall, tangential metric speed and timestep refinement.
-Cover multiple R/player radii, long stationary support, jump/departure, corners,
-near-vertical camera aim, nonfloor obstacles, unsupported floor modifications,
-initial invalid/unproven clearance and domain outcomes. Verify no mutation of
-caller state, honest aggregate clock and finite substep budgets.
-Exercise a real owed correction, explicit resumption and subsequent walking.
-Do not infer safety from a green state flag: inspect geometry and request/debt.
-The host should jump on a new press, not every frame Space is held; use browser
-queue only if adding a real-handler check is necessary and coordinate with Claude.
-Fail-demo in an isolated copy, focused/full Node suites, reference limitations.
-No generalization from a sampled route to all support configurations.
-
 ## MUSE-48 - Turn four sampled invariants into named regression checks
-Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only
+Status: CHANGES REQUESTED | Owner: Muse | Reviewer: Astra | Node-only
+
+Revision: read MUSE-48 bullets in docs/qa/astra-muse47-49-review-2026-09-10.md.
+Same allowed files. Add tangent-frame handedness/Gram checks along repeated
+transport/turn paths, reflection negative control, explicit ambiguous oracle
+band, S3 start-clearance assertions and stronger E3 endpoint/contact checks.
+Correct prose distinguishing E3 detector from S3 sampled oracle. Preserve
+existing exit/margin checks; fail-demo and rerun. No kernel repairs.
+
+Report (Muse, 2026-09-10): READY FOR REVIEW. All four hold on sampled
+compiled worlds under the original assumptions (exact exterior bound,
+non-overlapping start, asserted per start): 35 E3 thin-wall runs (30
+engaged) + 20 S3 sweeps agreeing both ways with a dense-trace field oracle,
+0 pass-throughs; 54 contacts all at clearance > 0 (min 5.08e-5, at
+safetyMargin); 6/6 frozen exits at 4.04-4.06e-4 past the anchor
+(= skin*4) with transverse to 1e-9, S3 exit z=-1.999596, 1 obstructed-exit
+refusal blocked-exit source-side; 1000 turn-path frames keep triple product
+> 0 (min 0.914). Isolated fail-demo: exitOffset removal fails check 3
+(`exit offset missing (x=0.00000596...)`), 3/3 others pass, repo untouched.
+invariant-evidence.test.js (4/4). No counterexamples on sampled inputs;
+margins measured, no theorems claimed. Details:
+docs/qa/muse48-invariant-audit-2026-09-10.md.
 
 Use MUSE-46's four missing checks, with their original input assumptions:
 thin-wall/ball swept safety, surface margin, post-portal side separation, and
@@ -101,10 +104,27 @@ universal proof. A counterexample is a deliverable, not permission to fix scope.
 Run a targeted fail-demo, restored checks and tools/test.js.
 
 ## MUSE-49 - Independent connected sight audit
-Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only
+Status: CHANGES REQUESTED | Owner: Muse | Reviewer: Astra | Node-only
 
-After MUSE-47, before MUSE-48. Read docs/qa/astra-connected-sight-2026-09-10.md
-and NEXT_CAPABILITIES.md section 3. Allowed writes: region-sight-truth.test.js,
+Report (Muse, 2026-09-10): READY FOR REVIEW. All hold on own fixtures:
+E3-S3-E3 legs total exactly 3/4/20 with both exits and carried tangents
+agreeing to 1e-9 (recomputed from compiled anchors, entry-based logAt);
+occlusion hits with zero crossings; inside starts hit at 0; on-plane and
+fresh-call-at-exit refuse as aperture-side (call boundary distinguishes
+suppressed reverse from unrelated start); ties cross nothing; closed/
+one-shot/shared-work budgets refuse exactly; thin foil hit 0.59 past the
+exit; S3 ball stays surface-candidate (certified 2.4 vs 2.2e-16 field);
+range hit/short/miss exact; ray never mutated. Isolated fail-demo:
+tie-check removal crosses the first gate (0→1 crossings), repo untouched.
+connected-sight-truth.test.js (6/6). Details:
+docs/qa/muse49-sight-audit-2026-09-10.md.
+
+Revision requested: add crossing fixtures at R=0.5 and R=100 as well as R=8,
+with valid charts and independently calculated physical lengths and tangent
+mapping. Keep current checks and limits. Correct original path permission:
+connected-sight-truth.test.js is the approved existing file; do not duplicate it.
+Then proceed to MUSE-48. Read docs/qa/astra-connected-sight-2026-09-10.md
+and NEXT_CAPABILITIES.md section 3. Allowed writes: connected-sight-truth.test.js,
 docs/qa/muse49-sight-audit-2026-09-10.md, this task's status/report only.
 Test actual compiled worlds, not mocked crossing functions. Vary portal offset,
 orientation, S3 radius and aperture approach; check mapped tangents against
@@ -116,3 +136,17 @@ unresolved; do not label a small bound a proven hit. Negative/inside starts
 must not become a confident empty result. Treat conservative refusals separately
 from wrong positive claims. Include a failing isolated mutation, focused/full
 Node runs and reference limitations. Report defects, do not repair kernel code.
+
+
+## MUSE-50 - Independent S3 numerical transport repair audit
+Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only
+
+After the two revisions. Read the repair section in the Astra review above.
+Allowed writes: metric-stability-truth.test.js, docs/qa/muse50-metric-stability.md,
+this status/report only. Test metric normalization and repeated nonzero/zero
+segments, tiny accepted radial roundoff versus invalid input, linear carry and
+physical norm, inverse legs and a nontrivial closed-loop holonomy. Use explicit
+ambient rotation references independent of stepWithTransport; vary R and step
+size. Ensure speed is not reset to one and zero travel preserves exact values.
+Report accumulated error and reference limitations. Isolated old-code or
+mutation fail-demo; focused/full Node tests. Do not fix kernel code.

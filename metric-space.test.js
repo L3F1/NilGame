@@ -130,5 +130,34 @@ test('point/tangent/domain contracts reject unsupported and invalid inputs', () 
   assert.throws(() => s.step(o, [1, 0, 0, 0], NaN), /finite/);
 });
 
+test('normalizing a tiny tangent removes roundoff without admitting invalid input', () => {
+  const space=createMetricSpace({kind:'s3'}),p=space.origin;
+  const v=[1e-12,0,0,1e-16],before=v.slice();
+  const u=space.normalize(p,v);
+  space.validateTangent(p,u);same(u,[1,0,0,0],1e-15);same(v,before);
+  assert.throws(()=>space.normalize(p,[1e-12,0,0,1e-6]),/tangent/);
+});
+test('repeated S3 legs preserve the great circle, carried metric and linearity', () => {
+  for(const R of [.5,8,100]) {
+    const space=createMetricSpace({kind:'s3',curvatureRadius:R});
+    let p=[0,0,0,1],u=[1,0,0,0],v=[2,3,0,0];
+    const h=R*.000031,N=10000;
+    for(let i=0;i<N;i++) {
+      const leg=space.stepWithTransport(p,u,h);
+      if(i%1000===0)assert.deepEqual(space.step(p,u,h),leg.position);
+      const a=leg.carry(v),b=leg.carry(u),sum=leg.carry(v.map((x,j)=>x+u[j]));
+      same(sum,a.map((x,j)=>x+b[j]),2e-14);
+      p=leg.position;u=leg.direction;v=a;
+      assert.ok(Math.abs(Math.hypot(...p)-1)<5e-15);
+      assert.ok(Math.abs(p.reduce((t,x,j)=>t+x*v[j],0))<5e-14);
+    }
+    const angle=.000031*N;
+    same(p,[Math.sin(angle),0,0,Math.cos(angle)],5e-12);
+    same(v,[2*Math.cos(angle),3,0,-2*Math.sin(angle)],5e-11);
+    assert.ok(Math.abs(Math.hypot(...v)-Math.sqrt(13))<5e-11);
+    const zero=space.stepWithTransport(p,u,0);assert.deepEqual(zero.position,p);assert.deepEqual(zero.carry(v),v);
+  }
+});
+
 console.log(`\nmetric-space: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

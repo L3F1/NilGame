@@ -7,8 +7,7 @@ migration started, and nothing under `experiments/godot/` was edited. Read
 against `experiments/godot/ball_document.gd`, `ball_lab.gd`, the exporters in
 `tools/`, and `docs/host-capability-map.md`.
 
-**Unexecuted, and it has to be said first.** There is no Godot binary on this
-host — `tools/godot-check.ps1` takes the executable path as a mandatory
+**Unexecuted in Claude's assessment.** A binary was not located by that client — `tools/godot-check.ps1` takes the executable path as a mandatory
 parameter, supplied by whoever has one. Every claim below is from reading the
 source. Nothing here has been run, and no number in it is a measurement.
 
@@ -54,7 +53,7 @@ Not a list of missing features — a list of things that are the wrong *shape*.
 | 3 | `_valid`, lines 39-41 | Exactly one region, exactly two entities, zero connections — all hardcoded counts. |
 | 4 | `_valid`, line 46 | `region.geometry.kind != "e3"` rejects S3 outright. |
 | 5 | `_valid`, line 51 | Kinds limited to `ball` and `spawn`, one of each. v2 needs `plane`, `geodesic-cell`, `anchor`, `objective`, and repeats. |
-| 6 | `_valid`, line 63 | Bounds are `sqrt(x²+y²+z²) + clearance > extent` in the authored chart. In S3 the document check is `chart.decode(position)` and a domain test in the metric; the Euclidean norm of a chart triple is not the S3 distance from the chart origin. |
+| 6 | `_valid`, line 63 | Bounds are `sqrt(x²+y²+z²) + clearance > extent` in the authored chart. In S3 the document check is `chart.decode(position)` and a domain test in the metric; the radial chart triple norm IS the intrinsic distance from its chart origin within the supported patch, but this old object-clearance check is not the current schema/domain contract. |
 | 7 | `distance_to`, line 83 | A single-ball closed form. v2 needs the compiled field: MIN over groups of MAX within a group, carves as negated distance, great-sphere faces. This is **kernel, not adapter** — see "what stays ours". |
 | 8 | `parameters()` / `edited()` | Both assume one ball and return a `Vector4`. v2 edits are patches merged into a named entity. |
 | 9 | `error`, line 68 | One canned sentence. JS refusals name the path and the reason. |
@@ -187,7 +186,7 @@ the thing that would have told it it was wrong.
 
 ## What I could not determine
 
-- **Anything requiring execution.** No Godot here, so no frame times, no
+- **Anything requiring execution.** No Godot runs performed here, so no frame times, no
   uniform limits, no shader-link behaviour, no confirmation that the translated
   `REGION_S3_GLSL` compiles at all. The capability map's item 4 — cold
   preparation, frame-time distributions, input behaviour at identical
@@ -201,3 +200,15 @@ the thing that would have told it it was wrong.
   were tuned against the H3 dodecahedral scene, whose two failure modes
   (grazing-incidence normal bail-out, sub-pixel copies) the S3 room may not
   have at all. Re-derive rather than inherit.
+
+
+## Astra review addendum
+
+2026-09-10: Godot binary exists on Windows at
+`C:/Users/lflyn/Downloads/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stable_win64_console.exe`
+(Test-Path returned True; executable not run in this review). Client discovery
+is not evidence of host absence. The radial-coordinate correction in table 6
+follows charts.js decode: exp(offset/R), so origin distance is norm(offset).
+For JSON parity compare parsed structure/numeric values, not serializer bytes;
+key order and numeric spelling can differ without changing the document.
+A native port remains a proposal, not authorized by acceptance of the plan.
