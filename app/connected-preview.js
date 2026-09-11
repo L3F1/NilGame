@@ -2,6 +2,7 @@ import {createConnectedPreview} from './connected-preview-model.js';
 import {createConnectedRenderer} from '../engine/geometry/connected-renderer.js';
 import {traceRegionSight} from '../engine/world/region-sight.js';
 import {createMouseLook} from './mouse-look.js';
+import {createCameraFrame} from '../engine/world/camera-frame.js';
 const canvas=document.querySelector('#view'),status=document.querySelector('#status'),details=document.querySelector('#details');
 const checking=new URLSearchParams(location.search).has('check');
 const checks=[],shots=[];
@@ -9,11 +10,12 @@ async function report(err='',extra={}){await fetch('/__report',{method:'POST',bo
 function failure(error){status.textContent=`Preview stopped: ${error.message||error}`;if(checking)report(String(error.stack||error));}
 try {
   const response=await fetch('../levels/fixtures/connected-sight.nil.json');if(!response.ok)throw Error(`Scene HTTP ${response.status}`);
-  const model=createConnectedPreview(await response.json()),coldStart=performance.now(),renderer=createConnectedRenderer(canvas,model.world);
+  const scene=await response.json();
+  const model=createConnectedPreview(scene),coldStart=performance.now(),renderer=createConnectedRenderer(canvas,model.world);
   const mouse=createMouseLook(),keys=new Set();let playing=false,last=null;
   const dimensions=()=>{const width=Number(document.querySelector('#quality').value);return{width,height:width*3/4};};
   function draw(){
-    renderer.draw(model.state,dimensions());
+    renderer.draw(model.state,{...dimensions(),diagnostics:document.querySelector('#diagnostics').checked});
     const space=model.world.regions.get(model.state.regionId).space;
     const geometry=space.kind==='s3'?`S³ · radius ${space.curvatureRadius}`:'E³';
     status.textContent=`${model.state.regionId} · ${geometry} · ${model.motion}${model.halted?' — halted; reset to recover':''}`;
@@ -27,6 +29,7 @@ try {
   document.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>{stop();document.exitPointerLock();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();document.exitPointerLock();}});
   document.querySelector('#quality').onchange=draw;
+  document.querySelector('#diagnostics').onchange=draw;
   function frame(time){try{
     const dt=last===null?0:Math.min(.04,(time-last)/1000);last=time;
     if(playing){model.advance(dt,[Number(keys.has('KeyD'))-Number(keys.has('KeyA')),Number(keys.has('KeyW'))-Number(keys.has('KeyS')),Number(keys.has('Space'))-Number(keys.has('ShiftLeft')||keys.has('ShiftRight'))],mouse.drain());draw();if(model.halted){stop();document.exitPointerLock();}}
@@ -38,13 +41,39 @@ try {
   if(!checking)requestAnimationFrame(frame);
   else {
     const records=[],poses=[];
+    // A distant aperture rim must not erase a clearly nearer opaque surface.
+    const occludedScene=structuredClone(scene);
+    occludedScene.entities.push({id:'rim-blocker',regionId:'entry',kind:'box',position:[0,-1.45,0],halfExtent:[2,.1,2]});
+    const occluded=createConnectedPreview(occludedScene),occludedRenderer=createConnectedRenderer(document.createElement('canvas'),occluded.world);
+    for(let i=0;i<8;i++)for(const offset of [-.00005,0,.00005]){
+      const state=occluded.state,space=state.camera.space,angle=i*Math.PI/4;
+      const direction=space.normalize(state.position,[(.9+offset)*Math.cos(angle),3,(.9+offset)*Math.sin(angle)]);
+      const pose={...state,camera:createCameraFrame(space,state.position,{forward:direction,up:[0,0,1]})};
+      const cpu=traceRegionSight(occluded.world,{regionId:state.regionId,position:state.position,direction});
+      const gpu=occludedRenderer.read(pose,1,1);
+      if(cpu.status!=='hit'||cpu.query.owner!=='rim-blocker'||gpu.pixels[0]!==1||occludedRenderer.packed.primitiveIds[gpu.pixels[2]-1]!=='rim-blocker')throw Error(`Hidden aperture rim erased nearer wall: ${i}/${offset}, CPU ${cpu.status}/${cpu.query?.owner}, GPU ${[...gpu.pixels]}`);
+      if(Math.abs(gpu.distances[0]-1.45/direction[1])>.001)throw Error('Occluder distance failed independent plane reference');
+    }
+    checks.push('24 hidden aperture rim rays preserve nearer wall');
+    for(let i=0;i<8;i++){
+      const state=model.state,space=state.camera.space,angle=i*Math.PI/4;
+      const direction=space.normalize(state.position,[.9*Math.cos(angle),3,.9*Math.sin(angle)]);
+      const pose={...state,camera:createCameraFrame(space,state.position,{forward:direction,up:[0,0,1]})};
+      const packet=renderer.read(pose,1,1).pixels;
+      if(packet[0]!==2||packet[3]!==2)throw Error('Exposed aperture rim lost its numerical refusal');
+    }
+    checks.push('8 exposed aperture rims remain unresolved');
     function compare(label){
       const width=80,height=60,{pixels,distances,normals}=renderer.read(model.state,width,height),state=model.state,c=state.camera,space=model.world.regions.get(state.regionId).space;
-      let cpuHits=0,gpuHits=0,extraUnresolved=0,worst=0,worstNormal=0;
+      let cpuHits=0,gpuHits=0,extraUnresolved=0,boundaryPixels=0,worst=0,worstNormal=0;
       for(let y=0;y<height;y++)for(let x=0;x<width;x++){
         const i=y*width+x,raw=c.forward.map((f,k)=>f/Math.tan(35*Math.PI/180)+c.right[k]*(2*(x+.5)-width)/height+c.up[k]*(2*(y+.5)-height)/height);
         const cpu=traceRegionSight(model.world,{regionId:state.regionId,position:state.position,direction:space.normalize(state.position,raw)});
         const gpu=pixels[4*i],region=renderer.packed.ids[pixels[4*i+1]-1],owner=renderer.packed.primitiveIds[pixels[4*i+2]-1];
+        if(gpu===2&&pixels[4*i+3]===1){
+          boundaryPixels++;
+          if(cpu.status!=='unresolved'||cpu.reason!=='domain-exit'||cpu.regionId!==region)throw Error(`${label}: boundary display concealed ${cpu.status}/${cpu.reason}/${cpu.regionId}`);
+        }
         if(cpu.status==='hit')cpuHits++;
         if(gpu===1){gpuHits++;const expected=cpu.query?.owner??cpu.query?.additiveOwner;
           if(cpu.status!=='hit'||region!==cpu.regionId||owner!==expected)throw Error(`${label} ${x},${y}: GPU hit ${region}/${owner}, CPU ${cpu.status}/${cpu.reason}/${expected}`);
@@ -58,7 +87,22 @@ try {
       // This pose's wall is in front of the ball's uncertain tangencies. A
       // whole-ray refusal used to reveal its outline through that opaque wall.
       if(label==='curve'&&extraUnresolved!==0)throw Error('Hidden tangent poisoned the nearer wall');
-      records.push({label,cpuHits,gpuHits,extraUnresolved,worst,worstNormal});checks.push(`${label}: CPU/GPU status, owner, distance and normal`);
+      if(label==='entry'){
+        const gl=canvas.getContext('webgl2'),normalView=new Uint8Array(width*height*4),diagnosticView=new Uint8Array(width*height*4);
+        renderer.draw(state,{width,height});gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,normalView);
+        renderer.draw(state,{width,height,diagnostics:true});gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,diagnosticView);
+        let changed=0;
+        for(let i=0;i<width*height;i++){
+          const boundary=pixels[i*4]===2&&pixels[i*4+3]===1;
+          const differs=[0,1,2].some(k=>normalView[i*4+k]!==diagnosticView[i*4+k]);
+          if(differs!==boundary)throw Error('Diagnostic toggle changed a non-boundary pixel or hid an error');
+          if(differs)changed++;
+        }
+        if(changed!==boundaryPixels||changed===0)throw Error('Boundary display was not exercised');
+        checks.push('display toggle changes only certified chart-exit pixels');
+        shots.push({name:'entry-diagnostics',data:canvas.toDataURL()});
+      }
+      records.push({label,cpuHits,gpuHits,extraUnresolved,boundaryPixels,worst,worstNormal});checks.push(`${label}: CPU/GPU status, owner, distance and normal`);
       if(['entry','curve','far'].includes(label))poses.push({label,state});
       draw();shots.push({name:label,data:canvas.toDataURL()});
     }

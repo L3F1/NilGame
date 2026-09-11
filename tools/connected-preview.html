@@ -10,12 +10,14 @@ body{margin:24px auto;padding:0 18px;max-width:900px;background:#101a27;color:#e
 The GPU draws connected rays; the CPU handles collision and carried camera frames. Buttons take quarter-unit steps.
 There is no gravity; mouse look stays upright relative to each room's floor.
 Blue: E3 entry; green: S3 room (curvature radius 8); gold: E3 far room.
-Magenta means the sight query is unresolved, not sky or a wall.</p>
+Dark checkers mark the end of the supported region, not sky or a wall.
+Magenta marks numerical/traversal uncertainty.</p>
 <p>The middle room uses spherical rays and movement. Its two portals are about four units apart,
 so curvature is modest; great-sphere walls can still have straight-looking edges.
 This is a connected-room test, not a panorama of the whole sphere.</p>
 <p><a href="connected-cpu-preview.html">CPU reference preview</a> ? <label>Resolution <select id="quality"><option value="160">160 ? 120</option><option value="320" selected>320 ? 240</option><option value="480">480 ? 360</option></select></label></p>
 <canvas id="view" width="80" height="60" aria-label="Connected-region sight preview"></canvas>
+<p><label><input id="diagnostics" type="checkbox"> Highlight all unresolved rays (including region boundaries)</label></p>
 <div id="controls"><button data-action="forward">Forward (W)</button><button data-action="back">Back (S)</button>
 <button data-action="left">Look left (←)</button><button data-action="right">Look right (→)</button>
 <button data-action="up">Look up (↑)</button><button data-action="down">Look down (↓)</button>

@@ -53,11 +53,14 @@ uniform highp sampler2D uData;
 uniform ivec4 uCounts;
 uniform vec4 uPosition,uForward,uRight,uUp;
 uniform vec2 uResolution;
-uniform int uRegion,uDebug;
+uniform int uRegion,uDebug,uDiagnostics;
 out vec4 frag;
 const float PI=3.141592653589793;
 // Numerical refusal bands for bounded float32 data, not a portable libm proof.
 const float E=0.00003;
+// Query status stays unresolved. Kind 1 identifies a reached chart boundary;
+// kind 2 is numerical/traversal uncertainty, never silently painted as sky.
+int refusalKind=2;
 // Range-reduced atan2: the shader compiler's native atan approximation caused
 // measurable drift through two portals. Half-angle reduction keeps the Taylor
 // argument <=sqrt(2)-1; nine terms bound truncation below float32 roundoff.
@@ -124,16 +127,19 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
     vec4 r=D(128+region);float remain=32.-traveled,edge=1e20;
     if(r.x<.5){if(length(p)>r.z+E)return vec4(2,region,-1,traveled);float b=dot(p,u),c=dot(p,p)-r.z*r.z;edge=-b+sqrt(max(0.,b*b-c));}
     else{float boundary=cos(r.z/r.y);if(p.w<boundary-E)return vec4(2,region,-1,traveled);float h=length(vec2(p.w,u.w));if(h<E||boundary/h>1.+E)return vec4(2,region,-1,traveled);edge=r.y*(a2(u.w,p.w)+ac(boundary/h));}
-    float end=min(remain,edge);int gate=-1;
+    float end=min(remain,edge),portalUncertain=1e20;int gate=-1;
     for(int g=0;g<8;g++){if(g>=uCounts.w)break;int base=132+g*10;vec4 info=D(base);if(int(info.x)!=region)continue;
       vec4 center=D(base+1),n=D(base+4);float a=r.x<.5?dot(p-center,n):dot(p,n),b=dot(u,n);
       if(abs(a)<E&&dist(center,p,r)<info.z+E){if(g==reverse)continue;return vec4(2,region,-1,traveled);}
       if(a<=E)continue;float t=1e20;
       if(r.x<.5){if(b< -E)t=-a/b;}else{float phase=a2(-a,b);for(int k=-1;k<=2;k++){float theta=phase+float(k)*PI,candidate=theta*r.y;if(candidate>E&&-a*sin(theta)+b*cos(theta)<-E)t=min(t,candidate);}}
-      if(t>end+E)continue;vec4 q=at(p,u,t,r);float radial=dist(center,q,r);if(abs(radial-info.z)<4.*E)return vec4(2,region,-1,traveled);if(radial>info.z)continue;
-      if(abs(t-end)<E)return vec4(2,region,-1,traveled);end=t;gate=g;
+      if(t>end+E)continue;vec4 q=at(p,u,t,r);float radial=dist(center,q,r);
+      if(abs(radial-info.z)<4.*E){portalUncertain=min(portalUncertain,max(0.,t-4.*E));continue;}if(radial>info.z)continue;
+      if(abs(t-end)<E){portalUncertain=min(portalUncertain,max(0.,t-4.*E));continue;}end=t;gate=g;
     }
-    count=0;uncertainAt=1e20;
+    // Portal uncertainty is an event along the ray, not a whole-ray veto.
+    // A certified nearer hit wins; rays reaching the uncertain event still stop.
+    count=0;uncertainAt=portalUncertain;
     for(int j=0;j<16;j++){omitted[j]=false;if(j>=uCounts.y)break;if(int(D(96+j).z)==region)omitted[j]=excluded(j,p,u,r,end);}
     int owner;int start=occupancy(p,region,owner);if(start==2)return vec4(2,region,-1,traveled);if(start==1)return vec4(1,region,owner,traveled);
     for(int i=0;i<48;i++){if(i>=uCounts.x)break;vec4 m=D(2*i+1);if(int(m.w)==region&&!omitted[int(m.y)])solve(i,p,u,r,end);}
@@ -149,7 +155,7 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
       previous=nearest;
     }
     if(uncertainAt<=end+E)return vec4(2,region,-1,traveled);
-    if(gate<0)return vec4(edge<=remain+E?2:0,region,-1,traveled+end);
+    if(gate<0){if(edge<=remain+E){refusalKind=1;return vec4(2,region,-1,traveled+end);}return vec4(0,region,-1,traveled+end);}
     if(crossing==4)return vec4(2,region,-1,traveled+end);
     int base=132+gate*10;vec4 info=D(base),center=D(base+1),exitCenter=D(base+5),dest=D(128+int(info.y));
     vec4 q=at(p,u,end,r),v=transport(q,center,direction(p,u,end,r),r),radial=logAt(center,q,r);
@@ -161,9 +167,12 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
 void main(){vec2 uv=(2.*gl_FragCoord.xy-uResolution)/uResolution.y;
   vec4 ray=normalize(uForward/tan(35.*PI/180.)+uRight*uv.x+uUp*uv.y),n,t;
   vec4 result=trace(uPosition,ray,uRegion,n,t);
-  if(uDebug==1){frag=vec4(result.x,result.y+1.,result.z+1.,255.)/255.;return;}
+  if(uDebug==1){frag=vec4(result.x,result.y+1.,result.z+1.,result.x==2.?float(refusalKind):0.)/255.;return;}
   if(uDebug==2){uint bits=floatBitsToUint(result.w);frag=vec4(float(bits&255u),float((bits>>8)&255u),float((bits>>16)&255u),float(bits>>24))/255.;return;}
   if(uDebug==3){frag=n*.5+.5;return;}
   vec3 color=result.x==2.?vec3(.69,.125,.82):result.x==0.?vec3(.086,.098,.118):result.y==0.?vec3(.33,.47,.75):result.y==1.?vec3(.30,.65,.44):vec3(.89,.71,.30);
+  // Screen-space pattern explicitly denotes unavailable extent, not terrain,
+  // fog, or an asserted empty continuation of a spherical world.
+  if(result.x==2.&&refusalKind==1&&uDiagnostics==0){float tile=mod(floor(gl_FragCoord.x/12.)+floor(gl_FragCoord.y/12.),2.);color=vec3(.09,.12,.16)+tile*.014;}
   if(result.x==1.)color*=.3+.7*abs(dot(n,t));frag=vec4(color,1);
 }`;

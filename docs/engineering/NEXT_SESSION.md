@@ -35,6 +35,17 @@ scale/error bounds, then connected editor integration. Muse can independently
 check float32 packet signs/scopes and build bounded ray corpora; reserve numerical
 policy for Astra. Do not broaden supported scenes because one fixture is fast.
 
+Latest visual follow-up: uncertain portal rims no longer veto nearer opaque hits.
+Reached chart exits use labeled dark checkers; numerical failures remain magenta,
+and a diagnostic checkbox restores all-magenta unresolved display. See
+docs/qa/connected-boundaries-2026-09-11.md. Inactive/coincident face roots remain
+an open source of magenta seams, including crate/floor edges.
+User explicitly wants global S3 behavior like the original spherical modes:
+travel 2πR and return. The current bounded room cannot do this. Next substantive
+milestone is a global-S3 traversal/rendering fixture reusing original math, then
+connection to E3; establish coverage and ray-order contracts before expanding
+the authored GPU subset. Do not represent a background-color change as that work.
+
 Godot remains a candidate host. This renderer removes a prerequisite, not the
 need for scene-v2/motion parity and host shader/resource adaptation. Existing
 single-region editors, legacy arena and numerical evidence remain intact.

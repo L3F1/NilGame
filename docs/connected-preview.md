@@ -22,8 +22,12 @@ The WebGL2 renderer follows analytic E3/S3 rays through the portal frames. CPU
 motion retains collision, transported camera frames and explicit refusal/debt
 handling. This is a fixed-scene preview, not yet a connected-region editor.
 Blue/green/gold identify regions; surface orientation supplies headlight shading.
-Magenta is unresolved (including chart exit), not sky or a collision wall. Small
-magenta rims/speckles can remain near ambiguous numerical boundaries.
+Dark screen-space checkers mark a reached chart boundary: content beyond that
+extent is unavailable, not certified empty or a collision wall. The diagnostic
+checkbox restores magenta for those pixels. Numerical/traversal uncertainty
+stays magenta in both views; small seams/speckles remain unresolved.
+The circular green view from entry is a portal aperture looking into the room,
+not a rendering of the entire spherical universe.
 
 The CPU step reference remains at tools/connected-cpu-preview.html. Existing
 single-region editors are unchanged. GPU code has no dependency on Godot or the

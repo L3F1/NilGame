@@ -17,7 +17,12 @@ eligible portal if no earlier solid entry occurs. Subtracted cells retain their
 conjunction and group scope. Portal maps use radial aperture coordinates and
 parallel transport, with the same explicit speed-preserving policy as CPU sight.
 Only the reverse endpoint just crossed is suppressed. There is no visual exit
-offset, infinite portal loop or automatic sky policy.
+offset, infinite portal loop or automatic sky policy. Reached domain exits have
+a host display policy: dark screen-space checkers, with a diagnostic toggle.
+Their query status remains unresolved. The debug status packet alpha carries
+refusal kind 1 for a reached boundary, 2 for other unresolved results, 0 otherwise.
+Invalid starts and failed domain calculations remain kind 2. No numeric failure
+is silently converted to a background pixel.
 
 The shader returns hit, miss or unresolved. Near-tangent roots, coincident events,
 root/end ties, ambiguous occupancy, aperture rims/sides and exhausted traversal
@@ -28,6 +33,9 @@ Root ambiguity carries an earliest affected distance. A solid hit strictly befor
 that distance can finish; occupancy intervals may not extend through it. This
 avoids drawing an unresolved silhouette of a hidden ball through a nearer wall.
 The uncertain interval still blocks every query that actually reaches it.
+The same ordering now applies to uncertain portal rims/ties: defer their earliest
+affected distance until solid queries have had a chance to find a nearer hit.
+Exposed rims still refuse. See docs/qa/connected-boundaries-2026-09-11.md.
 
 Precision policy is deliberately provisional: highp float32, a 3e-5 refusal
 band with larger separation margins, bounded scene/range, explicit uncertainty.
