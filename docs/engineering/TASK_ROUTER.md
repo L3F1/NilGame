@@ -15,6 +15,7 @@ historical status claims.
 | Renderer | docs/rendering-contract.md; SUBSYSTEM_RULES.md Graphics and runtime traps / Required checks | affected shader and browser queue |
 | Connected GPU preview | CONNECTED_GPU_PREVIEW.md; docs/qa/connected-gpu-preview-2026-09-11.md | engine/geometry/connected-shader.js; connected-renderer.js; app/connected-preview.js |
 | Complete S3 coverage / full loop | GLOBAL_S3_CONTRACT.md | engine/geometry/spherical-cover.js; spherical-cover.test.js; global-s3-transport-truth.test.js |
+| Saved global regions / E3-global-S3 connections | COVER_REGION_FORMAT.md; GLOBAL_S3_CONTRACT.md | engine/world/connected-cover-world.js; cover-region-document.js; connected-cover.test.js; global-portal-truth.test.js |
 | Editor | docs/ball-lab.md relevant controls/transactions; scene-format for schema edits | app/ball-lab.js; tools/ball-lab.html |
 | Arena geometry / gameplay | SUBSYSTEM_RULES.md math/checks; matching headings in legacy-agent-reference.md | geom.js, product.js, affected geometry/mode |
 | Menu / switching | legacy-agent-reference.md: Modes take options away / Switching geometry | app/menu.js; main.js |

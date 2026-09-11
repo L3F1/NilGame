@@ -2,30 +2,25 @@
   "version": 1,
   "tasks": [
     {
-      "id": "claude-global-s3",
+      "id": "claude-cover-format",
       "agent": "claude",
-      "instruction": "User reauthorized Claude. Read GLOBAL_S3_CONTRACT.md and app/spherical-cover-model.js. Build full-S3 browser fixture on createSphericalFlight (space, balls, state camera/position/reference/travel/returnDistance, reset, advance(dt,wish,look), stepLoop(distance)). Allowed files listed only; no model/kernel/fixture changes. Implement WebGL2 static metric-ball first-hit renderer over one full 2*pi*R orbit, max16 balls, R8 fixture. CPU castSphericalBalls authority; explicit uncertain tangencies/ties, float guards. Surface normals, landmark colors; hits beyond piR retain physical distance. Debug readback status/owner/distance for parity. UI pointer lock/WASD/SpaceShift, reuse createMouseLook reset/spike lifecycle; Escape/focus clear. Run full loop button resets once, animates stepLoop to total2*piR over~13sec, NEVER teleport/reset endpoint at finish. Display circuit fraction/travel/shortest distance home; label no gravity/collision. Link new tools/spherical-cover.html from connected-preview. ?check compare CPU/GPU80x60 at start,quarter,exact antipode,threequarter,return,noncentral turned pose; confident status/owner agree, distance<=.001, >=95% CPUhit retention eachpose; report extra refusals and saved images. Verify frame/position closure. Add --spherical-cover to page-check and queue flag allowlist and relevant queue tests. Do not weaken tests. Browser unavailable in isolated clone: run syntax/Node checks only, disclose GPU unrun; lead will integrate then queue realGPU. No other agents/commits/pushes. Concise report READY FOR REVIEW.",
+      "instruction": "Implement engine/world/cover-region-document.js exactly to docs/engineering/COVER_REGION_FORMAT.md. Allowed writes that module, cover-region-document.test.js, docs/qa/claude-cover-format.md only. Existing createSphericalCover/chartAt and compileFramedPortals supply math; no changes to them or scene-v2. Validate strict keys, version, finite arrays, IDs, positive chart orientation, center placements, exactly one spawn, ball/anchor radii and spawn clearance. compileCoverRegion returns specified physical balls/anchors/spawnFrame/document. Snapshot all caller arrays; JSON parse/load preserves construction orientation near original antipode and with rotated chart. Test corrupt data, unknown keys, caller mutation, document clone independence, chart crossing object permitted when center inside, sphere antipode placement, anchor forward/up transport and measured clearance. Do not run browser/root queue from clone. Run focused Node tests; full suite not needed in clone, lead will run it. Report exact evidence, no geometry repairs beyond assigned codec, no agents/commits/pushes. READY FOR REVIEW. Keep report under500words.",
       "allowedFiles": [
-        "engine/geometry/spherical-cover-renderer.js",
-        "app/spherical-cover-preview.js",
-        "tools/spherical-cover.html",
-        "tools/connected-preview.html",
-        "tools/page-check.js",
-        "tools/check-queue.js",
-        "check-queue.test.js",
-        "docs/qa/claude-global-s3-preview.md"
+        "engine/world/cover-region-document.js",
+        "cover-region-document.test.js",
+        "docs/qa/claude-cover-format.md"
       ],
-      "report": "docs/qa/claude-global-s3-preview.md"
+      "report": "docs/qa/claude-cover-format.md"
     },
     {
-      "id": "muse-57",
+      "id": "muse-58",
       "agent": "muse",
-      "instruction": "MUSE-57. Read MUSE.md and GLOBAL_S3_CONTRACT. Only write global-s3-ray-truth.test.js and docs/qa/muse57-global-rays.md. Independently test EXISTING castSphericalBalls via chord-membership sampling+bisection at rotated poses/directions, multiple small balls, R=.5/8/10000. Include beyond-piR hits, finite-range misses, input permutation, later tangency before/behind nearer hit, exposed tangent refusal, coincident owners, zero budget. <=100 cases, ~5sec runtime, reference must resolve chosen object sizes. Report sampled-not-proven boundary. Do not repair kernel; give minimal counterexample if found. Demonstrate isolated wrong-root or piR-cap mutation failing, restore engine. Focused Node tests only, host-probe once, no browser/fullsuite/agents/commits/pushes. <500word report with measured errors/host/commands/limitations. READY FOR REVIEW. Manifest is full task if clone queue predates it.",
+      "instruction": "MUSE-58 independent global aperture crossing evidence. Use existing compileFramedPortals and createSphericalCover at R=.5,8,10000; allowed writes global-portal-truth.test.js and docs/qa/muse58-global-portals.md only. No math repairs. Deterministic up to60 rotated global anchors/rays with entering hit after starting negative signedHeight, hits beyond piR, exact antipodal start outside the local aperture disc, positive/negative direction, too-short maxTravel, finite radial/body fit, no event at antipodal disc, source/destination roundtrip frames and speed E3/S3. Use independent great-circle samples bracketing signed-height sign change + local metric/chord disc check; numerical sampling not proof. Distinguish zero-time side ambiguity from a later full-period event: test crossing at on-plane inward direction yields future 2*piR event, not zero. Isolated fail demo restoring old early-back-side return must fail; restore and prove no engine diff. If implementation fails other legitimate case report minimal repro, don't weaken test or fix engine. Host-probe once, focused Node only, no full suite/browser/agents/commits/pushes. Concise measured report READY FOR REVIEW. Assignment overrides stale queue.",
       "allowedFiles": [
-        "global-s3-ray-truth.test.js",
-        "docs/qa/muse57-global-rays.md"
+        "global-portal-truth.test.js",
+        "docs/qa/muse58-global-portals.md"
       ],
-      "report": "docs/qa/muse57-global-rays.md"
+      "report": "docs/qa/muse58-global-portals.md"
     }
   ]
 }

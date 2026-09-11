@@ -2806,3 +2806,14 @@ Base a10ab65. Scope limited to global-s3-ray-truth.test.js and its report.
 Host rerun: 81 cases passed, worst entry error/R 5.33e-15. Independently
 reran isolated piR-cap mutation: failed at theta=3.6 with a false miss, as
 intended. References are sampled/bisected, not proofs. No kernel repairs.
+
+## MUSE-58 accepted - 2026-09-11
+
+Base ee54f24, isolated bridge checkout; allowed two paths only, scopeOK and
+headUnchanged verified. Lead reran global-portal-truth.test.js on Windows Node
+24.20.0: 45 rotated ray cases plus radial/body/antipodal/roundtrip cases passed.
+Lead reran isolated old-back-side-policy mutation: caught full-orbit null at
+R=.5 (exit 1); engine untouched. Sampling is independent numerical evidence,
+not a theorem or a complete tangency corpus. Supplementary roundtrip checks
+cover velocity; lead global-portal.test.js also pins all three central axes.
+See muse58-global-portals.md and connected-global-review.md. No pending tasks.

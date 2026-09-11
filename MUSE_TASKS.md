@@ -1,7 +1,7 @@
 # Muse task queue
 
 Only OPEN work lives here. Closed assignments and their verdicts moved to
-[docs/qa/muse-log.md](docs/qa/muse-log.md) — read that only when you need to
+[docs/qa/muse-log.md](docs/qa/muse-log.md) â€” read that only when you need to
 know why a past decision went the way it did. Shared rules: MUSE.md and
 docs/engineering/WORKING_RULES.md.
 
@@ -49,7 +49,7 @@ straight through review while the ones that did not cost a round trip.
 
 ## Where the line is between you and the lead
 
-Not seniority — the shape of the problem.
+Not seniority â€” the shape of the problem.
 
 - **Yours** if it can be stated as *"make this check exist, and make it fail
   without X"*: corpora, static analysis, sweeps, measurement, audits of claims
@@ -68,9 +68,6 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: none. MUSE-57 accepted; see docs/qa/muse-log.md.
-User reauthorized Claude on 2026-09-11. Claude owns the separate global-S3
-browser/GPU fixture; Muse owns independent CPU query tests.
-
-Both bridge tasks are complete and accepted after lead checks. No jobs scheduled.
-The manifest records completed work; replace before another dispatch.
+Order: none. MUSE-58 accepted; see docs/qa/muse-log.md.
+Claude cover-format and Muse global-portal checks are complete and accepted.
+No jobs scheduled. Manifest records completed work; replace before dispatch.

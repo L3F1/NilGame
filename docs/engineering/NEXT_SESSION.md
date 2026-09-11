@@ -1,44 +1,42 @@
 # Fresh-chat handoff for Astra
 
-2026-09-11. Read WORKING_RULES and relevant TASK_ROUTER row. Inspect git status.
-Claude was explicitly reauthorized. Current bridge batch is complete: Claude
-global-S3 GPU/browser fixture and Muse MUSE-57 ray checks, both accepted after
-lead verification. No jobs scheduled. Manifest still names completed work;
-replace it before dispatch. Do not repeat reviews or launch heartbeat prompts.
+2026-09-11. Read WORKING_RULES and the relevant TASK_ROUTER row; inspect status.
+Claude and Muse completed the cover-format/global-portal batch on base ee54f24.
+Both accepted after lead review. No jobs scheduled. Manifest names completed
+work: replace before dispatch; no heartbeat prompts or repeated reviews.
 
-User wants real global S3 behavior, not a nearly-flat bounded room. Delivered
-tools/spherical-cover.html (Worlds → Full S3 loop): WebGL2 complete-sphere balls,
-manual flight and an animated 2πR circuit without endpoint reset. R8, eight
-landmarks; no collision/gravity or E3 portal yet. Model: spherical-cover-model.js.
-Read GLOBAL_S3_CONTRACT.md and docs/qa/global-s3-preview-review.md for scope.
-GPU supports R8 and ball angular radii .05–.1 only. CPU support is broader.
-Global runtime points and local author charts are separate. Existing scene-v2
-open-hemisphere guards remain intact; do not remove them to enable global worlds.
+Delivered CPU milestone: compileConnectedCoverWorld accepts a scene-v2 base
+plus independent nil-cover-region documents and physical-frame portal links.
+See COVER_REGION_FORMAT.md and docs/qa/connected-global-review.md.
+Fixture levels/fixtures/connected-global.nil.json goes E3 -> complete S3,
+past the antipode -> E3. Sight and a player body traverse it; a global ball
+stops the body; JSON save/load preserves the route. Full sphere has no chart
+wall. Charts place objects only. Global subset: balls/spawn/anchors, no CSG,
+gravity or floor. Existing bounded scene-v2 remains unchanged.
 
-Next hard task: define serialized global-region ownership/placement and connect
-the complete S3 region to E3, with collision and unchanged query honesty. Keep
-the explicit local-chart construction frames; never encode the whole sphere
-through one logarithm. Actual segment carry crosses antipodes; endpoint-only
-transport/logarithms remain ambiguous there. A great-circle loop returns the
-frame, arbitrary closed loops have holonomy. Global camera uses a carried
-reference-up policy, not the bounded floor's singular global extension.
+Next hard task: connect the GPU paths so this saved fixture is playable in the
+browser. Mixed renderData currently explicitly refuses. Do not feed global
+points into the bounded renderer or replace uncertainty with a miss. Define
+coverage-tagged region packets, complete-sphere ball/root evaluation and global
+finite-aperture crossing within the connected renderer's range/work limits.
+Keep CPU authority for collision, transit and transported frames. First GPU
+subset can retain existing spherical precision limits (R8, tested angular ball
+sizes); unsupported author data must refuse before upload. Measure parity and
+GPU cost through real portals, including rays past the antipode, and inspect
+saved images. Global full-orbit portal roots differ from bounded start-side
+policy; the antipodal disc is not another aperture. New global-portal tests pin
+this. Review singular/tangent event handling rather than silently broadening it.
 
-Claude can implement within that contract. Muse can independently check
-placement round trips, portal/loop corpora and rendering refusal cases. Keep
-assignments bounded and disjoint; lead owns geometric/numerical decisions.
+Claude: packet/renderer/preview implementation after lead settles that contract.
+Muse: independent saved-world range, crossing-budget and obstructed-exit corpus;
+then CPU/GPU fixture checks within allowed files. Do not reassign completed tests.
 
-Other live fixture: tools/connected-preview.html is still E3 → bounded S3 → E3,
-with collision. Read CONNECTED_GPU_PREVIEW.md for its scope. Chart exits are
-dark checkers; numerical uncertainty stays magenta. Inactive/coincident faces
-still produce seams. Portal/root uncertainty cannot erase a proven nearer hit.
-Original arena and single-region editors remain references; Godot is a future
-host, not a replacement for these geometry/ownership contracts.
-
-Latest evidence: 86 Node suites; full-sphere 13 browser checks on RTX and
-SwiftShader (28,800 rays, far-side hits and animated loop); connected preview
-16 checks; legacy Worlds/input 346. See review for thresholds/limitations.
-No GPU frame-time distribution measured for the new spherical renderer.
-Host queue required in this environment; probe once each session. Restart its
-owned worker after queue flag changes and allow its old heartbeat to expire.
-
-Push user-facing work and verify actual GitHub Pages content, not just local HEAD.
+Browser still has TWO separate previews: tools/connected-preview.html is E3 ->
+bounded S3 -> E3 with collision; tools/spherical-cover.html is standalone complete
+S3 flight, without collision or portals. The CPU milestone has no new menu entry.
+Known magenta seam/refusal pixels persist in both; not fixed by serialization.
+Read CONNECTED_GPU_PREVIEW.md / GLOBAL_S3_CONTRACT.md only for affected work.
+Host probe once per session; browser queue worker required on this environment.
+Next renderer changes need a fresh full-suite and browser check. Review report
+records current evidence and limitations. Godot remains a candidate host, not a
+replacement for the geometry contracts. Push user-facing work and verify Pages.

@@ -3,6 +3,7 @@
 // marcher certifies empty travel only, never a surface hit from a small bound.
 import { PORTAL_PLANE_TOLERANCE } from './region-portal.js';
 import { castSphericalRegion } from './s3-ray-cast.js';
+import { castSphericalBalls } from '../geometry/spherical-cover.js';
 
 export function traceRegionSight(world, ray, {
   maxDistance = 32, maxWork = 2048, maxCrossings = 4, surfaceTolerance = 1e-7,
@@ -39,8 +40,10 @@ export function traceRegionSight(world, ray, {
       // event is suppressed. An unrelated on-plane start has no side ownership.
       if (Math.abs(height) <= PORTAL_PLANE_TOLERANCE &&
           space.distance(portal.center, position) <= portal.radius) {
-        if (portal.fromId === reverseId) continue;
-        return result('unresolved', 'aperture-side', { aperture: portal.fromId });
+        if (portal.fromId !== reverseId) return result('unresolved', 'aperture-side', { aperture: portal.fromId });
+        if(space.coverage!=='s3-cover')continue;
+        // Suppress only the zero event. Global crossing searches future roots
+        // and still rejects the antipodal disc of this finite aperture.
       }
       const event = portal.crossing(position, direction, end, 0);
       if (!event) continue;
@@ -65,6 +68,13 @@ export function traceRegionSight(world, ray, {
           return result('unresolved', 'range-boundary', { certifiedLocalDistance: end });
         local = end;
       }
+    } else if(space.coverage==='s3-cover') {
+      if(!Array.isArray(region.balls))return result('unresolved','unsupported-global-field');
+      const query=castSphericalBalls(space,region.balls,position,direction,{maxDistance:end,maxTests:maxWork-work});
+      work+=query.tests;
+      if(query.status==='unresolved')return result('unresolved',query.reason,{query});
+      if(query.status==='hit'){local=query.distance;hit={...query,t:query.distance,owner:query.id,method:'global-s3-balls'};}
+      else local=end;
     } else if (s3Method==='events') {
       const query=castSphericalRegion(region,position,direction,{maxDistance:end,maxWork:maxWork-work});
       work+=query.work;

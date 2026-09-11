@@ -22,12 +22,17 @@ function anchorFrame(entity,space) {
   const normal=lift(entity.forward),up=lift(entity.up),right=lift(cross(entity.up,entity.forward));
   return {entity,space,center,normal,up,right};
 }
+export function decodeRegionAnchor(entity,space) {
+  const f=anchorFrame(entity,space);
+  return {id:entity.id,regionId:entity.regionId,radius:entity.radius,space,center:f.center,normal:f.normal,up:f.up};
+}
 export function compileRegionPortals(scene,regions) {
-  const anchors=scene.entities.filter(e=>e.kind==='anchor').map(e=>{
-    const f=anchorFrame(e,regions.get(e.regionId).space);
-    return {id:e.id,regionId:e.regionId,radius:e.radius,space:f.space,center:f.center,normal:f.normal,up:f.up};
-  });
-  return compileFramedPortals(scene.connections,anchors,scene.units.playerRadius);
+  const endpoints=new Set(scene.connections.flatMap(c=>[c.a,c.b]));
+  const anchors=scene.entities.filter(e=>endpoints.has(e.id)).map(e=>decodeRegionAnchor(e,regions.get(e.regionId).space));
+  // Legacy programmatic callers omit scene-document policy defaults. Keep that
+  // adapter compatible; the new physical-frame API requires explicit policies.
+  const connections=scene.connections.map(c=>({kind:'portal',velocity:'preserve-speed',scale:1,...c}));
+  return compileFramedPortals(connections,anchors,scene.units.playerRadius);
 }
 
 // Shared physical-frame boundary: global cover placements need no fake decode
@@ -40,8 +45,7 @@ export function compileFramedPortals(connections,anchors,playerRadius) {
     if(!anchor.id||!anchor.regionId||entities.has(anchor.id))throw Error('Invalid or duplicate anchor ID');
     space.validatePoint(center);space.validateTangent(center,normal);space.validateTangent(center,up);
     if(Math.abs(space.norm(center,normal)-1)>1e-8||Math.abs(space.norm(center,up)-1)>1e-8||Math.abs(space.dot(center,normal,up))>1e-8)throw Error('Aperture frame must be orthonormal');
-    if(!Number.isFinite(anchor.radius)||anchor.radius<=playerRadius)throw Error('Aperture does not admit player');
-    if(space.kind==='s3'&&anchor.radius>=Math.PI*space.curvatureRadius/2)throw Error('S3 aperture must fit an open hemisphere');
+    if(!Number.isFinite(anchor.radius)||anchor.radius<=0)throw Error('Invalid aperture radius');
     const basis=space.frame(center),u=basis.map(e=>dot(up,e)),n=basis.map(e=>dot(normal,e)),r=cross(u,n);
     const right=center.map((_,i)=>basis.reduce((s,b,j)=>s+b[i]*r[j],0));
     entities.set(anchor.id,{entity:{id:anchor.id,regionId:anchor.regionId,radius:anchor.radius},space,
@@ -54,6 +58,8 @@ export function compileFramedPortals(connections,anchors,playerRadius) {
     const ends=[connection.a,connection.b].map(id=>{
       const frame=entities.get(id);
       if(!frame||used.has(id))throw Error('Unknown or already connected anchor');
+      if(frame.entity.radius<=playerRadius)throw Error('Aperture does not admit player');
+      if(frame.space.kind==='s3'&&frame.entity.radius>=Math.PI*frame.space.curvatureRadius/2)throw Error('S3 aperture must fit an open hemisphere');
       used.add(id);return frame;
     });
     if(ends[0].entity.radius!==ends[1].entity.radius)throw Error('Aperture radii must match');
@@ -75,7 +81,7 @@ export function compileFramedPortals(connections,anchors,playerRadius) {
         crossing(p,u,maxTravel,radius=0) {
           const s=a.space;
           s.validatePoint(p);
-          if(Math.abs(s.norm(p,u)-1)>1e-8||!Number.isFinite(maxTravel)||maxTravel<0||!Number.isFinite(radius)||radius<0)throw Error('Invalid aperture crossing query');
+          if(Math.abs(s.norm(p,u)-1)>1e-8||!(maxTravel>=0)||(!Number.isFinite(maxTravel)&&maxTravel!==Infinity)||!Number.isFinite(radius)||radius<0)throw Error('Invalid aperture crossing query');
           let t=Infinity;
           if(s.kind==='e3') {
             const h=dot(p.map((x,j)=>x-a.center[j]),a.normal),speed=dot(u,a.normal);

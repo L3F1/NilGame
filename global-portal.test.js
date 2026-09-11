@@ -7,6 +7,10 @@ const anchors=[{id:'sphere-gate',regionId:'sphere',radius:.9,space:s,center:[0,0
   {id:'flat-gate',regionId:'flat',radius:.9,space:e,center:[0,0,0],normal:[0,1,0],up:[0,0,1]}];
 const connection={id:'link',kind:'portal',a:'sphere-gate',b:'flat-gate',velocity:'preserve-speed',scale:1};
 const [gate,back]=compileFramedPortals([connection],anchors,.25),R=8;
+const atCenter=gate.transit(gate.center),a=gate.renderData(),b=back.renderData();
+for(const [input,want] of [[a.up,b.up],[a.right,b.right.map(x=>-x)],[a.normal,b.normal.map(x=>-x)]]){
+  assert.ok(Math.hypot(...atCenter.carry(input).map((x,i)=>x-want[i]))<1e-10,'all three portal axes must follow the specified map');
+}
 const start=s.stepWithTransport(s.origin,[1,0,0,0],-.2*R),direction=start.direction.map(x=>-x);
 const event=gate.crossing(start.position,direction,2*Math.PI*R,.25);
 assert.ok(event,'back-side start must be able to circle around and enter front');
