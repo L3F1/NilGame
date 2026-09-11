@@ -1,5 +1,6 @@
 // Bounded float32 GPU reference for E3/S3. Surface candidates are analytic;
 // uncertain roots, intervals, portal rims and chart exits stay unresolved.
+import {CONNECTED_MATERIAL_GLSL} from './connected-material.js';
 export const CONNECTED_LIMITS = Object.freeze({ surfaces:48, primitives:16, groups:16, regions:4, portals:8 });
 const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
 const v4=a=>[...a,...Array(4-a.length).fill(0)];
@@ -26,7 +27,7 @@ export function packConnectedWorld(world) {
     else if(p.kind==='box') for(let a=0;a<3;a++) for(const sign of [-1,1]) {
       const n=p.axes[a].map(x=>x*sign);add(n,dot(n,p.center)+p.halfExtent[a]);
     } else throw Error(`Unsupported connected primitive ${p.kind}`);
-    primitives.push([start,surfaces.length-start,region,0]);
+    primitives.push([start,surfaces.length-start,region,p.kind==='ball'?1:0]);
   }
   if(surfaces.length>48) throw Error('Connected GPU surface capacity exceeded');
   surfaces.forEach((s,i)=>{rows[i*2]=s.n;rows[i*2+1]=s.meta;});
@@ -61,6 +62,7 @@ uniform ivec4 uCounts;
 uniform vec4 uPosition,uForward,uRight,uUp;
 uniform vec2 uResolution;
 uniform int uRegion,uDebug,uDiagnostics;
+uniform int uPolished,uAO;
 uniform float uMaxDistance;
 out vec4 frag;
 const float PI=3.141592653589793;
@@ -69,6 +71,7 @@ const float E=0.00003;
 // Query status stays unresolved. Kind 1 identifies a reached chart boundary;
 // kind 2 is numerical/traversal uncertainty, never silently painted as sky.
 int refusalKind=2;
+vec4 hitPoint;
 // Range-reduced atan2: the shader compiler's native atan approximation caused
 // measurable drift through two portals. Half-angle reduction keeps the Taylor
 // argument <=sqrt(2)-1; nine terms bound truncation below float32 roundoff.
@@ -169,7 +172,7 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
     // A certified nearer hit wins; rays reaching the uncertain event still stop.
     count=0;uncertainAt=portalUncertain;
     for(int j=0;j<16;j++){omitted[j]=false;if(j>=uCounts.y)break;if(int(D(96+j).z)==region)omitted[j]=excluded(j,p,u,r,end);}
-    int owner;int start=occupancy(p,region,owner);if(start==2||start==1&&r.w>.5)return vec4(2,region,-1,traveled);if(start==1)return vec4(1,region,owner,traveled);
+    int owner;int start=occupancy(p,region,owner);if(start==2||start==1&&r.w>.5)return vec4(2,region,-1,traveled);if(start==1){hitPoint=p;return vec4(1,region,owner,traveled);}
     for(int i=0;i<48;i++){if(i>=uCounts.x)break;vec4 m=D(2*i+1);if(int(m.w)==region&&!omitted[int(m.y)])solve(i,p,u,r,end);}
     float previous=-1.;
     for(int step=0;step<100;step++){
@@ -179,7 +182,7 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
       if(after==2)return vec4(2,region,-1,traveled);
       if(after==1){int i=rootSurface[chosen];vec4 q=at(p,u,nearest,r),n=D(i*2),m=D(i*2+1);normal=m.x>.5?normalize(q-n):normalize(r.x<.5?n:n-dot(n,q)*q);
         for(int g=0;g<16;g++){if(g>=uCounts.z)break;ivec4 group=ivec4(D(112+g));if(group.x==owner&&(group.y&(1<<int(m.y)))!=0)normal=-normal;}
-        tangent=direction(p,u,nearest,r);return vec4(1,region,owner,traveled+nearest);}
+        hitPoint=q;tangent=direction(p,u,nearest,r);return vec4(1,region,owner,traveled+nearest);}
       previous=nearest;
     }
     if(uncertainAt<=end+E)return vec4(2,region,-1,traveled);
@@ -192,6 +195,7 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
     u=normalize(transport(exitCenter,newP,newV,dest));p=newP;region=int(info.y);reverse=int(info.w);traveled+=end;
   }return vec4(2,region,-1,traveled);
 }
+${CONNECTED_MATERIAL_GLSL}
 void main(){vec2 uv=(2.*gl_FragCoord.xy-uResolution)/uResolution.y;
   vec4 ray=normalize(uForward/tan(35.*PI/180.)+uRight*uv.x+uUp*uv.y),n,t;
   vec4 result=trace(uPosition,ray,uRegion,n,t);
@@ -202,5 +206,8 @@ void main(){vec2 uv=(2.*gl_FragCoord.xy-uResolution)/uResolution.y;
   // Screen-space pattern explicitly denotes unavailable extent, not terrain,
   // fog, or an asserted empty continuation of a spherical world.
   if(result.x==2.&&refusalKind==1&&uDiagnostics==0){float tile=mod(floor(gl_FragCoord.x/12.)+floor(gl_FragCoord.y/12.),2.);color=vec3(.09,.12,.16)+tile*.014;}
-  if(result.x==1.)color*=.3+.7*abs(dot(n,t));frag=vec4(color,1);
+  if(result.x==1.){
+    if(uPolished==1&&length(n)>.5)color=finishMaterial(hitPoint,n,t,int(result.y),int(result.z));
+    else color*=.3+.7*abs(dot(n,t));
+  }frag=vec4(color,1);
 }`;

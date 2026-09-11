@@ -16,8 +16,10 @@ try {
   if(!Number.isFinite(maxDistance)||maxDistance<=0)throw Error('Renderer packet lacks maxDistance');
   const mouse=createMouseLook(),keys=new Set();let playing=false,last=null;
   const dimensions=()=>{const width=Number(document.querySelector('#quality').value);return{width,height:width*3/4};};
+  // Colour-only style; debug packets must not depend on it.
+  const appearance=()=>({polished:document.querySelector('#polished').checked,ao:document.querySelector('#ao').checked});
   function draw(){
-    renderer.draw(model.state,{...dimensions(),diagnostics:document.querySelector('#diagnostics').checked});
+    renderer.draw(model.state,{...dimensions(),...appearance(),diagnostics:document.querySelector('#diagnostics').checked});
     status.textContent=model.status();
     const guide=model.renderGuide(),near=guide.nearest,aim=guide.aimed;
     document.querySelector('#portal-hint').textContent=[
@@ -36,6 +38,8 @@ try {
   document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();document.exitPointerLock();}});
   document.querySelector('#quality').onchange=draw;
   document.querySelector('#diagnostics').onchange=draw;
+  document.querySelector('#polished').onchange=draw;
+  document.querySelector('#ao').onchange=draw;
   const wish=()=>[Number(keys.has('KeyD'))-Number(keys.has('KeyA')),Number(keys.has('KeyW'))-Number(keys.has('KeyS')),Number(keys.has('Space'))-Number(keys.has('ShiftLeft')||keys.has('ShiftRight'))];
   function frame(time){try{
     const dt=last===null?0:Math.min(.04,(time-last)/1000);last=time;
@@ -106,6 +110,90 @@ try {
     if(visited.join()!=='flat,sphere,flat'||!quarter||!antipode)throw Error(`Route ${visited} quarter ${quarter} antipode ${antipode}`);
     checks.push(`${frames} real-time advance frames flat/sphere/flat through quarter and antipode`);
     compare('return');
+    {
+      // Appearance at the flat return pose: flat-target is in direct view.
+      if(typeof renderer.readColor!=='function')throw Error('Renderer lacks readColor(state,width,height,{polished,ao}); appearance checks pending lead renderer');
+      const polishedBox=document.querySelector('#polished'),aoBox=document.querySelector('#ao');
+      if(!polishedBox.checked||!aoBox.checked)throw Error('Polished lighting and AO must start checked');
+      // Clicking fires the real change handlers, which redraw the canvas.
+      const setAppearance=(polished,ao)=>{if(polishedBox.checked!==polished)polishedBox.click();if(aoBox.checked!==ao)aoBox.click();};
+      const same=(a,b)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
+      const packets=(r,state,width,height,options)=>{const {pixels,distances,normals}=r.read(state,width,height,options);return [pixels,new Uint8Array(distances.buffer,distances.byteOffset,distances.byteLength),normals];};
+      const color=(r,state,width,height,options)=>{
+        const c=r.readColor(state,width,height,options);
+        if(!(c instanceof Uint8Array)||c.length!==width*height*4)throw Error(`readColor returned ${c?.constructor?.name}/${c?.length}, expected Uint8Array RGBA ${width}x${height}`);
+        return c;
+      };
+      const state=model.state,W=80,H=60,reference=packets(renderer,state,W,H);
+      for(const [polished,ao] of [[false,true],[false,false],[true,false],[true,true]]){
+        setAppearance(polished,ao);
+        for(const options of [undefined,appearance()]){
+          const got=packets(renderer,state,W,H,options);
+          if(!got.every((p,k)=>same(p,reference[k])))throw Error(`Debug packets changed after toggling to polished=${polished} ao=${ao} (${options?'explicit':'default'} read options)`);
+        }
+      }
+      checks.push('identical status/region/owner, distance and normal packets across polished/AO toggles (80x60)');
+      const hit=i=>reference[0][4*i]===1;
+      const basic=color(renderer,state,W,H,{polished:false,ao:false}),polishedColor=color(renderer,state,W,H,{polished:true,ao:false});
+      if(!same(basic,color(renderer,state,W,H,{polished:false,ao:false})))throw Error('readColor is not repeatable');
+      let hits=0,styled=0,aoBrightened=0;
+      const withAO=color(renderer,state,W,H,{polished:true,ao:true});
+      for(let i=0;i<W*H;i++){
+        if(!hit(i))continue;hits++;
+        if(Math.max(...[0,1,2].map(k=>Math.abs(basic[4*i+k]-polishedColor[4*i+k])))>=12)styled++;
+        if([0,1,2].some(k=>withAO[4*i+k]>polishedColor[4*i+k]))aoBrightened++;
+      }
+      if(!hits)throw Error('Appearance pose has no GPU hits');
+      if(styled<hits*.1)throw Error(`Polished lighting is not visibly different: ${styled}/${hits} hit pixels changed by >=12/255`);
+      if(aoBrightened){
+        const examples=[];for(let i=0;i<W*H&&examples.length<4;i++)if(hit(i)&&[0,1,2].some(k=>withAO[4*i+k]>polishedColor[4*i+k]))examples.push({i,ao:[...withAO.slice(4*i,4*i+3)],off:[...polishedColor.slice(4*i,4*i+3)]});
+        throw Error(`AO brightened ${aoBrightened}/${hits} hit pixels: ${JSON.stringify(examples)}`);
+      }
+      checks.push(`polished lighting visibly changes ${styled}/${hits} hit pixels; AO brightens none`);
+      const shot=name=>{const data=canvas.toDataURL();shots.push({name,data});return data;};
+      setAppearance(false,false);const basicShot=shot('appearance-basic');
+      setAppearance(true,false);shot('appearance-polished-noao');
+      setAppearance(true,true);const polishedShot=shot('appearance-polished');
+      if(basicShot===polishedShot)throw Error('Checkbox toggles did not change the drawn canvas');
+      records.push({label:'appearance',pose:'return',hits,styled,aoBrightened});
+
+      // Test-only clone: an E3 floor just under flat-target gives AO a contact to find.
+      const floorScene=structuredClone(scene),target=floorScene.baseScene.entities.find(e=>e.id==='flat-target');
+      if(target?.regionId!=='flat'||target.position[2]!==0||target.radius!==.6)throw Error('AO fixture expects flat-target at z=0 with radius .6');
+      floorScene.baseScene.entities.push({id:'ao-floor',regionId:'flat',kind:'plane',position:[0,0,-.65],up:[0,0,1]});
+      const floorModel=createConnectedGlobalPreview(floorScene),floorCanvas=document.createElement('canvas'),floorRenderer=createConnectedRenderer(floorCanvas,floorModel.world);
+      if(renderer.packed.primitiveIds.includes('ao-floor')||model.world.renderData().primitives.some(p=>p.id==='ao-floor'))throw Error('AO floor leaked into the main fixture');
+      const FW=160,FH=120,floorPackets=packets(floorRenderer,state,FW,FH,{polished:true,ao:true});
+      for(const options of [undefined,{polished:true,ao:false},{polished:false,ao:false},{polished:false,ao:true}])
+        if(!packets(floorRenderer,state,FW,FH,options).every((p,k)=>same(p,floorPackets[k])))throw Error(`Floor debug packets depend on appearance ${JSON.stringify(options)}`);
+      const fp=floorPackets[0],floorMax=floorRenderer.packed.maxDistance,ownerAt=i=>floorRenderer.packed.primitiveIds[fp[4*i+2]-1];
+      const floorOwners={},floorDistances=new Float32Array(floorPackets[1].buffer,floorPackets[1].byteOffset,FW*FH);
+      for(let i=0;i<FW*FH;i++)if(fp[4*i]===1)floorOwners[ownerAt(i)]=(floorOwners[ownerAt(i)]||0)+1;
+      if(!floorOwners['ao-floor']||!floorOwners['flat-target'])throw Error(`AO fixture view lacks floor or target: ${JSON.stringify(floorOwners)}`);
+      // Sparse CPU spot check that the clone renders the intended geometry.
+      for(let y=0;y<FH;y+=6)for(let x=0;x<FW;x+=6){
+        const i=y*FW+x;if(fp[4*i]!==1)continue;
+        const cpu=floorModel.pixelSight(FW,FH,x,y,floorMax,state);
+        if(cpu.status!=='hit'||cpu.query.owner!==ownerAt(i)||Math.abs(floorDistances[i]-cpu.distance)>.001)
+          throw Error(`AO fixture ${x},${y}: GPU ${ownerAt(i)}, CPU ${cpu.status}/${cpu.query?.owner}/${cpu.distance}`);
+      }
+      const floorAO=color(floorRenderer,state,FW,FH,{polished:true,ao:true}),floorNoAO=color(floorRenderer,state,FW,FH,{polished:true,ao:false});
+      const luma=(c,i)=>.2126*c[4*i]+.7152*c[4*i+1]+.0722*c[4*i+2];
+      let floorHits=0,darkened=0,brightened=0;const darkenedOwners={};
+      for(let i=0;i<FW*FH;i++){
+        if(fp[4*i]!==1)continue;floorHits++;
+        if([0,1,2].some(k=>floorAO[4*i+k]>floorNoAO[4*i+k]))brightened++;
+        if(luma(floorNoAO,i)-luma(floorAO,i)>=6){darkened++;darkenedOwners[ownerAt(i)]=(darkenedOwners[ownerAt(i)]||0)+1;}
+      }
+      if(brightened)throw Error(`AO brightened ${brightened}/${floorHits} floor-fixture hit pixels`);
+      if(darkened<16)throw Error(`AO darkened only ${darkened}/${floorHits} floor-fixture hit pixels by >=6/255 luma (need 16)`);
+      checks.push(`AO floor fixture (160x120): ${darkened}/${floorHits} hit pixels darkened, none brightened ${JSON.stringify(darkenedOwners)}`);
+      for(const [name,options] of [['ao-floor-basic',{polished:false,ao:false}],['ao-floor-polished-noao',{polished:true,ao:false}],['ao-floor-polished',{polished:true,ao:true}]]){
+        floorRenderer.draw(state,{width:320,height:240,...options});shots.push({name,data:floorCanvas.toDataURL()});
+      }
+      records.push({label:'ao-floor',pose:'return',owners:floorOwners,floorHits,darkened,darkenedOwners,brightened});
+      draw();
+    }
     model.act('spawn-sphere');model.advance(0,[0,0,0],{yaw:.6,pitch:.3});
     for(let i=0;i<30;i++){model.advance(.04,[.4,1,.3]);if(model.halted)throw Error(`Noncentral flight halted: ${model.motion}`);}
     model.advance(0,[0,0,0],{yaw:-1.1,pitch:-.2});
@@ -122,8 +210,8 @@ try {
     checks.push('explicit second-exit approach crosses via real-time controls');
     for(const pose of poses){
       renderer.times.length=0;const timings=[],intervals=[];let previous;
-      for(let i=0;i<90;i++){const timestamp=await new Promise(requestAnimationFrame);if(i>=15&&previous!==undefined)intervals.push(timestamp-previous);previous=timestamp;const t=performance.now();renderer.draw(pose.state,{...dimensions(),timer:i>=15});if(i>=15)timings.push(performance.now()-t);}
-      for(let i=0;i<4;i++){await new Promise(requestAnimationFrame);renderer.draw(pose.state,dimensions());}
+      for(let i=0;i<90;i++){const timestamp=await new Promise(requestAnimationFrame);if(i>=15&&previous!==undefined)intervals.push(timestamp-previous);previous=timestamp;const t=performance.now();renderer.draw(pose.state,{...dimensions(),...appearance(),timer:i>=15});if(i>=15)timings.push(performance.now()-t);}
+      for(let i=0;i<4;i++){await new Promise(requestAnimationFrame);renderer.draw(pose.state,{...dimensions(),...appearance()});}
       records.push({pose:pose.label,hardware:renderer.hardware,resolution:dimensions(),gpuTimerSupported:renderer.timerSupported,gpuMs:[...renderer.times],cpuSubmitMs:timings,presentIntervalsMs:intervals});
     }
     records.push({coldReadyWallMs});
