@@ -2817,3 +2817,10 @@ R=.5 (exit 1); engine untouched. Sampling is independent numerical evidence,
 not a theorem or a complete tangency corpus. Supplementary roundtrip checks
 cover velocity; lead global-portal.test.js also pins all three central axes.
 See muse58-global-portals.md and connected-global-review.md. No pending tasks.
+
+## MUSE-59 accepted - 2026-09-11
+
+Two allowed paths, unchanged base518fd48; scope verified. Range ladder, budgets,
+inside/grazing refusal and blocked exit passed on main with landmarks. Lead reran
+budget-guard-removal mutation in isolated scratch: failed; restored test passed.
+See muse59-connected-global.md and connected-global-gpu-review.md. No jobs running.

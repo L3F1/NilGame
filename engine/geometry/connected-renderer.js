@@ -1,9 +1,10 @@
 import {packConnectedWorld,CONNECTED_VERTEX,CONNECTED_FRAGMENT} from './connected-shader.js';
 export function createConnectedRenderer(canvas,world) {
+  const packed=packConnectedWorld(world);
   const gl=canvas.getContext('webgl2',{alpha:true,premultipliedAlpha:false,antialias:false,preserveDrawingBuffer:true});
   if(!gl)throw Error('Connected preview requires WebGL2');
   gl.disable(gl.DITHER); // Debug packets are bytes, not display colors.
-  const packed=packConnectedWorld(world), program=gl.createProgram();
+  const program=gl.createProgram();
   for(const [type,source] of [[gl.VERTEX_SHADER,CONNECTED_VERTEX],[gl.FRAGMENT_SHADER,CONNECTED_FRAGMENT]]) {
     const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);
     if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(shader));
@@ -14,9 +15,10 @@ export function createConnectedRenderer(canvas,world) {
   const texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,224,1,0,gl.RGBA,gl.FLOAT,packed.texture);
-  const names=['uData','uCounts','uPosition','uForward','uRight','uUp','uResolution','uRegion','uDebug','uDiagnostics'];
+  const names=['uData','uCounts','uPosition','uForward','uRight','uUp','uResolution','uRegion','uDebug','uDiagnostics','uMaxDistance'];
   const loc=Object.fromEntries(names.map(n=>[n,gl.getUniformLocation(program,n)]));
   gl.uniform1i(loc.uData,0);gl.uniform4iv(loc.uCounts,packed.counts);
+  gl.uniform1f(loc.uMaxDistance,packed.maxDistance);
   const ext=gl.getExtension('EXT_disjoint_timer_query_webgl2'), pending=[], times=[];
   function draw(state,{width=320,height=240,debug=0,timer=false,diagnostics=false}={}) {
     if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}

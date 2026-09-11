@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NilGame · E3 → complete S3 → E3 flight</title>
+<style>
+body{margin:24px auto;padding:0 18px;max-width:900px;background:#101a27;color:#e0edf0;font:16px system-ui}a{color:#8be2d7}canvas{width:100%;max-height:65vh;object-fit:contain;image-rendering:pixelated;background:#16191e}button{padding:12px;margin:4px;background:#22384b;color:inherit;border:1px solid #829aaf;border-radius:6px}button:disabled{opacity:.5}pre{white-space:pre-wrap}button:focus-visible{outline:3px solid #ffd590}
+</style>
+<h1>E3 → COMPLETE S3 → E3 flight</h1>
+<p><a href="connected-preview.html">Bounded portal preview</a> · <a href="spherical-cover.html">Whole-sphere S3 flight</a> · <a href="../index.html">Worlds</a></p>
+<p>A flat E3 room opens through a portal into the COMPLETE 3-sphere (curvature radius 8), and a second
+portal on the far side of the sphere leads back to the flat room. The sphere has no spherical floor and no
+chart boundary: an unobstructed great circle closes after 2πR ≈ 50.27, unless you cross a portal first.</p>
+<p>From the flat spawn, hold W without turning for about ten seconds to enter the sphere,
+pass its antipode and return through the second portal. Green balls are spherical landmarks;
+the blue ball is the flat destination. This is a flight fixture, not a finished room.</p>
+<p><strong>No gravity.</strong> Click the view for real-time flight: WASD, Space/Shift, mouse look; Escape releases the mouse.
+Buttons take quarter-unit steps. Mouse look stays upright relative to an up direction carried along your flight
+and through portals, not a world up. Collisions or uncertain motion halt the preview; reset recovers.</p>
+<p>Magenta marks numerical/traversal uncertainty; thin silhouette outlines remain under investigation.
+Dark checkers mark the end of the flat region, including when viewed through a portal from inside S3.</p>
+<p><label>Resolution <select id="quality"><option value="160">160 × 120</option><option value="320" selected>320 × 240</option><option value="480">480 × 360</option></select></label></p>
+<canvas id="view" width="80" height="60" aria-label="Connected complete-S3 sight preview"></canvas>
+<p><label><input id="diagnostics" type="checkbox"> Highlight all unresolved rays (including region boundaries)</label></p>
+<div id="controls"><button data-action="forward">Forward (W)</button><button data-action="back">Back (S)</button>
+<button data-action="left">Look left (←)</button><button data-action="right">Look right (→)</button>
+<button data-action="up">Look up (↑)</button><button data-action="down">Look down (↓)</button>
+<button data-action="spawn-flat">Spawn in flat room</button><button data-action="spawn-sphere">Spawn in sphere</button>
+<button data-action="reset">Reset to spawn</button></div>
+<p id="status" role="status">Loading…</p><pre id="details"></pre>
+<script type="module" src="../app/connected-global-preview.js"></script></html>

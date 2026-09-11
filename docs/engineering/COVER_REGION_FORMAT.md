@@ -44,7 +44,10 @@ join endpoints across documents. Entity and region IDs must remain unambiguous
 across the world, each endpoint may connect once. Units/player radius come from
 baseScene.units and are passed to cover compilation. Save/load includes all
 authoring charts; no conversion to the base region's coordinates occurs.
-Mixed-world renderData refuses until a renderer can consume global regions.
+Mixed-world renderData returns coverage:'s3-cover' for complete spherical regions.
+The connected GPU packer explicitly supports R8 additive balls of angular radius
+.05-.1, refusing unsupported global geometry before GL creation. CPU support is
+broader. See CONNECTED_GLOBAL_GPU.md and the latest GPU review.
 
 The initial global collision field is an additive union of metric balls: exact
 exterior distance, interior sign with conservative magnitude, and nonunique

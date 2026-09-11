@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {compileConnectedCoverWorld} from './engine/world/connected-cover-world.js';
+import {packConnectedWorld} from './engine/geometry/connected-shader.js';
+import {validateJob} from './tools/check-queue.js';
+const doc=JSON.parse(fs.readFileSync('levels/fixtures/connected-global.nil.json'));
+const world=compileConnectedCoverWorld(doc),p=packConnectedWorld(world);
+assert.equal(p.maxDistance,64);
+assert.ok(p.texture.every(Number.isFinite));
+assert.deepEqual([...p.texture.slice(129*4,130*4)],[1,8,0,1]);
+assert.equal(p.counts[2],4); // three spherical balls and flat target, independently additive
+assert.equal(p.counts[3],4);
+const large=structuredClone(doc);large.coverRegions[0].entities.find(e=>e.kind==='ball').radius=1;
+assert.throws(()=>packConnectedWorld(compileConnectedCoverWorld(large)),/angular radius/);
+const small=structuredClone(doc);small.coverRegions[0].geometry.curvatureRadius=9;
+assert.throws(()=>packConnectedWorld(compileConnectedCoverWorld(small)),/radius 8/);
+const saved=world.renderData();saved.regions[1].coverage='bounded';
+assert.equal(world.renderData().regions[1].coverage,'s3-cover');
+assert.deepEqual(validateJob({check:'page-check',args:['--connected-global']}),['tools/page-check.js','--connected-global']);
+console.log('connected global render: coverage, scope refusal, additive groups, snapshot and queue flag passed');

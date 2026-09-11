@@ -6,11 +6,17 @@ const v4=a=>[...a,...Array(4-a.length).fill(0)];
 export function packConnectedWorld(world) {
   const data=world.renderData(), ids=data.regions.map(r=>r.id);
   if(data.regions.length>4||data.primitives.length>16||data.portals.length>8) throw Error('Connected GPU capacity exceeded');
-  for(const r of data.regions) if(!['e3','s3'].includes(r.kind)||r.kind==='s3'&&r.extent>=Math.PI*r.curvatureRadius/2)
-    throw Error('Connected GPU requires E3 or an open-hemisphere S3 chart');
+  for(const r of data.regions){
+    if(r.coverage==='s3-cover'){
+      if(r.kind!=='s3'||r.curvatureRadius!==8)throw Error('Global connected GPU currently requires S3 radius 8');
+    }else if(!['e3','s3'].includes(r.kind)||r.kind==='s3'&&r.extent>=Math.PI*r.curvatureRadius/2)
+      throw Error('Connected GPU requires E3 or an open-hemisphere S3 chart');
+  }
   const rows=Array.from({length:224},()=>[0,0,0,0]), surfaces=[], primitives=[];
   for(const p of data.primitives) {
     const region=ids.indexOf(p.regionId), r=data.regions[region], owner=primitives.length, start=surfaces.length;
+    if(r.coverage==='s3-cover'&&(p.kind!=='ball'||p.op!=='add'||p.radius/r.curvatureRadius<.05||p.radius/r.curvatureRadius>.1))
+      throw Error('Global connected GPU supports additive balls with angular radius .05-.1');
     const add=(n,c,type=0)=>surfaces.push({n:v4(n),meta:[type,owner,c,region]});
     if(p.kind==='ball') {
       if(r.kind==='e3') add(p.center,p.radius,1);
@@ -27,20 +33,21 @@ export function packConnectedWorld(world) {
   primitives.forEach((p,i)=>rows[96+i]=p);
   let groups=0;
   for(const [id,r] of world.regions) for(const g of typeof r.field.groups==='function'
-    ?r.field.groups().map(g=>({base:{entity:g.entity},modifiers:g.modifiers.map(entity=>({entity}))})):r.field.groups) {
+    ?r.field.groups().map(g=>({base:{entity:g.entity},modifiers:g.modifiers.map(entity=>({entity}))})):r.field.groups??r.balls.map(b=>({base:{entity:b},modifiers:[]}))) {
     const index=p=>data.primitives.findIndex(q=>q.id===p.entity.id);
     let sub=0,intersect=0;
     for(const m of g.modifiers) {const bit=1<<index(m);if(m.entity.op==='subtract')sub|=bit;else intersect|=bit;}
     if(groups>=16)throw Error('Connected GPU group capacity exceeded');
     rows[112+groups++]=[index(g.base),sub,intersect,ids.indexOf(id)];
   }
-  data.regions.forEach((r,i)=>rows[128+i]=[r.kind==='s3'?1:0,r.curvatureRadius,r.extent,0]);
+  data.regions.forEach((r,i)=>rows[128+i]=[r.kind==='s3'?1:0,r.curvatureRadius,r.extent??0,r.coverage==='s3-cover'?1:0]);
   data.portals.forEach((p,i)=>{
     const reverse=world.portals.findIndex(q=>q.fromId===world.portals[i].toId&&q.toId===world.portals[i].fromId);
     rows[132+i*10]=[ids.indexOf(p.fromRegionId),ids.indexOf(p.toRegionId),p.radius,reverse];
     ['center','right','up','normal','exitCenter','exitRight','exitUp','exitNormal'].forEach((key,k)=>rows[133+i*10+k]=v4(p[key]));
   });
   return {texture:new Float32Array(rows.flat()),ids,primitiveIds:data.primitives.map(p=>p.id),
+    maxDistance:data.regions.some(r=>r.coverage==='s3-cover')?64:32,
     counts:[surfaces.length,primitives.length,groups,data.portals.length]};
 }
 
@@ -54,6 +61,7 @@ uniform ivec4 uCounts;
 uniform vec4 uPosition,uForward,uRight,uUp;
 uniform vec2 uResolution;
 uniform int uRegion,uDebug,uDiagnostics;
+uniform float uMaxDistance;
 out vec4 frag;
 const float PI=3.141592653589793;
 // Numerical refusal bands for bounded float32 data, not a portable libm proof.
@@ -72,13 +80,26 @@ float a2(float y,float x){
   float angle=2.*h*(1.+s*p);if(ay>ax)angle=PI*.5-angle;if(x<0.)angle=PI-angle;return y<0.?-angle:angle;
 }
 float ac(float x){x=clamp(x,-1.,1.);return a2(sqrt(max(0.,(1.-x)*(1.+x))),x);}
+// Native trigonometric accuracy varies by backend. In particular, a small
+// absolute cosine error near a small spherical ball is amplified by root solving.
+// Reduce to [-pi/2,pi/2], then evaluate sine/cosine without native trig calls.
+vec2 sincos(float x){
+  x=mod(x+PI,2.*PI)-PI;float signC=1.;
+  if(x>PI*.5){x=PI-x;signC=-1.;}else if(x< -PI*.5){x=-PI-x;signC=-1.;}
+  float z=x*x;
+  float s=1./6227020800.;s=-1./39916800.+z*s;s=1./362880.+z*s;s=-1./5040.+z*s;s=1./120.+z*s;s=-1./6.+z*s;
+  float c=-1./87178291200.;c=1./479001600.+z*c;c=-1./3628800.+z*c;c=1./40320.+z*c;c=-1./720.+z*c;c=1./24.+z*c;c=-.5+z*c;
+  return vec2(x*(1.+z*s),signC*(1.+z*c));
+}
+float sn(float x){return sincos(x).x;}
+float cs(float x){return sincos(x).y;}
 vec4 D(int i){return texelFetch(uData,ivec2(i,0),0);}
-vec4 at(vec4 p,vec4 u,float t,vec4 r){return r.x<.5?p+u*t:p*cos(t/r.y)+u*sin(t/r.y);}
-vec4 direction(vec4 p,vec4 u,float t,vec4 r){return r.x<.5?u:-p*sin(t/r.y)+u*cos(t/r.y);}
+vec4 at(vec4 p,vec4 u,float t,vec4 r){return r.x<.5?p+u*t:p*cs(t/r.y)+u*sn(t/r.y);}
+vec4 direction(vec4 p,vec4 u,float t,vec4 r){return r.x<.5?u:-p*sn(t/r.y)+u*cs(t/r.y);}
 vec4 transport(vec4 a,vec4 b,vec4 v,vec4 r){return r.x<.5?v:v-dot(v,b)/(1.+dot(a,b))*(a+b);}
 float dist(vec4 a,vec4 b,vec4 r){return r.x<.5?length(a-b):r.y*a2(length(b-dot(a,b)*a),dot(a,b));}
 vec4 logAt(vec4 a,vec4 b,vec4 r){if(r.x<.5)return b-a;vec4 v=b-dot(a,b)*a;float m=length(v);return m<E?vec4(0):v/m*dist(a,b,r);}
-vec4 expAt(vec4 p,vec4 v,vec4 r){float m=length(v);return r.x<.5?p+v:m<E?p:p*cos(m/r.y)+v/m*sin(m/r.y);}
+vec4 expAt(vec4 p,vec4 v,vec4 r){float m=length(v);return r.x<.5?p+v:m<E?p:p*cs(m/r.y)+v/m*sn(m/r.y);}
 float value(int i,vec4 p){vec4 m=D(2*i+1),n=D(2*i);return m.x>.5?length(p-n)-m.z:dot(p,n)-m.z;}
 int combine(int a,int b){return a==0||b==0?0:a==2||b==2?2:1;}
 bool omitted[16];
@@ -105,9 +126,9 @@ void solve(int i,vec4 p,vec4 u,vec4 r,float end){
     if(h<E){if(abs(c)<E)ambiguity(0.,end,end);return;}float ratio=c/h;
     if(abs(ratio)>1.+4.*E)return;
     if(abs(ratio)>1.-4.*E){float center=a2(b,a)+(ratio<0.?PI:0.),spread=ac(clamp(abs(ratio)-4.*E,0.,1.));
-      for(int k=-1;k<=1;k++)ambiguity((center-spread+float(k)*2.*PI)*r.y,(center+spread+float(k)*2.*PI)*r.y,end);return;}
+      for(int k=-1;k<=2;k++)ambiguity((center-spread+float(k)*2.*PI)*r.y,(center+spread+float(k)*2.*PI)*r.y,end);return;}
     float phase=a2(b,a),angle=ac(ratio);
-    for(int k=-1;k<=1;k++){root((phase-angle+float(k)*2.*PI)*r.y,i,end);root((phase+angle+float(k)*2.*PI)*r.y,i,end);}
+    for(int k=-1;k<=2;k++){root((phase-angle+float(k)*2.*PI)*r.y,i,end);root((phase+angle+float(k)*2.*PI)*r.y,i,end);}
   }
 }
 bool excluded(int j,vec4 p,vec4 u,vec4 r,float end){
@@ -115,7 +136,7 @@ bool excluded(int j,vec4 p,vec4 u,vec4 r,float end){
   for(int k=0;k<6;k++){if(k>=int(pr.y))break;int i=int(pr.x)+k;vec4 n=D(2*i);float c=D(2*i+1).z;
     float a=dot(p,n),b=dot(u,n),minimum;
     if(r.x<.5)minimum=min(a-c,a+b*end-c);
-    else{float L=end/r.y;minimum=min(a,a*cos(L)+b*sin(L));float phase=a2(b,a)+PI;
+    else{float L=end/r.y;minimum=min(a,a*cs(L)+b*sn(L));float phase=a2(b,a)+PI;
       for(int z=-1;z<=1;z++){float t=phase+float(z)*2.*PI;if(t>=-E&&t<=L+E)minimum=min(minimum,-length(vec2(a,b)));}minimum-=c;}
     if(minimum>4.*E)return true;
   }return false;
@@ -124,15 +145,22 @@ bool excluded(int j,vec4 p,vec4 u,vec4 r,float end){
 vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
   float traveled=0.;int reverse=-1;normal=vec4(0);tangent=u;
   for(int crossing=0;crossing<5;crossing++){
-    vec4 r=D(128+region);float remain=32.-traveled,edge=1e20;
+    vec4 r=D(128+region);float remain=uMaxDistance-traveled,edge=1e20;
     if(r.x<.5){if(length(p)>r.z+E)return vec4(2,region,-1,traveled);float b=dot(p,u),c=dot(p,p)-r.z*r.z;edge=-b+sqrt(max(0.,b*b-c));}
-    else{float boundary=cos(r.z/r.y);if(p.w<boundary-E)return vec4(2,region,-1,traveled);float h=length(vec2(p.w,u.w));if(h<E||boundary/h>1.+E)return vec4(2,region,-1,traveled);edge=r.y*(a2(u.w,p.w)+ac(boundary/h));}
+    else if(r.w<.5){float boundary=cs(r.z/r.y);if(p.w<boundary-E)return vec4(2,region,-1,traveled);float h=length(vec2(p.w,u.w));if(h<E||boundary/h>1.+E)return vec4(2,region,-1,traveled);edge=r.y*(a2(u.w,p.w)+ac(boundary/h));}
     float end=min(remain,edge),portalUncertain=1e20;int gate=-1;
     for(int g=0;g<8;g++){if(g>=uCounts.w)break;int base=132+g*10;vec4 info=D(base);if(int(info.x)!=region)continue;
       vec4 center=D(base+1),n=D(base+4);float a=r.x<.5?dot(p-center,n):dot(p,n),b=dot(u,n);
-      if(abs(a)<E&&dist(center,p,r)<info.z+E){if(g==reverse)continue;return vec4(2,region,-1,traveled);}
-      if(a<=E)continue;float t=1e20;
-      if(r.x<.5){if(b< -E)t=-a/b;}else{float phase=a2(-a,b);for(int k=-1;k<=2;k++){float theta=phase+float(k)*PI,candidate=theta*r.y;if(candidate>E&&-a*sin(theta)+b*cos(theta)<-E)t=min(t,candidate);}}
+      if(abs(a)<E&&dist(center,p,r)<info.z+E){if(g!=reverse)return vec4(2,region,-1,traveled);if(r.w<.5)continue;}
+      if(r.w<.5&&a<=E)continue;float t=1e20;
+      if(r.x<.5){if(b< -E)t=-a/b;}else{float phase=a2(-a,b);for(int k=-1;k<=3;k++){
+        float theta=phase+float(k)*PI,candidate=theta*r.y;
+        if(candidate>E&&candidate<=end+E&&-a*sn(theta)+b*cs(theta)<-E){
+          float radialCandidate=dist(center,at(p,u,candidate,r),r);
+          if(abs(radialCandidate-info.z)<4.*E)portalUncertain=min(portalUncertain,max(0.,candidate-4.*E));
+          else if(radialCandidate<info.z)t=min(t,candidate);
+        }
+      }}
       if(t>end+E)continue;vec4 q=at(p,u,t,r);float radial=dist(center,q,r);
       if(abs(radial-info.z)<4.*E){portalUncertain=min(portalUncertain,max(0.,t-4.*E));continue;}if(radial>info.z)continue;
       if(abs(t-end)<E){portalUncertain=min(portalUncertain,max(0.,t-4.*E));continue;}end=t;gate=g;
@@ -141,7 +169,7 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
     // A certified nearer hit wins; rays reaching the uncertain event still stop.
     count=0;uncertainAt=portalUncertain;
     for(int j=0;j<16;j++){omitted[j]=false;if(j>=uCounts.y)break;if(int(D(96+j).z)==region)omitted[j]=excluded(j,p,u,r,end);}
-    int owner;int start=occupancy(p,region,owner);if(start==2)return vec4(2,region,-1,traveled);if(start==1)return vec4(1,region,owner,traveled);
+    int owner;int start=occupancy(p,region,owner);if(start==2||start==1&&r.w>.5)return vec4(2,region,-1,traveled);if(start==1)return vec4(1,region,owner,traveled);
     for(int i=0;i<48;i++){if(i>=uCounts.x)break;vec4 m=D(2*i+1);if(int(m.w)==region&&!omitted[int(m.y)])solve(i,p,u,r,end);}
     float previous=-1.;
     for(int step=0;step<100;step++){

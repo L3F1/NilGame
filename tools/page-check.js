@@ -49,7 +49,8 @@ const sw = process.argv.includes('--sw');
 const worlds = process.argv.includes('--worlds');
 const ballLab = process.argv.includes('--ball-lab');
 const regionLab = process.argv.includes('--region-lab');
-const connectedPreview = process.argv.includes('--connected-preview');
+const connectedGlobal = process.argv.includes('--connected-global');
+const connectedPreview = process.argv.includes('--connected-preview') || connectedGlobal;
 const sphericalCover = process.argv.includes('--spherical-cover');
 const lab = ballLab || regionLab || connectedPreview || sphericalCover;
 let timeoutMs;
@@ -109,7 +110,7 @@ const srv = createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     if (ballLab) { res.end(readFileSync(join(ROOT, 'tools/ball-lab.html'), 'utf8')); return; }
     if (regionLab) { res.end(readFileSync(join(ROOT, 'tools/region-lab.html'), 'utf8')); return; }
-    if (connectedPreview) { res.end(readFileSync(join(ROOT, 'tools/connected-preview.html'), 'utf8')); return; }
+    if (connectedPreview) { res.end(readFileSync(join(ROOT, connectedGlobal?'tools/connected-global-preview.html':'tools/connected-preview.html'), 'utf8')); return; }
     if (sphericalCover) { res.end(readFileSync(join(ROOT, 'tools/spherical-cover.html'), 'utf8')); return; }
     res.end(readFileSync(join(ROOT, 'index.html'), 'utf8').replace('</head>', probe + '</head>'));
     return;
@@ -221,9 +222,10 @@ if (!connectedPreview && !sphericalCover) console.log('centre pixel      :', rep
 if (connectedPreview) console.log('preview renderer  : WebGL2 analytic connected rays, CPU motion');
 if (sphericalCover) console.log('preview renderer  : WebGL2 whole-S3 first ball hit over 2πR, CPU authority');
 if (report.checks) console.log(`${sphericalCover ? 'whole-S3 GPU' : connectedPreview ? 'connected GPU preview' : ballLab ? 'ball editor' : regionLab ? 'S3 viewport' : 'world/input'} checks : ${report.checks.length} passed`);
+if(report.connectedGlobalEvidence)report.connectedEvidence=report.connectedGlobalEvidence;
 if(report.connectedEvidence){
   mkdirSync(join(ROOT,'.agent-bridge'),{recursive:true});
-  writeFileSync(join(ROOT,'.agent-bridge','connected-gpu-evidence.json'),JSON.stringify(report.connectedEvidence,null,2));
+  writeFileSync(join(ROOT,'.agent-bridge',connectedGlobal?'connected-global-gpu-evidence.json':'connected-gpu-evidence.json'),JSON.stringify(report.connectedEvidence,null,2));
   for(const r of report.connectedEvidence){
     if(r.label)console.log('parity:',JSON.stringify(r));
     if(r.gpuMs){const sorted=[...r.gpuMs].sort((a,b)=>a-b);console.log(`GPU ${r.pose}: ${r.hardware}, ${r.resolution.width}x${r.resolution.height}, samples ${sorted.length}, median ${sorted[Math.floor(sorted.length/2)]}, p90 ${sorted[Math.floor(sorted.length*.9)]} ms`);}

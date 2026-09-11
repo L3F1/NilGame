@@ -50,6 +50,13 @@ export function compileConnectedCoverWorld(source){
     const p=r.spawnPosition.slice();
     return {regionId,position:p,velocity:p.map(()=>0),radius,camera:createCameraFrame(r.space,p,{forward:r.spawnFrame[1],up:r.spawnFrame[2]})};
   }
-  return Object.freeze({regions,portals,spawn,document:()=>structuredClone(document),
-    renderData:()=>{throw Error('Connected global regions need a global-capable renderer; bounded packets are refused');}});
+  function renderData(){
+    const data=base.renderData();
+    for(const r of compiled){
+      data.regions.push({id:r.id,kind:'s3',curvatureRadius:r.space.curvatureRadius,coverage:'s3-cover',extent:null});
+      for(const b of r.balls)data.primitives.push({id:b.id,regionId:r.id,kind:'ball',op:'add',target:null,center:b.center.slice(),radius:b.radius,planes:[],axes:[],halfExtent:[0,0,0]});
+    }
+    return {...data,portals:portals.map(p=>p.renderData())};
+  }
+  return Object.freeze({regions,portals,spawn,document:()=>structuredClone(document),renderData});
 }

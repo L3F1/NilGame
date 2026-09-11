@@ -1,8 +1,10 @@
 # Complete spherical runtime, bounded authoring charts
 
 2026-09-11. Implemented in engine/geometry/spherical-cover.js and the standalone
-tools/spherical-cover.html browser fixture. Not yet connected to collision,
-scene-v2 authoring or E3 portals.
+tools/spherical-cover.html browser fixture. Now also connected to E3 with CPU
+collision and a GPU flight host via nil-connected-cover (separate from scene-v2).
+See COVER_REGION_FORMAT.md and docs/qa/connected-global-gpu-review.md for current
+integration; evidence and next-step notes below describe the original foundation.
 
 ## Runtime ownership
 

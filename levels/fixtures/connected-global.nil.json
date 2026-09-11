@@ -1,31 +1,301 @@
 {
-  "format":"nil-connected-cover","version":1,"id":"connected-global",
-  "baseScene":{
-    "format":"nil-scene","version":2,"id":"flat-base",
-    "units":{"name":"design-unit","playerRadius":0.25},
-    "regions":[{"id":"flat","geometry":{"kind":"e3","curvatureRadius":1},"topology":"cover","extent":12}],
-    "entities":[
-      {"id":"flat-spawn","regionId":"flat","kind":"spawn","position":[0,-2,0]},
-      {"id":"flat-entry","regionId":"flat","kind":"anchor","position":[0,0,0],"radius":0.9,"forward":[0,-1,0],"up":[0,0,1]},
-      {"id":"flat-return","regionId":"flat","kind":"anchor","position":[3,0,0],"radius":0.9,"forward":[0,1,0],"up":[0,0,1]},
-      {"id":"flat-target","regionId":"flat","kind":"ball","position":[3,3,0],"radius":0.6}
-    ],"connections":[]
-  },
-  "coverRegions":[{
-    "format":"nil-cover-region","version":1,"id":"sphere",
-    "geometry":{"kind":"s3","curvatureRadius":8},
-    "charts":[
-      {"id":"north-chart","center":[0,0,0,1],"basis":[[1,0,0,0],[0,1,0,0],[0,0,1,0]],"extent":4},
-      {"id":"exit-chart","center":[0,-1,0,0],"basis":[[0,0,1,0],[0,0,0,1],[-1,0,0,0]],"extent":4}
-    ],
-    "entities":[
-      {"id":"sphere-spawn","kind":"spawn","chartId":"north-chart","position":[1,0,0]},
-      {"id":"sphere-entry","kind":"anchor","chartId":"north-chart","position":[0,0,0],"radius":0.9,"forward":[0,1,0],"up":[0,0,1]},
-      {"id":"sphere-exit","kind":"anchor","chartId":"exit-chart","position":[0,0,0],"radius":0.9,"forward":[0,-1,0],"up":[1,0,0]}
-    ]
-  }],
-  "connections":[
-    {"id":"enter-sphere","kind":"portal","a":"flat-entry","b":"sphere-entry","velocity":"preserve-speed","scale":1},
-    {"id":"leave-sphere","kind":"portal","a":"sphere-exit","b":"flat-return","velocity":"preserve-speed","scale":1}
-  ]
+    "format":  "nil-connected-cover",
+    "version":  1,
+    "id":  "connected-global",
+    "baseScene":  {
+                      "format":  "nil-scene",
+                      "version":  2,
+                      "id":  "flat-base",
+                      "units":  {
+                                    "name":  "design-unit",
+                                    "playerRadius":  0.25
+                                },
+                      "regions":  [
+                                      {
+                                          "id":  "flat",
+                                          "geometry":  {
+                                                           "kind":  "e3",
+                                                           "curvatureRadius":  1
+                                                       },
+                                          "topology":  "cover",
+                                          "extent":  12
+                                      }
+                                  ],
+                      "entities":  [
+                                       {
+                                           "id":  "flat-spawn",
+                                           "regionId":  "flat",
+                                           "kind":  "spawn",
+                                           "position":  [
+                                                            0,
+                                                            -2,
+                                                            0
+                                                        ]
+                                       },
+                                       {
+                                           "id":  "flat-entry",
+                                           "regionId":  "flat",
+                                           "kind":  "anchor",
+                                           "position":  [
+                                                            0,
+                                                            0,
+                                                            0
+                                                        ],
+                                           "radius":  0.9,
+                                           "forward":  [
+                                                           0,
+                                                           -1,
+                                                           0
+                                                       ],
+                                           "up":  [
+                                                      0,
+                                                      0,
+                                                      1
+                                                  ]
+                                       },
+                                       {
+                                           "id":  "flat-return",
+                                           "regionId":  "flat",
+                                           "kind":  "anchor",
+                                           "position":  [
+                                                            3,
+                                                            0,
+                                                            0
+                                                        ],
+                                           "radius":  0.9,
+                                           "forward":  [
+                                                           0,
+                                                           1,
+                                                           0
+                                                       ],
+                                           "up":  [
+                                                      0,
+                                                      0,
+                                                      1
+                                                  ]
+                                       },
+                                       {
+                                           "id":  "flat-target",
+                                           "regionId":  "flat",
+                                           "kind":  "ball",
+                                           "position":  [
+                                                            3,
+                                                            3,
+                                                            0
+                                                        ],
+                                           "radius":  0.6
+                                       }
+                                   ],
+                      "connections":  [
+
+                                      ]
+                  },
+    "coverRegions":  [
+                         {
+                             "format":  "nil-cover-region",
+                             "version":  1,
+                             "id":  "sphere",
+                             "geometry":  {
+                                              "kind":  "s3",
+                                              "curvatureRadius":  8
+                                          },
+                             "charts":  [
+                                            {
+                                                "id":  "north-chart",
+                                                "center":  [
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               1
+                                                           ],
+                                                "basis":  [
+                                                              [
+                                                                  1,
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                                              [
+                                                                  0,
+                                                                  1,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                                              [
+                                                                  0,
+                                                                  0,
+                                                                  1,
+                                                                  0
+                                                              ]
+                                                          ],
+                                                "extent":  4
+                                            },
+                                            {
+                                                "id":  "exit-chart",
+                                                "center":  [
+                                                               0,
+                                                               -1,
+                                                               0,
+                                                               0
+                                                           ],
+                                                "basis":  [
+                                                              [
+                                                                  0,
+                                                                  0,
+                                                                  1,
+                                                                  0
+                                                              ],
+                                                              [
+                                                                  0,
+                                                                  0,
+                                                                  0,
+                                                                  1
+                                                              ],
+                                                              [
+                                                                  -1,
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ]
+                                                          ],
+                                                "extent":  4
+                                            },
+                                            {
+                                                "id":  "south-chart",
+                                                "center":  [
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               -1
+                                                           ],
+                                                "basis":  [
+                                                              [
+                                                                  -1,
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                                              [
+                                                                  0,
+                                                                  -1,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                                              [
+                                                                  0,
+                                                                  0,
+                                                                  -1,
+                                                                  0
+                                                              ]
+                                                          ],
+                                                "extent":  4
+                                            }
+                                        ],
+                             "entities":  [
+                                              {
+                                                  "id":  "sphere-spawn",
+                                                  "kind":  "spawn",
+                                                  "chartId":  "north-chart",
+                                                  "position":  [
+                                                                   1,
+                                                                   0,
+                                                                   0
+                                                               ]
+                                              },
+                                              {
+                                                  "id":  "sphere-entry",
+                                                  "kind":  "anchor",
+                                                  "chartId":  "north-chart",
+                                                  "position":  [
+                                                                   0,
+                                                                   0,
+                                                                   0
+                                                               ],
+                                                  "radius":  0.9,
+                                                  "forward":  [
+                                                                  0,
+                                                                  1,
+                                                                  0
+                                                              ],
+                                                  "up":  [
+                                                             0,
+                                                             0,
+                                                             1
+                                                         ]
+                                              },
+                                              {
+                                                  "id":  "sphere-exit",
+                                                  "kind":  "anchor",
+                                                  "chartId":  "exit-chart",
+                                                  "position":  [
+                                                                   0,
+                                                                   0,
+                                                                   0
+                                                               ],
+                                                  "radius":  0.9,
+                                                  "forward":  [
+                                                                  0,
+                                                                  -1,
+                                                                  0
+                                                              ],
+                                                  "up":  [
+                                                             1,
+                                                             0,
+                                                             0
+                                                         ]
+                                              },
+                                              {
+                                                  "id":  "north-landmark",
+                                                  "kind":  "ball",
+                                                  "chartId":  "north-chart",
+                                                  "position":  [
+                                                                   2,
+                                                                   2,
+                                                                   0
+                                                               ],
+                                                  "radius":  0.6
+                                              },
+                                              {
+                                                  "id":  "south-landmark",
+                                                  "kind":  "ball",
+                                                  "chartId":  "south-chart",
+                                                  "position":  [
+                                                                   2,
+                                                                   0,
+                                                                   0
+                                                               ],
+                                                  "radius":  0.6
+                                              },
+                                              {
+                                                  "id":  "return-landmark",
+                                                  "kind":  "ball",
+                                                  "chartId":  "exit-chart",
+                                                  "position":  [
+                                                                   2,
+                                                                   0,
+                                                                   0
+                                                               ],
+                                                  "radius":  0.6
+                                              }
+                                          ]
+                         }
+                     ],
+    "connections":  [
+                        {
+                            "id":  "enter-sphere",
+                            "kind":  "portal",
+                            "a":  "flat-entry",
+                            "b":  "sphere-entry",
+                            "velocity":  "preserve-speed",
+                            "scale":  1
+                        },
+                        {
+                            "id":  "leave-sphere",
+                            "kind":  "portal",
+                            "a":  "sphere-exit",
+                            "b":  "flat-return",
+                            "velocity":  "preserve-speed",
+                            "scale":  1
+                        }
+                    ]
 }

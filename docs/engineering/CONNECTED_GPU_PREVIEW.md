@@ -1,6 +1,11 @@
 # Connected GPU preview boundary
 
-2026-09-11. This is an experimental rendering host for the connected-sight
+2026-09-11. Complete-S3 extension now lives in tools/connected-global-preview.html;
+see CONNECTED_GLOBAL_GPU.md and docs/qa/connected-global-gpu-review.md. This page
+describes the original bounded fixture. Shared trig now uses range-reduced
+polynomials after SwiftShader exposed a .045-unit global-ball hit error.
+
+This is an experimental rendering host for the connected-sight
 fixture, not a replacement for the CPU geometry/query contract or the editors.
 
 The packer consumes compiled region packets and owned Boolean groups. E3 and

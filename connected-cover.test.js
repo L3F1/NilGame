@@ -23,7 +23,7 @@ assert.ok(state.position[0]>2.99,'return portal must determine the new position'
 const reloaded=compileConnectedCoverWorld(JSON.parse(JSON.stringify(world.document())));
 const again=traceRegionSight(reloaded,{regionId:start.regionId,position:start.position,direction:start.camera.forward},{maxDistance:60});
 assert.equal(again.query.owner,sight.query.owner);assert.ok(Math.abs(again.distance-sight.distance)<1e-10);
-assert.throws(()=>world.renderData(),/global-capable/);
+assert.equal(world.renderData().regions.find(r=>r.id==='sphere').coverage,'s3-cover');
 const colliding=structuredClone(doc);
 colliding.coverRegions[0].entities.push({id:'sphere-blocker',kind:'ball',chartId:'north-chart',position:[0,1.5,0],radius:.4});
 const obstacle=compileConnectedCoverWorld(colliding);state=obstacle.spawn();
