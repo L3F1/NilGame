@@ -8,7 +8,7 @@ historical status claims.
 
 | Task | Contract / safeguards | Starting implementation |
 | --- | --- | --- |
-| Next milestone | NEXT_SESSION.md; PLAN-curved-authoring.md relevant item | current status/log |
+| Next milestone | NEXT_SESSION.md; CONNECTED_NEXT_MILESTONE.md; PLAN-curved-authoring.md relevant item | current status/log |
 | Distance / CSG / rays | docs/rendering-contract.md; SUBSYSTEM_RULES.md Mathematical contracts | scene-field.js; e3-ray-intervals.js |
 | S3 movement / camera / portals | REGION_MOTION_CONTRACT.md; SUBSYSTEM_RULES.md Mathematical contracts | metric-space.js; collision.js; walker.js; camera-frame.js; region-portal.js |
 | Schema / construction / persistence | docs/scene-format.md; docs/architecture.md relevant boundary | document.js; region-world.js |

@@ -26,6 +26,8 @@ the sphere; its viewing distance can differ from the shortest distance to the po
 <p><label><input id="diagnostics" type="checkbox"> Highlight all unresolved rays (including region boundaries)</label></p>
 <fieldset><legend>Appearance (colours only; hits, distances and uncertainty markings are unchanged)</legend>
 <label><input id="polished" type="checkbox" checked> Polished lighting</label><br>
+<label><input id="smooth" type="checkbox" checked> Smooth edges</label> — averages four samples per pixel. If any sample
+is numerically uncertain the whole pixel stays magenta; the unresolved-ray highlight always uses one centre ray.<br>
 <label><input id="ao" type="checkbox" checked> Ambient occlusion</label> — contact shading near other surfaces;
 no shadows from lights or through portals. Its effect is subtle on isolated spheres.
 For floors and corners, try the <a href="connected-preview.html">bounded room preview</a>.</fieldset>

@@ -4,9 +4,9 @@
 Latest fix: connected preview sphere contact halts. Read
 docs/qa/connected-contact-recovery.md. Uses existing motionPause and one bounded
 resumeRegionCorrection for budget debt; no leftover-time replay or kernel edit.
-Muse contact corpus is the next independent QA assignment; inspect bridge status.
-Latest Claude appearance-UI batch at4c51c4d is complete/accepted.
-Manifest now assigns MUSE-61 contact corpus; inspect status before dispatch/retry.
+Muse61 contact corpus accepted with corrections: 72 approaches, explicit no-halt
+assertion. Claude pixel-sampling UI accepted after lead GPU verification.
+No agents running; manifest records completed work, replace before dispatch.
 Muse60 approach checks were previously accepted with lead report corrections.
 
 User confirmed the second-exit issue was confusing a spherical image with the
@@ -31,7 +31,9 @@ Important failures caught, preserve safeguards:
   Keep strict no-brightening and byte-identical debug-packet toggle checks. Do not
   restore implicit derivatives without a defined footprint. Floor tiles can alias.
 - Thin magenta silhouette refusals remain honest/unfixed. Next lead priority:
-  defined pixel footprints and grazing-ray uncertainty, not recolouring misses.
+  grazing-ray uncertainty, not recolouring misses. Explicit four-ray sampling
+  now exists (Smooth edges); read connected-pixel-sampling-review.md in docs/qa.
+  Diagnostics stay centre rays; any unknown sample stays fully marked.
 
 Live Worlds -> Full S3 portals -> tools/connected-global-preview.html:
 E3 -> complete S3 past antipode -> E3, CPU body collision, carried-reference camera.
@@ -44,6 +46,8 @@ Claude can implement bounded display/fixture tasks. Muse can build a reproducibl
 connected silhouette/grazing corpus, but lead owns error guards/footprints. Keep
 agent browser tests on lead queue, never from isolated clones. This Claude tried
 and hit occupied port; not accepted as evidence. Lead performed real checks.
-Next after rendering: coverage-aware editor transactions/material controls.
+Next milestone: CONNECTED_NEXT_MILESTONE.md. Bring the complete connected fixture
+into editor transactions/save/load before a third geometry. H3 is the next adapter
+test after that; Nil/Sol need numerical contracts, not just new shader tags.
 Godot remains a candidate host. Current queue worker50244; probe once/session.
 Final suite/browser measurements in review. Push user-facing changes and verify Pages.

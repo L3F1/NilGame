@@ -2833,3 +2833,11 @@ either radial guard alone protects this corpus, both removed fail. Lead reran
 three mutations and restored scratch; main engine unchanged. See
 muse60-portal-approach.md and portal-guide-review.md. First WSL launch failed
 before model startup; elevated bridge launch then completed. No jobs scheduled.
+
+## MUSE-61 accepted with corrections — 2026-09-11
+
+Base8a9428c, 72 approaches rerun on Windows Node24.20.0: 13 work limits,
+one completed correction, no halts. Lead added an assertion against unexpected
+halts (the original called all of them legitimate), corrected near-target labels
+and reran the isolated old-host mutation, exit1. Report and limitations:
+muse61-contact-corpus.md. Full Node suite including this test: 97/97.

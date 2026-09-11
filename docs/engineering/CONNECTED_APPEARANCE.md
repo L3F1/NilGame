@@ -28,3 +28,26 @@ Renderer draw accepts polished/ao booleans; read's fourth argument accepts the
 same options for debug-packet invariance checks. readColor returns RGBA8 display
 pixels. CPU geometry and the old arena renderers are unchanged. Unresolved pixels
 retain their diagnostic colour/pattern rather than receiving material shading.
+
+## Explicit pixel sampling
+
+`antialias` on draw/readColor defaults false; the global preview's Smooth edges
+control enables it. The UI starts enabled except on known software renderers
+(SwiftShader/llvmpipe/softpipe/software names), where measured cost is too high.
+This heuristic is not a hardware performance certificate; the toggle stays usable.
+Four rays at pixel-centre offsets (+/-0.25,+/-0.25) each
+perform ordinary traversal and shading. Colours resolve as sqrt(mean(c*c)),
+consistent with the current gamma-2 display approximation. This is finite
+supersampling, not an analytic pixel integral or a new ray-distance guarantee.
+No hit epsilon, world geometry, movement or implicit shader derivative changes.
+
+Any numerical/traversal uncertainty among the four samples retains a full magenta
+pixel. Domain-boundary patterns may average, but are never replaced with sky.
+This can reveal MORE uncertain pixels than centre sampling; it does not repair
+grazing-ray uncertainty. All debug packets and the diagnostics view remain single
+centre rays, unaffected by antialias. Future geometry adapters can reuse this
+sampling/resolve boundary without new geometry-specific smoothing code.
+
+The four rays are more work. Keep the toggle and report GPU/CPU times separately;
+do not infer input latency from GPU timings. Reference checks compare with an
+independent 2x-resolution centre-ray image and keep uncertainty markers explicit.

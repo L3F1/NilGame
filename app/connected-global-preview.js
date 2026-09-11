@@ -11,6 +11,10 @@ try {
   const response=await fetch('../levels/fixtures/connected-global.nil.json');if(!response.ok)throw Error(`Scene HTTP ${response.status}`);
   const scene=await response.json();
   const model=createConnectedGlobalPreview(scene),coldStart=performance.now(),renderer=createConnectedRenderer(canvas,model.world);
+  // Four rays are affordable on the tested GPU, but not software fallback.
+  // This is a starting preference, not a performance guarantee; keep the toggle.
+  const defaultSmoothing=!/SwiftShader|llvmpipe|softpipe|software/i.test(renderer.hardware);
+  document.querySelector('#smooth').checked=defaultSmoothing;
   // CPU comparisons use the renderer's own range; never a local default.
   const maxDistance=renderer.packed.maxDistance;
   if(!Number.isFinite(maxDistance)||maxDistance<=0)throw Error('Renderer packet lacks maxDistance');
@@ -18,8 +22,10 @@ try {
   const dimensions=()=>{const width=Number(document.querySelector('#quality').value);return{width,height:width*3/4};};
   // Colour-only style; debug packets must not depend on it.
   const appearance=()=>({polished:document.querySelector('#polished').checked,ao:document.querySelector('#ao').checked});
+  // Smooth edges averages four display samples; the diagnostics view always shows single centre rays.
+  const smoothing=()=>document.querySelector('#smooth').checked&&!document.querySelector('#diagnostics').checked;
   function draw(){
-    renderer.draw(model.state,{...dimensions(),...appearance(),diagnostics:document.querySelector('#diagnostics').checked});
+    renderer.draw(model.state,{...dimensions(),...appearance(),antialias:smoothing(),diagnostics:document.querySelector('#diagnostics').checked});
     status.textContent=model.status();
     const guide=model.renderGuide(),near=guide.nearest,aim=guide.aimed;
     document.querySelector('#portal-hint').textContent=[
@@ -40,6 +46,7 @@ try {
   document.querySelector('#diagnostics').onchange=draw;
   document.querySelector('#polished').onchange=draw;
   document.querySelector('#ao').onchange=draw;
+  document.querySelector('#smooth').onchange=draw;
   const wish=()=>[Number(keys.has('KeyD'))-Number(keys.has('KeyA')),Number(keys.has('KeyW'))-Number(keys.has('KeyS')),Number(keys.has('Space'))-Number(keys.has('ShiftLeft')||keys.has('ShiftRight'))];
   function frame(time){try{
     const dt=last===null?0:Math.min(.04,(time-last)/1000);last=time;
@@ -192,6 +199,66 @@ try {
         floorRenderer.draw(state,{width:320,height:240,...options});shots.push({name,data:floorCanvas.toDataURL()});
       }
       records.push({label:'ao-floor',pose:'return',owners:floorOwners,floorHits,darkened,darkenedOwners,brightened});
+
+      // Smooth edges at the return pose (flat-target silhouette in view): four quarter-pixel samples,
+      // averaged as sqrt(mean(c^2)); any numerical refusal keeps the display pixel magenta.
+      const smoothBox=document.querySelector('#smooth'),diagnosticsBox=document.querySelector('#diagnostics');
+      if(smoothBox.checked!==defaultSmoothing)throw Error('Smooth edges default does not match the renderer policy');
+      if(diagnosticsBox.checked)throw Error('Unresolved-ray highlight must start unchecked');
+      const setSmooth=on=>{if(smoothBox.checked!==on)smoothBox.click();};
+      for(const samplePose of poses.filter(p=>['spawn','quarter','return'].includes(p.label))){
+      const state=samplePose.state;
+      const SW=320,SH=240,centrePackets=packets(renderer,state,SW,SH);
+      for(const on of [false,true]){
+        setSmooth(on);
+        for(const options of [undefined,{antialias:false},{antialias:true},{...appearance(),antialias:on},{antialias:true,diagnostics:true}])
+          if(!packets(renderer,state,SW,SH,options).every((p,k)=>same(p,centrePackets[k])))throw Error(`Debug packets depend on smoothing: checkbox ${on}, options ${JSON.stringify(options)}`);
+      }
+      checks.push(`identical status/region/owner, distance and normal packets with antialias false/true and Smooth edges toggled (${SW}x${SH})`);
+      // Independent same-pose reference: a separate renderer at 2x resolution, centre rays only.
+      // High-resolution pixel (2x+dx,2y+dy) has exactly the ray of low-resolution sample (x+.25+dx/2,y+.25+dy/2).
+      const refRenderer=createConnectedRenderer(document.createElement('canvas'),model.world),highStatus=refRenderer.read(state,2*SW,2*SH).pixels;
+      const smoothRecord={label:'smooth-edges',pose:samplePose.label,width:SW,height:SH,reference:`${2*SW}x${2*SH} centre rays`,styles:[]};
+      for(const style of [{polished:true,ao:true},{polished:false,ao:false}]){
+        const high=color(refRenderer,state,2*SW,2*SH,{...style,antialias:false});
+        const centre=color(renderer,state,SW,SH,{...style,antialias:false}),smooth=color(renderer,state,SW,SH,{...style,antialias:true});
+        if(!same(centre,color(renderer,state,SW,SH,style)))throw Error(`readColor antialias must default to false ${JSON.stringify(style)}`);
+        if(!same(smooth,color(renderer,state,SW,SH,{...style,antialias:true})))throw Error('Smoothed readColor is not repeatable');
+        let eligible=0,worst=0,changed=0,magenta=0;
+        for(let y=0;y<SH;y++)for(let x=0;x<SW;x++){
+          const i=y*SW+x,samples=[0,1].flatMap(dy=>[0,1].map(dx=>(2*y+dy)*2*SW+2*x+dx));
+          if(Math.max(...[0,1,2].map(k=>Math.abs(smooth[4*i+k]-centre[4*i+k])))>=12)changed++;
+          // Refusal kind 1 is the domain boundary pattern, which may average; every other refusal is numerical.
+          const unresolved=samples.find(j=>highStatus[4*j]===2&&highStatus[4*j+3]!==1);
+          if(unresolved!==undefined){
+            magenta++;
+            if([0,1,2].some(k=>Math.abs(smooth[4*i+k]-high[4*unresolved+k])>2))throw Error(`Smooth edges ${x},${y}: numerical refusal averaged to ${[...smooth.slice(4*i,4*i+3)]}, expected uncertainty colour ${[...high.slice(4*unresolved,4*unresolved+3)]}`);
+            continue;
+          }
+          if(!samples.every(j=>highStatus[4*j]===1))continue;
+          eligible++;
+          for(let k=0;k<3;k++){
+            const expected=255*Math.sqrt(samples.reduce((sum,j)=>sum+(high[4*j+k]/255)**2,0)/4),error=Math.abs(smooth[4*i+k]-expected);
+            worst=Math.max(worst,error);
+            if(error>2)throw Error(`Smooth edges ${x},${y} channel ${k} ${JSON.stringify(style)}: got ${smooth[4*i+k]}, 2x reference sqrt(mean(c^2)) ${expected.toFixed(2)} from ${samples.map(j=>high[4*j+k])}`);
+          }
+        }
+        if(eligible<256)throw Error(`Smooth edges reference has only ${eligible} pixels whose four 2x rays all hit (need 256)`);
+        if(changed<32)throw Error(`Smooth edges visibly change only ${changed} pixels by >=12/255 vs centre sampling (need 32); antialias ignored?`);
+        smoothRecord.styles.push({...style,eligible,worst,changed,magenta});
+        checks.push(`Smooth edges ${JSON.stringify(style)}: ${eligible} all-hit pixels match 2x sqrt(mean(c^2)) within ${worst.toFixed(2)}/255; ${changed} pixels visibly differ from centre sampling; ${magenta} numerical-refusal pixels stay magenta`);
+      }
+      records.push(smoothRecord);
+      }
+      // Same view, before/after, through the real checkbox handlers.
+      setSmooth(false);const smoothOff=shot('smooth-edges-off');
+      setSmooth(true);const smoothOn=shot('smooth-edges-on');
+      if(smoothOff===smoothOn)throw Error('Smooth edges checkbox did not change the drawn canvas');
+      diagnosticsBox.click();const diagnosticSmooth=canvas.toDataURL();
+      setSmooth(false);const diagnosticCentre=canvas.toDataURL();
+      setSmooth(true);diagnosticsBox.click();
+      if(diagnosticSmooth!==diagnosticCentre)throw Error('Unresolved-ray highlight changed with Smooth edges; it must use centre rays');
+      checks.push('Smooth edges checkbox changes the display; unresolved-ray highlight is identical with it on or off');
       draw();
     }
     model.act('spawn-sphere');model.advance(0,[0,0,0],{yaw:.6,pitch:.3});
@@ -228,6 +295,23 @@ try {
       for(let i=0;i<90;i++){const timestamp=await new Promise(requestAnimationFrame);if(i>=15&&previous!==undefined)intervals.push(timestamp-previous);previous=timestamp;const t=performance.now();renderer.draw(pose.state,{...dimensions(),...appearance(),timer:i>=15});if(i>=15)timings.push(performance.now()-t);}
       for(let i=0;i<4;i++){await new Promise(requestAnimationFrame);renderer.draw(pose.state,{...dimensions(),...appearance()});}
       records.push({pose:pose.label,hardware:renderer.hardware,resolution:dimensions(),gpuTimerSupported:renderer.timerSupported,gpuMs:[...renderer.times],cpuSubmitMs:timings,presentIntervalsMs:intervals});
+    }
+    {
+      // Centre vs smoothed display timed separately (never pooled) at one pose and resolution.
+      for(const pose of poses.filter(p=>['spawn','quarter','return'].includes(p.label))){
+      const resolution=dimensions();
+      const smoothTiming={label:'smooth-edges-timing',pose:pose.label,hardware:renderer.hardware,resolution,gpuTimerSupported:renderer.timerSupported};
+      for(const antialias of [false,true]){
+        const options={...resolution,...appearance(),antialias},nextFrame=()=>new Promise(requestAnimationFrame),cpuSubmitMs=[];
+        // Warm-up also drains late query results from the previous mode before the buffer is cleared.
+        for(let i=0;i<15;i++){await nextFrame();renderer.draw(pose.state,options);}
+        renderer.times.length=0;
+        for(let i=0;i<75;i++){await nextFrame();const t=performance.now();renderer.draw(pose.state,{...options,timer:true});cpuSubmitMs.push(performance.now()-t);}
+        for(let i=0;i<10;i++){await nextFrame();renderer.draw(pose.state,options);}
+        smoothTiming[antialias?'antialiasTrue':'antialiasFalse']={gpuMs:[...renderer.times],cpuSubmitMs};
+      }
+      records.push(smoothTiming);
+      }
     }
     records.push({coldReadyWallMs});
     details.textContent=JSON.stringify(records,null,2);draw();

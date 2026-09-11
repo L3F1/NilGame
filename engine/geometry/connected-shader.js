@@ -62,7 +62,7 @@ uniform ivec4 uCounts;
 uniform vec4 uPosition,uForward,uRight,uUp;
 uniform vec2 uResolution;
 uniform int uRegion,uDebug,uDiagnostics;
-uniform int uPolished,uAO;
+uniform int uPolished,uAO,uAntialias;
 uniform float uMaxDistance;
 out vec4 frag;
 const float PI=3.141592653589793;
@@ -196,12 +196,11 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
   }return vec4(2,region,-1,traveled);
 }
 ${CONNECTED_MATERIAL_GLSL}
-void main(){vec2 uv=(2.*gl_FragCoord.xy-uResolution)/uResolution.y;
-  vec4 ray=normalize(uForward/tan(35.*PI/180.)+uRight*uv.x+uUp*uv.y),n,t;
-  vec4 result=trace(uPosition,ray,uRegion,n,t);
-  if(uDebug==1){frag=vec4(result.x,result.y+1.,result.z+1.,result.x==2.?float(refusalKind):0.)/255.;return;}
-  if(uDebug==2){uint bits=floatBitsToUint(result.w);frag=vec4(float(bits&255u),float((bits>>8)&255u),float((bits>>16)&255u),float(bits>>24))/255.;return;}
-  if(uDebug==3){frag=n*.5+.5;return;}
+vec4 pixelRay(vec2 pixel){
+  vec2 uv=(2.*pixel-uResolution)/uResolution.y;
+  return normalize(uForward/tan(35.*PI/180.)+uRight*uv.x+uUp*uv.y);
+}
+vec3 displayColor(vec4 result,vec4 n,vec4 t){
   vec3 color=result.x==2.?vec3(.69,.125,.82):result.x==0.?vec3(.086,.098,.118):result.y==0.?vec3(.33,.47,.75):result.y==1.?vec3(.30,.65,.44):vec3(.89,.71,.30);
   // Screen-space pattern explicitly denotes unavailable extent, not terrain,
   // fog, or an asserted empty continuation of a spherical world.
@@ -209,5 +208,27 @@ void main(){vec2 uv=(2.*gl_FragCoord.xy-uResolution)/uResolution.y;
   if(result.x==1.){
     if(uPolished==1&&length(n)>.5)color=finishMaterial(hitPoint,n,t,int(result.y),int(result.z));
     else color*=.3+.7*abs(dot(n,t));
-  }frag=vec4(color,1);
+  }return color;
+}
+void main(){
+  // Four independent rays sample a pixel footprint; no hit epsilon changes.
+  // Each follows its own portal chain and final-region material. Diagnostics
+  // remain centre rays. No derivatives inside geometry-dependent control flow.
+  int sampleCount=uAntialias==1&&uDebug==0&&uDiagnostics==0?4:1;
+  vec3 sum=vec3(0);bool uncertain=false;
+  for(int sampleIndex=0;sampleIndex<4;sampleIndex++){
+    if(sampleIndex>=sampleCount)break;
+    vec2 offset=sampleCount==1?vec2(0):vec2(float(sampleIndex%2),float(sampleIndex/2))*.5-.25;
+    vec4 n,t;refusalKind=2;
+    vec4 result=trace(uPosition,pixelRay(gl_FragCoord.xy+offset),uRegion,n,t);
+    if(uDebug==1){frag=vec4(result.x,result.y+1.,result.z+1.,result.x==2.?float(refusalKind):0.)/255.;return;}
+    if(uDebug==2){uint bits=floatBitsToUint(result.w);frag=vec4(float(bits&255u),float((bits>>8)&255u),float((bits>>16)&255u),float(bits>>24))/255.;return;}
+    if(uDebug==3){frag=n*.5+.5;return;}
+    vec3 color=displayColor(result,n,t);
+    if(sampleCount==1){frag=vec4(color,1);return;}
+    uncertain=uncertain||(result.x==2.&&refusalKind==2);sum+=color*color;
+  }
+  // Unknown coverage is not a confident averaged surface. Preserve the
+  // numerical marker if even one sample is unknown, rather than dilute it.
+  frag=vec4(uncertain?vec3(.69,.125,.82):sqrt(sum*.25),1);
 }`;
