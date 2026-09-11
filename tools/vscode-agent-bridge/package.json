@@ -1,0 +1,20 @@
+{
+  "name": "nilgame-agent-bridge",
+  "displayName": "NilGame Agent Bridge",
+  "description": "Local status and completion notifications for NilGame's Claude/Muse bridge.",
+  "version": "0.1.0",
+  "publisher": "nilgame-local",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {"vscode": "^1.95.0"},
+  "categories": ["Other"],
+  "activationEvents": ["workspaceContains:tools/agent-bridge.js"],
+  "main": "./extension.cjs",
+  "capabilities": {"untrustedWorkspaces": {"supported": false}},
+  "contributes": {
+    "commands": [
+      {"command": "nilgame.bridge.status", "title": "NilGame: Open Agent Bridge Status"},
+      {"command": "nilgame.bridge.review", "title": "NilGame: Open Latest Astra Review"}
+    ]
+  }
+}

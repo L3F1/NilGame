@@ -45,3 +45,6 @@ experiments/godot/results/
 # The cross-host check queue (tools/check-queue.js). Requests and results are
 # transient handoffs between two machines, not project state.
 .check-queue/
+
+# Local agent bridge: isolated checkouts, prompts, session logs and results.
+.agent-bridge/

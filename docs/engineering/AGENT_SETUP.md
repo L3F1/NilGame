@@ -47,6 +47,11 @@ resolve those against the repository root when following historical references.
 
 ## Automation options verified 2026-09-11
 
+Implemented later the same day: [AGENT_BRIDGE.md](AGENT_BRIDGE.md) is the current
+launch/status guide. Claude integration and MUSE-53 were dispatched automatically
+in isolated checkouts, with one read-only Astra completion review enabled.
+The notes below record the CLI discovery that informed the implementation.
+
 Local help confirms Windows `claude.cmd` supports `-p`, `--output-format json`
 and explicit `--resume` session IDs. The PowerShell `claude.ps1` shim fails this
 host's execution policy; the installed CMD launcher prints help successfully.
@@ -68,8 +73,8 @@ an arbitrary already-open VS Code chat. Codex supports
 [noninteractive runs and resumption](https://learn.chatgpt.com/docs/non-interactive-mode)
 and a programmatic [App Server](https://learn.chatgpt.com/docs/app-server).
 Those enable a separately managed workflow; they do not by themselves install
-a completion callback into the currently active IDE thread. No bridge, agent
-job, account change or automatic review loop was installed in this review.
+a completion callback into the currently active IDE thread. The implemented
+bridge uses a separate Codex review session and saved result, not IDE injection.
 
 If implemented later: start one explicit bounded task per agent/worktree, record
 session ID/base hash/allowed files/checks, serialize integration and browser

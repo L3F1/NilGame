@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "claude-cell-exclusion",
+      "agent": "claude",
+      "instruction": "Complete docs/engineering/CLAUDE_NEXT.md. Read the referenced contract and working rules. Stop after the assigned implementation, checks and report.",
+      "allowedFiles": ["engine/world/s3-ray-cast.js", "s3-ray-cast.test.js", "connected-s3-query-truth.test.js", "connected-sight-fixture.test.js", "docs/qa/claude-cell-exclusion-integration.md"],
+      "report": "docs/qa/claude-cell-exclusion-integration.md"
+    },
+    {
+      "id": "muse-53",
+      "agent": "muse",
+      "instruction": "Read AGENTS.md, MUSE.md and only MUSE-53 in MUSE_TASKS.md. Complete that independent audit. Claim and update only your task status/report; stop at READY FOR REVIEW.",
+      "allowedFiles": ["s3-cell-exclusion-truth.test.js", "docs/qa/muse53-cell-exclusion.md", "MUSE_TASKS.md"],
+      "report": "docs/qa/muse53-cell-exclusion.md"
+    }
+  ]
+}
