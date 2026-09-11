@@ -1,0 +1,37 @@
+{
+  "format": "nil-scene", "version": 2, "id": "connected-sight",
+  "units": { "name": "design-unit", "playerRadius": 0.25 },
+
+  "regions": [
+    { "id": "entry", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 12, "floorId": "entry-floor" },
+    { "id": "curve", "geometry": { "kind": "s3", "curvatureRadius": 8 }, "topology": "cover", "extent": 6, "floorId": "curve-floor" },
+    { "id": "far", "geometry": { "kind": "e3", "curvatureRadius": 1 }, "topology": "cover", "extent": 12, "floorId": "far-floor" }
+  ],
+
+  "entities": [
+    { "id": "entry-floor", "regionId": "entry", "kind": "plane", "position": [0, 0, -0.9], "up": [0, 0, 1] },
+    { "id": "entry-spawn", "regionId": "entry", "kind": "spawn", "position": [0, -3, 0] },
+    { "id": "entry-crate", "regionId": "entry", "kind": "box", "position": [-1.5, -1, -0.15], "halfExtent": [0.6, 0.6, 0.7] },
+    { "id": "entry-gate", "regionId": "entry", "kind": "anchor", "position": [0, 0, 0], "radius": 0.9, "forward": [0, -1, 0], "up": [0, 0, 1] },
+
+    { "id": "curve-floor", "regionId": "curve", "kind": "plane", "position": [0, 0, -0.9], "up": [0, 0, 1] },
+    { "id": "curve-spawn", "regionId": "curve", "kind": "spawn", "position": [0, -1, 0] },
+    { "id": "curve-in", "regionId": "curve", "kind": "anchor", "position": [0, -2, 0], "radius": 0.9, "forward": [0, 1, 0], "up": [0, 0, 1] },
+    { "id": "curve-wall", "regionId": "curve", "kind": "geodesic-cell", "position": [0, 0, 0], "halfExtent": [1.6, 0.35, 1.2] },
+    { "id": "curve-door", "regionId": "curve", "kind": "geodesic-cell", "position": [0, 0, 0], "halfExtent": [0.45, 1.2, 1], "op": "subtract", "target": "curve-wall" },
+    { "id": "curve-post", "regionId": "curve", "kind": "ball", "position": [1.3, 0.9, 0], "radius": 0.4 },
+    { "id": "curve-out", "regionId": "curve", "kind": "anchor", "position": [0, 2, 0], "radius": 0.9, "forward": [0, -1, 0], "up": [0, 0, 1] },
+
+    { "id": "far-floor", "regionId": "far", "kind": "plane", "position": [0, 0, -0.9], "up": [0, 0, 1] },
+    { "id": "far-gate", "regionId": "far", "kind": "anchor", "position": [0, -3, 0], "radius": 0.9, "forward": [0, 1, 0], "up": [0, 0, 1] },
+    { "id": "far-spawn", "regionId": "far", "kind": "spawn", "position": [0, -1.5, 0] },
+    { "id": "far-pillar", "regionId": "far", "kind": "box", "position": [1.4, 2, -0.05], "halfExtent": [0.35, 0.35, 0.8] },
+    { "id": "far-target", "regionId": "far", "kind": "ball", "position": [0, 2, 0], "radius": 0.6 },
+    { "id": "goal", "regionId": "far", "kind": "objective", "position": [0, 2, 0] }
+  ],
+
+  "connections": [
+    { "id": "entry-portal", "kind": "portal", "a": "entry-gate", "b": "curve-in", "velocity": "preserve-speed", "scale": 1 },
+    { "id": "far-portal", "kind": "portal", "a": "curve-out", "b": "far-gate", "velocity": "preserve-speed", "scale": 1 }
+  ]
+}
