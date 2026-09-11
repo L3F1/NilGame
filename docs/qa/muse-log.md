@@ -2679,3 +2679,42 @@ ambient rotation references independent of stepWithTransport; vary R and step
 size. Ensure speed is not reset to one and zero travel preserves exact values.
 Report accumulated error and reference limitations. Isolated old-code or
 mutation fail-demo; focused/full Node tests. Do not fix kernel code.
+
+
+## MUSE-51 - Independent S3 boundary-event audit
+Status: ACCEPTED | Owner: Muse | Reviewer: Astra | Node-only
+
+Report (Muse, 2026-09-10): READY FOR REVIEW. Nine checks verify every
+event against bisection (residual, distance within guard, slope-derived
+transition, unit/tangent normals, outwardness, order, length): oblique
+compiled/metric balls at R=.5/8/100, large balls (1.4-rad pairs with
+closed form, 2.5R lone exits at 3R, piR refusal), exact-frame rotated
+cell, tilted plane, thin-cell pair plus hunted exact coincidence
+refusal, inactive face events with no hit claims, adaptive range-end
+refusals/exclusions, distinct tangency/coplanarity/budget/drift refusals,
+two true misses with clean scans. Finding: decimal-authored rotated
+frames (compile-legal at 1e-8) make poles off-unit by 1.97e-9, so every
+ray refuses input-roundoff against the 2.8e-14 pole screen — conservative
+refusal, mechanism measured. Ball-sign isolated mutation fails exactly
+the 4 ball checks; repo untouched. s3-ray-events-truth.test.js 9/9.
+Details: docs/qa/muse51-s3-events.md.
+
+Read docs/qa/astra-s3-events-2026-09-10.md. Allowed writes:
+s3-ray-events-truth.test.js, docs/qa/muse51-s3-events.md, this status/report only.
+Audit sphericalBoundaryEvents using independent great-circle geometry/bisection,
+not a second phase +/- acos implementation. Cover rotated/transformed compiled
+balls/planes/cells, R=.5/8/100, oblique roots, large balls below pi*R, roots near
+both range ends, tangency, nearly parallel planes, coincidence, budgets and
+input drift. Check residuals, event order, unit/tangent normals, entry/exit signs
+and physical length. Include true misses and inactive infinite-cell-face events.
+No scene-hit claims: this layer deliberately has no Boolean classification.
+Its guard is numerical screening, not a formal interval proof. A conservative
+refusal is different from a wrong complete event list. Report both and the
+coverage limitations. Include isolated fail-demo, focused/full Node runs.
+Do not modify kernel, Claude's new classifier, or existing tests. Counterexamples
+are deliverables. Coordinate only through these files; no overlapping edits.
+
+Astra acceptance, 2026-09-11, base 5877847: reviewed and reran 9/9;
+full Node integration suite 74/74. Decimal-plane pole refusal repaired without
+rewriting stored geometry; plane zero sets are homogeneous. Ball and ray-input
+roundoff screens retained. See astra-s3-sight-integration-2026-09-10.md.

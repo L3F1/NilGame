@@ -393,6 +393,7 @@ test('budgets are validated before they are spent, and refused when short', () =
   assert.equal(short.reason, 'work-budget');
   assert.ok(/12 work units/.test(short.detail), short.detail);
   assert.equal(short.work, 0, 'and nothing was spent finding that out');
+  assert.ok(castSphericalRegion(region, origin, axes[1], { ...range, maxWork: 12 }).work<=12);
   assert.equal(castSphericalRegion(region, origin, axes[1], { ...range, maxWork: 12 }).status,
     'unresolved', 'twelve pays for classify and solve but not for applying events');
 
@@ -419,9 +420,9 @@ test('inputs and unsupported spans are refused before any geometry is touched', 
   assert.throws(() => castSphericalRegion(null, origin, axes[1], { maxDistance: 1 }), /S3 region/);
   assert.throws(() => castSphericalRegion({ space: region.space }, origin, axes[1], { maxDistance: 1 }),
     /compiled region field/);
-  for (const bad of [0, -1, NaN, Infinity, undefined, '3']) {
+  for (const bad of [-1, NaN, Infinity, undefined, '3']) {
     assert.throws(() => castSphericalRegion(region, origin, axes[1], { maxDistance: bad }),
-      /positive finite physical range/);
+      /nonnegative finite physical range/);
   }
   // A LONGER SPAN IS REFUSED, NOT SUBDIVIDED. Which parts of an over-long
   // sightline mean anything is a question about portals and chart exits, and
@@ -454,5 +455,20 @@ test('the caller\'s state is never touched, and the result is frozen through', (
   assert.ok(region.space.distance(walked, [...out.point]) < 1e-9 * R);
 });
 
+
+test('zero range classifies only origin and drift cannot bypass screening',()=>{
+ const {region,origin,axes}=orb(scene('zero',8,8,[cell('solid',[0,2,0],[.5,.4,.5])]));
+ const out=castSphericalRegion(region,origin,axes[1],{maxDistance:0});assert.equal(out.status,'miss');
+ const inside=region.space.decode([0,2,0]),u=region.space.frame(inside)[0];
+ const hit=castSphericalRegion(region,inside,u,{maxDistance:0});assert.equal(hit.contact,'inside');assert.equal(hit.distance,0);assert.equal(hit.normal,null);
+ const bad=inside.map(x=>x*(1+1e-10));assert.equal(castSphericalRegion(region,bad,u,{maxDistance:0}).reason,'input-roundoff');
+});
+test('decimal frame plane scales preserve roots without changing stored poles',()=>{
+ const {region,origin,axes}=orb(scene('decimal',8,8,[cell('solid',[0,3,0],[.7,.6,.5],{frame:{forward:[.87758256,.47942554,0],up:[0,0,1]}})]));
+ const primitive=region.field.primitives[0],before=JSON.stringify(primitive.planes);
+ const out=castSphericalRegion(region,origin,axes[1],{maxDistance:6});assert.equal(out.status,'hit',out.detail);
+ assert.ok(Math.abs(region.field.distance([...out.point]))<1e-9);
+ assert.equal(JSON.stringify(primitive.planes),before);
+});
 console.log(`s3 ray cast: ${passed} passed, ${failed} failed`);
 process.exitCode = failed ? 1 : 0;

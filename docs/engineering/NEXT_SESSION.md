@@ -1,36 +1,39 @@
 # Fresh-chat handoff for Astra
 
-2026-09-10, base 275fd4d. Start with status/log, WORKING_RULES and task router.
-Latest work: docs/qa/astra-s3-events-2026-09-10.md.
-MUSE-48/49 revisions and MUSE-50 accepted, archived; original reports kept.
-Claude's three-state marker visibility accepted; region-lab browser 129 checks.
-Unknown diagram inspected as diagram, not DOM screenshot. Host queue PID38432.
+2026-09-11, reviewed base 5877847. Start with status/log, WORKING_RULES and
+TASK_ROUTER; read only the relevant subsystem. Current report:
+docs/qa/astra-s3-sight-integration-2026-09-10.md.
 
-Added engine/geometry/s3-ray-events.js, sphericalBoundaryEvents(space,primitive,
-p,u,{maxDistance,maxEvents}). S3 balls/great-sphere planes/cell-face candidates.
-Physical distances, outward normals, entry/exit, explicit range/ill-conditioning/
-coincidence/budget refusal. Shared S3_RAY_ROUNDOFF exported for classification.
-Tighter input-roundoff screening than general metric validation; no silent repair.
-Eight focused tests, including real compiled cell candidates OUTSIDE the solid.
-These are not scene hits. Floating-point screening is not formal certification.
+MUSE-51 accepted (9/9), archived. Claude's CPU Boolean classifier accepted with
+integration fixes: zero-range origin classification, work cap before increment,
+input screen before early returns, defensive unsupported-ball refusal. Plane
+poles retain compile-scale validity but not the overly tight unit-length
+screen: their zero sets are homogeneous. Ball centers keep the tight screen.
+No saved geometry or distance field was normalized. Root guards are numerical
+screening, NOT formal interval certification.
 
-No sphereField.rayCast or connected GPU path has been enabled. traceRegionSight
-still returns unresolved near S3 surfaces. Caller owns chart/portal limits.
-Claude now has a bounded CPU Boolean event-classifier implementation contract in
-CLAUDE_NEXT.md; Muse independently audits primitive roots in MUSE-51. Neither is
-authorized to change runtime/renderer wiring in these assignments.
+traceRegionSight now defaults to S3 Boolean events with shared work/range
+accounting and exact portal endpoints. s3Method:'march' retains the conservative
+reference behavior. S3 ball and wall hits, a carved passage, near-exit occlusion,
+zero remaining range and budgets are pinned. 74/74 Node suites passed here on
+Windows LeoPC / Node v24.20.0. Isolated old modules fail new regressions.
+No GPU/browser rerun this turn. Prior region-lab 129 is historical evidence.
 
-Next Astra: review classifier and event audit. Check atomic cell constraints,
-subtracted-cell disjunction, scoped/global groups, inactive roots, guarded event
-ordering, zero-width/tangent refusals, range/inside-start conventions, subtraction
-normals and finite shared budgets. Then integrate approved S3 scene ray queries
-with traceRegionSight and test E3-S3-E3 occlusion/range before GPU work.
-Do not equate a primitive face root with a clipped solid hit or a bound with
-exact clearance. Numerical ambiguity must not be rendered as empty sky.
+Claude: CLAUDE_NEXT.md assigns a NEW valid connected-sight v2 fixture, CPU
+ray-packet/PNG diagnostic tool, movement route and reload checks. Muse: MUSE-52
+independently audits composed S3 queries and cross-region integration. Neither
+may change kernel contracts or enable connected GPU/editor rendering.
 
-Previous walking drift repair remains in metric-space; MUSE-50 independently
-validated repeated transport, nonunit speeds, zero/inverse legs and holonomy.
-S3 truth's single-shot surface reference uses its own great-circle formula to
-avoid sharing production retraction rounding; all sample/tolerance gates kept.
-Nested-cutter conservatism and connected-lab fixture compilation remain separate.
-Godot prototype/plan is not full v2 parity; preserve browser reference.
+Next Astra task: review their evidence and inspected CPU image, especially
+unresolved coverage, then specify GPU traversal/precision acceptance. JS double
+root screens cannot simply be copied into GLSL float. Define bounded traversal,
+region data ownership, near-event ambiguity and visible unresolved output before
+assigning implementation. A distant coincident event currently can refuse an
+earlier hit; this is a known completeness/cost limitation, not a false miss.
+
+The editor still renders one region; sphereField capabilities/rayCast unchanged.
+Single-floor S3 walking and CPU connected motion/correction exist, but cross-region
+walking support and connected GPU views do not. Keep browser reference. The old
+connected-lab.nil.json is invalid for the current runtime (v1, extent/spawn);
+Claude creates a separate v2 fixture. Nested-cutter conservatism remains separate.
+Godot prototype is not full scene-v2 parity. No wholesale migration authorized.

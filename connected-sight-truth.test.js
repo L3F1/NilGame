@@ -210,7 +210,7 @@ check('thin object after the gate; S3 ball stays a candidate; range ends', () =>
   const pos = [...space.decode([0, 0, 0])];
   for (const tgt of [[0, 3, 0], [0.5, 3, 0.2], [-0.4, 2.5, -0.3]]) {
     const dir = space.normalize(pos, space.logAt(pos, space.decode(tgt)));
-    const rr = traceRegionSight(s3w, { regionId: 'orb', position: pos, direction: [...dir] }, { maxDistance: 20 });
+    const rr = traceRegionSight(s3w, { regionId: 'orb', position: pos, direction: [...dir] }, { maxDistance: 20, s3Method: 'march' });
     assert.equal(rr.reason, 'surface-candidate', 'S3 ball never certifies a hit');
     assert.notEqual(rr.status, 'hit');
   }

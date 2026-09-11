@@ -21,8 +21,9 @@
 // half a great circle. The sight coordinator arbitrates those first and hands
 // this an explicit range it has already decided is meaningful; subdividing one
 // here would be inventing a policy in the wrong module. It also does not
-// consult `field.distance`: a conservative bound cannot classify occupancy, and
-// deciding a Boolean from one is the mistake this module exists to avoid.
+// consult distance magnitude: atomic inequalities expose each face membership
+// needed for event updates. A signed field can still classify occupancy under
+// its sign guarantee; a small bound does not certify a surface location.
 import { sphericalBoundaryEvents, S3_RAY_ROUNDOFF } from '../geometry/s3-ray-events.js';
 
 const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
@@ -124,7 +125,7 @@ function groupOccupied(group, state) {
  *
  * `status` is one of:
  *   'hit'         solid is entered at `distance`; see `contact`
- *   'miss'        NO solid anywhere in [0, maxDistance], certified
+ *   'miss'        no solid in the range under the numerical screening policy
  *   'unresolved'  with a `reason`; never silently a miss
  *
  * WORK, in one unit: one atomic surface classified, one atomic surface solved
@@ -148,13 +149,12 @@ export function castSphericalRegion(region, position, direction, options = {}) {
   const R = space.curvatureRadius;
   const { maxDistance, maxEvents = S3_CAST_DEFAULTS.maxEvents,
     maxWork = S3_CAST_DEFAULTS.maxWork } = options;
-  if (!Number.isFinite(maxDistance) || maxDistance <= 0) {
-    throw new Error('maxDistance must be a positive finite physical range');
+  if (!Number.isFinite(maxDistance) || maxDistance < 0) {
+    throw new Error('maxDistance must be a nonnegative finite physical range');
   }
-  // REFUSED, NOT SUBDIVIDED. Past half a great circle the root equation stops
-  // having a unique branch to screen, and splitting the span is a policy about
-  // what a sightline means -- which belongs to the coordinator that owns
-  // portals and chart exits, not to this query.
+  // REFUSED, NOT SUBDIVIDED. The half-circle limit bounds root enumeration
+  // and work. Longer geodesics still have mathematical roots; deciding how to
+  // extend the supported query span belongs to the coordinator.
   if (maxDistance > Math.PI * R) {
     throw new Error(`maxDistance ${maxDistance} exceeds one S3 half-circle (${Math.PI * R}); `
       + 'the sight coordinator must arbitrate a longer span, not this query');
@@ -169,16 +169,25 @@ export function castSphericalRegion(region, position, direction, options = {}) {
     distance: null, point: null, tangent: null, normal: null, contact: null,
     additiveOwner: null, additiveOwners: Object.freeze([]), surfaceOwner: null, face: null,
   });
+  // Inside-start and empty-scene early returns must obey the same numerical
+  // input screen as root generation, rather than bypassing it.
+  if (Math.abs(dot(point,point)-1)>EPS || Math.abs(dot(heading,heading)-1)>EPS ||
+      Math.abs(dot(point,heading))>EPS) return refuse('input-roundoff');
 
   // LIMITS VALIDATED BEFORE ANYTHING IS SPENT. The classification and solving
   // cost is known from the scene alone, so an impossible allowance is reported
   // without doing the work it could not have paid for.
   const surfaces = [];
   for (const primitive of field.primitives) {
+    if (primitive.entity.kind==='ball') {
+      if (primitive.entity.radius>=Math.PI*R) return refuse('primitive-events',`${primitive.entity.id}: degenerate-ball`);
+      if (Math.abs(dot(primitive.center,primitive.center)-1)>EPS) return refuse('input-roundoff');
+    }
     for (const surface of surfacesOf(primitive, R)) surfaces.push({ primitive, ...surface });
   }
-  if (2 * surfaces.length > maxWork) {
-    return refuse('work-budget', `this region needs ${2 * surfaces.length} work units to classify `
+  const initialCost=(maxDistance===0?1:2)*surfaces.length;
+  if (initialCost > maxWork) {
+    return refuse('work-budget', `this region needs ${initialCost} work units to classify `
       + `and solve ${surfaces.length} atomic surfaces; the allowance is ${maxWork}`);
   }
 
@@ -208,6 +217,10 @@ export function castSphericalRegion(region, position, direction, options = {}) {
       additiveOwners: Object.freeze(inside), work, events: 0,
     });
   }
+
+  if (maxDistance===0) return Object.freeze({status:'miss',reason:null,detail:null,
+    contact:null,distance:null,point:null,tangent:null,normal:null,surfaceOwner:null,
+    face:null,additiveOwner:null,additiveOwners:Object.freeze([]),work,events:0});
 
   // 2. Every primitive's candidates, under ONE shared event budget. A single
   // unresolved list makes the whole cast unresolved: a partial collection
@@ -245,8 +258,8 @@ export function castSphericalRegion(region, position, direction, options = {}) {
   // skip a thin cut.
   const owner = new Map(field.primitives.map(p => [p.entity.id, p]));
   for (const event of events) {
+    if (work >= maxWork) return refuse('work-budget', 'exhausted while applying events');
     work++;
-    if (work > maxWork) return refuse('work-budget', 'exhausted while applying events');
     state.set(surfaceKey(event.primitiveId, event.face), event.transition === 'enter');
     const now = sceneOccupied();
     if (now === null) {

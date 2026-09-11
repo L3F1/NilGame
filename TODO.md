@@ -18,22 +18,22 @@ The previous backlog is preserved in
 - [x] Independent numerical transport repair audit (MUSE-50) and MUSE-48/49 revisions accepted.
 - [x] S3 primitive boundary-event layer: ball/plane roots, cell-face candidates,
   explicit numerical refusals. It does not yet classify Boolean scene hits.
-- [ ] CPU Boolean event classifier (Claude), independent root audit (MUSE-51),
-  then Astra review before connected sight integration.
+- [x] CPU Boolean event classifier and independent root audit (MUSE-51), reviewed
+  and integrated into connected sight. See Astra S3 sight integration report.
 - [x] Bounded connected CPU sight reference: E3-S3-E3 region/range transport,
   analytic E3 hits, honest S3 surface-candidate refusal.
-- [ ] Certified S3 surface intersections, independent sight audit (MUSE-49),
-  then connected GPU views. Do not render conservative candidates as hits.
+- [ ] Independent composed-query audit (MUSE-52), connected CPU diagnostic image,
+  then GPU precision/traversal review. Numerical screening is not formal
+  certification. Do not render unresolved candidates as hits.
 
 Current lead handoff: [NEXT_SESSION.md](docs/engineering/NEXT_SESSION.md).
 Region-owned motion is implemented under
 [REGION_MOTION_CONTRACT.md](docs/engineering/REGION_MOTION_CONTRACT.md), with
 [Claude's current assignment](docs/engineering/CLAUDE_NEXT.md).
-The CPU coordinator is implemented in `engine/world/region-motion.js` and is
-awaiting independent review (MUSE-39) and Astra's acceptance; see
-[the report](docs/qa/claude-region-motion-2026-09-10.md). Renderer, editor and
-curved gravity are separate and unstarted. Cross-geometry camera mapping accepts an explicit destination
-space; this is groundwork, not completed connected-room gameplay.
+The CPU motion coordinator, correction resumption and first single-floor S3
+walking policy are implemented and audited. The editor renders one region;
+connected CPU sight now classifies S3 Boolean hits. Connected GPU rendering and
+cross-region walking support remain separate work, not completed gameplay.
 Use [TASK_ROUTER.md](docs/engineering/TASK_ROUTER.md) for focused reading.
 
 - [x] Fix the confirmed Sol/SL2R K-key fallback that creates hidden H3 course

@@ -1,15 +1,19 @@
 // CPU reference for connected sight. Physical arclength, zero body radius,
-// no player exit offset. S3 bounds certify empty travel, NOT surface hits.
+// no player exit offset. S3 uses Boolean events by default; the optional
+// marcher certifies empty travel only, never a surface hit from a small bound.
 import { PORTAL_PLANE_TOLERANCE } from './region-portal.js';
+import { castSphericalRegion } from './s3-ray-cast.js';
 
 export function traceRegionSight(world, ray, {
   maxDistance = 32, maxWork = 2048, maxCrossings = 4, surfaceTolerance = 1e-7,
+  s3Method = 'events',
 } = {}) {
   if (!world?.regions || !Array.isArray(world.portals)) throw new Error('Expected compiled region world');
   if (!Number.isFinite(maxDistance) || maxDistance < 0) throw new Error('Invalid maxDistance');
   if (!Number.isInteger(maxWork) || maxWork < 0) throw new Error('Invalid maxWork');
   if (!Number.isInteger(maxCrossings) || maxCrossings < 0) throw new Error('Invalid maxCrossings');
   if (!Number.isFinite(surfaceTolerance) || surfaceTolerance <= 0) throw new Error('Invalid surfaceTolerance');
+  if (!['events','march'].includes(s3Method)) throw new Error('Invalid s3Method');
   let regionId = ray.regionId, position = ray.position.slice(), direction = ray.direction.slice();
   let distance = 0, work = 0, reverseId = null;
   const crossings = [], segments = [];
@@ -61,6 +65,14 @@ export function traceRegionSight(world, ray, {
           return result('unresolved', 'range-boundary', { certifiedLocalDistance: end });
         local = end;
       }
+    } else if (s3Method==='events') {
+      const query=castSphericalRegion(region,position,direction,{maxDistance:end,maxWork:maxWork-work});
+      work+=query.work;
+      if (query.status==='unresolved') return result('unresolved',query.reason,{query});
+      if (query.status==='hit') {
+        local=query.distance;
+        hit={...query,t:query.distance,owner:query.additiveOwner,method:'s3-events'};
+      } else local=end;
     } else {
       // Safe exterior traversal. A tiny positive BOUND need not be close to any
       // surface (corners/cutters); never turn it into a confident hit or miss.

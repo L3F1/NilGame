@@ -41,7 +41,10 @@ export function sphericalBoundaryEvents(space, primitive, position, direction, {
     const {pole,level,sign}=surfaces[face];
     if (!Array.isArray(pole)||pole.length!==4||!pole.every(Number.isFinite)||Math.abs(Math.hypot(...pole)-1)>1e-8)
       throw new Error('Surface pole must be a unit four-vector');
-    if (Math.abs(dot(pole,pole)-1)>EPS) return refuse('input-roundoff',face);
+    // A plane's zero set is homogeneous in its pole. Compile-legal decimal
+    // frame error changes its scale, not the locus solved here. Balls instead
+    // compare against a nonzero cosine level and require a unit center.
+    if (kind==='ball' && Math.abs(dot(pole,pole)-1)>EPS) return refuse('input-roundoff',face);
     // p(t).pole = A cos(t/R) + B sin(t/R).
     const A=dot(position,pole),B=dot(direction,pole),amplitude=Math.hypot(A,B);
     const error=EPS*(1+Math.abs(A)+Math.abs(B)+Math.abs(level));

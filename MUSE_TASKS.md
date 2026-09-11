@@ -65,22 +65,30 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-51. MUSE-48/49 revisions and MUSE-50 accepted and archived.
+Order: MUSE-52. MUSE-51 accepted and archived; original report retained.
 
-## MUSE-51 - Independent S3 boundary-event audit
+## MUSE-52 - Independent composed S3 sight audit
 Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only
 
-Read docs/qa/astra-s3-events-2026-09-10.md. Allowed writes:
-s3-ray-events-truth.test.js, docs/qa/muse51-s3-events.md, this status/report only.
-Audit sphericalBoundaryEvents using independent great-circle geometry/bisection,
-not a second phase +/- acos implementation. Cover rotated/transformed compiled
-balls/planes/cells, R=.5/8/100, oblique roots, large balls below pi*R, roots near
-both range ends, tangency, nearly parallel planes, coincidence, budgets and
-input drift. Check residuals, event order, unit/tangent normals, entry/exit signs
-and physical length. Include true misses and inactive infinite-cell-face events.
-No scene-hit claims: this layer deliberately has no Boolean classification.
-Its guard is numerical screening, not a formal interval proof. A conservative
-refusal is different from a wrong complete event list. Report both and the
-coverage limitations. Include isolated fail-demo, focused/full Node runs.
-Do not modify kernel, Claude's new classifier, or existing tests. Counterexamples
-are deliverables. Coordinate only through these files; no overlapping edits.
+Read docs/qa/astra-s3-sight-integration-2026-09-10.md. Allowed writes:
+connected-s3-query-truth.test.js, docs/qa/muse52-composed-sight.md,
+this task status/report only. Claude independently owns a new fixture/tool;
+do not depend on their unreviewed files or edit them.
+
+Audit castSphericalRegion and default traceRegionSight against independent
+geodesic/sign references on compiled scenes. Cover oblique rays and multiple
+radii, scoped/global cutters, a subtracted cell (NOT-all of its faces), inactive
+face roots, subtraction normals and owning solids. Include an E3-S3-E3 route,
+physical total range versus local hit distance, an obstacle immediately beyond
+an exit, zero remaining range at that exit, and maxWork caps including zero.
+Check compile-legal decimal frames: positive near-unit plane-pole scaling must
+not move the zero set; ball-center and ray-input screens must still refuse
+invalid inputs. Do not normalize stored geometry in the harness to hide drift.
+
+Separate wrong hit/miss from conservative unresolved. Record a distant event
+coincidence refusing an earlier otherwise valid hit as a known completeness
+limit; do not demand a repair. Dense sampling is evidence, not a proof that
+arbitrarily thin solids cannot be missed. State reference convergence and
+limitations. Include a targeted isolated fail-demo, focused/full Node checks,
+actual command/host evidence. No kernel, renderer, schema or old-test changes.
+Return counterexamples unfixed. Stop at READY FOR REVIEW.
