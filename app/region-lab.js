@@ -116,6 +116,19 @@ function updateInspector() {
   $('forward-field').hidden = !forward; $('up-field').hidden = !up; $('frame-hint').hidden = !forward;
   if (forward) write3(['fx', 'fy', 'fz'], e.frame?.forward || e.forward || [0, 1, 0]);
   if (up) write3(['ux', 'uy', 'uz'], e.frame?.up || e.up || [0, 0, 1]);
+  // WHAT THIS FORM CANNOT EDIT IS SAID OUT LOUD. An edit is a merge, so these
+  // survive it untouched -- but an author who cannot see a field has no way to
+  // tell "preserved" from "dropped", and silence reads as the second one.
+  const editable = new Set(['id', 'regionId', 'kind', 'position',
+    ...(e.radius !== undefined ? ['radius'] : []),
+    ...(dimensions ? ['halfExtent', 'frame'] : []),
+    ...(e.kind === 'anchor' ? ['forward'] : []),
+    ...(['anchor', 'plane'].includes(e.kind) ? ['up'] : [])]);
+  const kept = Object.keys(e).filter(key => !editable.has(key));
+  $('unsupported').hidden = !kept.length;
+  $('unsupported').textContent = kept.length
+    ? `Preserved but not editable here: ${kept.join(', ')}. An edit merges, so these are written back unchanged.`
+    : '';
 }
 function refresh() {
   const doc = world.document();
@@ -131,6 +144,183 @@ function refresh() {
   $('undo').disabled = !undo.length; $('redo').disabled = !redo.length;
   draw();
 }
+/**
+ * WHERE A NON-SOLID ENTITY WOULD APPEAR, if it were a thing you could see.
+ *
+ * A spawn and an objective are authoring facts, not geometry: they are in no
+ * distance field, they occlude nothing, and they must never spend a primitive
+ * uniform. So they are drawn OVER the viewport rather than in it.
+ *
+ * The arithmetic is the exact inverse of the two lines the fragment shader
+ * uses to turn a pixel into a ray:
+ *
+ *     vec2 uv  = (2.0 * gl_FragCoord.xy - uRes) / uRes.y;
+ *     vec4 dir = normalize(uFwd * uFocal + uRight * uv.x + uUp * uv.y);
+ *
+ * so a marker placed by this function lands on the pixel whose ray points at
+ * it. Deriving it any other way -- a field of view read off the HTML, a
+ * hand-rolled projection matrix -- gives a marker that is nearly right and
+ * drifts with the aspect ratio, which is worse than no marker at all.
+ * `marker-projection.test.js` pins those two lines so this cannot go stale
+ * silently, and a browser check marches the shader's own ray back at a solid.
+ *
+ * `logAt` throws at the antipode, where no shortest geodesic is unique. That
+ * is a real ambiguity and not an error to paper over: the marker falls back to
+ * its list entry, which carries the intrinsic distance and stays selectable.
+ */
+const MARKER_KINDS = ['spawn', 'objective'];
+const markerEntities = () => (world ? world.document().entities
+  .filter(e => e.regionId === selectedRegion && MARKER_KINDS.includes(e.kind)) : []);
+
+function projectMarker(target) {
+  const region = world.regions.get(state.regionId);
+  const space = region.space, camera = state.camera, eye = [...state.position];
+  const point = space.decode(target);
+  let displacement;
+  try { displacement = space.logAt(eye, point); }
+  catch (error) { return { distance: null, reason: 'antipodal' }; }
+  const distance = space.norm(eye, displacement);
+  if (!(distance > 1e-9)) return { distance: 0, reason: 'at the camera' };
+  const direction = space.normalize(eye, displacement);
+  const ahead = space.dot(eye, direction, camera.forward);
+  if (!(ahead > 1e-6)) return { distance, reason: 'behind the camera' };
+  const focal = renderer.info().fieldOfView;
+  const scale = 1 / Math.tan(focal / 2);
+  const x = scale * space.dot(eye, direction, camera.right) / ahead;
+  const y = scale * space.dot(eye, direction, camera.up) / ahead;
+  // Pixel centre in the shader's own coordinates, then into CSS space, which
+  // counts down from the top while gl_FragCoord counts up from the bottom.
+  const px = (x * canvas.height + canvas.width) / 2;
+  const py = (y * canvas.height + canvas.height) / 2;
+  if (px < 0 || px > canvas.width || py < 0 || py > canvas.height) {
+    return { distance, reason: 'off screen' };
+  }
+  return { distance, direction, left: px / canvas.width, top: 1 - py / canvas.height };
+}
+
+/**
+ * Is a surface in the way? A sphere trace along the SAME great circle the
+ * shader marches, stopping short of the target.
+ *
+ * An occluded marker is dimmed rather than hidden, because an author looking
+ * for an objective behind a wall still needs to find it -- but it must not sit
+ * there looking like a solid that is in front of the wall, which is the one
+ * thing section 4 forbids.
+ */
+function markerOccluded(from, direction, distance) {
+  const region = world.regions.get(state.regionId), space = region.space;
+  let travelled = Math.min(0.05, distance * 0.25);
+  for (let i = 0; i < 48 && travelled < distance; i++) {
+    const gap = region.field.distance(space.step(from, direction, travelled));
+    if (gap < 1e-3) return true;
+    travelled += Math.max(gap, 1e-3);
+  }
+  return false;
+}
+
+function updateMarkers() {
+  if (!world || !state) return;
+  const layer = $('markers'), list = $('marker-list');
+  // HIDDEN IN PLAY, both of them. An editor aid drawn over a first-person view
+  // is a heads-up display nobody authored.
+  layer.hidden = playing; $('marker-panel').hidden = playing;
+  layer.replaceChildren(); list.replaceChildren();
+  const entities = markerEntities();
+  if (!entities.length) {
+    const empty = document.createElement('p');
+    empty.className = 'hint'; empty.textContent = 'This region has no spawn or objective entities.';
+    list.append(empty);
+    return;
+  }
+  const eye = [...state.position];
+  for (const entity of entities) {
+    const placed = playing ? { distance: null, reason: 'flying' } : projectMarker(entity.position);
+    const occluded = placed.direction
+      ? markerOccluded(eye, placed.direction, placed.distance) : false;
+    const number = Number.isFinite(placed.distance) ? placed.distance.toFixed(3) : '--';
+
+    const row = document.createElement('button');
+    row.type = 'button'; row.className = 'marker-row';
+    row.dataset.markerRow = entity.id;
+    row.setAttribute('aria-pressed', String(entity.id === selectedId));
+    row.textContent = `${entity.id} · ${entity.kind} · ${number} away`
+      + (placed.reason ? ` · ${placed.reason}` : occluded ? ' · behind geometry' : '');
+    row.onclick = () => selectMarker(entity.id);
+    list.append(row);
+    if (!placed.direction || playing) continue;
+
+    const marker = document.createElement('button');
+    marker.type = 'button';
+    marker.className = `marker${occluded ? ' occluded' : ''}${entity.id === selectedId ? ' selected' : ''}`;
+    marker.dataset.marker = entity.id;
+    marker.style.left = `${placed.left * 100}%`;
+    marker.style.top = `${placed.top * 100}%`;
+    // Named as what it is, in the accessible name as well as on screen: this
+    // is an editor aid, and nothing about it should read as world geometry.
+    marker.title = `${entity.id} (${entity.kind}) — editor marker, ${number} away`
+      + (occluded ? ', behind geometry' : '');
+    marker.setAttribute('aria-label', marker.title);
+    const dot = document.createElement('span'); dot.className = 'marker-dot'; dot.textContent = '◎';
+    const label = document.createElement('span'); label.className = 'marker-label';
+    label.textContent = `${entity.id} · ${number}`;
+    marker.append(dot, label);
+    marker.onclick = (event) => { event.stopPropagation(); selectMarker(entity.id); };
+    layer.append(marker);
+  }
+}
+/**
+ * An image that can actually show the markers.
+ *
+ * `canvas.toDataURL` captures the WebGL drawing buffer and nothing else, so a
+ * screenshot of this editor shows the room with no badges on it -- the badges
+ * are DOM. Rather than hand back a picture that cannot show the feature it is
+ * evidence for, this draws the frame into a 2D canvas and then TRACES each
+ * marker at the rectangle `getBoundingClientRect` says it actually occupies.
+ *
+ * It is a trace of the live layout, not a pixel capture of the DOM: the font
+ * and the corners are this function's, the POSITIONS are the browser's. A
+ * projection error puts the box in the wrong place here exactly as it would on
+ * screen, which is the thing a reviewer needs to be able to see.
+ */
+function markerEvidenceImage() {
+  const out = document.createElement('canvas');
+  out.width = canvas.width; out.height = canvas.height;
+  const ctx = out.getContext('2d');
+  ctx.drawImage(canvas, 0, 0);
+  const view = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / view.width, scaleY = canvas.height / view.height;
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textBaseline = 'middle';
+  for (const marker of $('markers').querySelectorAll('[data-marker]')) {
+    const box = marker.getBoundingClientRect();
+    const x = (box.left - view.left) * scaleX, y = (box.top - view.top) * scaleY;
+    const w = box.width * scaleX, h = box.height * scaleY;
+    const occluded = marker.classList.contains('occluded');
+    ctx.setLineDash(occluded ? [2, 3] : [5, 3]);
+    ctx.globalAlpha = occluded ? 0.5 : 1;
+    ctx.fillStyle = '#0b1a24d0';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = marker.classList.contains('selected') ? '#ffd590' : '#8be2d7';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = marker.classList.contains('selected') ? '#ffe6bd' : '#c9f2ea';
+    ctx.setLineDash([]);
+    ctx.fillText(marker.textContent, x + 6 * scaleX, y + h / 2);
+    ctx.globalAlpha = 1;
+  }
+  return out.toDataURL('image/png');
+}
+/**
+ * ONE selection path, the one the entity dropdown already uses.
+ *
+ * A marker that set `selectedId` itself would be a second way into the same
+ * state, and the two would drift the first time either grew a step.
+ */
+function selectMarker(id) {
+  $('entities').value = id;
+  $('entities').dispatchEvent(new Event('change'));
+}
+
 /**
  * What the last movement request did, in the coordinator's own words.
  *
@@ -168,6 +358,7 @@ function draw() {
     motionLine(),
     `${renderer.frameTime().toFixed(2)} ms/frame at ${canvas.width}x${canvas.height}`,
   ].join('\n');
+  updateMarkers();
 }
 /**
  * Compile, spawn and only THEN swap. A document that does not compile, or a
@@ -869,6 +1060,150 @@ export async function runRegionEditorChecks() {
       Object.getOwnPropertyDescriptor(document, 'pointerLockElement') === undefined);
     resetToSpawn(); draw();
     shots.push({ name: 's3-after-input-lifecycle', data: canvas.toDataURL('image/png') });
+
+    // AUTHORING MARKERS. Spawn and objective are editor aids, so the checks
+    // have to prove two opposite things: that they are VISIBLE and reachable,
+    // and that they are not geometry -- no field entry, no shader capacity, and
+    // gone the moment you fly.
+    stop(); resetToSpawn(); draw();
+    region = world.regions.get(state.regionId);
+    const markerIds = world.document().entities
+      .filter(e => ['spawn', 'objective'].includes(e.kind) && e.regionId === state.regionId)
+      .map(e => e.id);
+    check('the S3 room authors both a spawn and an objective',
+      markerIds.length >= 2 && markerIds.includes('s-goal'));
+    check('every one of them has a list row carrying an intrinsic distance',
+      markerIds.every(id => {
+        const row = $('marker-list').querySelector(`[data-marker-row="${id}"]`);
+        return row && /\d\.\d{3} away/.test(row.textContent);
+      }));
+    // NOT GEOMETRY, and this is the half a picture cannot show. If either ever
+    // reached the packed scene it would be spending the uniform budget section
+    // 4 says it must not.
+    const packedNow = packRegionScene(world, state.regionId);
+    check('and neither is a primitive in the packed scene, so neither costs capacity',
+      markerIds.every(id => !packedNow.primitives.some(p => p.id === id)));
+    check('nor does either reach the compiled render data at all',
+      markerIds.every(id => !world.renderData().primitives.some(p => p.id === id)));
+
+    // THE PROJECTION IS THE SHADER'S OWN INVERSE, proved against a solid.
+    // A marker is invisible to the field, so it cannot prove where it landed.
+    // The ball can: project its centre, rebuild the fragment shader's ray for
+    // exactly that pixel, march it, and require it to arrive at the ball. A
+    // flipped y or a mistaken aspect term lands on the floor instead, which is
+    // the failure a screenshot would not tell you about.
+    const ball = world.document().entities.find(e => e.kind === 'ball' && (!e.op || e.op === 'add'));
+    const placed = projectMarker(ball.position);
+    check('the ball projects to a pixel on screen', !!placed.direction);
+    const focal = 1 / Math.tan(renderer.info().fieldOfView / 2);
+    const uvx = (2 * (placed.left * canvas.width) - canvas.width) / canvas.height;
+    const uvy = (2 * ((1 - placed.top) * canvas.height) - canvas.height) / canvas.height;
+    const eye = [...state.position], cam = state.camera;
+    const raw = cam.forward.map((f, i) => f * focal + cam.right[i] * uvx + cam.up[i] * uvy);
+    const ray = region.space.normalize(eye, raw);
+    let march = 0.02, owner = null;
+    for (let i = 0; i < 400 && march < 12; i++) {
+      const at = region.space.step(eye, ray, march);
+      const sample = packedSample(packedNow, at);
+      if (sample.distance < 1e-3) { owner = packedNow.primitives[sample.owner]?.id ?? null; break; }
+      march += Math.max(sample.distance, 1e-3);
+    }
+    check('marching that pixel arrives at the ball rather than at the room',
+      owner === ball.id);
+    // AND THE ROUND TRIP IS EXACT, which is the half that matters. A 20%
+    // horizontal scale error still lands inside a ball this large, so "it hit
+    // the right solid" passed a mutation that used the wrong aspect term. The
+    // direction the shader would build for that pixel must BE the direction
+    // that was projected, to the last bits.
+    const drift = Math.max(...[...ray].map((x, i) => Math.abs(x - placed.direction[i])));
+    check('AND THE PIXEL REBUILDS THE EXACT DIRECTION IT WAS PROJECTED FROM',
+      drift < 1e-12);
+
+    // Selection, through the dropdown's own transaction and nobody else's.
+    selectEntity(markerIds[0]);
+    const beforeSelect = undo.length;
+    $('markers').querySelector('[data-marker="s-goal"]')?.click()
+      ?? $('marker-list').querySelector('[data-marker-row="s-goal"]').click();
+    check('clicking a marker selects it through the existing entity path',
+      selectedId === 's-goal' && $('entities').value === 's-goal'
+      && $('inspector-title').textContent.startsWith('s-goal'));
+    check('and selecting is not an edit', undo.length === beforeSelect);
+    check('the selected marker is marked as selected in the list',
+      $('marker-list').querySelector('[data-marker-row="s-goal"]').getAttribute('aria-pressed') === 'true');
+
+    // Placement through the property form, the undo stack and the save file.
+    const goalBefore = world.document().entities.find(e => e.id === 's-goal').position.slice();
+    const rowText = () => $('marker-list').querySelector('[data-marker-row="s-goal"]').textContent;
+    const distanceBefore = rowText();
+    write3(ids3, [goalBefore[0], goalBefore[1] - 1.4, goalBefore[2]]);
+    submit();
+    check('an objective can be MOVED through the ordinary property form',
+      !$('boot').textContent
+      && world.document().entities.find(e => e.id === 's-goal').position[1] === goalBefore[1] - 1.4);
+    check('and the marker follows it', rowText() !== distanceBefore);
+    $('undo').click();
+    check('undo puts the objective back exactly',
+      world.document().entities.find(e => e.id === 's-goal').position
+        .every((x, i) => x === goalBefore[i]));
+    const saved = JSON.stringify(world.document());
+    install(JSON.parse(saved));
+    check('a save/reload round trip keeps both markers, with their fields',
+      JSON.stringify(world.document()) === saved
+      && markerIds.every(id => world.document().entities.some(e => e.id === id)));
+
+    // Persistence the form cannot reach is SAID, not silently dropped.
+    selectEntity('s-door');
+    check('a field the inspector cannot edit is named as preserved',
+      !$('unsupported').hidden && /\bop\b/.test($('unsupported').textContent));
+    selectEntity('s-goal');
+    check('and an entity with nothing unsupported says nothing', $('unsupported').hidden);
+
+    // Behind geometry: dimmed and labelled, never a solid drawn in front.
+    //
+    // THE PAIR IS THE CHECK. The authored goal sits straight down the open
+    // doorway and is genuinely visible -- I assumed it was behind the wall and
+    // the first version of this check failed, correctly. Moving it sideways
+    // puts the wall in front of it. Asserting either half alone would pass on a
+    // marker that reported every entity the same way.
+    const badge = () => $('markers').querySelector('[data-marker="s-goal"]');
+    selectEntity('s-goal');
+    check('the objective down the OPEN DOORWAY is not reported as occluded',
+      !!badge() && !badge().classList.contains('occluded') && !/behind geometry/.test(rowText()));
+    const goalNow = world.document().entities.find(e => e.id === 's-goal').position.slice();
+    write3(ids3, [2.4, goalNow[1], goalNow[2]]);
+    submit();
+    selectEntity('s-goal');
+    check('and the SAME objective moved behind the far wall is',
+      !!badge() && badge().classList.contains('occluded') && /behind geometry/.test(rowText()));
+    $('undo').click(); selectEntity('s-goal');
+    check('and comes back into view when the edit is undone',
+      !!badge() && !badge().classList.contains('occluded'));
+
+    // Off screen: the badge goes, the list row and its distance stay.
+    state = { ...state, camera: turn(state.camera, { yaw: Math.PI }) };
+    draw();
+    check('turning away removes the badge but keeps the reachable list entry',
+      !badge() && /behind the camera|off screen/.test(rowText())
+      && /\d\.\d{3} away/.test(rowText()));
+    resetToSpawn(); draw();
+
+    // HIDDEN IN PLAY, in both locomotion modes.
+    for (const mode of ['fly', 'walk']) {
+      $('locomotion').value = mode;
+      startPlay({ pointer: false });
+      draw();
+      check(`authoring markers are hidden while ${mode === 'walk' ? 'walking' : 'flying'}`,
+        $('markers').hidden && $('marker-panel').hidden
+        && !$('markers').querySelector('[data-marker]'));
+      stop(); draw();
+      check(`and come back when ${mode === 'walk' ? 'walking' : 'flying'} stops`,
+        !$('markers').hidden && !$('marker-panel').hidden);
+    }
+    $('locomotion').value = 'fly';
+    resetToSpawn(); draw();
+    check('the evidence image traces at least one live marker box',
+      !!$('markers').querySelector('[data-marker]'));
+    shots.push({ name: 's3-authoring-markers', data: markerEvidenceImage() });
 
     // Scenes this viewport must refuse, by name, without drawing them.
     for (const [name, pattern] of [['oriented-room', /E3/], ['portal-room', /portal|connection/i]]) {
