@@ -15,7 +15,11 @@ The previous backlog is preserved in
   real doorway-route check. See docs/qa/astra-spherical-walking-2026-09-10.md.
 - [x] Independent walking audit (MUSE-47): pinned-contact crash repaired;
   designated reversed-floor policy clarified. See Astra MUSE47-49 review.
-- [ ] Independent numerical transport repair audit (MUSE-50); MUSE-48/49 revisions.
+- [x] Independent numerical transport repair audit (MUSE-50) and MUSE-48/49 revisions accepted.
+- [x] S3 primitive boundary-event layer: ball/plane roots, cell-face candidates,
+  explicit numerical refusals. It does not yet classify Boolean scene hits.
+- [ ] CPU Boolean event classifier (Claude), independent root audit (MUSE-51),
+  then Astra review before connected sight integration.
 - [x] Bounded connected CPU sight reference: E3-S3-E3 region/range transport,
   analytic E3 hits, honest S3 surface-candidate refusal.
 - [ ] Certified S3 surface intersections, independent sight audit (MUSE-49),

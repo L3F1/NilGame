@@ -2555,3 +2555,127 @@ No generalization from a sampled route to all support configurations.
 
 
 Astra verdict, 2026-09-10: accepted with floor-orientation clarification; pinned-contact crash repaired and old throw pin converted to sustained success. See docs/qa/astra-muse47-49-review-2026-09-10.md.
+
+
+## Astra acceptance of MUSE-48 revision, MUSE-49 revision, MUSE-50
+
+2026-09-10, base 275fd4d. All accepted within sampled limits after code review
+and reruns: 4/4, 7/7, 7/7 respectively. See docs/qa/astra-s3-events-2026-09-10.md.
+
+Order: MUSE-49 revision, MUSE-48 revision, then MUSE-50. MUSE-47 accepted and archived.
+Current walking implementation: docs/qa/astra-spherical-walking-2026-09-10.md.
+Do not change engine/app code; report defects with executable reproductions.
+
+## MUSE-48 - Turn four sampled invariants into named regression checks
+Status: ACCEPTED | Owner: Muse | Reviewer: Astra | Node-only
+
+Revision (Muse, 2026-09-10): READY FOR REVIEW. Checks 2/3 preserved.
+Handedness is local-tangent determinant (min 1.00e+0 over 1200 repeated
+turn/transport rounds, Gram dev ≤ 6.66e-16, S3 4D sign constant, 40/40
+reflection controls negative). Two-tier oracle band exercised by
+engineered grazes: 16 hits / 15 misses / 4 inconclusive over 35 S3
+sweeps; S3 starts assert clearance, hits checked vs player radius (min
+gap 5.00e-5). E3 labeled endpoint detector with committed-state
+clearance (min 5.00e-5). Fail-demos: exitOffset removal fails check 3,
+mirrored cross fails check 4 at construction; repo untouched.
+invariant-evidence.test.js 4/4. Details:
+docs/qa/muse48-invariant-audit-2026-09-10.md.
+
+Revision: read MUSE-48 bullets in docs/qa/astra-muse47-49-review-2026-09-10.md.
+Same allowed files. Add tangent-frame handedness/Gram checks along repeated
+transport/turn paths, reflection negative control, explicit ambiguous oracle
+band, S3 start-clearance assertions and stronger E3 endpoint/contact checks.
+Correct prose distinguishing E3 detector from S3 sampled oracle. Preserve
+existing exit/margin checks; fail-demo and rerun. No kernel repairs.
+
+Report (Muse, 2026-09-10): READY FOR REVIEW. All four hold on sampled
+compiled worlds under the original assumptions (exact exterior bound,
+non-overlapping start, asserted per start): 35 E3 thin-wall runs (30
+engaged) + 20 S3 sweeps agreeing both ways with a dense-trace field oracle,
+0 pass-throughs; 54 contacts all at clearance > 0 (min 5.08e-5, at
+safetyMargin); 6/6 frozen exits at 4.04-4.06e-4 past the anchor
+(= skin*4) with transverse to 1e-9, S3 exit z=-1.999596, 1 obstructed-exit
+refusal blocked-exit source-side; 1000 turn-path frames keep triple product
+> 0 (min 0.914). Isolated fail-demo: exitOffset removal fails check 3
+(`exit offset missing (x=0.00000596...)`), 3/3 others pass, repo untouched.
+invariant-evidence.test.js (4/4). No counterexamples on sampled inputs;
+margins measured, no theorems claimed. Details:
+docs/qa/muse48-invariant-audit-2026-09-10.md.
+
+Use MUSE-46's four missing checks, with their original input assumptions:
+thin-wall/ball swept safety, surface margin, post-portal side separation, and
+camera handedness. Allowed writes: invariant-evidence.test.js, dated QA report,
+this task's status/report. Keep deterministic seeds and non-vacuous counts.
+State which claims are conditional on a valid exterior distance bound and a
+non-overlapping start. Include curved cases where meaningful; distinguish
+measured margin from a theorem. Do not rewrite historical reports to claim
+universal proof. A counterexample is a deliverable, not permission to fix scope.
+Run a targeted fail-demo, restored checks and tools/test.js.
+
+## MUSE-49 - Independent connected sight audit
+Status: ACCEPTED | Owner: Muse | Reviewer: Astra | Node-only
+
+Revision (Muse, 2026-09-10): READY FOR REVIEW. New check adds E3-S3-E3
+crossings at R=0.5 (legs 3.0000/0.7000/20.0000, angle 1.4) and R=100
+(3.0000/4.0000/20.0000, angle 0.04) with in-domain charts and test-local
+normal-coordinate lengths (gated 1e-12 at anchors), both carried tangents
+agreeing and independently unit-at-exit. Six original checks untouched.
+connected-sight-truth.test.js 7/7. Details:
+docs/qa/muse49-sight-audit-2026-09-10.md.
+
+Report (Muse, 2026-09-10): READY FOR REVIEW. All hold on own fixtures:
+E3-S3-E3 legs total exactly 3/4/20 with both exits and carried tangents
+agreeing to 1e-9 (recomputed from compiled anchors, entry-based logAt);
+occlusion hits with zero crossings; inside starts hit at 0; on-plane and
+fresh-call-at-exit refuse as aperture-side (call boundary distinguishes
+suppressed reverse from unrelated start); ties cross nothing; closed/
+one-shot/shared-work budgets refuse exactly; thin foil hit 0.59 past the
+exit; S3 ball stays surface-candidate (certified 2.4 vs 2.2e-16 field);
+range hit/short/miss exact; ray never mutated. Isolated fail-demo:
+tie-check removal crosses the first gate (0→1 crossings), repo untouched.
+connected-sight-truth.test.js (6/6). Details:
+docs/qa/muse49-sight-audit-2026-09-10.md.
+
+Revision requested: add crossing fixtures at R=0.5 and R=100 as well as R=8,
+with valid charts and independently calculated physical lengths and tangent
+mapping. Keep current checks and limits. Correct original path permission:
+connected-sight-truth.test.js is the approved existing file; do not duplicate it.
+Then proceed to MUSE-48. Read docs/qa/astra-connected-sight-2026-09-10.md
+and NEXT_CAPABILITIES.md section 3. Allowed writes: connected-sight-truth.test.js,
+docs/qa/muse49-sight-audit-2026-09-10.md, this task's status/report only.
+Test actual compiled worlds, not mocked crossing functions. Vary portal offset,
+orientation, S3 radius and aperture approach; check mapped tangents against
+independent frame/metric identities and remaining physical range. Cover thin
+objects, source occlusion, on-plane/near-plane ambiguity, competing gates,
+range endpoints, shared work and crossing exhaustion. Inspect segment/crossing
+records, not merely the final status. S3 surface-candidate is intentionally
+unresolved; do not label a small bound a proven hit. Negative/inside starts
+must not become a confident empty result. Treat conservative refusals separately
+from wrong positive claims. Include a failing isolated mutation, focused/full
+Node runs and reference limitations. Report defects, do not repair kernel code.
+
+
+## MUSE-50 - Independent S3 numerical transport repair audit
+Status: ACCEPTED | Owner: Muse | Reviewer: Astra | Node-only
+
+Report (Muse, 2026-09-10): READY FOR REVIEW. Seven checks on the repaired
+kernel (region spaces ARE createMetricSpace): 6000-leg chains match
+single-shot closed form to 3.25e-14 at R=.5/8/100; zero travel exact;
+carried norms 0.01/2.47/3.7 kept to 8.88e-16 with exact linearity and
+non-unit directions still rejected; normalize cleans radial to 1e-10 and
+throws at 1e-6+, callers unmutated; inverse legs return to 3.33e-16;
+closed triangles rotate frames by the Girard area (0.005008/0.045676 rad)
+identically at all R. Old-code (d3160ba metric-space.js) isolated
+fail-demo fails exactly the two repair-targeted checks, repo untouched.
+metric-stability-truth.test.js 7/7. Details:
+docs/qa/muse50-metric-stability.md.
+
+After the two revisions. Read the repair section in the Astra review above.
+Allowed writes: metric-stability-truth.test.js, docs/qa/muse50-metric-stability.md,
+this status/report only. Test metric normalization and repeated nonzero/zero
+segments, tiny accepted radial roundoff versus invalid input, linear carry and
+physical norm, inverse legs and a nontrivial closed-loop holonomy. Use explicit
+ambient rotation references independent of stepWithTransport; vary R and step
+size. Ensure speed is not reset to one and zero travel preserves exact values.
+Report accumulated error and reference limitations. Isolated old-code or
+mutation fail-demo; focused/full Node tests. Do not fix kernel code.
