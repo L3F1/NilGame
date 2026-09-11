@@ -68,8 +68,9 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: none. MUSE-56 accepted; see docs/qa/muse-log.md.
-Claude remains paused while its weekly quota is full.
+Order: none. MUSE-57 accepted; see docs/qa/muse-log.md.
+User reauthorized Claude on 2026-09-11. Claude owns the separate global-S3
+browser/GPU fixture; Muse owns independent CPU query tests.
 
-No jobs scheduled. The bridge manifest records completed MUSE-56; replace it
-before dispatching another task.
+Both bridge tasks are complete and accepted after lead checks. No jobs scheduled.
+The manifest records completed work; replace before another dispatch.

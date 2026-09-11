@@ -6,6 +6,7 @@
 //   node tools/page-check.js --worlds all presets, resets, menu and resolution
 //   node tools/page-check.js --ball-lab editable scene-v1 E3 primitive
 //   node tools/page-check.js --region-lab the single-region S3 viewport
+//   node tools/page-check.js --spherical-cover whole-S3 ball sight and loop
 //
 // Serves the project over HTTP and loads index.html as a REAL ES module graph,
 // the way Live Server does, then lets the page run twenty frames and report on
@@ -49,7 +50,8 @@ const worlds = process.argv.includes('--worlds');
 const ballLab = process.argv.includes('--ball-lab');
 const regionLab = process.argv.includes('--region-lab');
 const connectedPreview = process.argv.includes('--connected-preview');
-const lab = ballLab || regionLab || connectedPreview;
+const sphericalCover = process.argv.includes('--spherical-cover');
+const lab = ballLab || regionLab || connectedPreview || sphericalCover;
 let timeoutMs;
 try {
   timeoutMs = parseReportTimeoutMs(process.argv);
@@ -108,6 +110,7 @@ const srv = createServer((req, res) => {
     if (ballLab) { res.end(readFileSync(join(ROOT, 'tools/ball-lab.html'), 'utf8')); return; }
     if (regionLab) { res.end(readFileSync(join(ROOT, 'tools/region-lab.html'), 'utf8')); return; }
     if (connectedPreview) { res.end(readFileSync(join(ROOT, 'tools/connected-preview.html'), 'utf8')); return; }
+    if (sphericalCover) { res.end(readFileSync(join(ROOT, 'tools/spherical-cover.html'), 'utf8')); return; }
     res.end(readFileSync(join(ROOT, 'index.html'), 'utf8').replace('</head>', probe + '</head>'));
     return;
   }
@@ -209,20 +212,30 @@ if (!report) {
 }
 
 const first = (report.hud || '').split('\n')[0].trim();
-const label = connectedPreview ? 'connected GPU preview check' : ballLab ? 'ball editor checks' : regionLab ? 'S3 viewport checks' : worlds ? 'world suite time' : `time to ${FRAMES} frames`;
+const label = sphericalCover ? 'whole-S3 GPU check' : connectedPreview ? 'connected GPU preview check' : ballLab ? 'ball editor checks' : regionLab ? 'S3 viewport checks' : worlds ? 'world suite time' : `time to ${FRAMES} frames`;
 console.log(`${label} : ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 console.log('page error        :', report.err || '(none)');
 console.log('boot panel        :', report.boot ? report.boot.split('\n').slice(0, 3).join(' / ') : '(hidden - good)');
 console.log('hud first line    :', first || '(EMPTY - the module never ran)');
-if (!connectedPreview) console.log('centre pixel      :', report.px);
+if (!connectedPreview && !sphericalCover) console.log('centre pixel      :', report.px);
 if (connectedPreview) console.log('preview renderer  : WebGL2 analytic connected rays, CPU motion');
-if (report.checks) console.log(`${connectedPreview ? 'connected GPU preview' : ballLab ? 'ball editor' : regionLab ? 'S3 viewport' : 'world/input'} checks : ${report.checks.length} passed`);
+if (sphericalCover) console.log('preview renderer  : WebGL2 whole-S3 first ball hit over 2πR, CPU authority');
+if (report.checks) console.log(`${sphericalCover ? 'whole-S3 GPU' : connectedPreview ? 'connected GPU preview' : ballLab ? 'ball editor' : regionLab ? 'S3 viewport' : 'world/input'} checks : ${report.checks.length} passed`);
 if(report.connectedEvidence){
   mkdirSync(join(ROOT,'.agent-bridge'),{recursive:true});
   writeFileSync(join(ROOT,'.agent-bridge','connected-gpu-evidence.json'),JSON.stringify(report.connectedEvidence,null,2));
   for(const r of report.connectedEvidence){
     if(r.label)console.log('parity:',JSON.stringify(r));
     if(r.gpuMs){const sorted=[...r.gpuMs].sort((a,b)=>a-b);console.log(`GPU ${r.pose}: ${r.hardware}, ${r.resolution.width}x${r.resolution.height}, samples ${sorted.length}, median ${sorted[Math.floor(sorted.length/2)]}, p90 ${sorted[Math.floor(sorted.length*.9)]} ms`);}
+  }
+}
+if (report.sphericalEvidence) {
+  mkdirSync(join(ROOT, '.agent-bridge'), { recursive: true });
+  writeFileSync(join(ROOT, '.agent-bridge', 'spherical-cover-evidence.json'), JSON.stringify(report.sphericalEvidence, null, 2));
+  for (const r of report.sphericalEvidence) {
+    if (r.label) console.log('parity:', JSON.stringify({ ...r, position: undefined }));
+    if (r.loop) console.log('loop  :', JSON.stringify(r.loop));
+    if (r.hardware) console.log('gpu               :', r.hardware);
   }
 }
 // Frame time is only meaningful with the hardware and the resolution beside
@@ -264,5 +277,5 @@ if (session.cleanup === 'failed') problems.push(`browser cleanup failed: ${sessi
 
 console.log(problems.length
   ? `\nFAIL ${problems.join('; ')}`
-  : `\nok   ${connectedPreview ? 'connected GPU preview and CPU motion checks passed' : ballLab ? 'ball editor checks passed' : regionLab ? 'S3 viewport checks passed' : worlds ? 'all world transitions and input checks passed' : `the page started, ran ${FRAMES} frames, and its numbers are finite`}`);
+  : `\nok   ${sphericalCover ? 'whole-S3 CPU/GPU parity, closure and loop checks passed' : connectedPreview ?'connected GPU preview and CPU motion checks passed' : ballLab ? 'ball editor checks passed' : regionLab ? 'S3 viewport checks passed' : worlds ? 'all world transitions and input checks passed' : `the page started, ran ${FRAMES} frames, and its numbers are finite`}`);
 process.exit(problems.length ? 1 : 0);

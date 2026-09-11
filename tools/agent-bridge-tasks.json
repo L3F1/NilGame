@@ -2,14 +2,30 @@
   "version": 1,
   "tasks": [
     {
-      "id": "muse-56",
-      "agent": "muse",
-      "instruction": "MUSE-56: independent full-circle transport evidence for EXISTING createMetricSpace in engine/geometry/metric-space.js. Read AGENTS.md and MUSE.md; this manifest is the complete assignment if the queue in your clone predates it. Allowed writes global-s3-transport-truth.test.js and docs/qa/muse56-global-transport.md only. No kernel, app, schema, other test or queue edits. Run host-probe once, do not investigate environment. Build deterministic tests of stepWithTransport on S3 at R=0.5,8,10000: full 2*pi*R loop returning point/direction/three carried tangent vectors, half-circle landing at antipode using segment carry (not endpoint transport), many short steps vs one full loop, and a closed triangular loop with NONZERO holonomy checked independently against spherical triangle area on a great S2. Use the three mutually orthogonal unit points e4,e1,e2, whose area is pi/2 on the unit sphere; transport along explicit pi/2 segments, compare signed rotation of an initial in-plane tangent to that area, include reversed loop. Maximum 12 checks, bounded runtime; check norms and tangency. Distinguish existing bounded withinDomain from globally defined step formula; do not relax patch guards. Demonstrate an isolated fail mutation such as identity carry, restore engine and verify git diff engine empty. Run focused test; report errors, command, host, revision and limitations in under 500 words. No browser, full suite, agent launches, commits or pushes. Return READY FOR REVIEW.",
+      "id": "claude-global-s3",
+      "agent": "claude",
+      "instruction": "User reauthorized Claude. Read GLOBAL_S3_CONTRACT.md and app/spherical-cover-model.js. Build full-S3 browser fixture on createSphericalFlight (space, balls, state camera/position/reference/travel/returnDistance, reset, advance(dt,wish,look), stepLoop(distance)). Allowed files listed only; no model/kernel/fixture changes. Implement WebGL2 static metric-ball first-hit renderer over one full 2*pi*R orbit, max16 balls, R8 fixture. CPU castSphericalBalls authority; explicit uncertain tangencies/ties, float guards. Surface normals, landmark colors; hits beyond piR retain physical distance. Debug readback status/owner/distance for parity. UI pointer lock/WASD/SpaceShift, reuse createMouseLook reset/spike lifecycle; Escape/focus clear. Run full loop button resets once, animates stepLoop to total2*piR over~13sec, NEVER teleport/reset endpoint at finish. Display circuit fraction/travel/shortest distance home; label no gravity/collision. Link new tools/spherical-cover.html from connected-preview. ?check compare CPU/GPU80x60 at start,quarter,exact antipode,threequarter,return,noncentral turned pose; confident status/owner agree, distance<=.001, >=95% CPUhit retention eachpose; report extra refusals and saved images. Verify frame/position closure. Add --spherical-cover to page-check and queue flag allowlist and relevant queue tests. Do not weaken tests. Browser unavailable in isolated clone: run syntax/Node checks only, disclose GPU unrun; lead will integrate then queue realGPU. No other agents/commits/pushes. Concise report READY FOR REVIEW.",
       "allowedFiles": [
-        "global-s3-transport-truth.test.js",
-        "docs/qa/muse56-global-transport.md"
+        "engine/geometry/spherical-cover-renderer.js",
+        "app/spherical-cover-preview.js",
+        "tools/spherical-cover.html",
+        "tools/connected-preview.html",
+        "tools/page-check.js",
+        "tools/check-queue.js",
+        "check-queue.test.js",
+        "docs/qa/claude-global-s3-preview.md"
       ],
-      "report": "docs/qa/muse56-global-transport.md"
+      "report": "docs/qa/claude-global-s3-preview.md"
+    },
+    {
+      "id": "muse-57",
+      "agent": "muse",
+      "instruction": "MUSE-57. Read MUSE.md and GLOBAL_S3_CONTRACT. Only write global-s3-ray-truth.test.js and docs/qa/muse57-global-rays.md. Independently test EXISTING castSphericalBalls via chord-membership sampling+bisection at rotated poses/directions, multiple small balls, R=.5/8/10000. Include beyond-piR hits, finite-range misses, input permutation, later tangency before/behind nearer hit, exposed tangent refusal, coincident owners, zero budget. <=100 cases, ~5sec runtime, reference must resolve chosen object sizes. Report sampled-not-proven boundary. Do not repair kernel; give minimal counterexample if found. Demonstrate isolated wrong-root or piR-cap mutation failing, restore engine. Focused Node tests only, host-probe once, no browser/fullsuite/agents/commits/pushes. <500word report with measured errors/host/commands/limitations. READY FOR REVIEW. Manifest is full task if clone queue predates it.",
+      "allowedFiles": [
+        "global-s3-ray-truth.test.js",
+        "docs/qa/muse57-global-rays.md"
+      ],
+      "report": "docs/qa/muse57-global-rays.md"
     }
   ]
 }

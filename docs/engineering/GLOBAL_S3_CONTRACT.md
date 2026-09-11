@@ -1,7 +1,8 @@
 # Complete spherical runtime, bounded authoring charts
 
-2026-09-11 foundation. Implemented in engine/geometry/spherical-cover.js;
-not yet connected to the browser renderer, collision coordinator or scene-v2.
+2026-09-11. Implemented in engine/geometry/spherical-cover.js and the standalone
+tools/spherical-cover.html browser fixture. Not yet connected to collision,
+scene-v2 authoring or E3 portals.
 
 ## Runtime ownership
 
@@ -57,12 +58,18 @@ Integrated verification on Windows Node 24.20.0: 84/84 suites passed, including
 both new suites. Muse's identity-carry fail demonstration was rerun independently.
 No browser/GPU checks were run for this CPU-only, unconnected foundation.
 
-Next: a GPU/CPU global-ball fixture with identifiable near-side, antipodal and
-far-side landmarks, plus a full straight-loop control. Keep the carried frame;
+Implemented: GPU/CPU global-ball fixture with near-side, antipodal and
+far-side landmarks, plus an animated full straight-loop control. It keeps the carried frame;
 offer a stable explicit look policy, not own-axis yaw with unrelated pitch clamp.
 No great-sphere floor has a nonsingular height gradient over all S3, so do not
 claim the bounded room's floor-up policy works everywhere. For the initial loop
 test, carry a reference up along the trajectory and apply look relative to it.
-After the complete-sphere image/motion parity checks, define global-region scene
+After the complete-sphere image/motion parity checks, the next task is global-region scene
 persistence and connect E3 portals. No gravity, CSG or broad engine migration
 is implied by this foundation.
+
+Browser renderer scope is narrower than the CPU: R=8, up to 16 balls, angular
+radii .05–.1. Inputs outside those limits refuse before GL creation. Camera-relative
+packing computes the cancellation-prone a²-c² term in double before float upload.
+Fixed float32 guards remain provisional. See docs/qa/global-s3-preview-review.md
+for actual GPU evidence; do not extrapolate its accuracy to other scenes/scales.

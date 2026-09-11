@@ -4,6 +4,10 @@ Open tools/connected-preview.html on the game's HTTP server (also linked from
 Worlds and both editors). It loads levels/fixtures/connected-sight.nil.json:
 E3 entry, spherical room, E3 far room.
 
+For a complete spherical circuit, open tools/spherical-cover.html (also linked
+from Worlds as Full S3 loop). That separate global flight fixture has no chart
+edge, collision or portals yet; the connected room here remains bounded.
+
 Click the canvas for real-time flight. WASD moves, Space/Shift rises/descends,
 mouse looks, Escape releases capture. Focus loss clears input. Mouse yaw follows
 the local floor up; pitch stops at ±1.5 radians. Movement transports the camera,

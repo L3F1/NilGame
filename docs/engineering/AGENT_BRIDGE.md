@@ -101,9 +101,9 @@ Muse options were verified from the installed `muse exec --help`.
 
 ## Usage discipline and current batch
 
-User policy: do not prompt Claude, retry it or spend calls checking its quota
-while its weekly allowance is full. Current manifest is Muse-only. A successful
-previous task or a session reset is not evidence that the weekly quota recovered.
+User reauthorized Claude explicitly on 2026-09-11. Current manifest assigns
+Claude the global-S3 browser fixture and Muse independent CPU ray checks.
+If a provider reports quota exhaustion, stop rather than retrying or probing it.
 
 ## Viewing progress without model calls
 
@@ -119,7 +119,7 @@ To follow Muse's raw event log live in a PowerShell terminal (no model calls):
 
 ```powershell
 $run = Get-Content .agent-bridge/latest.json -Raw | ConvertFrom-Json
-$log = Join-Path $run.dir 'muse-56/agent.stdout.jsonl'
+$log = Join-Path $run.dir 'muse-57/agent.stdout.jsonl'
 Get-Content -LiteralPath $log -Tail 5 -Wait
 ```
 
@@ -136,8 +136,7 @@ for an unattended handoff, once. Keep status checks occasional and compact.
 No heartbeat prompts, automatic retries or additional review rounds run.
 Time/step/output limits are controls, not a guaranteed token cap.
 
-The checked-in manifest records Muse's global S3 transport checks, now accepted. Replace
-its assignments before starting another batch; do not repeat completed work.
+Check status before starting the checked-in batch; do not repeat completed work.
 Claude's first run hit its account limit; no retry is scheduled. Muse's revision
 was reviewed in the active Astra session, without a second CLI review. See
 docs/qa/agent-bridge-integration-2026-09-11.md for results and limitations.

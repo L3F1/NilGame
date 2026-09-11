@@ -2799,3 +2799,10 @@ Full geodesic closure, antipodes, 720-step parity and signed ±π/2 octant holon
 are covered at R=.5/8/10000. Small terminology/test-label corrections documented
 in docs/qa/muse56-global-transport.md; no assertions weakened. This verifies
 existing transport, not global rendering or the new cover's ray-query policy.
+
+## MUSE-57 — ACCEPTED, Astra, 2026-09-11
+
+Base a10ab65. Scope limited to global-s3-ray-truth.test.js and its report.
+Host rerun: 81 cases passed, worst entry error/R 5.33e-15. Independently
+reran isolated piR-cap mutation: failed at theta=3.6 with a false miss, as
+intended. References are sampled/bisected, not proofs. No kernel repairs.

@@ -50,6 +50,13 @@ test('the argv handed to the child is built from the schema, not the request', (
   assert.ok(Object.values(ALLOWED).every((s) => s.script.startsWith('tools/')));
 });
 
+test('the whole-sphere S3 page check is queueable, and only for page-check', () => {
+  assert.deepEqual(validateJob({ check: 'page-check', args: ['--spherical-cover', '--timeout=600'] }),
+    ['tools/page-check.js', '--spherical-cover', '--timeout=600']);
+  refuses({ check: 'play-check', args: ['--spherical-cover'] }, /does not accept/);
+  refuses({ check: 'page-check', args: ['--spherical-cover=1'] }, /does not accept/, 'a bare flag takes no value');
+});
+
 test('unknown flags are REFUSED, never silently dropped', () => {
   // Dropping one quietly would let a requester believe it measured something
   // it did not -- a --sw run reported as a real-GPU run, say.
