@@ -1,4 +1,5 @@
-// The coupling between an authoring marker and the shader that draws the room.
+// Two couplings an authoring marker has with code in other modules, neither of
+// which any browser check can see go wrong.
 //
 // `app/region-lab.js` places a marker badge at the pixel whose ray points at
 // the entity, by inverting two lines of `REGION_S3_GLSL`:
@@ -87,6 +88,49 @@ test('a marker is never a scene primitive, in the code as well as in the picture
   }
   assert.ok(lab.includes("const MARKER_KINDS = ['spawn', 'objective'];"),
     'the overlay names the kinds it is responsible for');
+});
+
+// --- the visibility query's two unwatchable invariants -------------------
+//
+// The three-state query is checked hard in the browser: a thin occluder at the
+// eye, a tiny positive bound, two flavours of exhaustion, a certified interior
+// sample, and that an uncertain marker is styled and labelled as uncertain.
+// Two properties survive every mutation of those checks, and both are pinned
+// here instead, with the reason each is unfalsifiable at the page.
+
+test('the march advances by the bound it sampled, never by a floor', () => {
+  // WHY THIS IS NOT A BROWSER CHECK. An advance longer than the sampled bound
+  // is no longer a radius proved free, so CLEAR stops being certified -- the
+  // march could jump a solid thinner than the overshoot. Replacing
+  // `travelled += here.gap` with `Math.max(here.gap, 1e-3)` changes NOTHING
+  // observable, because the stall probes reach 4 to 256 skins ahead (up to
+  // 2.56e-2) and that range strictly contains the 9e-4 an overshoot could
+  // hide. Slabs of 4e-4, 6e-4, 1.2e-3, 3e-3 and 2.4e-2 were all reported
+  // occluded by both versions. The probes mask it; the invariant is still the
+  // thing that licenses the word "clear", so it is pinned rather than assumed.
+  assert.ok(lab.replace(/\s+/g, '').includes('travelled+=here.gap;'),
+    'the safe advance changed shape; CLEAR is only certified by advancing by the bound');
+  assert.ok(!/travelled \+= Math\.max/.test(lab),
+    'a floored advance is longer than the radius that was proved free');
+});
+
+test('occlusion is certified by a contract the field still declares', () => {
+  // The ONLY thing that turns a negative sample into "behind geometry" is
+  // `interior: 'sign-with-conservative-magnitude'` -- the sign is promised
+  // inside a solid, the magnitude is not. The query reads that capability at
+  // runtime and falls back to unknown without it, which is correct and
+  // currently unreachable: no field in the tree declares anything else, so
+  // hardcoding `true` passes every browser check. Pinning the declaration is
+  // what makes the fallback mean something: change the contract and this
+  // fails, pointing at the marker code that depends on it.
+  const compiled = readFileSync('engine/world/region-world.js', 'utf8');
+  assert.ok(/interior:\s*'sign-with-conservative-magnitude'/.test(compiled),
+    'the interior sign contract changed; markerVisibility certifies occlusion from it');
+  assert.ok(lab.includes("String(field.capabilities?.interior ?? '').startsWith('sign')"),
+    'the query must READ that contract rather than assume it');
+  // And a positive bound must never be a certificate, whatever its size.
+  assert.ok(!/here\.gap <= MARKER_SKIN\)\s*\{\s*return \{ state: 'occluded'/.test(lab),
+    'a small positive bound is a failure to prove clearance, not a proof of solid');
 });
 
 console.log(`marker projection: ${passed} passed, ${failed} failed`);

@@ -199,26 +199,112 @@ function projectMarker(target) {
 }
 
 /**
- * Is a surface in the way? A sphere trace along the SAME great circle the
- * shader marches, stopping short of the target.
+ * Is a surface in the way? CLEAR, OCCLUDED or UNKNOWN -- and the third is not
+ * a hedge, it is most of the answers this field can honestly give.
  *
- * An occluded marker is dimmed rather than hidden, because an author looking
- * for an objective behind a wall still needs to find it -- but it must not sit
- * there looking like a solid that is in front of the wall, which is the one
- * thing section 4 forbids.
+ * The first version of this returned a Boolean and was wrong twice, in the
+ * direction that matters: it claimed knowledge it did not have. Astra found
+ * both (docs/qa/astra-muse47-49-review-2026-09-10.md).
+ *
+ *   IT TREATED A SMALL POSITIVE BOUND AS A SURFACE. `field.capabilities`
+ *   declares `distance: 'bound'` -- every value is a conservative LOWER bound
+ *   on the true distance, and in this room `exteriorDistance` is 'bound' too,
+ *   because carves and geodesic cells make the composition inexact. A small
+ *   positive number therefore means "I could not prove much clearance here",
+ *   which is a failure to prove clearance and not a proof of solid.
+ *
+ *   IT CALLED EXHAUSTION CLEAR. Running out of steps and seeing nothing is not
+ *   seeing nothing.
+ *
+ *   AND IT STARTED 0.05 PAST THE EYE, so an occluder thinner than that, close
+ *   enough to the camera, was stepped straight over and the marker was
+ *   reported visible through it.
+ *
+ * The march now advances by exactly the bound, never by a floor: a bound is a
+ * radius proved free, so the union of those balls covers the segment, and
+ * covering the whole range is the only thing that certifies CLEAR.
+ *
+ * That same safety is why a pure march can never certify OCCLUDED. Advancing
+ * by a conservative bound converges onto a surface and never crosses it, so it
+ * never samples an interior. Occlusion is certified by an explicit PROBE past
+ * a stall, and it rests on one thing only: `interior:
+ * 'sign-with-conservative-magnitude'` promises the SIGN inside a solid and
+ * nothing about the magnitude. A strictly negative sample at a point is a
+ * certificate that the point is inside something. Where to probe is a guess;
+ * what the probe proves is not. If no probe comes back negative, the answer
+ * stays UNKNOWN.
+ *
+ * Probes never run at or past the target, because a solid BEHIND a marker does
+ * not occlude it -- an objective placed flush on a floor would otherwise be
+ * reported as hidden behind the floor it is sitting on.
+ *
+ * This is an EDITOR HINT and is labelled as one. It is not the connected-sight
+ * reference, it does not import it, and it makes no claim about S3 surface
+ * intersection, which is Astra's open kernel question.
  */
-function markerOccluded(from, direction, distance) {
+const MARKER_SKIN = 1e-4;        // below this a bound is too weak to advance on
+const MARKER_STEPS = 96;
+const MARKER_PROBES = [4, 16, 64, 256];   // multiples of the skin, past a stall
+
+function markerVisibility(from, direction, distance, steps = MARKER_STEPS) {
   const region = world.regions.get(state.regionId), space = region.space;
-  let travelled = Math.min(0.05, distance * 0.25);
-  for (let i = 0; i < 48 && travelled < distance; i++) {
-    const gap = region.field.distance(space.step(from, direction, travelled));
-    if (gap < 1e-3) return true;
-    travelled += Math.max(gap, 1e-3);
+  const field = region.field;
+  // Read the contract rather than assume it. If a field stops promising a
+  // trustworthy interior sign, occlusion stops being provable from a sample.
+  const signCertifies = String(field.capabilities?.interior ?? '').startsWith('sign');
+  const at = (t) => space.step(from, direction, t);
+  const sample = (t) => {
+    const point = at(t);
+    if (!space.withinDomain(point)) return { why: 'the sightline leaves the chart' };
+    const gap = field.distance(point);
+    if (!Number.isFinite(gap)) return { why: 'the field returned no number along the sightline' };
+    return { gap };
+  };
+
+  let travelled = 0, spent = 0;
+  while (travelled < distance) {
+    if (spent++ >= steps) return { state: 'unknown', why: 'the visibility query ran out of steps' };
+    const here = sample(travelled);
+    if (here.why) return { state: 'unknown', why: here.why };
+    if (here.gap < 0) {
+      return signCertifies ? { state: 'occluded', why: 'a sample inside a solid' }
+        : { state: 'unknown', why: 'this field does not certify an interior sign' };
+    }
+    if (here.gap <= MARKER_SKIN) {
+      // Stalled. Look just past it for an interior sample -- the only thing
+      // that can turn "I cannot advance" into "something is there".
+      let probed = 0;
+      for (const multiple of MARKER_PROBES) {
+        const atProbe = travelled + multiple * MARKER_SKIN;
+        if (!(atProbe < distance)) break;   // past the marker proves nothing about it
+        if (spent++ >= steps) break;
+        probed++;
+        const probe = sample(atProbe);
+        if (probe.why || !(probe.gap < 0)) continue;
+        return signCertifies ? { state: 'occluded', why: 'a sample inside a solid' }
+          : { state: 'unknown', why: 'this field does not certify an interior sign' };
+      }
+      // Two different stalls, and an author can act on the difference: one is a
+      // weak bound partway along, the other is the marker sitting at the end of
+      // the sightline with nothing left to look through.
+      return { state: 'unknown',
+        why: `clearance of ${here.gap.toExponential(1)} is a bound too small to advance on, and `
+          + (probed ? 'nothing past it sampled as solid'
+            : 'the marker itself is at the far end of that stall') };
+    }
+    travelled += here.gap;
   }
-  return false;
+  // Every advance was a radius proved free, and together they cover the range.
+  return { state: 'clear', why: null };
 }
 
-function updateMarkers() {
+/** How each visibility answer reads on screen. Three, never two. */
+const MARKER_LOOK = {
+  clear:    { glyph: '◎', note: '', title: 'in the clear' },
+  occluded: { glyph: '◍', note: 'behind geometry', title: 'behind geometry' },
+  unknown:  { glyph: '?',       note: 'visibility unknown', title: 'visibility unknown' },
+};
+function updateMarkers({ steps } = {}) {
   if (!world || !state) return;
   const layer = $('markers'), list = $('marker-list');
   // HIDDEN IN PLAY, both of them. An editor aid drawn over a first-person view
@@ -235,32 +321,41 @@ function updateMarkers() {
   const eye = [...state.position];
   for (const entity of entities) {
     const placed = playing ? { distance: null, reason: 'flying' } : projectMarker(entity.position);
-    const occluded = placed.direction
-      ? markerOccluded(eye, placed.direction, placed.distance) : false;
+    const seen = placed.direction
+      ? markerVisibility(eye, placed.direction, placed.distance, steps)
+      : { state: 'unknown', why: 'no sightline was projected' };
+    const look = MARKER_LOOK[seen.state];
     const number = Number.isFinite(placed.distance) ? placed.distance.toFixed(3) : '--';
 
     const row = document.createElement('button');
-    row.type = 'button'; row.className = 'marker-row';
+    row.type = 'button'; row.className = `marker-row ${seen.state}`;
     row.dataset.markerRow = entity.id;
+    row.dataset.visibility = seen.state;
     row.setAttribute('aria-pressed', String(entity.id === selectedId));
+    // The REASON is on the row, because "unknown" without one is just a shrug,
+    // and an author deciding whether to move an objective needs to know whether
+    // the query ran out of steps or ran into a bound it could not advance on.
     row.textContent = `${entity.id} · ${entity.kind} · ${number} away`
-      + (placed.reason ? ` · ${placed.reason}` : occluded ? ' · behind geometry' : '');
+      + (placed.reason ? ` · ${placed.reason}` : look.note ? ` · ${look.note}` : '')
+      + (seen.state === 'unknown' && seen.why ? ` (${seen.why})` : '');
     row.onclick = () => selectMarker(entity.id);
     list.append(row);
     if (!placed.direction || playing) continue;
 
     const marker = document.createElement('button');
     marker.type = 'button';
-    marker.className = `marker${occluded ? ' occluded' : ''}${entity.id === selectedId ? ' selected' : ''}`;
+    marker.className = `marker ${seen.state}${entity.id === selectedId ? ' selected' : ''}`;
     marker.dataset.marker = entity.id;
+    marker.dataset.visibility = seen.state;
     marker.style.left = `${placed.left * 100}%`;
     marker.style.top = `${placed.top * 100}%`;
     // Named as what it is, in the accessible name as well as on screen: this
-    // is an editor aid, and nothing about it should read as world geometry.
-    marker.title = `${entity.id} (${entity.kind}) — editor marker, ${number} away`
-      + (occluded ? ', behind geometry' : '');
+    // is an editor aid, and nothing about it should read as world geometry --
+    // and an uncertain answer says so rather than picking the tidier one.
+    marker.title = `${entity.id} (${entity.kind}) — editor marker, ${number} away, ${look.title}`
+      + (seen.state === 'unknown' && seen.why ? `: ${seen.why}` : '');
     marker.setAttribute('aria-label', marker.title);
-    const dot = document.createElement('span'); dot.className = 'marker-dot'; dot.textContent = '◎';
+    const dot = document.createElement('span'); dot.className = 'marker-dot'; dot.textContent = look.glyph;
     const label = document.createElement('span'); label.className = 'marker-label';
     label.textContent = `${entity.id} · ${number}`;
     marker.append(dot, label);
@@ -295,12 +390,13 @@ function markerEvidenceImage() {
     const box = marker.getBoundingClientRect();
     const x = (box.left - view.left) * scaleX, y = (box.top - view.top) * scaleY;
     const w = box.width * scaleX, h = box.height * scaleY;
-    const occluded = marker.classList.contains('occluded');
-    ctx.setLineDash(occluded ? [2, 3] : [5, 3]);
-    ctx.globalAlpha = occluded ? 0.5 : 1;
+    const seen = marker.dataset.visibility;
+    ctx.setLineDash(seen === 'clear' ? [5, 3] : [2, 3]);
+    ctx.globalAlpha = seen === 'occluded' ? 0.5 : seen === 'unknown' ? 0.75 : 1;
     ctx.fillStyle = '#0b1a24d0';
     ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = marker.classList.contains('selected') ? '#ffd590' : '#8be2d7';
+    ctx.strokeStyle = marker.classList.contains('selected') ? '#ffd590'
+      : seen === 'unknown' ? '#e0b070' : '#8be2d7';
     ctx.lineWidth = 1.5;
     ctx.strokeRect(x, y, w, h);
     ctx.fillStyle = marker.classList.contains('selected') ? '#ffe6bd' : '#c9f2ea';
@@ -1158,6 +1254,122 @@ export async function runRegionEditorChecks() {
     selectEntity('s-goal');
     check('and an entity with nothing unsupported says nothing', $('unsupported').hidden);
 
+    // THREE ANSWERS, AND THE THIRD IS THE ONE THAT WAS MISSING.
+    //
+    // The first version of this query returned a Boolean, and Astra found two
+    // ways it claimed knowledge it did not have: a small POSITIVE conservative
+    // bound was read as certain occlusion, and running out of steps was
+    // reported as clear. It also began 0.05 past the eye, so a thin occluder
+    // close to the camera was stepped over and the marker showed through it.
+    //
+    // Each case below is a real scene edited through `install`, and each one
+    // pins a different answer.
+    const visibilityOf = id =>
+      $('marker-list').querySelector(`[data-marker-row="${id}"]`)?.dataset.visibility;
+    const authored = JSON.parse(JSON.stringify(world.document()));
+
+    stop(); resetToSpawn(); draw();
+    check('the objective down the open doorway certifies CLEAR',
+      visibilityOf('s-goal') === 'clear'
+      && $('markers').querySelector('[data-marker="s-goal"]').dataset.visibility === 'clear');
+
+    // A THIN SLAB, CLOSE TO THE EYE. It is 0.024 thick and 0.010 away, so the
+    // whole of it fits inside the 0.05 the old query skipped -- it stepped
+    // clean over it and called the objective visible through a wall.
+    const slabbed = JSON.parse(JSON.stringify(authored));
+    slabbed.entities.push({
+      id: 's-slab', regionId: 'sphere', kind: 'geodesic-cell',
+      position: [0, 0.5, 0.3], halfExtent: [1.2, 0.012, 1.2],
+      frame: { forward: [0, 1, 0], up: [0, 0, 1] },
+    });
+    install(slabbed);
+    region = world.regions.get(state.regionId);
+    state = strandAt([0, 0.478, 0.3]);
+    draw();
+    const toSlab = region.field.distance([...state.position]);
+    check('the slab really is thin and inside the range the old query skipped',
+      toSlab > 0 && toSlab < 0.05);
+    check('A THIN OCCLUDER AT THE EYE IS FOUND, not stepped over',
+      visibilityOf('s-goal') === 'occluded');
+
+    // Take the slab away again and the same sightline is clear, so the check
+    // above is about the slab and not about the viewpoint.
+    install(authored);
+    region = world.regions.get(state.regionId);
+    state = strandAt([0, 0.478, 0.3]);
+    draw();
+    check('and without the slab the same sightline certifies clear',
+      visibilityOf('s-goal') === 'clear');
+
+    // AN OBJECTIVE FLUSH ON THE FLOOR gives two DIFFERENT unknowns, depending
+    // on the budget, and both are worth pinning because neither is allowed to
+    // become a claim. Approaching a surface at a shallow angle is the classic
+    // slow case for a conservative march: at the default budget it runs out of
+    // steps, and with a budget twenty times larger it gets further and stalls
+    // on a bound of 9.7e-5. Raising the budget moves the reason and does NOT
+    // turn either into "clear" or "behind geometry".
+    const rowText2 = () => $('marker-list').querySelector('[data-marker-row="s-goal"]').textContent;
+    const onFloor = JSON.parse(JSON.stringify(authored));
+    onFloor.entities.find(e => e.id === 's-goal').position = [0, 3.1, 0];
+    install(onFloor);
+    region = world.regions.get(state.regionId);
+    draw();
+    check('a marker resting ON a surface is UNKNOWN, not declared hidden by it',
+      visibilityOf('s-goal') === 'unknown');
+    shots.push({ name: 's3-markers-diagram-unknown', data: markerEvidenceImage() });
+    check('at the default budget the shallow approach exhausts, and says so',
+      /ran out of steps/.test(rowText2()));
+    // A TINY POSITIVE CONSERVATIVE BOUND IS NOT A SURFACE. With room to reach
+    // it, the march stalls on a bound below the skin -- the old query read
+    // exactly this as certain occlusion.
+    updateMarkers({ steps: 4000 });
+    check('with room to reach it, a tiny POSITIVE bound is still unknown, never occluded',
+      visibilityOf('s-goal') === 'unknown' && /too small to advance on/.test(rowText2()));
+    check('and the reason names which stall it is',
+      /at the far end of that stall|nothing past it sampled as solid/.test(rowText2()));
+    install(authored);
+    region = world.regions.get(state.regionId);
+    resetToSpawn(); draw();
+
+    // EXHAUSTION IS UNKNOWN, not clear. One step cannot cover the room, and
+    // the old query answered "nothing in the way" after looking once.
+    updateMarkers({ steps: 1 });
+    check('a query that runs out of steps reports UNKNOWN',
+      visibilityOf('s-goal') === 'unknown');
+    check('and says so, rather than implying it looked',
+      /ran out of steps/.test($('marker-list').querySelector('[data-marker-row="s-goal"]').textContent));
+    const exhaustedBadge = $('markers').querySelector('[data-marker="s-goal"]');
+    check('an uncertain marker is styled as uncertain, not as a solid claim',
+      exhaustedBadge.dataset.visibility === 'unknown'
+      && exhaustedBadge.classList.contains('unknown')
+      && !exhaustedBadge.classList.contains('occluded')
+      && /visibility unknown/.test(exhaustedBadge.getAttribute('aria-label')));
+    check('AND IT IS STILL SELECTABLE, because uncertainty is not a reason to hide it',
+      exhaustedBadge.tagName === 'BUTTON' && !exhaustedBadge.disabled);
+    exhaustedBadge.click();
+    check('clicking an uncertain marker still selects through the entity path',
+      selectedId === 's-goal' && $('entities').value === 's-goal');
+    draw();
+    check('and an ordinary redraw restores the full-budget answer',
+      visibilityOf('s-goal') === 'clear');
+
+    // The occluded case keeps its certificate: a sample INSIDE a solid.
+    selectEntity('s-goal');
+    const goalHome = world.document().entities.find(e => e.id === 's-goal').position.slice();
+    write3(ids3, [2.4, goalHome[1], goalHome[2]]);
+    submit();
+    check('a marker behind the far wall certifies OCCLUDED from an interior sample',
+      visibilityOf('s-goal') === 'occluded');
+    // Taken from HERE rather than from the thin-slab case: pressed up against
+    // a slab 0.010 away the whole frame is that slab, which proves the query
+    // and shows the reader nothing.
+    shots.push({ name: 's3-markers-diagram-occluded', data: markerEvidenceImage() });
+    $('undo').click(); draw();
+    check('and undo returns it to clear',
+      visibilityOf('s-goal') === 'clear'
+      && world.document().entities.find(e => e.id === 's-goal').position
+        .every((x, i) => x === goalHome[i]));
+
     // Behind geometry: dimmed and labelled, never a solid drawn in front.
     //
     // THE PAIR IS THE CHECK. The authored goal sits straight down the open
@@ -1203,7 +1415,7 @@ export async function runRegionEditorChecks() {
     resetToSpawn(); draw();
     check('the evidence image traces at least one live marker box',
       !!$('markers').querySelector('[data-marker]'));
-    shots.push({ name: 's3-authoring-markers', data: markerEvidenceImage() });
+    shots.push({ name: 's3-markers-diagram-clear', data: markerEvidenceImage() });
 
     // Scenes this viewport must refuse, by name, without drawing them.
     for (const [name, pattern] of [['oriented-room', /E3/], ['portal-room', /portal|connection/i]]) {
