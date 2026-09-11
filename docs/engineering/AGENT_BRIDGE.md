@@ -101,6 +101,34 @@ Muse options were verified from the installed `muse exec --help`.
 
 ## Usage discipline and current batch
 
+User policy: do not prompt Claude, retry it or spend calls checking its quota
+while its weekly allowance is full. Current manifest is Muse-only. A successful
+previous task or a session reset is not evidence that the weekly quota recovered.
+
+## Viewing progress without model calls
+
+Click **Agents** in the VS Code status bar, or run `NilGame: Open Agent Bridge
+Status` from the command palette. `node tools/agent-bridge.js status` prints a
+compact summary. The run folder contains each task's `checkout/BRIDGE_PROMPT.txt`,
+`agent.stdout.jsonl`, `agent.stderr.log`, result and report. These are independent
+CLI sessions, not conversations in your existing Claude or Muse chat tab.
+Muse streams events/tools to its log; Claude's current JSON mode may buffer its
+final response, so an unchanged Claude log is not proof that it is idle.
+
+To follow Muse's raw event log live in a PowerShell terminal (no model calls):
+
+```powershell
+$run = Get-Content .agent-bridge/latest.json -Raw | ConvertFrom-Json
+$log = Join-Path $run.dir 'muse-54/agent.stdout.jsonl'
+Get-Content -LiteralPath $log -Tail 5 -Wait
+```
+
+Replace the task ID for a later batch. Ctrl+C stops viewing, not the agent. For
+readable outcomes, open the assigned Markdown report after completion. Avoid
+pasting whole JSON logs into a model; inspect only the relevant failure excerpt.
+
+## Token controls
+
 Idle supervision and the VS Code file watcher consume no model tokens. Agent
 reasoning, tool-output reading and the optional review do. Use `start` without
 `--review` while Astra is already actively reviewing this batch; use `--review`
@@ -108,7 +136,7 @@ for an unattended handoff, once. Keep status checks occasional and compact.
 No heartbeat prompts, automatic retries or additional review rounds run.
 Time/step/output limits are controls, not a guaranteed token cap.
 
-The checked-in manifest records the first batch, now completed/reviewed. Replace
+The checked-in manifest records the Muse archive audit, now completed/reviewed. Replace
 its assignments before starting another batch; do not repeat completed work.
 Claude's first run hit its account limit; no retry is scheduled. Muse's revision
 was reviewed in the active Astra session, without a second CLI review. See

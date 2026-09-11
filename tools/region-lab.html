@@ -9,6 +9,7 @@ main{position:relative;min-height:300px;overflow:hidden}canvas{display:block;wid
 <script>function reportBoot(message){const el=document.getElementById('boot');if(el)el.textContent=String(message)}window.addEventListener('error',e=>reportBoot(e.message));window.addEventListener('unhandledrejection',e=>reportBoot(e.reason));</script>
 </head><body><main><canvas id="view" tabindex="0" aria-label="First-person curved scene preview"></canvas><div id="view-label">Loading scene…</div><div id="crosshair" aria-hidden="true">+</div><div id="markers"></div></main><aside>
 <h1>S3 scene editor</h1><p class="hint">Build at a human scale, then fly the same surfaces. This viewport draws ONE spherical region: no portals, no second region, with optional walking on the designated spherical floor. The flat editor is <a href="ball-lab.html">next door</a>.</p>
+<p><a href="connected-preview.html">Test E3 ? S3 ? E3 portals (CPU step preview)</a></p>
 <h2>Scene</h2>
 <label>Fixture<select id="fixture"><option value="s3-room">Spherical room</option><option value="oriented-room">Oriented E3 room (unsupported here)</option><option value="portal-room">Portal room (unsupported here)</option></select></label>
 <p class="hint">The last two are listed on purpose: this viewport refuses them by name rather than drawing a room it cannot honestly show.</p>

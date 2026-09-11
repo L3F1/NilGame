@@ -48,7 +48,8 @@ const sw = process.argv.includes('--sw');
 const worlds = process.argv.includes('--worlds');
 const ballLab = process.argv.includes('--ball-lab');
 const regionLab = process.argv.includes('--region-lab');
-const lab = ballLab || regionLab;
+const connectedPreview = process.argv.includes('--connected-preview');
+const lab = ballLab || regionLab || connectedPreview;
 let timeoutMs;
 try {
   timeoutMs = parseReportTimeoutMs(process.argv);
@@ -106,6 +107,7 @@ const srv = createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     if (ballLab) { res.end(readFileSync(join(ROOT, 'tools/ball-lab.html'), 'utf8')); return; }
     if (regionLab) { res.end(readFileSync(join(ROOT, 'tools/region-lab.html'), 'utf8')); return; }
+    if (connectedPreview) { res.end(readFileSync(join(ROOT, 'tools/connected-preview.html'), 'utf8')); return; }
     res.end(readFileSync(join(ROOT, 'index.html'), 'utf8').replace('</head>', probe + '</head>'));
     return;
   }
@@ -207,13 +209,14 @@ if (!report) {
 }
 
 const first = (report.hud || '').split('\n')[0].trim();
-const label = ballLab ? 'ball editor checks' : regionLab ? 'S3 viewport checks' : worlds ? 'world suite time' : `time to ${FRAMES} frames`;
+const label = connectedPreview ? 'CPU portal preview check' : ballLab ? 'ball editor checks' : regionLab ? 'S3 viewport checks' : worlds ? 'world suite time' : `time to ${FRAMES} frames`;
 console.log(`${label} : ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 console.log('page error        :', report.err || '(none)');
 console.log('boot panel        :', report.boot ? report.boot.split('\n').slice(0, 3).join(' / ') : '(hidden - good)');
 console.log('hud first line    :', first || '(EMPTY - the module never ran)');
-console.log('centre pixel      :', report.px);
-if (report.checks) console.log(`${ballLab ? 'ball editor' : regionLab ? 'S3 viewport' : 'world/input'} checks : ${report.checks.length} passed`);
+if (!connectedPreview) console.log('centre pixel      :', report.px);
+if (connectedPreview) console.log('preview renderer  : CPU worker; Chrome backend is not GPU-query evidence');
+if (report.checks) console.log(`${connectedPreview ? 'CPU portal preview' : ballLab ? 'ball editor' : regionLab ? 'S3 viewport' : 'world/input'} checks : ${report.checks.length} passed`);
 // Frame time is only meaningful with the hardware and the resolution beside
 // it, so the page reports all three together or none of them.
 if (report.timing) {
@@ -253,5 +256,5 @@ if (session.cleanup === 'failed') problems.push(`browser cleanup failed: ${sessi
 
 console.log(problems.length
   ? `\nFAIL ${problems.join('; ')}`
-  : `\nok   ${ballLab ? 'ball editor checks passed' : regionLab ? 'S3 viewport checks passed' : worlds ? 'all world transitions and input checks passed' : `the page started, ran ${FRAMES} frames, and its numbers are finite`}`);
+  : `\nok   ${connectedPreview ? 'CPU portal preview crossed E3-S3-E3 through the browser controls' : ballLab ? 'ball editor checks passed' : regionLab ? 'S3 viewport checks passed' : worlds ? 'all world transitions and input checks passed' : `the page started, ran ${FRAMES} frames, and its numbers are finite`}`);
 process.exit(problems.length ? 1 : 0);

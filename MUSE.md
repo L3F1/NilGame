@@ -34,13 +34,10 @@ This is a project role profile, not a claim about automatic client discovery.
   independent tasks after recording results. Reviewer acceptance is still required
   for integration; lack of a reviewer does not block the next authorized task.
 
-## Manual launch prompt
+## Launch
 
-“Read MUSE.md, the current execution section of MUSE_TASKS.md, and
-docs/qa/astra-review-2026-09-09.md. Complete MUSE-06's POSIX-only revision,
-then MUSE-07's Node-only ball-document QA. Reuse baseline evidence where unchanged; run new
-checks for your changes. Continue independent work when browser access is
-blocked. Leave results ready for review; do not integrate.”
+Use the current bounded bridge assignment or the current MUSE_TASKS.md entry.
+Do not repeat historical tasks. See docs/engineering/AGENT_BRIDGE.md.
 
 In Ubuntu/WSL, start in `/mnt/c/Users/lflyn/Projects/NilGame`, or a separate
 task worktree. See `docs/engineering/AGENT_SETUP.md` for the launch steps.

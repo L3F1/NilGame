@@ -5,12 +5,15 @@ Only OPEN work lives here. Closed assignments and their verdicts moved to
 know why a past decision went the way it did. Shared rules: MUSE.md and
 docs/engineering/WORKING_RULES.md.
 
-## Start every session with these two commands
+## Start each execution session with host discovery
 
 ```sh
 node tools/host-probe.js       # what THIS machine can do
-node tools/test.js             # the baseline you are working from
+
 ```
+
+Run affected checks for code work and the full suite before integration. A
+docs-only audit does not need the game test suite.
 
 `host-probe` replaces environment diagnosis. It reports platform, whether each
 of its own tools actually works, sockets by family, whether Chrome starts here
@@ -65,7 +68,5 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: none. MUSE-53 accepted after revision and archived in docs/qa/muse-log.md.
-
-No agent jobs are scheduled. Next bounded assignment direction is in
-docs/engineering/NEXT_SESSION.md. Do not repeat the completed bridge manifest.
+Order: none. MUSE-53 and MUSE-54 accepted; see docs/qa/muse-log.md.
+Claude is paused while its weekly quota is full. No retries or quota probes.

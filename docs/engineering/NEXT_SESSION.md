@@ -6,7 +6,10 @@ External-agent bridge installed and exercised. Read AGENT_BRIDGE.md. Claude and
 WSL Muse run in isolated clones; optional single read-only Codex CLI callback
 reviews results. It cannot wake this exact IDE chat. Local VS Code extension
 watches files without model calls. No automatic retries or periodic prompts.
-Claude hit its account limit. No further jobs are scheduled.
+Claude is paused at the user's weekly quota instruction: no prompts or quota
+probes until availability is established. MUSE-54 archive audit completed and
+accepted. No further jobs are scheduled. Manifest is Muse-only, completed work;
+replace it before another dispatch. Logs are CLI sessions, not IDE chat tabs.
 
 Astra finished Claude's partial spherical classifier draft: whole-segment cell
 exclusion becomes constant false in existing Boolean groups before occupancy and
@@ -21,9 +24,16 @@ JS double guards into GLSL float. Chart exits remain unresolved, not sky.
 
 Give Claude measurement/diagnostics and Muse independent classifier scoping
 checks with bounded allowed files. Astra owns the GPU numerical policy. Replace
-the completed first-batch manifest and CLAUDE_NEXT before dispatch; do not repeat
+the completed manifest and CLAUDE_NEXT before dispatch; do not repeat
 completed work. User prioritizes token efficiency: active Astra review OR CLI
 callback, not both. Waiting subprocesses/file watchers generate no model tokens.
+
+Browser portal preview now exists at tools/connected-preview.html, linked from
+the world menu and both editors. Worker renders CPU rays on demand; quarter-unit
+button steps use real region motion. E3-S3-E3 and return/obstacle checks pass.
+See docs/connected-preview.md. It is a diagnostic, not connected scene editing.
+Two bulky old QA reports moved behind archive forwarding links; stale Muse
+launch instructions removed. Do not delete numerical/regression evidence.
 
 Renderer/editor remain single-region. Connected CPU sight/motion and single-floor
 S3 walking are separate capabilities. Godot experiment is not scene-v2 parity;

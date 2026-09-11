@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NilGame · Connected portal preview</title>
+<style>
+body{margin:24px auto;padding:0 18px;max-width:900px;background:#101a27;color:#e0edf0;font:16px system-ui}a{color:#8be2d7}canvas{width:100%;max-height:65vh;object-fit:contain;image-rendering:pixelated;background:#16191e}button{padding:12px;margin:4px;background:#22384b;color:inherit;border:1px solid #829aaf;border-radius:6px}button:disabled{opacity:.5}pre{white-space:pre-wrap}button:focus-visible{outline:3px solid #ffd590}
+</style>
+<h1>E3 → S3 → E3 portal preview</h1>
+<p><a href="region-lab.html">Spherical editor</a> · <a href="ball-lab.html">Flat editor</a> · <a href="../index.html">Worlds</a></p>
+<p>Explore the connected fixture in quarter-unit steps. This is a low-resolution CPU preview,
+not the real-time editor renderer. Motion uses collision and carries your camera through portals.
+There is no gravity. Blue: entry region; green: spherical room; gold: far region.
+Magenta means the sight query is unresolved, not sky or a wall.</p>
+<canvas id="view" width="80" height="60" aria-label="Connected-region sight preview"></canvas>
+<div id="controls"><button data-action="forward">Forward (W)</button><button data-action="back">Back (S)</button>
+<button data-action="left">Look left (←)</button><button data-action="right">Look right (→)</button>
+<button data-action="up">Look up (↑)</button><button data-action="down">Look down (↓)</button>
+<button data-action="reset">Reset to entry</button></div>
+<p id="status" role="status">Loading…</p><pre id="details"></pre>
+<script type="module">
+const worker = new Worker('../app/connected-preview-worker.js', {type:'module'});
+const buttons = [...document.querySelectorAll('button')];
+let busy = true, halted = false;
+const checking = new URLSearchParams(location.search).has('check');
+let steps = 0;
+const shots = [], checks = [];
+function report(err = '') { return fetch('/__report', {method:'POST', body:JSON.stringify({err, hud:document.querySelector('#status').textContent, checks, shots})}); }
+function controls() { for (const b of buttons) b.disabled = busy || (halted && b.dataset.action !== 'reset'); }
+function send(action) { if (busy || (halted && action !== 'reset')) return; busy = true; controls(); document.querySelector('#status').textContent='Querying…'; worker.postMessage({action}); }
+worker.onmessage = ({data}) => {
+  busy = false;
+  if (data.error) { halted=true; document.querySelector('#status').textContent=`Error: ${data.error}. Reload to retry.`; controls(); if(checking) report(data.error); return; }
+  halted = data.halted;
+  document.querySelector('canvas').getContext('2d').putImageData(new ImageData(data.pixels,data.width,data.height),0,0);
+  document.querySelector('#status').textContent=`Region: ${data.regionId} · ${data.motion}${halted ? ' — halted; reset to recover' : ''}`;
+  document.querySelector('#details').textContent=JSON.stringify({position:data.position, rays:data.counts, unresolved:data.reasons},null,2);
+  controls();
+  if(checking) {
+    const expected = steps === 0 ? 'entry' : steps === 12 ? 'curve' : steps === 28 ? 'far' : null;
+    if(halted || (expected && data.regionId !== expected)) { report(`Traversal failed at ${steps}: ${data.regionId}/${data.motion}`); return; }
+    if(expected) { checks.push(`step ${steps}: ${expected}`); shots.push({name:expected,data:document.querySelector('canvas').toDataURL()}); }
+    if(steps++ < 28) document.querySelector('[data-action=forward]').click();
+    else report();
+  }
+};
+worker.onerror = e => { document.querySelector('#status').textContent=`Worker error: ${e.message}`; if(checking) report(e.message); };
+document.querySelector('#controls').onclick = e => { if(e.target.dataset.action) send(e.target.dataset.action); };
+document.addEventListener('keydown',e=>{const action={KeyW:'forward',KeyS:'back',ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'}[e.code]; if(action&&!e.repeat&&e.target===document.body){e.preventDefault();send(action);}});
+controls(); worker.postMessage({});
+</script></html>
