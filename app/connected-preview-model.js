@@ -22,7 +22,7 @@ export function createConnectedPreview(document) {
     if (halted) return;
     if (['left', 'right', 'up', 'down'].includes(action)) {
       state = { ...state, camera: turn(state.camera, {
-        yaw: action === 'left' ? -.15 : action === 'right' ? .15 : 0,
+        yaw: action === 'left' ? .15 : action === 'right' ? -.15 : 0,
         pitch: action === 'up' ? .15 : action === 'down' ? -.15 : 0,
       }) }; return;
     }
@@ -54,5 +54,14 @@ export function createConnectedPreview(document) {
     return { pixels, width, height, regionId: state.regionId,
       position: space.encode(state.position), halted, motion, counts, reasons };
   }
-  return { act, render, get state() { return state; } };
+  function advance(dt,wish=[0,0,0],look={}) {
+    if(halted)return;
+    state={...state,camera:turn(state.camera,look)};
+    const c=state.camera,raw=c.forward.map((x,i)=>c.right[i]*wish[0]+x*wish[1]+c.up[i]*wish[2]);
+    const speed=Math.hypot(...raw);if(speed===0){state={...state,velocity:state.velocity.map(()=>0)};return;}
+    const result=moveRegionProbe(world,{...state,velocity:raw.map(x=>x/speed*2)},Math.min(.04,Math.max(0,dt)));
+    state=result.state;motion=result.status+(result.detail?'/'+result.detail:'');
+    halted=!!result.pendingLift||!['complete','stopped'].includes(result.status);
+  }
+  return { act,render,advance,world,get halted(){return halted;},get motion(){return motion;}, get state() { return state; } };
 }

@@ -1,28 +1,34 @@
 # Connected portal preview
 
-Open `tools/connected-preview.html` under the same HTTP server as the game.
-Links are in the Worlds menu and both editors. It loads the preset document
-`levels/fixtures/connected-sight.nil.json`: E3 entry, S3 room, E3 far room.
+Open tools/connected-preview.html on the game's HTTP server (also linked from
+Worlds and both editors). It loads levels/fixtures/connected-sight.nil.json:
+E3 entry, spherical room, E3 far room.
 
-Press Forward 12 times to enter S3, then 16 more to reach the far E3 region.
-W/S take individual quarter-unit steps; arrows turn. Buttons also work on touch.
-The camera is transported along actual motion and portal mappings. Back retraces
-the route. Reset recovers from a refused motion request. There is no gravity.
+Click the canvas for real-time flight. WASD moves, Space/Shift rises/descends,
+mouse looks, Escape releases capture. Focus loss clears input. Flight carries
+roll; there is no gravity or upright-camera policy. Reset recovers from a refused
+motion request. Buttons retain quarter-unit steps for touch and reproducibility.
+Choose 160x120, 320x240 (default), or 480x360 resolution.
 
-This is an 80x60 CPU diagnostic view, rendered on demand in a Web Worker. It is
-not the real-time connected editor renderer and cannot edit the scene. Region
-colors identify hits; magenta reports unresolved rays, including chart exits.
-The page lists unresolved reasons rather than disguising them as sky.
+The WebGL2 renderer follows analytic E3/S3 rays through the portal frames. CPU
+motion retains collision, transported camera frames and explicit refusal/debt
+handling. This is a fixed-scene preview, not yet a connected-region editor.
+Blue/green/gold identify regions; surface orientation supplies headlight shading.
+Magenta is unresolved (including chart exit), not sky or a collision wall. Small
+magenta rims/speckles can remain near ambiguous numerical boundaries.
 
-Validation: `node connected-preview.test.js` checks the two crossings, return,
-reset and an obstructed route. `node tools/check-queue.js page-check
---connected-preview` exercises the actual worker and Forward button through the
-three regions, writes three images, and reports browser errors. On Windows
-LeoPC, Node 24.20.0, the first run passed in 3.4 seconds with no boot error;
-images inspected. Final Node suite: 80/80, host command `node tools/test.js`
-at base 7c3bc4c plus this change. That elapsed browser-check time is not GPU
-frame-time evidence.
+The CPU step reference remains at tools/connected-cpu-preview.html. Existing
+single-region editors are unchanged. GPU code has no dependency on Godot or the
+browser input host beyond the WebGL wrapper; future host migration still needs
+resource/shader adaptation and parity checks.
 
-Next: representative query cost/pose coverage, followed by a numerical policy
-for connected GPU rendering and integration with region editing. Existing E3
-and S3 editors retain their separate supported rendering scopes.
+Checks: node connected-render.test.js; node connected-preview.test.js;
+node tools/check-queue.js page-check --connected-preview (and --sw).
+The browser check compares 48,000 rays across ten views against the CPU,
+including owner, distance and quantized normals. It exercises both portal
+crossings, return, and 260 continuous motion frames. It measures three views
+with 15 warmup and 75 timed draws each, writes images and a local evidence JSON.
+
+See docs/qa/connected-gpu-preview-2026-09-11.md for measured hardware, results,
+precision limits and remaining work. No claim of universal float32 correctness
+or a finished renderer for every authored scene is made.

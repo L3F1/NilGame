@@ -28,7 +28,7 @@
 // cannot reproduce at all.
 
 import { createServer } from 'node:http';
-import { readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, extname, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
@@ -209,14 +209,22 @@ if (!report) {
 }
 
 const first = (report.hud || '').split('\n')[0].trim();
-const label = connectedPreview ? 'CPU portal preview check' : ballLab ? 'ball editor checks' : regionLab ? 'S3 viewport checks' : worlds ? 'world suite time' : `time to ${FRAMES} frames`;
+const label = connectedPreview ? 'connected GPU preview check' : ballLab ? 'ball editor checks' : regionLab ? 'S3 viewport checks' : worlds ? 'world suite time' : `time to ${FRAMES} frames`;
 console.log(`${label} : ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 console.log('page error        :', report.err || '(none)');
 console.log('boot panel        :', report.boot ? report.boot.split('\n').slice(0, 3).join(' / ') : '(hidden - good)');
 console.log('hud first line    :', first || '(EMPTY - the module never ran)');
 if (!connectedPreview) console.log('centre pixel      :', report.px);
-if (connectedPreview) console.log('preview renderer  : CPU worker; Chrome backend is not GPU-query evidence');
-if (report.checks) console.log(`${connectedPreview ? 'CPU portal preview' : ballLab ? 'ball editor' : regionLab ? 'S3 viewport' : 'world/input'} checks : ${report.checks.length} passed`);
+if (connectedPreview) console.log('preview renderer  : WebGL2 analytic connected rays, CPU motion');
+if (report.checks) console.log(`${connectedPreview ? 'connected GPU preview' : ballLab ? 'ball editor' : regionLab ? 'S3 viewport' : 'world/input'} checks : ${report.checks.length} passed`);
+if(report.connectedEvidence){
+  mkdirSync(join(ROOT,'.agent-bridge'),{recursive:true});
+  writeFileSync(join(ROOT,'.agent-bridge','connected-gpu-evidence.json'),JSON.stringify(report.connectedEvidence,null,2));
+  for(const r of report.connectedEvidence){
+    if(r.label)console.log('parity:',JSON.stringify(r));
+    if(r.gpuMs){const sorted=[...r.gpuMs].sort((a,b)=>a-b);console.log(`GPU ${r.pose}: ${r.hardware}, ${r.resolution.width}x${r.resolution.height}, samples ${sorted.length}, median ${sorted[Math.floor(sorted.length/2)]}, p90 ${sorted[Math.floor(sorted.length*.9)]} ms`);}
+  }
+}
 // Frame time is only meaningful with the hardware and the resolution beside
 // it, so the page reports all three together or none of them.
 if (report.timing) {
@@ -256,5 +264,5 @@ if (session.cleanup === 'failed') problems.push(`browser cleanup failed: ${sessi
 
 console.log(problems.length
   ? `\nFAIL ${problems.join('; ')}`
-  : `\nok   ${connectedPreview ? 'CPU portal preview crossed E3-S3-E3 through the browser controls' : ballLab ? 'ball editor checks passed' : regionLab ? 'S3 viewport checks passed' : worlds ? 'all world transitions and input checks passed' : `the page started, ran ${FRAMES} frames, and its numbers are finite`}`);
+  : `\nok   ${connectedPreview ? 'connected GPU preview and CPU motion checks passed' : ballLab ? 'ball editor checks passed' : regionLab ? 'S3 viewport checks passed' : worlds ? 'all world transitions and input checks passed' : `the page started, ran ${FRAMES} frames, and its numbers are finite`}`);
 process.exit(problems.length ? 1 : 0);

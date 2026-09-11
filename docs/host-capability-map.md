@@ -1,6 +1,6 @@
 # Host readiness: browser reference, bounded Godot integration
 
-Reviewed against the tree on 2026-09-10. Historical assessment and measurements:
+Connected-preview row updated 2026-09-11; other rows reviewed 2026-09-10. Historical assessment and measurements:
 [archive](archive/host-capability-map-pre-connected-sight.md),
 [runtime experiment](decisions/001-runtime-strategy.md). Their numbers have not
 been rerun for this assessment. Current direction remains a geometry kernel and
@@ -17,7 +17,7 @@ level editor, with a host providing services.
 | Motion | E3/S3 geodesic sweeps, carried cameras, cross-region transit, correction resumption |
 | S3 walking | One unmodified designated floor, gravity/jump/local horizon; other solids obstruct but do not provide support |
 | Editor | Flat and single-S3 authoring/play, undo/save/load; curved walking available |
-| Connected sight | CPU traversal reference exists; S3 near-surface bounds remain unresolved, GPU destination views absent |
+| Connected sight | CPU reference plus bounded E3/S3 GPU portal preview with continuous flight; not connected-region editing. See docs/connected-preview.md |
 | Direct manipulation | General curved gizmos, snapping and clearance guidance still need work |
 | Godot prototype | Rendering reference plus scene-v1 ball-document/Control UI experiment; not current scene-v2 parity |
 
@@ -46,8 +46,9 @@ Before making Godot the primary authoring host, demonstrate:
    structure at identical resolution/hardware. Historical H3 shader-link gains do
    not establish gains for today's smaller S3 editor shader.
 
-Connected GPU views remain a separate product milestone. They need not block a
-small host experiment, but migrating hosts does not implement or validate them.
+Connected GPU preview is now demonstrated separately from host migration.
+Connected editing and broad numerical coverage remain outstanding. A host
+migration does not supply that geometry work automatically.
 Keep the browser runnable during any native experiment.
 
 ## Why Godot first, rather than Unity?

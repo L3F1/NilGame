@@ -13,6 +13,7 @@ historical status claims.
 | S3 movement / camera / portals | REGION_MOTION_CONTRACT.md; SUBSYSTEM_RULES.md Mathematical contracts | metric-space.js; collision.js; walker.js; camera-frame.js; region-portal.js |
 | Schema / construction / persistence | docs/scene-format.md; docs/architecture.md relevant boundary | document.js; region-world.js |
 | Renderer | docs/rendering-contract.md; SUBSYSTEM_RULES.md Graphics and runtime traps / Required checks | affected shader and browser queue |
+| Connected GPU preview | CONNECTED_GPU_PREVIEW.md; docs/qa/connected-gpu-preview-2026-09-11.md | engine/geometry/connected-shader.js; connected-renderer.js; app/connected-preview.js |
 | Editor | docs/ball-lab.md relevant controls/transactions; scene-format for schema edits | app/ball-lab.js; tools/ball-lab.html |
 | Arena geometry / gameplay | SUBSYSTEM_RULES.md math/checks; matching headings in legacy-agent-reference.md | geom.js, product.js, affected geometry/mode |
 | Menu / switching | legacy-agent-reference.md: Modes take options away / Switching geometry | app/menu.js; main.js |
