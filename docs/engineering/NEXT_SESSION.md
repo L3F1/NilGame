@@ -1,53 +1,41 @@
 # Fresh-chat handoff for Astra
 
 2026-09-11. Read WORKING_RULES, inspect status, use relevant TASK_ROUTER row.
-Latest fix: connected preview sphere contact halts. Read
-docs/qa/connected-contact-recovery.md. Uses existing motionPause and one bounded
-resumeRegionCorrection for budget debt; no leftover-time replay or kernel edit.
-Muse61 contact corpus accepted with corrections: 72 approaches, explicit no-halt
-assertion. Claude pixel-sampling UI accepted after lead GPU verification.
-No agents running; manifest records completed work, replace before dispatch.
-Muse60 approach checks were previously accepted with lead report corrections.
+Latest: transactional editing in the existing Full S3 portals preview. Read
+CONNECTED_EDITING.md and docs/qa/connected-editing-review.md. Claude's connected
+editing batch is accepted; no agents running. Manifest records completed work;
+replace before dispatch. MUSE-61 accepted with corrections, no open Muse jobs.
 
-User confirmed the second-exit issue was confusing a spherical image with the
-physical portal. No remaining reproduced crossing defect. Keep approach guide,
-body-fit feedback and Try second exit control. The one-sided portal policy remains.
+The complete E3/S3/E3 fixture now supports editing existing balls, anchor position
+and paired radius, spawn position, undo/redo, JSON download/file-input load.
+Player pose is preserved and camera rebound to the new adapter; history and GPU
+packet commit only after validation. Never reset to spawn as an edit side effect.
+Bodies/spawns/apertures and GPU subset/caps can refuse; prior state survives.
+Halted motion forbids edits until reset. Delayed file reads cannot overwrite a
+newer file choice or property edit. Renderer.replaceWorld changes texture data,
+not shader programs. The model.world and renderer.packed properties are getters.
 
-Latest milestone: polished connected materials + optional local AO. Read
-CONNECTED_APPEARANCE.md and docs/qa/connected-appearance-review.md. Module:
-engine/geometry/connected-material.js; UI app/connected-global-preview.js.
-Highlights, sphere bands, E3 floor tiles. No fog. Global and bounded connected
-previews use it; standalone/arena renderers unchanged. AO samples normal geodesics
-in final hit region; skips near portals/domain exits. Heuristic shading only,
-not query/collision truth or cross-portal light/shadow transport. Sparse isolated
-balls show little AO; near-contact test fixture proves darkening. No saved material
-schema yet. Controls polished/ao and renderer.readColor support comparisons.
+Next milestone: add/remove supported balls and create/reconnect explicit portal
+pairs through this same transaction boundary. Form orientation is read-only;
+no gizmos or global S3 floors/cells yet. CONNECTED_NEXT_MILESTONE.md gives the
+sequence. Bounded H3 is the next adapter test AFTER connected authoring; Nil/Sol
+require numerical contracts, not new shader tags. Godot remains a possible host.
 
-Important failures caught, preserve safeguards:
-- Shared connected native sin/cos failed SwiftShader global-ball distance by .045;
-  retain range-reduced trig and .001 CPU/GPU distance tolerance.
-- New material fwidth in divergent ray branches made AO brighten pixels on
-  SwiftShader. Removing derivatives fixed it; fixed smooth band width/gamma2 now.
-  Keep strict no-brightening and byte-identical debug-packet toggle checks. Do not
-  restore implicit derivatives without a defined footprint. Floor tiles can alias.
-- Thin magenta silhouette refusals remain honest/unfixed. Next lead priority:
-  grazing-ray uncertainty, not recolouring misses. Explicit four-ray sampling
-  now exists (Smooth edges); read connected-pixel-sampling-review.md in docs/qa.
-  Diagnostics stay centre rays; any unknown sample stays fully marked.
+Preserve these traps:
+- Contact budgets are not permanent halts. Existing motionPause plus one bounded
+  resumeRegionCorrection can settle debt; never replay unspent movement time.
+- Camera up follows the actual movement/portal/correction path. Recompilation is
+  not movement. Do not rebuild from world up or construction axes.
+- S3 shader native trig failed SwiftShader distance by .045: keep reduced trig
+  and .001 CPU/GPU distance tolerance. Do not weaken debug/refusal checks.
+- fwidth in divergent material branches brightened AO: no implicit derivatives.
+- Smooth edges samples four rays, retains any numerical uncertainty as magenta;
+  debug/highlight remains centre rays. Known software renderers default off.
+  Thin silhouette uncertainty remains unresolved, not recoloured as misses.
+- Global GPU subset remains R8 additive balls angular radius .05-.1, range64.
+  Dark checker coverage exits can be remote E3 boundaries, not S3 chart walls.
+  A spherical image of a portal is not a second physical aperture; retain guide.
 
-Live Worlds -> Full S3 portals -> tools/connected-global-preview.html:
-E3 -> complete S3 past antipode -> E3, CPU body collision, carried-reference camera.
-Saved cover charts separate from scene-v2; global GPU R8 balls .05-.1 angular radius,
-range64 vs bounded32. No S3 floor/gravity/global CSG/editor editing yet.
-Quarter-orbit focusing can fill the view with the remote E3 boundary, not an S3
-chart wall. Contracts: CONNECTED_GLOBAL_GPU.md and COVER_REGION_FORMAT.md.
-
-Claude can implement bounded display/fixture tasks. Muse can build a reproducible
-connected silhouette/grazing corpus, but lead owns error guards/footprints. Keep
-agent browser tests on lead queue, never from isolated clones. This Claude tried
-and hit occupied port; not accepted as evidence. Lead performed real checks.
-Next milestone: CONNECTED_NEXT_MILESTONE.md. Bring the complete connected fixture
-into editor transactions/save/load before a third geometry. H3 is the next adapter
-test after that; Nil/Sol need numerical contracts, not just new shader tags.
-Godot remains a candidate host. Current queue worker50244; probe once/session.
-Final suite/browser measurements in review. Push user-facing changes and verify Pages.
+Browser checks go through host-probe's current verdict; never from agent clones.
+Current queue worker50244, probe once/session. Run focused/full Node and affected
+GPU checks, push user-facing changes and verify Pages. Evidence in review files.

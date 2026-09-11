@@ -69,5 +69,5 @@ and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
 Order: none. MUSE-61 accepted with lead corrections; see docs/qa/muse-log.md.
-No Muse jobs scheduled. Current manifest records the completed Claude pixel
-sampling batch; replace it before dispatching new work.
+No Muse jobs scheduled. Current manifest records the completed Claude connected
+editing batch; replace it before dispatching new work.

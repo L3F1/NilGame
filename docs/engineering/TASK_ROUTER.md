@@ -18,6 +18,7 @@ historical status claims.
 | Complete S3 coverage / full loop | GLOBAL_S3_CONTRACT.md | engine/geometry/spherical-cover.js; spherical-cover.test.js; global-s3-transport-truth.test.js |
 | Saved global regions / E3-global-S3 connections | COVER_REGION_FORMAT.md; GLOBAL_S3_CONTRACT.md | engine/world/connected-cover-world.js; cover-region-document.js; connected-cover.test.js; global-portal-truth.test.js |
 | Editor | docs/ball-lab.md relevant controls/transactions; scene-format for schema edits | app/ball-lab.js; tools/ball-lab.html |
+| Connected global editor | CONNECTED_EDITING.md; COVER_REGION_FORMAT.md | app/connected-global-model.js; connected-cover-edit.js; connected-global-preview.js |
 | Arena geometry / gameplay | SUBSYSTEM_RULES.md math/checks; matching headings in legacy-agent-reference.md | geom.js, product.js, affected geometry/mode |
 | Menu / switching | legacy-agent-reference.md: Modes take options away / Switching geometry | app/menu.js; main.js |
 | Browser tooling | current host-probe verdict; COORDINATION.md instrument rule | affected tool and tests |

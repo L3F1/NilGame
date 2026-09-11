@@ -4,6 +4,11 @@
 <style>
 body{margin:24px auto;padding:0 18px;max-width:900px;background:#101a27;color:#e0edf0;font:16px system-ui}a{color:#8be2d7}canvas{width:100%;max-height:65vh;object-fit:contain;image-rendering:pixelated;background:#16191e}button{padding:12px;margin:4px;background:#22384b;color:inherit;border:1px solid #829aaf;border-radius:6px}button:disabled{opacity:.5}pre{white-space:pre-wrap}button:focus-visible{outline:3px solid #ffd590}
 </style>
+<style>
+#editor{min-width:0}#editor label{display:inline-flex;align-items:center;gap:.4rem;max-width:100%;margin:.3rem .6rem .3rem 0}
+#editor select{min-width:0;max-width:100%}#editor input[type=number]{width:6.5rem}#editor input[type=file]{min-width:0;max-width:100%}
+#edit-frame,#edit-message{overflow-wrap:anywhere}
+</style>
 <h1>E3 → COMPLETE S3 → E3 flight</h1>
 <p><a href="connected-preview.html">Bounded portal preview</a> · <a href="spherical-cover.html">Whole-sphere S3 flight</a> · <a href="../index.html">Worlds</a></p>
 <p>A flat E3 room opens through a portal into the COMPLETE 3-sphere (curvature radius 8), and a second
@@ -14,7 +19,9 @@ pass its antipode and return through the second portal. Green balls are spherica
 the blue ball is the flat destination. This is a flight fixture, not a finished room.</p>
 <p><strong>No gravity.</strong> Click the view for real-time flight: WASD, Space/Shift, mouse look; Escape releases the mouse.
 Buttons take quarter-unit steps. Mouse look stays upright relative to an up direction carried along your flight
-and through portals, not a world up. Collisions or uncertain motion halt the preview; reset recovers.</p>
+and through portals, not a world up. Routine contacts remain steerable; unresolved movement or the
+flat boundary halts the preview. Reset recovers.</p>
+<p><a href="#editor">Edit this world</a>: change existing objects and portals, undo changes, or save/load your level.</p>
 <p>Magenta marks numerical/traversal uncertainty; thin silhouette outlines remain under investigation.
 Dark checkers mark the end of the flat region, including when viewed through a portal from inside S3.</p>
 <p><label>Resolution <select id="quality"><option value="160">160 × 120</option><option value="320" selected>320 × 240</option><option value="480">480 × 360</option></select></label></p>
@@ -37,5 +44,21 @@ For floors and corners, try the <a href="connected-preview.html">bounded room pr
 <button data-action="spawn-flat">Spawn in flat room</button><button data-action="spawn-sphere">Spawn in sphere</button>
 <button data-action="approach-exit">Try second exit (places you in front)</button>
 <button data-action="reset">Reset to spawn</button></div>
+<fieldset id="editor"><legend>Edit entities (chart-local physical coordinates)</legend>
+<p><a href="#view">Back to the view</a></p>
+<p>Values are in the selected entity's own chart or flat region, in design units. No conversion between
+charts is applied. Your position and view are kept; invalid edits are refused and nothing changes.
+Anchor radius edits resize both ends of the portal together. Anchor directions are shown read-only.</p>
+<label>Region <select id="edit-region"></select></label>
+<label>Entity <select id="edit-entity"></select></label>
+<p id="edit-frame"></p>
+<label>x <input id="edit-x" type="number" step="any" size="7"></label>
+<label>y <input id="edit-y" type="number" step="any" size="7"></label>
+<label>z <input id="edit-z" type="number" step="any" size="7"></label>
+<label>radius <input id="edit-radius" type="number" step="any" size="7"></label><br>
+<button id="edit-apply" type="button">Apply edit</button><button id="edit-undo" type="button">Undo</button><button id="edit-redo" type="button">Redo</button>
+<button id="edit-download" type="button">Download JSON</button>
+<label>Load JSON <input id="edit-load" type="file" accept=".json,application/json"></label>
+<p id="edit-message" role="status"></p></fieldset>
 <p id="status" role="status">Loading…</p><pre id="details"></pre>
 <script type="module" src="../app/connected-global-preview.js"></script></html>

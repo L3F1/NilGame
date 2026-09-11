@@ -5,10 +5,13 @@ import {createCameraFrame} from '../engine/world/camera-frame.js';
 import {moveRegionProbe,resumeRegionCorrection} from '../engine/world/region-motion.js';
 import {traceRegionSight} from '../engine/world/region-sight.js';
 import {motionPause} from './motion-pause.js';
+import {patchConnectedEntities} from '../engine/world/connected-cover-edit.js';
 
 export const GLOBAL_FLIGHT_SPEED=4;
 export const GLOBAL_PITCH_LIMIT=1.5;
 const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
+const onAperture=(world,id,p)=>world.portals.some(g=>g.fromRegionId===id&&Math.abs(g.signedHeight(p))<1e-4
+  &&world.regions.get(id).space.distance(g.center,p)<g.radius+1e-4);
 
 // Same pixel convention as connected-preview.js compare(): GPU rows read bottom-up.
 export function pixelDirection(space,position,camera,width,height,x,y){
@@ -16,8 +19,8 @@ export function pixelDirection(space,position,camera,width,height,x,y){
   return space.normalize(position,raw);
 }
 
-export function createConnectedGlobalPreview(document){
-  const world=compileConnectedCoverWorld(document);
+export function createConnectedGlobalPreview(document,{installWorld=()=>{}}={}){
+  let world=compileConnectedCoverWorld(document),undo=[],redo=[];
   let state,referenceUp,halted=false,motion='spawn',spawnRegion='flat';
   // No gravity and no floor: a reference up is CARRIED. Its coefficients in the
   // camera axes before a move are reapplied to the solver's returned axes, so
@@ -48,14 +51,51 @@ export function createConnectedGlobalPreview(document){
       // Explicit test placement on the entering side, not a portal teleport or
       // an automatic correction of the player's ongoing movement.
       const gate=world.portals.find(p=>p.fromId==='sphere-exit'),space=world.regions.get('sphere').space;
+      if(!gate)throw Error('This world has no sphere-exit test anchor');
       const leg=space.stepWithTransport(gate.center,gate.normal,2),up=leg.carry(gate.renderData().up);
       start={...start,position:leg.position,velocity:leg.position.map(()=>0),
         camera:createCameraFrame(space,leg.position,{forward:leg.carry(gate.normal.map(x=>-x)),up})};
     }
-    spawnRegion=regionId;state={...start,radius:start.radius??document.baseScene.units.playerRadius};
+    const startRegion=world.regions.get(start.regionId),bodyRadius=start.radius??document.baseScene.units.playerRadius;
+    if(!startRegion.space.withinDomain(start.position)||!(startRegion.field.distance(start.position)-bodyRadius>=0))
+      throw Error('Spawn/test placement clearance cannot be certified');
+    if(onAperture(world,start.regionId,start.position))throw Error('Spawn/test placement is on a portal aperture');
+    spawnRegion=regionId;state={...start,radius:bodyRadius};
     referenceUp=state.camera.up.slice();halted=false;motion='spawn';
   }
   spawn('flat');
+  // Same compile-before-commit pattern as region-lab. Rebind the carried frame
+  // to the new region adapter; recompilation is NOT movement or transport.
+  const geometryKey=w=>JSON.stringify([...w.regions].map(([id,r])=>[id,r.descriptor.geometry.kind,r.descriptor.geometry.curvatureRadius,
+    r.descriptor.coverage??'bounded',r.descriptor.extent??null]).sort((a,b)=>a[0].localeCompare(b[0])));
+  function install(source,operation){
+    if(halted)throw Error('Reset the halted movement before editing or loading');
+    const next=compileConnectedCoverWorld(source),nextDocument=next.document(),previous=world.document();
+    if(geometryKey(next)!==geometryKey(world)||nextDocument.baseScene.units.playerRadius!==state.radius)
+      throw Error('Changing geometry, coverage, region ownership or player radius requires a separate world-opening policy');
+    const region=next.regions.get(state.regionId),space=region.space,p=[...state.position];
+    if(!space.withinDomain(p)||!(region.field.distance(p)-state.radius>=0))
+      throw Error('Current player clearance cannot be certified; move away or reset before editing');
+    // A newly placed plane through the current centre would immediately refuse
+    // traversal. Do not publish an edit that strands the player on an aperture.
+    if(onAperture(next,state.regionId,p))throw Error('Edit places the player on a portal aperture');
+    const nextState={...state,position:p,velocity:[...state.velocity],
+      camera:createCameraFrame(space,p,{forward:state.camera.forward,up:state.camera.up})};
+    // Every reset target must remain usable, not just the current region.
+    for(const [id,r] of next.regions){const s=next.spawn(id);
+      if(!r.space.withinDomain(s.position)||!(r.field.distance(s.position)-s.radius>=0))throw Error(`Spawn clearance cannot be certified in ${id}`);
+      if(onAperture(next,id,s.position))throw Error(`Spawn is on a portal aperture in ${id}`);}
+    let nextUndo=undo,nextRedo=redo;
+    if(operation==='undo'){nextUndo=undo.slice(0,-1);nextRedo=[...redo,previous];}
+    else if(operation==='redo'){nextUndo=[...undo,previous];nextRedo=redo.slice(0,-1);}
+    else {if(JSON.stringify(nextDocument)===JSON.stringify(previous))return false;nextUndo=[...undo.slice(-63),previous];nextRedo=[];}
+    // Host must validate/upload atomically or throw without changing its world.
+    // Everything that can refuse in the CPU transaction happens before this.
+    installWorld(next);
+    world=next;state=nextState;undo=nextUndo;redo=nextRedo;motion='edited';
+    return true;
+  }
+  const editEntities=edits=>install(patchConnectedEntities(world.document(),edits),'edit');
   function move(direction,speed,dt){
     const before=state.camera;
     let result=moveRegionProbe(world,{...state,velocity:direction.map(x=>x*speed)},dt);
@@ -127,7 +167,11 @@ export function createConnectedGlobalPreview(document){
     }
     return info;
   }
-  return {world,act,renderGuide:portalGuide,advance,look:angles=>{if(!halted)look(angles);},sight,pixelSight,status,
+  return {get world(){return world;},act,renderGuide:portalGuide,advance,look:angles=>{if(!halted)look(angles);},sight,pixelSight,status,
+    document:()=>world.document(),editEntities,loadDocument:source=>install(source,'load'),
+    undoEdit:()=>undo.length?install(undo.at(-1),'undo'):false,
+    redoEdit:()=>redo.length?install(redo.at(-1),'redo'):false,
+    get canUndo(){return undo.length>0;},get canRedo(){return redo.length>0;},
     get state(){return state;},get referenceUp(){return referenceUp;},get halted(){return halted;},
     get motion(){return motion;},get spawnRegion(){return spawnRegion;},get elevation(){return elevation();}};
 }

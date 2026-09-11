@@ -10,7 +10,10 @@ function failure(error){status.textContent=`Preview stopped: ${error.message||er
 try {
   const response=await fetch('../levels/fixtures/connected-global.nil.json');if(!response.ok)throw Error(`Scene HTTP ${response.status}`);
   const scene=await response.json();
-  const model=createConnectedGlobalPreview(scene),coldStart=performance.now(),renderer=createConnectedRenderer(canvas,model.world);
+  // The model calls installWorld only for edits, never for its initial compile.
+  let renderer;
+  const model=createConnectedGlobalPreview(scene,{installWorld:nextWorld=>renderer.replaceWorld(nextWorld)}),coldStart=performance.now();
+  renderer=createConnectedRenderer(canvas,model.world);
   // Four rays are affordable on the tested GPU, but not software fallback.
   // This is a starting preference, not a performance guarantee; keep the toggle.
   const defaultSmoothing=!/SwiftShader|llvmpipe|softpipe|software/i.test(renderer.hardware);
@@ -33,9 +36,11 @@ try {
       aim?`Crosshair: ${aim.name} after ${aim.distance.toFixed(2)} units of forward travel. ${aim.bodyFits?'Body fits the aperture; destination checked on crossing.':'Too close to the rim for your body — aim nearer the centre.'}`:
         guide.solid?`Crosshair hits solid ${guide.solid}; green balls are landmarks, not portals.`:'No entering portal on the crosshair ray. Approach a portal from its front side.'
     ].join(' ');
+    syncEditControls();
   }
   function stop(){playing=false;keys.clear();mouse.reset(false,performance.now());last=null;}
-  document.querySelector('#controls').onclick=e=>{if(e.target.dataset.action){stop();document.exitPointerLock();model.act(e.target.dataset.action);draw();}};
+  document.querySelector('#controls').onclick=e=>{if(e.target.dataset.action){stop();document.exitPointerLock();
+    try{model.act(e.target.dataset.action);draw();}catch(error){editor.message.textContent=`Placement refused: ${error.message||error}`;}}};
   canvas.onclick=()=>{if(!model.halted)canvas.requestPointerLock()?.catch(e=>{status.textContent=`Mouse capture failed: ${e.message}`;});};
   document.addEventListener('pointerlockchange',()=>{stop();playing=document.pointerLockElement===canvas;mouse.reset(playing,performance.now());});
   document.addEventListener('mousemove',e=>mouse.push(e.movementX,e.movementY,performance.now()));
@@ -47,6 +52,97 @@ try {
   document.querySelector('#polished').onchange=draw;
   document.querySelector('#ao').onchange=draw;
   document.querySelector('#smooth').onchange=draw;
+  // Bounded entity editing. The model validates candidates and owns history; the page only builds
+  // patches in each entity's own chart-local coordinates. No chart conversion happens here.
+  const editor=Object.fromEntries(['region','entity','frame','x','y','z','radius','apply','undo','redo','download','load','message'].map(k=>[k,document.querySelector(`#edit-${k}`)]));
+  const editable=typeof model.editEntities==='function',axes=['x','y','z'];
+  const EDITABLE={ball:['position','radius'],anchor:['position','radius'],spawn:['position']};
+  let selectedFields=[],loading=Promise.resolve(),loadGeneration=0;
+  const entityRows=doc=>[...doc.baseScene.entities.map(entity=>({regionId:entity.regionId,frame:`region ${entity.regionId}`,entity})),
+    ...(doc.coverRegions||[]).flatMap(r=>r.entities.map(entity=>({regionId:r.id,frame:`chart ${entity.chartId}`,entity})))];
+  const regionRows=doc=>[...doc.baseScene.regions.map(r=>({id:r.id,label:`${r.id} · ${r.geometry.kind} region`})),
+    ...(doc.coverRegions||[]).map(r=>({id:r.id,label:`${r.id} · ${r.geometry.kind} cover · ${r.charts.length} charts`}))];
+  // Every connection naming the anchor; apertures must stay equal, so radius edits resize all of them together.
+  const portalPartners=(doc,id)=>[...new Set([...doc.baseScene.connections,...(doc.connections||[])]
+    .flatMap(c=>c.a===id?[c.b]:c.b===id?[c.a]:[]).filter(other=>other!==id))];
+  function setOptions(select,rows){
+    const previous=select.value;
+    select.replaceChildren(...rows.map(({id,label})=>new Option(label,id)));
+    select.value=rows.some(r=>r.id===previous)?previous:rows[0]?.id??'';
+  }
+  function syncEditControls(){
+    if(!editable)return;
+    const halted=model.halted;
+    editor.apply.disabled=halted||!selectedFields.length;
+    editor.undo.disabled=halted||!model.canUndo;editor.redo.disabled=halted||!model.canRedo;
+    editor.load.disabled=halted;
+  }
+  // Rebuild selectors and fields from the model's current document.
+  function refreshEditor(){
+    const doc=model.document(),rows=entityRows(doc);
+    setOptions(editor.region,regionRows(doc));
+    setOptions(editor.entity,rows.filter(r=>r.regionId===editor.region.value).map(r=>({id:r.entity.id,label:`${r.entity.id} · ${r.entity.kind} · ${r.frame}`})));
+    const row=rows.find(r=>r.entity.id===editor.entity.value),e=row?.entity;
+    selectedFields=EDITABLE[e?.kind]||[];
+    const position=selectedFields.includes('position'),radius=selectedFields.includes('radius');
+    axes.forEach((k,i)=>{editor[k].disabled=!position;editor[k].value=position?String(e.position[i]):'';});
+    editor.radius.disabled=!radius;editor.radius.value=radius?String(e.radius):'';
+    editor.frame.textContent=!e?'No entities in this region.':
+      `${e.id} (${e.kind}) in ${row.frame} of ${row.regionId}${e.forward?`; forward [${e.forward}], up [${e.up}] (read-only)`:''}${selectedFields.length?'':'; not editable here'}.`;
+    syncEditControls();
+  }
+  function numberField(key){
+    const text=editor[key].value.trim(),value=Number(text);
+    if(!text||!Number.isFinite(value))throw Error(`${key} must be a finite number`);
+    return value;
+  }
+  // Only changed properties are patched; a paired radius goes into the same editEntities call.
+  function buildEdits(){
+    const doc=model.document(),row=entityRows(doc).find(r=>r.entity.id===editor.entity.value);
+    if(!row)throw Error('Select an entity');
+    const e=row.entity,fields=EDITABLE[e.kind]||[],patch={},edits=[{id:e.id,patch}];
+    if(!fields.length)throw Error(`${e.kind} entities are not editable here`);
+    if(fields.includes('position')){const p=axes.map(k=>numberField(k));if(p.some((v,i)=>v!==e.position[i]))patch.position=p;}
+    if(fields.includes('radius')){
+      const r=numberField('radius');
+      if(r!==e.radius){patch.radius=r;if(e.kind==='anchor')for(const id of portalPartners(doc,e.id))edits.push({id,patch:{radius:r}});}
+    }
+    return Object.keys(patch).length?edits:null;
+  }
+  // Validation errors go to the edit message only: no fatal failure and no redraw over the old image.
+  function editAction(action,{fromLoad=false}={}){
+    if(!fromLoad)loadGeneration++;
+    stop();document.exitPointerLock();
+    let done;
+    try{done=action();}catch(error){editor.message.textContent=`Edit refused: ${error.message||error}`;syncEditControls();return false;}
+    editor.message.textContent=done;refreshEditor();
+    try{draw();}catch(error){failure(error);}
+    return true;
+  }
+  if(!editable){document.querySelector('#editor').disabled=true;editor.message.textContent='Editing is unavailable: this model has no edit history.';}
+  else {
+    editor.region.onchange=editor.entity.onchange=()=>{editor.message.textContent='';refreshEditor();};
+    editor.apply.onclick=()=>editAction(()=>{
+      const edits=buildEdits();if(!edits)return 'No changes to apply.';
+      model.editEntities(edits);return `Applied edit to ${edits.map(e=>e.id).join(' and ')}.`;
+    });
+    editor.undo.onclick=()=>editAction(()=>{model.undoEdit();return 'Undid the last edit.';});
+    editor.redo.onclick=()=>editAction(()=>{model.redoEdit();return 'Redid the edit.';});
+    editor.download.onclick=()=>{
+      const doc=model.document(),url=URL.createObjectURL(new Blob([JSON.stringify(doc,null,2)+'\n'],{type:'application/json'}));
+      const link=document.createElement('a');link.href=url;link.download=`${doc.id||'connected-global'}.nil.json`;link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);editor.message.textContent=`Downloaded ${link.download}.`;
+    };
+    editor.load.onchange=()=>{
+      const generation=++loadGeneration;
+      const file=editor.load.files[0];stop();document.exitPointerLock();
+      loading=(file?file.text():Promise.resolve(null))
+        .then(text=>{if(generation===loadGeneration&&text!==null)editAction(()=>{model.loadDocument(JSON.parse(text));return `Loaded ${file.name}.`;},{fromLoad:true});},
+          error=>{if(generation===loadGeneration)editor.message.textContent=`Edit refused: could not read file (${error.message||error})`;})
+        .finally(()=>{if(generation===loadGeneration)editor.load.value='';});
+    };
+    refreshEditor();
+  }
   const wish=()=>[Number(keys.has('KeyD'))-Number(keys.has('KeyA')),Number(keys.has('KeyW'))-Number(keys.has('KeyS')),Number(keys.has('Space'))-Number(keys.has('ShiftLeft')||keys.has('ShiftRight'))];
   function frame(time){try{
     const dt=last===null?0:Math.min(.04,(time-last)/1000);last=time;
@@ -312,6 +408,182 @@ try {
       }
       records.push(smoothTiming);
       }
+    }
+    {
+      // Bounded editing through the real form controls. Needs the lead model history API and renderer.replaceWorld.
+      if(!editable||typeof renderer.replaceWorld!=='function')throw Error('Edit checks pending lead integration: model.editEntities and renderer.replaceWorld are required');
+      const $=s=>document.querySelector(s);
+      const canon=value=>JSON.stringify(value,(key,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
+      const pose=()=>{const s=model.state;return canon({regionId:s.regionId,position:s.position,forward:s.camera.forward,up:s.camera.up,right:s.camera.right,referenceUp:model.referenceUp,halted:model.halted});};
+      const entity=id=>entityRows(model.document()).find(r=>r.entity.id===id)?.entity;
+      const pick=(select,value)=>{if(![...select.options].some(o=>o.value===value))throw Error(`#${select.id} has no option ${value}`);select.value=value;select.dispatchEvent(new Event('change'));};
+      const choose=(regionId,id)=>{pick(editor.region,regionId);pick(editor.entity,id);};
+      const type=(key,value)=>{editor[key].value=String(value);editor[key].dispatchEvent(new Event('input'));};
+      const refused=()=>/^Edit refused/.test(editor.message.textContent);
+      const accepted=label=>{if(refused())throw Error(`${label} refused: ${editor.message.textContent}`);};
+      const expectButtons=label=>{if(editor.undo.disabled!==!model.canUndo||editor.redo.disabled!==!model.canRedo)throw Error(`${label}: Undo/Redo buttons do not reflect canUndo/canRedo`);};
+      const expectFields=(label,id)=>{
+        const e=entity(id);
+        if(editor.entity.value!==id||axes.some((k,i)=>Number(editor[k].value)!==e.position[i])||e.radius!==undefined&&Number(editor.radius.value)!==e.radius)
+          throw Error(`${label}: form does not show the current document for ${id}`);
+      };
+      const snapshot=()=>({doc:canon(model.document()),undo:model.canUndo,redo:model.canRedo,undoButton:editor.undo.disabled,redoButton:editor.redo.disabled,pose:pose(),image:canvas.toDataURL(),world:model.world,status:status.textContent});
+      const expectUnchanged=(label,before)=>{
+        if(!refused())throw Error(`${label}: no refusal in the edit message`);
+        if(/Preview stopped/.test(status.textContent))throw Error(`${label}: reported as a fatal failure`);
+        const after=snapshot();for(const k of Object.keys(before))if(after[k]!==before[k])throw Error(`${label} changed ${k}`);
+      };
+      const images=()=>{const color=renderer.readColor(model.state,80,60);draw();return color;};
+      const spotCheck=label=>{
+        const W=80,H=60,max=renderer.packed.maxDistance,{pixels,distances}=renderer.read(model.state,W,H);let hits=0;
+        for(let y=0;y<H;y+=4)for(let x=0;x<W;x+=4){
+          const i=y*W+x;if(pixels[4*i]!==1)continue;
+          const cpu=model.pixelSight(W,H,x,y,max),owner=renderer.packed.primitiveIds[pixels[4*i+2]-1];
+          if(cpu.status!=='hit'||cpu.query.owner!==owner||Math.abs(distances[i]-cpu.distance)>.001)throw Error(`${label} ${x},${y}: GPU ${owner}/${distances[i]}, CPU ${cpu.status}/${cpu.query?.owner}/${cpu.distance}`);
+          hits++;
+        }
+        draw();if(!hits)throw Error(`${label}: no sampled GPU hits`);return hits;
+      };
+      // The page's own download handler, with the object URL captured and the browser download suppressed.
+      const download=async()=>{
+        const blobs=[],names=[],createURL=URL.createObjectURL,click=HTMLAnchorElement.prototype.click;
+        URL.createObjectURL=blob=>{blobs.push(blob);return createURL.call(URL,blob);};
+        HTMLAnchorElement.prototype.click=function(){names.push(this.download);};
+        try{editor.download.click();}finally{URL.createObjectURL=createURL;HTMLAnchorElement.prototype.click=click;}
+        if(blobs.length!==1||names.length!==1||!/\.json$/.test(names[0]))throw Error(`Download produced ${blobs.length} blobs named ${names}`);
+        return blobs[0].text();
+      };
+      // The page's own file-input handler, fed a real File.
+      const load=async(text,name)=>{
+        const files=new DataTransfer();files.items.add(new File([text],name,{type:'application/json'}));
+        editor.load.files=files.files;editor.load.dispatchEvent(new Event('change'));await loading;
+      };
+      const editRecord={label:'editing'};
+      if(model.canUndo||model.canRedo||!editor.undo.disabled||!editor.redo.disabled)throw Error('Edit history must start empty with Undo/Redo disabled');
+      const originalText=await download(),doc0=canon(model.document());
+      if(canon(JSON.parse(originalText))!==doc0)throw Error('Downloaded original JSON differs from model.document()');
+
+      // S3 ball radius edit at a pose that shows the landmark.
+      $('[data-action="spawn-sphere"]').click();
+      const landmarkPixels=()=>{const {pixels}=renderer.read(model.state,80,60);let n=0;for(let i=0;i<80*60;i++)if(pixels[4*i]===1&&renderer.packed.primitiveIds[pixels[4*i+2]-1]==='north-landmark')n++;return n;};
+      const findLandmark=()=>{for(const pitch of [0,-.4,.8]){model.look({pitch});for(let i=0;i<42;i++){if(landmarkPixels()>=20)return true;model.look({yaw:.15});}}return false;};
+      if(!findLandmark())throw Error('No sphere pose shows north-landmark');
+      draw();
+      const pose0=pose(),world0=model.world,image0=canvas.toDataURL(),color0=images();
+      choose('sphere','north-landmark');
+      const label=editor.entity.selectedOptions[0].textContent;
+      if(!/ball/.test(label)||!/north-chart/.test(label))throw Error(`Entity option lacks kind or chart: ${label}`);
+      if(editor.x.disabled||editor.radius.disabled)throw Error('Ball position/radius fields are disabled');
+      expectFields('select north-landmark','north-landmark');
+      if(entity('north-landmark').radius!==.6)throw Error('Edit fixture expects north-landmark radius .6');
+      type('radius',.75);editor.apply.click();accepted('S3 radius edit');
+      const doc1=canon(model.document()),expected=JSON.parse(doc0);
+      expected.coverRegions.find(r=>r.id==='sphere').entities.find(e=>e.id==='north-landmark').radius=.75;
+      if(doc1!==canon(expected))throw Error('S3 radius edit did not change exactly north-landmark radius');
+      if(model.world===world0)throw Error('model.world did not update after an edit');
+      if(pose()!==pose0)throw Error('S3 radius edit moved the player or camera');
+      const image1=canvas.toDataURL();if(image1===image0)throw Error('S3 radius edit did not change the drawn canvas');
+      const color1=images();let changed=0;
+      for(let i=0;i<80*60;i++)if([0,1,2].some(k=>color1[4*i+k]!==color0[4*i+k]))changed++;
+      if(changed<8)throw Error(`S3 radius edit changed only ${changed} pixels`);
+      editRecord.radiusChangedPixels=changed;editRecord.spotHits=spotCheck('after S3 radius edit');
+      if(!model.canUndo||model.canRedo)throw Error('After edit: expected undo available, redo empty');
+      expectButtons('after edit');expectFields('after edit','north-landmark');
+      checks.push(`S3 north-landmark radius .6 -> .75 via form: ${changed}/4800 pixels changed, pose kept, sparse CPU/GPU agreement on the replaced world`);
+
+      editor.undo.click();accepted('Undo');
+      if(canon(model.document())!==doc0)throw Error('Undo did not restore the exact document');
+      if(pose()!==pose0||canvas.toDataURL()!==image0)throw Error('Undo changed pose or did not restore the original image');
+      if(model.canUndo||!model.canRedo)throw Error('After undo: expected redo only');
+      expectButtons('after undo');expectFields('after undo','north-landmark');
+      editor.redo.click();accepted('Redo');
+      if(canon(model.document())!==doc1||pose()!==pose0||canvas.toDataURL()!==image1)throw Error('Redo did not restore the edited document, pose and image');
+      expectButtons('after redo');expectFields('after redo','north-landmark');
+      checks.push('Undo restores the exact document and image; Redo restores the edited document and image');
+
+      // Save and reload.
+      const savedText=await download();
+      if(canon(JSON.parse(savedText))!==doc1)throw Error('Downloaded JSON differs from the edited document');
+      if(canon(createConnectedGlobalPreview(JSON.parse(savedText)).document())!==doc1)throw Error('Fresh model load of saved JSON differs');
+      editor.undo.click();accepted('Undo before load');
+      await load(savedText,'edited.nil.json');accepted('File load');
+      if(canon(model.document())!==doc1||pose()!==pose0||canvas.toDataURL()!==image1)throw Error('File load did not restore the saved document/image with pose kept');
+      expectButtons('after load');expectFields('after load','north-landmark');
+      {const before=snapshot();await load('{"format":','broken.json');expectUnchanged('malformed JSON file',before);}
+      checks.push('Download JSON equals document(); fresh model and file-input load reproduce it exactly; malformed file refused without change');
+
+      // Delayed file reads cannot overwrite a newer file choice or an applied edit.
+      const fileText=File.prototype.text;let releaseSlow;
+      File.prototype.text=function(){return this.name==='slow.nil.json'?new Promise(resolve=>{releaseSlow=resolve;}):fileText.call(this);};
+      try{
+        for(const newer of ['file','edit']){
+          const staleLoad=load(originalText,'slow.nil.json');
+          if(newer==='file')await load(savedText,'newer.nil.json');
+          else{choose('sphere','north-landmark');type('radius',.72);editor.apply.click();accepted('edit during file read');}
+          const kept=snapshot();releaseSlow(originalText);await staleLoad;
+          const after=snapshot();for(const k of Object.keys(kept))if(after[k]!==kept[k])throw Error(`Late file overwrote newer ${newer}: ${k}`);
+          if(newer==='edit'){editor.undo.click();accepted('undo concurrent edit');}
+        }
+      }finally{File.prototype.text=fileText;}
+      checks.push('late file reads cannot overwrite a newer file selection or property edit');
+
+      // Invalid radii: rejected by the model (negative) and by the GPU packet range (S3 angular radius > .1).
+      for(const radius of [-.5,1.2]){
+        choose('sphere','north-landmark');type('radius',radius);
+        const before=snapshot();editor.apply.click();expectUnchanged(`invalid north-landmark radius ${radius}`,before);
+      }
+      if(editor.message===status||editor.message.getAttribute('role')!=='status')throw Error('Edit errors need their own role=status message');
+      checks.push('invalid radii -0.5 and 1.2 refused in the edit message: document, history, pose, world and image unchanged');
+
+      // Paired anchor radius: both ends in one editEntities call, restored by one undo.
+      choose('flat','flat-entry');
+      if(!/anchor/.test(editor.entity.selectedOptions[0].textContent)||editor.radius.disabled)throw Error('Anchor radius field unavailable');
+      const pairedBefore=canon(model.document()),undoBefore=model.canUndo,calls=[],descriptor=Object.getOwnPropertyDescriptor(model,'editEntities');
+      if(descriptor?.writable)model.editEntities=edits=>{calls.push(structuredClone(edits));return descriptor.value.call(model,edits);};
+      try{type('radius',.7);editor.apply.click();}finally{if(descriptor?.writable)model.editEntities=descriptor.value;}
+      accepted('Paired anchor radius');
+      if(descriptor?.writable&&(calls.length!==1||calls[0].length!==2))throw Error(`Paired radius used ${calls.length} editEntities calls: ${JSON.stringify(calls)}`);
+      const radii=['flat-entry','sphere-entry','flat-return','sphere-exit'].map(id=>entity(id).radius);
+      if(canon(radii)!==canon([.7,.7,.9,.9]))throw Error(`Paired anchor radii ${radii}`);
+      if(pose()!==pose0)throw Error('Paired anchor edit moved the player or camera');
+      editor.undo.click();accepted('Paired undo');
+      if(canon(model.document())!==pairedBefore||model.canUndo!==undoBefore)throw Error('One undo did not restore both anchor radii and prior history');
+      checks.push(`flat-entry radius .9 -> .7 also resized sphere-entry in ${descriptor?.writable?'one observed':'one (unobserved)'} editEntities call; one undo restores both`);
+
+      // Spawn position edit; spawn has no radius.
+      choose('flat','flat-spawn');
+      if(!editor.radius.disabled||editor.y.disabled)throw Error('Spawn fields must be x/y/z only');
+      const spawnBefore=canon(model.document());type('y',-2.5);editor.apply.click();accepted('Spawn edit');
+      if(canon(entity('flat-spawn').position)!==canon([0,-2.5,0]))throw Error('Spawn position edit failed');
+      editor.undo.click();if(canon(model.document())!==spawnBefore)throw Error('Spawn undo differs');
+
+      // Halt forbids edits until reset.
+      $('[data-action="spawn-flat"]').click();
+      for(let i=0;i<900&&!model.halted;i++)model.advance(1/60,[0,-1,0]);
+      if(!model.halted)throw Error('Backward flight did not halt at the flat extent');
+      draw();
+      if(!editor.apply.disabled||!editor.undo.disabled||!editor.redo.disabled||!editor.load.disabled)throw Error('Edit controls must be disabled while halted');
+      $('[data-action="reset"]').click();
+      if(model.halted||editor.apply.disabled)throw Error('Reset did not re-enable editing');
+      expectButtons('after reset');
+      checks.push('halt disables Apply/Undo/Redo/Load until reset');
+
+      // Round trip to the original file, then fly the original route.
+      await load(originalText,'connected-global.nil.json');accepted('Original load');
+      if(canon(model.document())!==doc0)throw Error('Loading the original download did not restore the original document');
+      $('[data-action="spawn-flat"]').click();
+      const route=['flat'];
+      for(let i=0;i<3000;i++){
+        model.advance(1/60,[0,1,0]);
+        if(model.halted)throw Error(`Original route halted after round trip: ${model.motion}`);
+        const s=model.state;if(s.regionId!==route.at(-1))route.push(s.regionId);
+        if(route.length===3&&s.position[1]>.5)break;
+      }
+      if(route.join()!=='flat,sphere,flat')throw Error(`Route after round trip: ${route}`);
+      draw();shots.push({name:'edit-roundtrip-return',data:canvas.toDataURL()});
+      editRecord.roundTripSpotHits=spotCheck('after round trip');
+      checks.push('original download loaded through the file input; original flat/sphere/flat route flies');
+      records.push(editRecord);
     }
     records.push({coldReadyWallMs});
     details.textContent=JSON.stringify(records,null,2);draw();

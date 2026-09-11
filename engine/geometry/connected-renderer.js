@@ -1,6 +1,6 @@
 import {packConnectedWorld,CONNECTED_VERTEX,CONNECTED_FRAGMENT} from './connected-shader.js';
 export function createConnectedRenderer(canvas,world) {
-  const packed=packConnectedWorld(world);
+  let packed=packConnectedWorld(world);
   const gl=canvas.getContext('webgl2',{alpha:true,premultipliedAlpha:false,antialias:false,preserveDrawingBuffer:true});
   if(!gl)throw Error('Connected preview requires WebGL2');
   gl.disable(gl.DITHER); // Debug packets are bytes, not display colors.
@@ -12,7 +12,7 @@ export function createConnectedRenderer(canvas,world) {
   }
   gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));
   gl.useProgram(program);
-  const texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);
+  let texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,224,1,0,gl.RGBA,gl.FLOAT,packed.texture);
   const names=['uData','uCounts','uPosition','uForward','uRight','uUp','uResolution','uRegion','uDebug','uDiagnostics','uMaxDistance','uPolished','uAO','uAntialias'];
@@ -20,6 +20,24 @@ export function createConnectedRenderer(canvas,world) {
   gl.uniform1i(loc.uData,0);gl.uniform4iv(loc.uCounts,packed.counts);
   gl.uniform1f(loc.uMaxDistance,packed.maxDistance);
   const ext=gl.getExtension('EXT_disjoint_timer_query_webgl2'), pending=[], times=[];
+  function replaceWorld(nextWorld){
+    // Capacity/geometry refusals happen before touching GL or the current packet.
+    const next=packConnectedWorld(nextWorld),candidate=gl.createTexture();
+    if(!candidate)throw Error('Cannot allocate connected world texture');
+    try{
+      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,candidate);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,224,1,0,gl.RGBA,gl.FLOAT,next.texture);
+      gl.useProgram(program);gl.uniform4iv(loc.uCounts,next.counts);gl.uniform1f(loc.uMaxDistance,next.maxDistance);
+      const error=gl.getError();if(error!==gl.NO_ERROR)throw Error(`Connected update GL error ${error}`);
+    }catch(error){
+      gl.bindTexture(gl.TEXTURE_2D,texture);gl.uniform4iv(loc.uCounts,packed.counts);gl.uniform1f(loc.uMaxDistance,packed.maxDistance);
+      gl.deleteTexture(candidate);throw error;
+    }
+    gl.deleteTexture(texture);texture=candidate;packed=next;
+    for(const q of pending)gl.deleteQuery(q);pending.length=0;times.length=0;
+  }
   function draw(state,{width=320,height=240,debug=0,timer=false,diagnostics=false,polished=true,ao=true,antialias=false}={}) {
     if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
     gl.viewport(0,0,width,height);gl.useProgram(program);
@@ -51,5 +69,5 @@ export function createConnectedRenderer(canvas,world) {
     gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);return pixels;
   }
   const info=gl.getExtension('WEBGL_debug_renderer_info');
-  return {draw,read,readColor,packed,times,finish:()=>gl.finish(),hardware:info?gl.getParameter(info.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),timerSupported:!!ext};
+  return {draw,read,readColor,replaceWorld,get packed(){return packed;},times,finish:()=>gl.finish(),hardware:info?gl.getParameter(info.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),timerSupported:!!ext};
 }
