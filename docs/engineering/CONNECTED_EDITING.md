@@ -11,7 +11,7 @@ Duplicate entries are refused. Paired aperture radii must change together in one
 batch; the existing portal compiler enforces matching endpoints.
 
 Preview model API: document(), editEntities(), loadDocument(), undoEdit(),
-redoEdit(), canUndo/canRedo. Compile the whole candidate, compare physical region
+redoEdit(), addBall(), removeBall(), canUndo/canRedo. Compile the whole candidate, compare physical region
 descriptors and body radius, certify the current body and all saved spawns, and
 rebind the existing camera axes to the new adapter at the SAME point. Reference
 up and velocity are preserved; recompilation is neither transport nor a reset.
@@ -37,7 +37,16 @@ Undo/redo themselves validate before consuming an entry. Saved JSON contains all
 regions, charts, endpoints and connections; player pose/history are session state.
 
 UI coordinates are physical author coordinates in the selected region/chart,
-not ambient S3 four-vectors. The form edits existing entities; it has no add/delete
-or chart controls. Imported documents can replace supported entity sets through
-the same transaction validation. Global surfaces/cells and full editor parity
-remain follow-up work on the same contracts.
+not ambient S3 four-vectors. Ball creation requires an explicit chart selection
+for a cover region; bounded regions omit chartId. New IDs cannot collide with
+any region, chart, entity or connection ID. The UI suggests a fresh ID but the
+model never silently renames one. Position must be supplied, not guessed from
+the player's location. The chosen chart changes placement, not the geometry.
+
+Removal supports additive balls only. Spawns, anchors, modifiers and solids
+referenced by a modifier are protected. Both operations use the same transaction
+and history, including GPU capacity and player/spawn clearance refusals. Undo can
+restore a removed ball only if it is still safe at the current player position.
+Imported documents can replace supported entity sets through this same validation.
+New portal pairs/reconnection follow CONNECTED_PORTAL_AUTHORING.md. Global
+surfaces/cells, new charts and visual manipulation remain follow-up work.

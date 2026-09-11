@@ -1,12 +1,12 @@
 # Fresh-chat handoff for Astra
 
 2026-09-11. Read WORKING_RULES, inspect status, use relevant TASK_ROUTER row.
-Latest: transactional editing in the existing Full S3 portals preview. Read
-CONNECTED_EDITING.md and docs/qa/connected-editing-review.md. Claude's connected
-editing batch is accepted; no agents running. Manifest records completed work;
-replace before dispatch. MUSE-61 accepted with corrections, no open Muse jobs.
+Latest: ball creation/removal in Full S3 portals. Read CONNECTED_EDITING.md and
+docs/qa/connected-ball-authoring-review.md. Claude's ball UI batch is accepted.
+MUSE-62 is assigned portal-authoring contract checks; inspect bridge status before
+dispatch/retry. Manifest describes that task; do not rerun completed Claude work.
 
-The complete E3/S3/E3 fixture now supports editing existing balls, anchor position
+The complete E3/S3/E3 fixture now supports creating/removing balls, anchor position
 and paired radius, spawn position, undo/redo, JSON download/file-input load.
 Player pose is preserved and camera rebound to the new adapter; history and GPU
 packet commit only after validation. Never reset to spawn as an edit side effect.
@@ -15,8 +15,9 @@ Halted motion forbids edits until reset. Delayed file reads cannot overwrite a
 newer file choice or property edit. Renderer.replaceWorld changes texture data,
 not shader programs. The model.world and renderer.packed properties are getters.
 
-Next milestone: add/remove supported balls and create/reconnect explicit portal
-pairs through this same transaction boundary. Form orientation is read-only;
+Next milestone: create/reconnect explicit portal pairs through this transaction
+boundary. Read CONNECTED_PORTAL_AUTHORING.md, especially final-graph swaps and
+base-to-envelope migration. Form orientation is read-only;
 no gizmos or global S3 floors/cells yet. CONNECTED_NEXT_MILESTONE.md gives the
 sequence. Bounded H3 is the next adapter test AFTER connected authoring; Nil/Sol
 require numerical contracts, not new shader tags. Godot remains a possible host.

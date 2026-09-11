@@ -21,7 +21,7 @@ the blue ball is the flat destination. This is a flight fixture, not a finished 
 Buttons take quarter-unit steps. Mouse look stays upright relative to an up direction carried along your flight
 and through portals, not a world up. Routine contacts remain steerable; unresolved movement or the
 flat boundary halts the preview. Reset recovers.</p>
-<p><a href="#editor">Edit this world</a>: change existing objects and portals, undo changes, or save/load your level.</p>
+<p><a href="#editor">Edit this world</a>: change existing objects and portals, add or remove balls, undo changes, or save/load your level.</p>
 <p>Magenta marks numerical/traversal uncertainty; thin silhouette outlines remain under investigation.
 Dark checkers mark the end of the flat region, including when viewed through a portal from inside S3.</p>
 <p><label>Resolution <select id="quality"><option value="160">160 × 120</option><option value="320" selected>320 × 240</option><option value="480">480 × 360</option></select></label></p>
@@ -48,7 +48,8 @@ For floors and corners, try the <a href="connected-preview.html">bounded room pr
 <p><a href="#view">Back to the view</a></p>
 <p>Values are in the selected entity's own chart or flat region, in design units. No conversion between
 charts is applied. Your position and view are kept; invalid edits are refused and nothing changes.
-Anchor radius edits resize both ends of the portal together. Anchor directions are shown read-only.</p>
+Anchor radius edits resize both ends of the portal together. Anchor directions are shown read-only.
+Only added balls can be removed; spawns and portal anchors are protected. Undo restores a removed ball.</p>
 <label>Region <select id="edit-region"></select></label>
 <label>Entity <select id="edit-entity"></select></label>
 <p id="edit-frame"></p>
@@ -56,7 +57,19 @@ Anchor radius edits resize both ends of the portal together. Anchor directions a
 <label>y <input id="edit-y" type="number" step="any" size="7"></label>
 <label>z <input id="edit-z" type="number" step="any" size="7"></label>
 <label>radius <input id="edit-radius" type="number" step="any" size="7"></label><br>
-<button id="edit-apply" type="button">Apply edit</button><button id="edit-undo" type="button">Undo</button><button id="edit-redo" type="button">Redo</button>
+<button id="edit-apply" type="button">Apply edit</button><button id="edit-remove" type="button">Remove selected ball</button>
+<button id="edit-undo" type="button">Undo</button><button id="edit-redo" type="button">Redo</button>
+<fieldset id="ball-form"><legend>New ball in the selected region</legend>
+<p>Enter every value; your current position is never used. In a complete S3 region choose the chart the
+position is written in; a flat region uses its own coordinates and has no chart. A ball overlapping your
+body or a spawn is refused.</p>
+<label>ID <input id="ball-id" type="text" size="16" spellcheck="false" autocomplete="off"></label>
+<label>Chart <select id="ball-chart"></select></label><br>
+<label>x <input id="ball-x" type="number" step="any" size="7"></label>
+<label>y <input id="ball-y" type="number" step="any" size="7"></label>
+<label>z <input id="ball-z" type="number" step="any" size="7"></label>
+<label>radius <input id="ball-radius" type="number" step="any" size="7"></label>
+<button id="ball-create" type="button">Create ball</button></fieldset>
 <button id="edit-download" type="button">Download JSON</button>
 <label>Load JSON <input id="edit-load" type="file" accept=".json,application/json"></label>
 <p id="edit-message" role="status"></p></fieldset>

@@ -1,7 +1,7 @@
 import {createConnectedGlobalPreview} from './connected-global-model.js';
 import {createConnectedRenderer} from '../engine/geometry/connected-renderer.js';
 import {createMouseLook} from './mouse-look.js';
-import {rollAgainst} from '../engine/world/camera-frame.js';
+import {createCameraFrame,rollAgainst} from '../engine/world/camera-frame.js';
 const canvas=document.querySelector('#view'),status=document.querySelector('#status'),details=document.querySelector('#details');
 const checking=new URLSearchParams(location.search).has('check');
 const checks=[],shots=[];
@@ -54,10 +54,19 @@ try {
   document.querySelector('#smooth').onchange=draw;
   // Bounded entity editing. The model validates candidates and owns history; the page only builds
   // patches in each entity's own chart-local coordinates. No chart conversion happens here.
-  const editor=Object.fromEntries(['region','entity','frame','x','y','z','radius','apply','undo','redo','download','load','message'].map(k=>[k,document.querySelector(`#edit-${k}`)]));
+  const editor=Object.fromEntries(['region','entity','frame','x','y','z','radius','apply','remove','undo','redo','download','load','message'].map(k=>[k,document.querySelector(`#edit-${k}`)]));
   const editable=typeof model.editEntities==='function',axes=['x','y','z'];
   const EDITABLE={ball:['position','radius'],anchor:['position','radius'],spawn:['position']};
   let selectedFields=[],loading=Promise.resolve(),loadGeneration=0;
+  // Ball creation/removal. The page never picks a chart or position for the author: a cover region
+  // requires an explicit chart choice, and a flat region's ball carries no chartId at all.
+  const ballForm=Object.fromEntries(['id','chart','x','y','z','radius','create'].map(k=>[k,document.querySelector(`#ball-${k}`)]));
+  const creatable=editable&&typeof model.addBall==='function'&&typeof model.removeBall==='function';
+  // Only additive balls; spawns, anchors and modifiers stay protected. The compiler refuses referenced balls.
+  const removable=e=>e?.kind==='ball'&&(e.op===undefined||e.op==='add');
+  let selectedEntity=null,pendingSelection=null,suggestedId='',creationRegion=null;
+  const worldIds=doc=>new Set([doc.id,doc.baseScene.id,...doc.baseScene.regions.map(r=>r.id),...doc.baseScene.entities.map(e=>e.id),
+    ...doc.baseScene.connections.map(c=>c.id),...(doc.coverRegions||[]).flatMap(r=>[r.id,...r.charts.map(c=>c.id),...r.entities.map(e=>e.id)]),...(doc.connections||[]).map(c=>c.id)]);
   const entityRows=doc=>[...doc.baseScene.entities.map(entity=>({regionId:entity.regionId,frame:`region ${entity.regionId}`,entity})),
     ...(doc.coverRegions||[]).flatMap(r=>r.entities.map(entity=>({regionId:r.id,frame:`chart ${entity.chartId}`,entity})))];
   const regionRows=doc=>[...doc.baseScene.regions.map(r=>({id:r.id,label:`${r.id} · ${r.geometry.kind} region`})),
@@ -76,14 +85,27 @@ try {
     editor.apply.disabled=halted||!selectedFields.length;
     editor.undo.disabled=halted||!model.canUndo;editor.redo.disabled=halted||!model.canRedo;
     editor.load.disabled=halted;
+    ballForm.create.disabled=halted||!creatable;
+    editor.remove.disabled=halted||!creatable||!removable(selectedEntity);
   }
   // Rebuild selectors and fields from the model's current document.
   function refreshEditor(){
     const doc=model.document(),rows=entityRows(doc);
     setOptions(editor.region,regionRows(doc));
     setOptions(editor.entity,rows.filter(r=>r.regionId===editor.region.value).map(r=>({id:r.entity.id,label:`${r.entity.id} · ${r.entity.kind} · ${r.frame}`})));
+    if(pendingSelection!==null&&[...editor.entity.options].some(o=>o.value===pendingSelection))editor.entity.value=pendingSelection;
+    pendingSelection=null;
     const row=rows.find(r=>r.entity.id===editor.entity.value),e=row?.entity;
-    selectedFields=EDITABLE[e?.kind]||[];
+    selectedEntity=e||null;selectedFields=EDITABLE[e?.kind]||[];
+    // Chart choices follow the selected region; the empty choice must be replaced explicitly.
+    const cover=(doc.coverRegions||[]).find(r=>r.id===editor.region.value);
+    setOptions(ballForm.chart,cover?[{id:'',label:'Choose chart…'},...cover.charts.map(c=>({id:c.id,label:c.id}))]:[{id:'',label:'none (region coordinates)'}]);
+    if(creationRegion!==editor.region.value)ballForm.chart.value='';
+    creationRegion=editor.region.value;
+    ballForm.chart.disabled=!cover;
+    // Replace the suggestion only if the author has not typed their own ID.
+    const current=ballForm.id.value.trim();
+    if(!current||current===suggestedId){const ids=worldIds(doc);let n=1;while(ids.has(`ball-${n}`))n++;suggestedId=`ball-${n}`;ballForm.id.value=suggestedId;}
     const position=selectedFields.includes('position'),radius=selectedFields.includes('radius');
     axes.forEach((k,i)=>{editor[k].disabled=!position;editor[k].value=position?String(e.position[i]):'';});
     editor.radius.disabled=!radius;editor.radius.value=radius?String(e.radius):'';
@@ -91,10 +113,24 @@ try {
       `${e.id} (${e.kind}) in ${row.frame} of ${row.regionId}${e.forward?`; forward [${e.forward}], up [${e.up}] (read-only)`:''}${selectedFields.length?'':'; not editable here'}.`;
     syncEditControls();
   }
-  function numberField(key){
-    const text=editor[key].value.trim(),value=Number(text);
+  function numberField(key,input=editor[key]){
+    const text=input.value.trim(),value=Number(text);
     if(!text||!Number.isFinite(value))throw Error(`${key} must be a finite number`);
     return value;
+  }
+  // Explicit ownership and author coordinates; JSON property order is immaterial.
+  function buildBall(){
+    const doc=model.document(),regionId=editor.region.value,id=ballForm.id.value.trim();
+    if(!regionId)throw Error('Select a region');
+    if(!id)throw Error('Enter an ID for the new ball');
+    const ball={id,regionId};
+    if((doc.coverRegions||[]).some(r=>r.id===regionId)){
+      if(!ballForm.chart.value)throw Error('Choose the chart the ball position is written in');
+      ball.chartId=ballForm.chart.value;
+    }
+    ball.position=axes.map(k=>numberField(`ball ${k}`,ballForm[k]));
+    ball.radius=numberField('ball radius',ballForm.radius);
+    return ball;
   }
   // Only changed properties are patched; a paired radius goes into the same editEntities call.
   function buildEdits(){
@@ -126,6 +162,19 @@ try {
       const edits=buildEdits();if(!edits)return 'No changes to apply.';
       model.editEntities(edits);return `Applied edit to ${edits.map(e=>e.id).join(' and ')}.`;
     });
+    ballForm.create.onclick=()=>editAction(()=>{
+      const ball=buildBall();model.addBall(ball);
+      // Select the new entity and offer a fresh ID; failures above keep the author's input.
+      pendingSelection=ball.id;ballForm.id.value='';
+      return `Created ball ${ball.id} in ${ball.chartId?`chart ${ball.chartId} of `:'region '}${ball.regionId}.`;
+    });
+    // No confirmation: Undo restores the ball.
+    editor.remove.onclick=()=>editAction(()=>{
+      const e=entityRows(model.document()).find(r=>r.entity.id===editor.entity.value)?.entity;
+      if(!removable(e))throw Error('Only added balls can be removed');
+      model.removeBall(e.id);return `Removed ball ${e.id}. Undo restores it.`;
+    });
+    if(!creatable){document.querySelector('#ball-form').disabled=true;editor.message.textContent='Creating and removing balls is unavailable: this model lacks addBall/removeBall.';}
     editor.undo.onclick=()=>editAction(()=>{model.undoEdit();return 'Undid the last edit.';});
     editor.redo.onclick=()=>editAction(()=>{model.redoEdit();return 'Redid the edit.';});
     editor.download.onclick=()=>{
@@ -434,13 +483,13 @@ try {
         const after=snapshot();for(const k of Object.keys(before))if(after[k]!==before[k])throw Error(`${label} changed ${k}`);
       };
       const images=()=>{const color=renderer.readColor(model.state,80,60);draw();return color;};
-      const spotCheck=label=>{
-        const W=80,H=60,max=renderer.packed.maxDistance,{pixels,distances}=renderer.read(model.state,W,H);let hits=0;
+      const spotCheck=(label,state=model.state,owners={})=>{
+        const W=80,H=60,max=renderer.packed.maxDistance,{pixels,distances}=renderer.read(state,W,H);let hits=0;
         for(let y=0;y<H;y+=4)for(let x=0;x<W;x+=4){
           const i=y*W+x;if(pixels[4*i]!==1)continue;
-          const cpu=model.pixelSight(W,H,x,y,max),owner=renderer.packed.primitiveIds[pixels[4*i+2]-1];
+          const cpu=model.pixelSight(W,H,x,y,max,state),owner=renderer.packed.primitiveIds[pixels[4*i+2]-1];
           if(cpu.status!=='hit'||cpu.query.owner!==owner||Math.abs(distances[i]-cpu.distance)>.001)throw Error(`${label} ${x},${y}: GPU ${owner}/${distances[i]}, CPU ${cpu.status}/${cpu.query?.owner}/${cpu.distance}`);
-          hits++;
+          hits++;owners[owner]=(owners[owner]||0)+1;
         }
         draw();if(!hits)throw Error(`${label}: no sampled GPU hits`);return hits;
       };
@@ -567,6 +616,154 @@ try {
       if(model.halted||editor.apply.disabled)throw Error('Reset did not re-enable editing');
       expectButtons('after reset');
       checks.push('halt disables Apply/Undo/Redo/Load until reset');
+
+      // Ball creation/removal through the real form controls. Needs lead model.addBall/removeBall.
+      if(!creatable)throw Error('Ball create/remove checks pending lead integration: model.addBall and model.removeBall are required');
+      {
+        const ballRecord={label:'ball-create-remove'};
+        const fill=({id,chartId,position,radius})=>{
+          ballForm.id.value=id;ballForm.id.dispatchEvent(new Event('input'));
+          if(chartId!==undefined)pick(ballForm.chart,chartId);
+          axes.forEach((k,i)=>{ballForm[k].value=String(position[i]);ballForm[k].dispatchEvent(new Event('input'));});
+          ballForm.radius.value=String(radius);ballForm.radius.dispatchEvent(new Event('input'));
+        };
+        const refuse=(label,ball,pattern)=>{
+          fill(ball);const before=snapshot();ballForm.create.click();expectUnchanged(label,before);
+          if(pattern&&!pattern.test(editor.message.textContent))throw Error(`${label}: unexpected refusal ${editor.message.textContent}`);
+        };
+        // Observe exactly what the page hands the model, when the method is replaceable.
+        const addCalls=[],addDescriptor=Object.getOwnPropertyDescriptor(model,'addBall');
+        if(addDescriptor?.writable)model.addBall=ball=>{addCalls.push(structuredClone(ball));return addDescriptor.value.call(model,ball);};
+        try{
+          const textBefore=await download(),docBefore=canon(model.document()),idsBefore=[...renderer.packed.primitiveIds];
+
+          // Protected kinds cannot be removed; additive balls can. Chart choices follow the region.
+          for(const [regionId,id,allowed] of [['flat','flat-spawn',false],['flat','flat-entry',false],['flat','flat-return',false],['flat','flat-target',true],
+            ['sphere','sphere-spawn',false],['sphere','sphere-entry',false],['sphere','sphere-exit',false],['sphere','north-landmark',true]]){
+            choose(regionId,id);
+            if(editor.remove.disabled===allowed)throw Error(`Remove button for ${id} should be ${allowed?'enabled':'disabled'}`);
+            const charts=[...ballForm.chart.options].map(o=>o.value);
+            if(regionId==='flat'?!ballForm.chart.disabled||canon(charts)!==canon(['']):ballForm.chart.disabled||canon(charts)!==canon(['','north-chart','exit-chart','south-chart']))
+              throw Error(`Chart choices for ${regionId}: ${charts} disabled=${ballForm.chart.disabled}`);
+          }
+          if(worldIds(model.document()).has(ballForm.id.value)||!/^[a-z][a-z0-9_-]*$/.test(ballForm.id.value))throw Error(`Suggested ball ID ${ballForm.id.value} is not a fresh valid ID`);
+          checks.push('Remove disabled for spawns/anchors, enabled for additive balls; chart choices refresh with region; suggested ID is unique');
+
+          // Base E3 creation never serializes chartId.
+          $('[data-action="spawn-flat"]').click();choose('flat','flat-target');
+          const flatBall={id:'flat-authored',position:[-3,3,0],radius:.5};
+          fill(flatBall);ballForm.create.click();accepted('E3 ball creation');
+          const flatEntity=entity('flat-authored');
+          if(canon(flatEntity)!==canon({...flatBall,regionId:'flat',kind:'ball'})||'chartId' in flatEntity)throw Error(`E3 ball document entity ${JSON.stringify(flatEntity)}`);
+          if(addDescriptor?.writable&&(addCalls.length!==1||'chartId' in addCalls[0]||canon(addCalls[0])!==canon({...flatBall,regionId:'flat'})))throw Error(`E3 addBall call ${JSON.stringify(addCalls)}`);
+          if(/chartId/.test(JSON.stringify(JSON.parse(await download()).baseScene.entities.find(e=>e.id==='flat-authored'))))throw Error('Downloaded E3 ball has chartId');
+          if(editor.region.value!=='flat'||editor.entity.value!=='flat-authored'||editor.remove.disabled)throw Error('New E3 ball is not selected/removable');
+          if(ballForm.id.value==='flat-authored'||worldIds(model.document()).has(ballForm.id.value))throw Error('ID suggestion was not refreshed after creation');
+          if(!renderer.packed.primitiveIds.includes('flat-authored'))throw Error('E3 ball missing from GPU packet');
+          editor.undo.click();accepted('Undo E3 ball');
+          if(canon(model.document())!==docBefore)throw Error('Undo of E3 ball did not restore the document');
+          checks.push(`E3 ball created via form without chartId (${addDescriptor?.writable?'observed':'unobserved'} addBall call, document and download); undo removes it`);
+
+          // A ball over the current body (away from every spawn) is refused with nothing changed.
+          const spawnPoint=model.state.position.slice();
+          for(let i=0;i<15;i++)model.advance(1/60,[0,1,0]);
+          const body=model.state.position.slice();draw();
+          if(model.halted||model.state.regionId!=='flat'||body.length!==3||Math.hypot(...body.map((v,i)=>v-spawnPoint[i]))<.5)throw Error(`Body-overlap pose unusable: ${model.state.regionId} ${body}`);
+          choose('flat','flat-target');
+          refuse('ball over current body',{id:'body-ball',position:body,radius:.2},/player clearance|overlap/i);
+
+          // S3: invalid candidates are refused with document, history, pose, world and image unchanged.
+          $('[data-action="spawn-sphere"]').click();
+          if(!findLandmark())throw Error('No sphere pose shows north-landmark for ball checks');
+          draw();choose('sphere','north-landmark');
+          const valid={id:'authored-ball',chartId:'north-chart',position:[3,2,0],radius:.6};
+          refuse('duplicate ball ID',{...valid,id:'north-landmark'});
+          refuse('negative ball radius',{...valid,radius:-.5});
+          refuse('ball radius beyond GPU range',{...valid,radius:1.2});
+          refuse('ball without chart',{...valid,chartId:''},/chart/);
+          refuse('ball without explicit position',{...valid,position:['',2,0]},/finite/);
+          checks.push('duplicate ID, radii -0.5/1.2, missing chart, blank position and current-body overlap refused: document, history, pose, world and image unchanged');
+
+          // Create the S3 ball; it is selected and present in document, world and GPU packet.
+          const pose1=pose(),calls0=addCalls.length;
+          fill(valid);ballForm.create.click();accepted('S3 ball creation');
+          const docCreated=canon(model.document()),idsCreated=[...renderer.packed.primitiveIds];
+          if(canon(entity('authored-ball'))!==canon({id:'authored-ball',kind:'ball',chartId:'north-chart',position:[3,2,0],radius:.6}))throw Error(`S3 ball entity ${JSON.stringify(entity('authored-ball'))}`);
+          {const expected=JSON.parse(docCreated);const s=expected.coverRegions.find(r=>r.id==='sphere');s.entities=s.entities.filter(e=>e.id!=='authored-ball');
+            if(canon(expected)!==docBefore)throw Error('S3 ball creation changed more than the new entity');}
+          if(addDescriptor?.writable&&canon(addCalls.slice(calls0))!==canon([{id:'authored-ball',regionId:'sphere',chartId:'north-chart',position:[3,2,0],radius:.6}]))throw Error(`S3 addBall call ${JSON.stringify(addCalls.slice(calls0))}`);
+          if(editor.region.value!=='sphere'||editor.entity.value!=='authored-ball'||editor.remove.disabled)throw Error('New S3 ball is not selected/removable');
+          expectFields('after ball creation','authored-ball');
+          if(pose()!==pose1||!model.canUndo||model.canRedo)throw Error('S3 ball creation moved the player or left wrong history');
+          expectButtons('after ball creation');
+          const worldBall=model.world.regions.get('sphere').balls.find(b=>b.id==='authored-ball');
+          if(worldBall?.radius!==.6||!model.world.renderData().primitives.some(p=>p.id==='authored-ball'&&p.regionId==='sphere'))throw Error('S3 ball missing from world/render data');
+          if(!idsCreated.includes('authored-ball')||idsCreated.length!==idsBefore.length+1)throw Error(`GPU packet ids after creation: ${idsCreated}`);
+          ballRecord.ownerIndex={before:idsBefore,created:idsCreated};
+
+          // Explicit pose 2.5 units from the new ball, on the side away from north-landmark, looking at its centre.
+          const centre=worldBall.center.slice(),landmark=model.world.regions.get('sphere').balls.find(b=>b.id==='north-landmark').center.slice();
+          const dot4=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0),unit=v=>{const n=Math.hypot(...v);return v.map(x=>x/n);};
+          const aim=()=>{
+            const space=model.world.regions.get('sphere').space,theta=2.5/space.curvatureRadius;
+            const away=unit(centre.map((x,i)=>dot4(centre,landmark)*x-landmark[i]));
+            const p=unit(centre.map((x,i)=>Math.cos(theta)*x+Math.sin(theta)*away[i]));
+            return {...model.state,regionId:'sphere',position:p,velocity:p.map(()=>0),camera:createCameraFrame(space,p,{forward:unit(centre.map((x,i)=>x-dot4(p,centre)*p[i])),up:[0,0,1,0]})};
+          };
+          const centreRay=(label,present)=>{
+            const state=aim(),space=model.world.regions.get('sphere').space,max=renderer.packed.maxDistance;
+            const cpu=model.pixelSight(1,1,0,0,max,state),gpu=renderer.read(state,1,1);
+            const status=gpu.pixels[0],region=renderer.packed.ids[gpu.pixels[1]-1],owner=renderer.packed.primitiveIds[gpu.pixels[2]-1];
+            const result={label,cpu:cpu.status,owner:cpu.query?.owner??null,cpuDistance:cpu.distance,gpuDistance:gpu.distances[0]};
+            if(present){
+              const expected=space.distance(state.position,centre)-.6;result.analytic=expected;
+              if(Math.abs(expected-1.9)>1e-7||cpu.status!=='hit'||cpu.query.owner!=='authored-ball'||cpu.crossings.length||Math.abs(cpu.distance-expected)>1e-4)
+                throw Error(`${label}: CPU ${cpu.status}/${cpu.query?.owner}/${cpu.distance}, analytic ${expected}`);
+            }else if(cpu.status==='hit'&&cpu.query.owner==='authored-ball')throw Error(`${label}: CPU still hits removed authored-ball`);
+            if(cpu.status==='hit'){if(status!==1||owner!==cpu.query.owner||region!==cpu.regionId||Math.abs(gpu.distances[0]-cpu.distance)>.001)throw Error(`${label}: GPU ${status}/${region}/${owner}/${gpu.distances[0]}, CPU hit ${cpu.regionId}/${cpu.query.owner}/${cpu.distance}`);}
+            else if(cpu.status==='miss'?status!==0:status!==2)throw Error(`${label}: GPU status ${status}, CPU ${cpu.status}/${cpu.reason}`);
+            const owners={};result.spotHits=spotCheck(`${label} aimed view`,state,owners);result.owners=owners;
+            if(!!owners['authored-ball']!==present)throw Error(`${label}: aimed view authored-ball pixels ${owners['authored-ball']||0}, expected ${present?'some':'none'}`);
+            ballRecord[label]=result;return result;
+          };
+          const created=centreRay('created',true);
+          renderer.draw(aim(),{...dimensions(),...appearance(),antialias:smoothing()});
+          shots.push({name:'ball-created-aimed',data:canvas.toDataURL()});draw();
+          ballRecord.createdSpotHits=spotCheck('after ball creation');
+          // Removing an EARLIER primitive shifts the new ball's GPU owner index.
+          const indexBefore=renderer.packed.primitiveIds.indexOf('authored-ball');
+          choose('sphere','north-landmark');editor.remove.click();accepted('Remove earlier owner');
+          if(renderer.packed.primitiveIds.indexOf('authored-ball')!==indexBefore-1)throw Error('Expected owner index shift');
+          centreRay('shifted-owner',true);
+          editor.undo.click();accepted('Restore earlier owner');
+          if(canon(renderer.packed.primitiveIds)!==canon(idsCreated))throw Error('Undo failed to restore owner indices');
+          choose('sphere','authored-ball');
+          checks.push(`authored-ball in north-chart [3,2,0] r .6: centre ray CPU ${created.cpuDistance.toFixed(5)} vs analytic 1.9 vs GPU ${created.gpuDistance.toFixed(5)}; owner indices re-decoded after packet growth`);
+
+          // Remove / undo / redo through the buttons, then save and reload both ways.
+          const expectState=(label,doc,ids,present)=>{
+            if(canon(model.document())!==doc)throw Error(`${label}: document differs`);
+            if(canon(renderer.packed.primitiveIds)!==canon(ids))throw Error(`${label}: GPU packet ids ${renderer.packed.primitiveIds}`);
+            if(pose()!==pose1)throw Error(`${label}: player or camera moved`);
+            if([...editor.entity.options].some(o=>o.value==='authored-ball')!==present&&editor.region.value==='sphere')throw Error(`${label}: entity list disagrees`);
+            expectButtons(label);centreRay(label,present);spotCheck(label);
+          };
+          editor.remove.click();accepted('Remove authored-ball');
+          if(editor.entity.value==='authored-ball'||!model.canUndo||model.canRedo)throw Error('Removal left the ball selected or wrong history');
+          expectState('removed',docBefore,idsBefore,false);
+          editor.undo.click();accepted('Undo removal');expectState('undo-removal',docCreated,idsCreated,true);
+          editor.redo.click();accepted('Redo removal');expectState('redo-removal',docBefore,idsBefore,false);
+          editor.undo.click();accepted('Undo removal again');expectState('undo-removal-again',docCreated,idsCreated,true);
+          const savedBall=await download();
+          if(canon(JSON.parse(savedBall))!==docCreated)throw Error('Downloaded JSON lacks the created ball');
+          editor.undo.click();accepted('Undo creation');expectState('undo-creation',docBefore,idsBefore,false);
+          await load(savedBall,'ball.nil.json');accepted('Load with ball');expectState('load-with-ball',docCreated,idsCreated,true);
+          await load(textBefore,'before-ball.nil.json');accepted('Load without ball');expectState('load-without-ball',docBefore,idsBefore,false);
+          draw();shots.push({name:'ball-removed-reloaded',data:canvas.toDataURL()});
+          checks.push('Remove/Undo/Redo and JSON download/load add and remove authored-ball exactly: document, GPU owner ids, centre ray and sparse CPU/GPU views agree; pose kept');
+        }finally{if(addDescriptor?.writable)model.addBall=addDescriptor.value;}
+        records.push(ballRecord);
+      }
 
       // Round trip to the original file, then fly the original route.
       await load(originalText,'connected-global.nil.json');accepted('Original load');

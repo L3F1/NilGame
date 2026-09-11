@@ -68,6 +68,12 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: none. MUSE-61 accepted with lead corrections; see docs/qa/muse-log.md.
-No Muse jobs scheduled. Current manifest records the completed Claude connected
-editing batch; replace it before dispatching new work.
+Order: MUSE-62. MUSE-61 accepted with corrections; see docs/qa/muse-log.md.
+
+## MUSE-62 — OPEN: portal-authoring contract checks
+
+Assignment/allowed paths: tools/agent-bridge-tasks.json, muse62-portal-authoring-truth.
+Use current compiled worlds to check pair creation, final-graph swaps,
+base-to-envelope migration and blocked destination behavior. No implementation
+or kernel repairs; report counterexamples. Focused Node test only, no browser
+or full suite from the isolated clone. Lead reviews before integration.
