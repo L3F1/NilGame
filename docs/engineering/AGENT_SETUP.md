@@ -44,3 +44,35 @@ there. Avoid overlapping Git operations from Windows and Ubuntu.
 
 The archived instruction snapshot retains its original root-relative paths;
 resolve those against the repository root when following historical references.
+
+## Automation options verified 2026-09-11
+
+Local help confirms Windows `claude.cmd` supports `-p`, `--output-format json`
+and explicit `--resume` session IDs. The PowerShell `claude.ps1` shim fails this
+host's execution policy; the installed CMD launcher prints help successfully.
+No execution-policy change is needed for that launcher. See
+[Claude programmatic usage](https://code.claude.com/docs/en/headless).
+
+Ubuntu `muse exec --help` confirms `--prompt-file`, `--json`, `--max-model-steps`,
+explicit workspace/worktree selection, and session IDs. `muse session-message`
+can list/send messages to Muse session targets; cross-client delivery to this
+Codex IDE thread has NOT been established. `muse --disable-approval` is the
+installed option for disabling tool approval prompts only; unlike `--yolo`,
+it does not also disable the sandbox. This review did not enable either option
+or change saved settings. Headless jobs should have an explicit permission scope
+and must report refused operations rather than silently retry outside it.
+
+A bounded launcher can supply a task file, collect JSON output and notify a
+supervisor on process exit. This is feasible CLI orchestration, not control of
+an arbitrary already-open VS Code chat. Codex supports
+[noninteractive runs and resumption](https://learn.chatgpt.com/docs/non-interactive-mode)
+and a programmatic [App Server](https://learn.chatgpt.com/docs/app-server).
+Those enable a separately managed workflow; they do not by themselves install
+a completion callback into the currently active IDE thread. No bridge, agent
+job, account change or automatic review loop was installed in this review.
+
+If implemented later: start one explicit bounded task per agent/worktree, record
+session ID/base hash/allowed files/checks, serialize integration and browser
+checks, collect result plus exit status, and stop for lead review. Do not resume
+`--last` in concurrent jobs or launch recursive agent-to-agent loops. Use the
+existing handoff files as task inputs; avoid pasting entire conversations.

@@ -2718,3 +2718,45 @@ Astra acceptance, 2026-09-11, base 5877847: reviewed and reran 9/9;
 full Node integration suite 74/74. Decimal-plane pole refusal repaired without
 rewriting stored geometry; plane zero sets are homogeneous. Ball and ray-input
 roundoff screens retained. See astra-s3-sight-integration-2026-09-10.md.
+
+## MUSE-52 - Independent composed S3 sight audit
+Status: ACCEPTED | Owner: Muse | Reviewer: Astra | Node-only
+
+Report (Muse, 2026-09-10): READY FOR REVIEW. Nine checks verify composed
+queries against bisection/closed forms: oblique casts at R=.5/8/100,
+global vs scoped cutters (5.1 carve/b reversed vs 4.2 b/b), subtracted
+cell with partial faces (carve-exit reversed bite/box, wall box/box),
+decimal poles keeping zero set with drift screens refusing, zero casts
+(miss work 1 / inside at 0 / ambiguous-origin), E3-S3-E3 route total 3.4
+= 3 + bisected local 0.4 with exact work 11, work caps 0/1/2 refuse and 4
+hits with exact coordinator charge, distant coincidence refusing an
+earlier 0.617 hit (recorded limit, no repair), cutter-face origin
+refusal, two-ball origin naming both. Reversal-removal mutation fails
+exactly the 2 reversed checks; repo untouched.
+connected-s3-query-truth.test.js 9/9. Details:
+docs/qa/muse52-composed-sight.md.
+
+Read docs/qa/astra-s3-sight-integration-2026-09-10.md. Allowed writes:
+connected-s3-query-truth.test.js, docs/qa/muse52-composed-sight.md,
+this task status/report only. Claude independently owns a new fixture/tool;
+do not depend on their unreviewed files or edit them.
+
+Audit castSphericalRegion and default traceRegionSight against independent
+geodesic/sign references on compiled scenes. Cover oblique rays and multiple
+radii, scoped/global cutters, a subtracted cell (NOT-all of its faces), inactive
+face roots, subtraction normals and owning solids. Include an E3-S3-E3 route,
+physical total range versus local hit distance, an obstacle immediately beyond
+an exit, zero remaining range at that exit, and maxWork caps including zero.
+Check compile-legal decimal frames: positive near-unit plane-pole scaling must
+not move the zero set; ball-center and ray-input screens must still refuse
+invalid inputs. Do not normalize stored geometry in the harness to hide drift.
+
+Separate wrong hit/miss from conservative unresolved. Record a distant event
+coincidence refusing an earlier otherwise valid hit as a known completeness
+limit; do not demand a repair. Dense sampling is evidence, not a proof that
+arbitrarily thin solids cannot be missed. State reference convergence and
+limitations. Include a targeted isolated fail-demo, focused/full Node checks,
+actual command/host evidence. No kernel, renderer, schema or old-test changes.
+Return counterexamples unfixed. Stop at READY FOR REVIEW.
+
+Astra acceptance, 2026-09-11, base a1c0da7: code/report reviewed; focused 9/9 and baseline 76/76 rerun. Reference limitations retained; mutation evidence attributed to Muse. See astra-exclusion-review-2026-09-11.md. Existing runtime remains unchanged in the new helper commit.

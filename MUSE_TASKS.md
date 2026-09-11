@@ -65,30 +65,33 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-52. MUSE-51 accepted and archived; original report retained.
+Order: MUSE-53. MUSE-52 accepted and archived.
 
-## MUSE-52 - Independent composed S3 sight audit
+## MUSE-53 - Independent full-segment S3 cell exclusion audit
 Status: OPEN | Owner: Muse | Reviewer: Astra | Node-only
 
-Read docs/qa/astra-s3-sight-integration-2026-09-10.md. Allowed writes:
-connected-s3-query-truth.test.js, docs/qa/muse52-composed-sight.md,
-this task status/report only. Claude independently owns a new fixture/tool;
-do not depend on their unreviewed files or edit them.
+Read docs/engineering/S3_EXCLUSION_CONTRACT.md and the new helper
+engine/geometry/s3-cell-exclusion.js. Allowed writes:
+s3-cell-exclusion-truth.test.js, docs/qa/muse53-cell-exclusion.md,
+this task status/report only. Do not edit the helper, classifier or other tests.
+Claude concurrently owns classifier integration; test the helper directly so
+neither assignment depends on unreviewed work from the other.
 
-Audit castSphericalRegion and default traceRegionSight against independent
-geodesic/sign references on compiled scenes. Cover oblique rays and multiple
-radii, scoped/global cutters, a subtracted cell (NOT-all of its faces), inactive
-face roots, subtraction normals and owning solids. Include an E3-S3-E3 route,
-physical total range versus local hit distance, an obstacle immediately beyond
-an exit, zero remaining range at that exit, and maxWork caps including zero.
-Check compile-legal decimal frames: positive near-unit plane-pole scaling must
-not move the zero set; ball-center and ray-input screens must still refuse
-invalid inputs. Do not normalize stored geometry in the harness to hide drift.
+Verify exclusion witnesses on compiled translated/rotated cells at multiple R,
+including decimal frames and poses on authored face planes. Independently
+sample/refine the named witness face along the full physical segment; every
+excluded result must remain strictly outside it. Verify claimed lower values.
+Separate exact special cases from converged sampled evidence. Do not duplicate
+phase/atan2 extrema logic as the reference or normalize poles in the harness.
 
-Separate wrong hit/miss from conservative unresolved. Record a distant event
-coincidence refusing an earlier otherwise valid hit as a known completeness
-limit; do not demand a repair. Dense sampling is evidence, not a proof that
-arbitrarily thin solids cannot be missed. State reference convergence and
-limitations. Include a targeted isolated fail-demo, focused/full Node checks,
-actual command/host evidence. No kernel, renderer, schema or old-test changes.
-Return counterexamples unfixed. Stop at READY FOR REVIEW.
+Include rays outside at the origin but entering later, rays beginning inside,
+zero range, both endpoint touches, nearly coplanar cases, the pi*R limit, exact
+budgets and input drift. A lack of a single persistent face witness is UNKNOWN,
+not a bug or occupancy claim. Construct a case with an ambiguous face and a
+different valid full-span witness; also construct a related longer ray where
+that witness fails. State whether it actually resolves Claude's reported pose;
+do not assume this sufficient screen fixes every cutter-plane refusal.
+
+Include isolated targeted fail-demo, focused/full Node runs, command/host data.
+Counterexamples are the deliverable; do not repair production. Stop at READY FOR
+REVIEW. No renderer, UI, schema, workflow automation or environment diagnosis.

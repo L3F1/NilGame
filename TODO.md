@@ -22,7 +22,10 @@ The previous backlog is preserved in
   and integrated into connected sight. See Astra S3 sight integration report.
 - [x] Bounded connected CPU sight reference: E3-S3-E3 region/range transport,
   analytic E3 hits, honest S3 surface-candidate refusal.
-- [ ] Independent composed-query audit (MUSE-52), connected CPU diagnostic image,
+- [x] Independent composed-query audit (MUSE-52) and connected CPU diagnostic
+  images reviewed. Chart exits remain explicitly unresolved.
+- [x] Whole-segment S3 cell exclusion helper and mathematical contract.
+- [ ] Claude classifier integration and independent helper audit (MUSE-53),
   then GPU precision/traversal review. Numerical screening is not formal
   certification. Do not render unresolved candidates as hits.
 

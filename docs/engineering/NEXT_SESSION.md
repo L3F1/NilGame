@@ -1,39 +1,35 @@
 # Fresh-chat handoff for Astra
 
-2026-09-11, reviewed base 5877847. Start with status/log, WORKING_RULES and
-TASK_ROUTER; read only the relevant subsystem. Current report:
-docs/qa/astra-s3-sight-integration-2026-09-10.md.
+2026-09-11. Start with git status/log, WORKING_RULES, relevant TASK_ROUTER row.
+Reviewed Claude a1c0da7 fixture/tool (18/18), Muse52 (9/9), baseline76/76.
+Report: docs/qa/astra-exclusion-review-2026-09-11.md.
 
-MUSE-51 accepted (9/9), archived. Claude's CPU Boolean classifier accepted with
-integration fixes: zero-range origin classification, work cap before increment,
-input screen before early returns, defensive unsupported-ball refusal. Plane
-poles retain compile-scale validity but not the overly tight unit-length
-screen: their zero sets are homogeneous. Ball centers keep the tight screen.
-No saved geometry or distance field was normalized. Root guards are numerical
-screening, NOT formal interval certification.
+Implemented only engine/geometry/s3-cell-exclusion.js and focused tests:
+sufficient whole-ray exclusion by one spherical cell face, closed physical
+range <=piR, numerical guards, explicit unknown and budget accounting. Not yet
+wired into classifier. Read S3_EXCLUSION_CONTRACT.md; it is the active contract.
+Origin-only pruning is wrong; isolated mutation fails three new checks.
+No floating-point formal-proof or GPU performance claims.
 
-traceRegionSight now defaults to S3 Boolean events with shared work/range
-accounting and exact portal endpoints. s3Method:'march' retains the conservative
-reference behavior. S3 ball and wall hits, a carved passage, near-exit occlusion,
-zero remaining range and budgets are pinned. 74/74 Node suites passed here on
-Windows LeoPC / Node v24.20.0. Isolated old modules fail new regressions.
-No GPU/browser rerun this turn. Prior region-lab 129 is historical evidence.
+Claude integrates constant-false cells into existing Boolean groups under
+CLAUDE_NEXT.md. Muse53 independently audits helper only. Check both before GPU
+work, especially authored-plane pose sweeps, longer ranges entering a previously
+excluded cell, intersects/subtractors, work caps, raw primitive versus scene
+refusals. The helper cannot fix every coplanar or distant coincident event.
 
-Claude: CLAUDE_NEXT.md assigns a NEW valid connected-sight v2 fixture, CPU
-ray-packet/PNG diagnostic tool, movement route and reload checks. Muse: MUSE-52
-independently audits composed S3 queries and cross-region integration. Neither
-may change kernel contracts or enable connected GPU/editor rendering.
+Two CPU diagnostic images regenerated/inspected; far target visible through the
+curved passage. Domain exits dominate magenta background and remain explicitly
+unresolved. No sky policy or chart collision wall added. Packet carries region
+IDs even where reason colors do not. CPU ms are not GPU frame times.
 
-Next Astra task: review their evidence and inspected CPU image, especially
-unresolved coverage, then specify GPU traversal/precision acceptance. JS double
-root screens cannot simply be copied into GLSL float. Define bounded traversal,
-region data ownership, near-event ambiguity and visible unresolved output before
-assigning implementation. A distant coincident event currently can refuse an
-earlier hit; this is a known completeness/cost limitation, not a false miss.
+Next Astra: review integration plus independent witnesses and pose refusal data,
+then decide GPU precision/traversal acceptance. JS double guards cannot be copied
+to GLSL float. Renderer/editor still single-region; cross-region walking support
+remains separate from tested connected CPU motion and single-floor S3 walking.
+Godot host experiment is not scene-v2 parity; preserve browser reference.
 
-The editor still renders one region; sphereField capabilities/rayCast unchanged.
-Single-floor S3 walking and CPU connected motion/correction exist, but cross-region
-walking support and connected GPU views do not. Keep browser reference. The old
-connected-lab.nil.json is invalid for the current runtime (v1, extent/spawn);
-Claude creates a separate v2 fixture. Nested-cutter conservatism remains separate.
-Godot prototype is not full scene-v2 parity. No wholesale migration authorized.
+User asked about automatic Claude/Muse handoffs. Local help verified claude.cmd
+(noninteractive) and Ubuntu muse exec --json / --prompt-file plus session-message.
+No jobs launched, permissions changed, or auto-wake bridge configured. CLI output
+can be collected in an active turn; waking this exact IDE thread requires a
+separate integration, not just a done file. See AGENT_SETUP.md automation section.

@@ -1,32 +1,32 @@
-# Claude next: connected sight fixture and CPU diagnostic view
+# Claude's next bounded task: integrate whole-segment cell exclusion
 
-Read WORKING_RULES and docs/qa/astra-s3-sight-integration-2026-09-10.md.
-Classifier accepted with zero-range, accounting and numerical-input corrections.
-No GPU promotion or runtime gate removal yet.
+Start from Astra's exclusion commit. Read WORKING_RULES and
+S3_EXCLUSION_CONTRACT.md. Previous connected fixture accepted; see
+../qa/astra-exclusion-review-2026-09-11.md. MUSE-53 independently owns the helper
+audit. Do not edit the helper while Muse audits it; report defects to Astra.
 
-Build a NEW scene-v2 E3 -> S3 -> E3 acceptance fixture at
-levels/fixtures/connected-sight.nil.json. Do not replace the historical v1
-connected-lab fixture. Use valid open-hemisphere extents, one clear spawn per
-region, a passage cut from a cell, an off-route obstacle and an identifiable
-far-room target. Anchor directions must support actual forward traversal.
-Keep the geometry small enough for existing compile limits, with intrinsic
-player clearance checked along a specified route. Do not assume coordinate
-width is off-axis physical clearance. No new schema or primitive kinds.
+Implement the contract in engine/world/s3-ray-cast.js. Use
+excludeSphericalCell before occupancy/root requests; excluded cells are constant
+false throughout this segment. Preserve Boolean scoping, validation, numerical
+refusals, owner/normal semantics and one honest maxWork budget. No host or shader
+changes. No new primitive-event behavior or epsilon perturbation of ray poses.
 
-Add tools/connected-sight-probe.js: sample traceRegionSight on a small image
-(e.g. 96x72) from a documented pose, save PNG plus a JSON packet of selected
-rays. Use current compiled frames and physical ray directions. Colors must
-separate hit region/owner, miss-within-range and unresolved reason. Never color
-unresolved as sky. Report reason counts, work distribution, CPU query timing,
-resolution and host; these are not GPU frame times. Save exact scene/pose/range
-with the packet so another host can repeat it. Use existing dependencies/Node
-builtins only. The image is a CPU diagnostic, not a screenshot of the game.
+Allowed writes: engine/world/s3-ray-cast.js, s3-ray-cast.test.js,
+connected-s3-query-truth.test.js (only the known-refusal regression upgrade
+specified in the contract), connected-sight-fixture.test.js (same narrowly
+necessary upgrade), docs/qa/claude-cell-exclusion-integration.md. Do not change
+fixture placement to avoid a failing query, or modify other task/status files.
 
-Allowed writes: that fixture and tool, connected-sight-fixture.test.js,
-docs/qa/claude-connected-sight-fixture.md. Tests must compile/reload the fixture,
-execute the route with real movement and query selected rays through portals.
-Prove the passage ray reaches the intended region while an off-passage ray
-hits the wall; inspect the saved image. Report refusals instead of shrinking
-ranges just until a preferred answer appears. Keep accepted kernel unchanged;
-hand back unexpected cases with exact rays. Focused/full Node checks, explicit
-commit paths. Coordinate Muse's independent audit through separate files.
+Pin an actual compiled cutter-plane pose resolved by a full-span witness, a
+longer ray that later reaches that cell, global/scoped subtract and intersect,
+additive exclusions and no-witness refusals. Verify new work accounting without
+loosening caps; ball-only budgets unchanged. Keep the raw primitive refusal
+check where applicable; upgraded scene checks assert independently derived
+answers rather than accepting hit OR unresolved.
+
+Rerun focused/full Node. Produce an isolated fail-before demonstration. Regenerate
+both diagnostic views with tools/connected-sight-probe.js, inspect, and report
+status/reason/work differences against the previous packet. Add a deterministic
+pose sweep including points on authored face planes; report unresolved frequency
+by pose class, not just average work. Avoid claiming a GPU performance gain.
+One report, stop for review. No connected GPU/editor gate changes.
