@@ -2781,3 +2781,11 @@ full assignment was present in BRIDGE_PROMPT.txt and was completed. Astra applie
 only two relocations with forwarding links, corrected the relocated relative
 link, removed stale MUSE-06/07 launch prose and narrowed startup testing. Other
 candidates remain evidence to review, not blanket deletion approval.
+
+## MUSE-55 accepted ? 2026-09-11, Astra
+
+Benchmark/report only, base 320d92e. Reviewed and rerun on Windows Node 24.20.0.
+Local corrections: first-for-pose attribution, no unsupported GC explanation,
+strict own-option parsing, separate compile wall timing. Counts/work repeat
+identically; no GPU claims. Report: connected-cost-review-2026-09-11.md; Muse
+WSL evidence in muse55-connected-cost.md. No kernel files changed.

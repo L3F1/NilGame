@@ -510,5 +510,32 @@ test('on an authored face: an outside segment is excluded, a later cell encounte
     if(op!=='intersect'){assert.equal(answer.contact,'inside');assert.equal(answer.additiveOwner,'body');}
   }
 });
+test('excluded modifiers preserve unrelated owners across scope, order and curvature', () => {
+  for (const R of [.5,8,10000]) for (const reverse of [false,true]) {
+    const scale=R/8, v=a=>a.map(x=>x*scale);
+    for (const [op,target,owner,distance] of [
+      [undefined,undefined,'near',.8], ['subtract',undefined,'near',.8],
+      ['subtract','near','near',.8], ['subtract','far','near',.8],
+      ['intersect','far','near',.8], ['intersect','near','far',1.8],
+    ]) {
+      const balls=[
+        {id:'near',regionId:'orb',kind:'ball',position:v([0,1,0]),radius:.2*scale},
+        {id:'far',regionId:'orb',kind:'ball',position:v([0,2,0]),radius:.2*scale},
+      ];
+      if(reverse) balls.reverse();
+      const mask=cell('absent',v([3,0,0]),v([.2,.2,.2]),
+        {...(op?{op}:{}),...(target?{target}:{})});
+      const {region,origin,axes}=orb(scene('scope',R,R,[...balls,mask]));
+      const out=castSphericalRegion(region,origin,axes[1],{maxDistance:3*scale});
+      assert.equal(out.status,'hit',`${R}/${reverse}/${op}/${target}: ${out.detail}`);
+      // Along one radial geodesic a metric ball starts at center distance minus
+      // radius. This reference does not use the Boolean/event implementation.
+      near(out.distance,distance*scale,1e-9*R);
+      assert.equal(out.additiveOwner,owner);
+      assert.equal(out.surfaceOwner,owner);
+      near(region.space.dot([...out.point],[...out.normal],[...out.tangent]),-1,1e-9);
+    }
+  }
+});
 console.log(`s3 ray cast: ${passed} passed, ${failed} failed`);
 process.exitCode = failed ? 1 : 0;

@@ -119,7 +119,7 @@ To follow Muse's raw event log live in a PowerShell terminal (no model calls):
 
 ```powershell
 $run = Get-Content .agent-bridge/latest.json -Raw | ConvertFrom-Json
-$log = Join-Path $run.dir 'muse-54/agent.stdout.jsonl'
+$log = Join-Path $run.dir 'muse-55/agent.stdout.jsonl'
 Get-Content -LiteralPath $log -Tail 5 -Wait
 ```
 
@@ -136,7 +136,7 @@ for an unattended handoff, once. Keep status checks occasional and compact.
 No heartbeat prompts, automatic retries or additional review rounds run.
 Time/step/output limits are controls, not a guaranteed token cap.
 
-The checked-in manifest records the Muse archive audit, now completed/reviewed. Replace
+The checked-in manifest records the Muse CPU benchmark, now completed/reviewed. Replace
 its assignments before starting another batch; do not repeat completed work.
 Claude's first run hit its account limit; no retry is scheduled. Muse's revision
 was reviewed in the active Astra session, without a second CLI review. See
