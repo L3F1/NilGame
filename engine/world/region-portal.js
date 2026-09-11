@@ -23,15 +23,40 @@ function anchorFrame(entity,space) {
   return {entity,space,center,normal,up,right};
 }
 export function compileRegionPortals(scene,regions) {
-  const entities=new Map(scene.entities.map(e=>[e.id,e]));
+  const anchors=scene.entities.filter(e=>e.kind==='anchor').map(e=>{
+    const f=anchorFrame(e,regions.get(e.regionId).space);
+    return {id:e.id,regionId:e.regionId,radius:e.radius,space:f.space,center:f.center,normal:f.normal,up:f.up};
+  });
+  return compileFramedPortals(scene.connections,anchors,scene.units.playerRadius);
+}
+
+// Shared physical-frame boundary: global cover placements need no fake decode
+// through the origin chart. Scene-v2 continues to decode through its own adapter.
+export function compileFramedPortals(connections,anchors,playerRadius) {
+  if(!Number.isFinite(playerRadius)||playerRadius<=0)throw Error('Invalid player radius');
+  const entities=new Map(),used=new Set(),ids=new Set();
+  for(const anchor of anchors){
+    const {space,center,normal,up}=anchor;
+    if(!anchor.id||!anchor.regionId||entities.has(anchor.id))throw Error('Invalid or duplicate anchor ID');
+    space.validatePoint(center);space.validateTangent(center,normal);space.validateTangent(center,up);
+    if(Math.abs(space.norm(center,normal)-1)>1e-8||Math.abs(space.norm(center,up)-1)>1e-8||Math.abs(space.dot(center,normal,up))>1e-8)throw Error('Aperture frame must be orthonormal');
+    if(!Number.isFinite(anchor.radius)||anchor.radius<=playerRadius)throw Error('Aperture does not admit player');
+    if(space.kind==='s3'&&anchor.radius>=Math.PI*space.curvatureRadius/2)throw Error('S3 aperture must fit an open hemisphere');
+    const basis=space.frame(center),u=basis.map(e=>dot(up,e)),n=basis.map(e=>dot(normal,e)),r=cross(u,n);
+    const right=center.map((_,i)=>basis.reduce((s,b,j)=>s+b[i]*r[j],0));
+    entities.set(anchor.id,{entity:{id:anchor.id,regionId:anchor.regionId,radius:anchor.radius},space,
+      center:center.slice(),normal:normal.slice(),up:up.slice(),right});
+  }
   const portals=[];
-  for(const connection of scene.connections) {
+  for(const connection of connections) {
+    if(!connection.id||ids.has(connection.id)||connection.kind!=='portal'||connection.velocity!=='preserve-speed'||connection.scale!==1||connection.a===connection.b)throw Error('Invalid portal connection');
+    ids.add(connection.id);
     const ends=[connection.a,connection.b].map(id=>{
-      const e=entities.get(id),r=regions.get(e.regionId);
-      if(e.radius<=scene.units.playerRadius)throw new Error(`Portal ${connection.id} does not admit the player`);
-      if(r.space.kind==='s3'&&e.radius>=Math.PI*r.space.curvatureRadius/2)throw new Error('S3 aperture must fit an open hemisphere');
-      return anchorFrame(e,r.space);
+      const frame=entities.get(id);
+      if(!frame||used.has(id))throw Error('Unknown or already connected anchor');
+      used.add(id);return frame;
     });
+    if(ends[0].entity.radius!==ends[1].entity.radius)throw Error('Aperture radii must match');
     for(let i=0;i<2;i++) {
       const a=ends[i],b=ends[1-i];
       const fromFrame=v=>[-dot(v,a.right),dot(v,a.up),-dot(v,a.normal)];
@@ -49,6 +74,8 @@ export function compileRegionPortals(scene,regions) {
           :a.space.curvatureRadius*Math.asin(clamp1(dot(p,a.normal))),
         crossing(p,u,maxTravel,radius=0) {
           const s=a.space;
+          s.validatePoint(p);
+          if(Math.abs(s.norm(p,u)-1)>1e-8||!Number.isFinite(maxTravel)||maxTravel<0||!Number.isFinite(radius)||radius<0)throw Error('Invalid aperture crossing query');
           let t=Infinity;
           if(s.kind==='e3') {
             const h=dot(p.map((x,j)=>x-a.center[j]),a.normal),speed=dot(u,a.normal);
@@ -56,11 +83,16 @@ export function compileRegionPortals(scene,regions) {
             t=-h/speed;
           } else {
             const A=dot(p,a.normal),B=dot(u,a.normal),R=s.curvatureRadius;
-            if(R*Math.asin(clamp1(A))<=PORTAL_PLANE_TOLERANCE)return null;
+            if(s.coverage!=='s3-cover'&&R*Math.asin(clamp1(A))<=PORTAL_PLANE_TOLERANCE)return null;
             const root=Math.atan2(-A,B);
             for(let k=-1;k<=3;k++) {
               const theta=root+k*Math.PI,candidate=theta*R;
-              if(candidate>1e-9&&candidate<=maxTravel+1e-9&&-A*Math.sin(theta)+B*Math.cos(theta)<0)t=Math.min(t,candidate);
+              if(candidate>1e-9&&candidate<=maxTravel+1e-9&&-A*Math.sin(theta)+B*Math.cos(theta)<0){
+                // A great sphere meets the orbit twice; the finite aperture
+                // occupies only its local disc, not the antipodal disc.
+                const at=s.step(p,u,candidate);
+                if(s.distance(a.center,at)+radius<=a.entity.radius-1e-7)t=Math.min(t,candidate);
+              }
             }
           }
           if(t>maxTravel+1e-9)return null;
