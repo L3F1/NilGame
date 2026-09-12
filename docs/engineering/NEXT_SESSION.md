@@ -1,6 +1,7 @@
 # Fresh-chat handoff for Astra
 
-Current work follows b28e32b: three-geometry preset exposed and browser checked.
+Current work follows5a251a4: visible three-geometry gallery has paired portal
+markers and an E3 return landmark; sparse numerical fixture remains unchanged.
 Read WORKING_RULES.md, then the relevant TASK_ROUTER.md row only.
 
 ## Next task
@@ -13,7 +14,9 @@ additive-ball/aperture subset, not unrestricted construction support.
 Worlds menu now links to tools/connected-global-preview.html?preset=three.
 The same page's World selector opens either preset and explicitly restarts it,
 discarding unsaved session edits. H3 policy is retained across edit/load/history.
-Read docs/qa/three-editor-review.md and THREE_GEOMETRY_MILESTONE.md.
+Read docs/qa/three-gallery-review.md and THREE_GEOMETRY_MILESTONE.md.
+Gallery uses14/16 primitive slots. Next work should target GPU refusal
+provenance and richer supported constructions, not pile on more marker balls.
 
 ## Current evidence and limits
 

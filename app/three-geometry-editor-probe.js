@@ -5,6 +5,7 @@ export async function checkThreeGeometryEditor({model,renderer,canvas,editor,dra
   const target=()=>model.document().baseScene.entities.find(e=>e.id==='h3-target');
   assert(document.querySelector('#world-preset').value==='three','Three-geometry preset not selected');
   assert(/H3/.test(document.querySelector('h1').textContent),'Missing H3 title');
+  draw();shots.push({name:'three-gallery-entry',data:canvas.toDataURL()});
   const route=['flat'];
   for(let i=0;i<400&&model.state.regionId!=='hyperbolic';i++){
     model.advance(.04,[0,1,0]);assert(!model.halted,'Forward route halted');

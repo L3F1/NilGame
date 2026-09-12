@@ -41,6 +41,8 @@ below. Implementation details and acceptance criteria:
 - [x] Expose the three-geometry fixture through the editor's World selector and
   Worlds menu. Verify H3 edit/save/load/undo, rejection and bidirectional flight
   through the browser on real GPU and SwiftShader.
+- [x] Add saved paired portal landmarks and a visible E3 return destination
+  without changing sparse numerical reference fixtures; verify route clearance.
 - [ ] Polish that level: useful architecture/scale cues, reliable contact,
   reduced numerical refusal pixels and appealing materials. Do not hide unknown
   rays as confident hits/misses. Measure high-resolution cost before defaults.

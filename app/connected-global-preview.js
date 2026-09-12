@@ -9,7 +9,7 @@ const checks=[],shots=[];
 async function report(err='',extra={}){await fetch('/__report',{method:'POST',body:JSON.stringify({err,hud:status.textContent,checks,shots,...extra})});}
 function failure(error){status.textContent=`Preview stopped: ${error.message||error}`;if(checking)report(String(error.stack||error));}
 try {
-  const response=await fetch(threeGeometry?'../levels/fixtures/connected-three-geometries.nil.json':'../levels/fixtures/connected-global.nil.json');if(!response.ok)throw Error(`Scene HTTP ${response.status}`);
+  const response=await fetch(threeGeometry?'../levels/fixtures/connected-three-geometries-gallery.nil.json':'../levels/fixtures/connected-global.nil.json');if(!response.ok)throw Error(`Scene HTTP ${response.status}`);
   const scene=await response.json();
   // The model calls installWorld only for edits, never for its initial compile.
   let renderer;
@@ -25,7 +25,7 @@ try {
     document.title='NilGame - E3 / complete S3 / H3 editor';
     document.querySelector('h1').textContent='E3 / COMPLETE S3 / H3 editor';
     document.querySelector('#world-description').textContent='Experimental three-geometry world: flat E3 opens into complete S3 (radius 8), then bounded H3 (radius 8, chart extent 12). H3 supports balls of radius .25 to 1 and apertures .35 to 1. Unsupported edits are refused. The spherical region has no chart boundary.';
-    document.querySelector('#route-description').textContent='Hold W from the flat spawn to enter S3, pass its antipode, and enter H3. Turn around after emerging to return through the same portal. Green balls are solid landmarks, not portals. No gravity.';
+    document.querySelector('#route-description').textContent='Hold W from the flat spawn to enter S3, pass its antipode, and enter H3. Turn around after emerging to return through the same portal. Paired balls mark the sides of each opening; fly between them. Balls are solid landmarks, not portals. The flat return faces a destination ball. No gravity.';
   }
   // Four rays are affordable on the tested GPU, but not software fallback.
   // This is a starting preference, not a performance guarantee; keep the toggle.
