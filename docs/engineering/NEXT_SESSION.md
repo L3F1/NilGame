@@ -16,14 +16,23 @@ All52 old-guard candidates distinguish into18 root sets and34 misses under the
 composed reference bounds. This is NOT whole-scene event/traversal certification.
 Live display still has52 numerical refusals; no tolerance or diagnostic change.
 
-Next lead task: read docs/qa/spherical-miss-attempt.md. Embedding full interval
-helpers in the shared shader produced no report at300s; hoisting still failed
-at60s. Restored live shader passes in about3s. Try a tiny standalone precision
-program before designing a separate exclusion pass. Do not repeat the large
-shader integration. Stage instrumentation is assigned to MUSE-76.
-Eventually propagate errors into a scoped S3 root evaluator and ordering. Include the GPU arithmetic
-and transcendental evaluation errors; CPU root reference alone is insufficient.
-Avoid another disconnected probe unless it answers a specific integration gap.
+Next lead task: read docs/qa/spherical-miss-small-program.md. A separate small
+GPU program now passes156 cases on real/SwiftShader:94 exclusions,58 retained
+root candidates,4 aperture refusals; forced-exclusion mutation caught. Original
+52 candidates distinguish34 misses/18 potential hits. Production renderer still
+unchanged. Cold program link/first-read takes about4-5s; per-pixel readback is NOT
+full-frame cost. Measure a full-screen pass before interactive integration.
+
+Crucial packing correction: S3 ball rows are -centre/-cos(radius/R); convert both
+signs before the positive-constant exclusion test. The earlier timed-out inline
+candidate lacked this conversion and would have declined its exclusion branch.
+
+Proposed pass must bind exclusions to the same directed portal/object, world
+revision, camera, viewport and sample offset; only eligible firstE3/S3 crossings
+consume them. AA centre results cannot be reused for other samples. Shader/CPU
+sample agreement is not a portable floating-point proof. Hit-side fringes need
+root intervals and interval-aware ordering later. Do not repeat monolithic
+interval integration (300s and60s no-report failures).
 
 Modules/contracts: primary-ray-bounds.js; PORTAL_TRANSFER_PRECISION.md;
 SPHERICAL_ROOT_PRECISION.md; additive-event-order.js. Stable selected E3/S3
@@ -46,8 +55,8 @@ Census runs through page-check --three-geometry [--sw]; preserve diagnostic colo
 - MUSE-73 corrected CPU census rerun twice on LeoPC/Node24.20.0: 12740 rays,
   1241 hits, 8357 misses, 3142 domain exits. NOT proof that GPU purple pixels
   are coverage. Refusal classifier regression caught false domain labels.
-- Latest MUSE-75 integration: full approved-host Node suite134/134 passed
-  (muse75-integration-suite.log); restored software gallery9 passed. Prior
+- Latest small-program experiment: full approved-host Node suite134/134 passed
+  (miss-small-suite.log); both backends gallery9 plus156 experiment cases passed. Prior
   primary-ray review real connected-global52/H3 evidence remains attributed.
 - Driver GPU timing and representative interactive latency remain open.
 - Godot trial follows visible three-geometry acceptance, before a large custom

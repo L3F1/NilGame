@@ -50,9 +50,12 @@ below. Implementation details and acceptance criteria:
 - [x] Bound E3 primary camera rays and verify actual GPU directions; compose
   primary/transfer/root reference on52 fringe candidates (18 roots/34 misses).
   Live numerical refusals remain unchanged; see primary-ray-review.md.
-- [ ] Evaluate a small standalone precision pass before further live interval
-  integration: in-shader candidate failed cold300s/60s checks; restored renderer
-  passes. Add stage telemetry (MUSE-76). See spherical-miss-attempt.md.
+- [x] Test a standalone spherical exclusion program: both GPU backends pass156
+  cases (94 misses,58 root candidates,4 aperture refusals), negative witness caught.
+  See spherical-miss-small-program.md; test-only, no live fringe fix.
+- [ ] Measure full-frame precision-pass cost and bind results to portal/object,
+  world revision, pose, viewport and AA sample before interactive integration.
+  MUSE-76 stage telemetry is quota-blocked; no automatic retry.
 - [ ] Repair S3 ball root precision with a scoped error model; preserve genuine
   tangencies and portal guards. Broaden artifact checks beyond the entry pose.
 - [x] Integrate H3 GPU repair and verify real/software readback, materials and
