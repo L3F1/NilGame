@@ -360,7 +360,7 @@ vec3 displayColor(vec4 result,vec4 n,vec4 t){
   if(result.x==2.&&refusalKind==1&&uDiagnostics==0){float tile=mod(floor(gl_FragCoord.x/12.)+floor(gl_FragCoord.y/12.),2.);color=vec3(.09,.12,.16)+tile*.014;}
   if(result.x==1.){
     if(uPolished==1&&length(n)>.5)color=finishMaterial(hitPoint,n,t,int(result.y),int(result.z));
-    else color*=.3+.7*abs(dot(n,t));
+    else color*=.3+.7*abs(tdot(n,t,D(128+int(result.y))));
   }return color;
 }
 void main(){

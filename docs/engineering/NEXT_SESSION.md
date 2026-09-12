@@ -1,5 +1,14 @@
 # Fresh-chat handoff for Astra
 
+Latest override: H3 material paths corrected, GPU contact-AO fail-before caught
+old S3 fallback. Real/software checks both129 isolated hits (AO byte delta0),
+20 contact-shaded pixels; three-geometry ray crosses twice with distance42.0991,
+model reaches H3 and edits/undo/redo render. Read h3-material-review.md.
+Full Node125/125 passed; existing connected-global real-GPU52 passed.
+Next: fix diagnostic provenance for H3 domain-exit (currently appears numeric),
+with reason-kind checks; then expose the three-geometry preset. No user-facing
+three-geometry form yet. Do not redo the material work or resume obsolete clones.
+
 Newest 2026-09-12: H3 GPU draft integrated behind experimentalH3 opt-in, with
 lead stable local-frame ball spans. Read docs/qa/h3-stable-span-review.md.
 Durable queue commands page-check --h3-gpu [--sw] both pass:22 extra refusals,

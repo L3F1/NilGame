@@ -14,6 +14,18 @@ Primitive texture row.w now tags balls (1), other primitives (0); capacities and
 serialized scene formats are unchanged. Colours/materials are preview defaults,
 not yet authorable or saved per-entity materials.
 
+Experimental H3 materials use hyperbolic ball distances for AO and the H3
+radial domain check. Light direction is the origin-frame light parallel
+transported along the radial geodesic to the hit point; it is a chosen smooth
+light field, not globally parallel sunlight. Dot products, half-vector length
+and Fresnel use the Lorentz-induced tangent metric. Ball bands use log at the
+ball centre resolved in its radially transported construction frame. Basic
+shading also uses the metric. E3/S3 material policy is unchanged.
+
+`page-check --h3-gpu` checks isolated-ball AO invariance and contact darkening
+with a second ball, in addition to diagnostic ray comparisons. These are
+shading heuristics; they do not alter ray or collision classifications.
+
 Optional AO is a normal-probe heuristic: four physical normal-geodesic offsets
 (.06 through about .60 units), field shortfall weighted into ambient intensity.
 It evaluates local additive/scoped Boolean fields, using physical spherical ball

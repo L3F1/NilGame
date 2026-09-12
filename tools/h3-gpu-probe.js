@@ -19,6 +19,7 @@ import {compileHyperbolicRegionWorld} from '../engine/world/region-world.js';
 import {traceRegionSight} from '../engine/world/region-sight.js';
 import {createConnectedRenderer} from '../engine/geometry/connected-renderer.js';
 import {createCameraFrame,turn} from '../engine/world/camera-frame.js';
+import {createConnectedGlobalPreview} from '../app/connected-global-model.js';
 import {h3LocalFrame} from '../engine/geometry/hyperbolic-gpu.js';
 
 export const SCENE_PATH='../levels/fixtures/connected-h3-cpu.nil.json';
@@ -258,6 +259,41 @@ export async function runProbe({canvas,scenePath=SCENE_PATH,onProgress=()=>{}}={
   // This constructor compiles and links the runtime GLSL. A compile error is
   // reported as such -- but a successful compile is NOT admission of anything.
   const renderer=createConnectedRenderer(canvas,world,{experimentalH3:true});
+  // An isolated convex metric ball has no other surface to occlude its outward
+  // normal probes. Test without portals so the near-aperture AO suppression
+  // cannot make the check vacuous.
+  const isolated=structuredClone(scene);
+  isolated.connections=[];isolated.entities=isolated.entities.filter(e=>e.kind!=='anchor');
+  const isolatedWorld=compileHyperbolicRegionWorld(isolated);
+  renderer.replaceWorld(isolatedWorld);
+  const materialPose=poseCamera(isolatedWorld,VIEWS[0]);
+  const materialState={regionId:VIEWS[0].regionId,position:materialPose.position,camera:materialPose};
+  const materialOptions={range:6,polished:true};
+  const packet=renderer.read(materialState,49,37,materialOptions);
+  const plain=renderer.readColor(materialState,49,37,{...materialOptions,ao:false});
+  const shaded=renderer.readColor(materialState,49,37,{...materialOptions,ao:true});
+  let materialHits=0,maxIsolatedAOChange=0;
+  for(let i=0;i<plain.length;i+=4)if(packet.pixels[i]===1){
+    materialHits++;
+    for(let k=0;k<3;k++)maxIsolatedAOChange=Math.max(maxIsolatedAOChange,Math.abs(plain[i+k]-shaded[i+k]));
+  }
+  if(materialHits<20||maxIsolatedAOChange>1)throw Error(`Isolated H3 AO: ${materialHits} hits, ${maxIsolatedAOChange} byte change`);
+  const material={materialHits,maxIsolatedAOChange};
+  const contactScene=structuredClone(isolated);
+  contactScene.entities.push({id:'ao-neighbour',kind:'ball',regionId:'hyperbolic',position:[.4,1,0],radius:.25});
+  renderer.replaceWorld(compileHyperbolicRegionWorld(contactScene));
+  const contactPacket=renderer.read(materialState,49,37,materialOptions);
+  const contactPlain=renderer.readColor(materialState,49,37,{...materialOptions,ao:false});
+  const contactAO=renderer.readColor(materialState,49,37,{...materialOptions,ao:true});
+  let darkened=0;
+  for(let i=0;i<contactPlain.length;i+=4)if(contactPacket.pixels[i]===1){
+    const delta=[0,1,2].map(k=>contactPlain[i+k]-contactAO[i+k]);
+    if(delta.some(x=>x< -1))throw Error('H3 AO brightened a surface');
+    if(delta.some(x=>x>2))darkened++;
+  }
+  if(darkened<5)throw Error(`H3 contact AO missing: ${darkened} shaded pixels`);
+  material.contactDarkened=darkened;
+  renderer.replaceWorld(world);
   const views=[];
   for(const view of VIEWS){onProgress(`probing ${view.label}`);views.push(probeView(renderer,world,view));}
   onProgress('measuring frames');
@@ -276,7 +312,28 @@ export async function runProbe({canvas,scenePath=SCENE_PATH,onProgress=()=>{}}={
   const disagreements=views.reduce((s,v)=>s+v.verdicts[DISAGREE],0);
   const answeredRefusals=views.reduce((s,v)=>s+v.answeredRefusals,0);
   const hitShortfall=views.reduce((s,v)=>s+v.hitShortfall,0);
-  return {scene:scene.id,hardware:renderer.hardware,defaultRefused,
+  const threeResponse=await fetch('../levels/fixtures/connected-three-geometries.nil.json');
+  if(!threeResponse.ok)throw Error('Three-geometry fixture unavailable');
+  const three=createConnectedGlobalPreview(await threeResponse.json(),{experimentalH3:true,
+    installWorld:w=>renderer.replaceWorld(w)});
+  renderer.replaceWorld(three.world);
+  const cpu=three.sight(three.state.camera.forward,60),gpu=renderer.read(three.state,1,1,{range:60});
+  if(cpu.status!=='hit'||cpu.crossings.length!==2||gpu.pixels[0]!==1
+    ||renderer.packed.ids[gpu.pixels[1]-1]!=='hyperbolic'
+    ||renderer.packed.primitiveIds[gpu.pixels[2]-1]!=='h3-target'
+    ||Math.abs(cpu.distance-gpu.distances[0])>.001)throw Error('Three-geometry centre ray mismatch');
+  renderer.draw(three.state,{width:320,height:240,range:60});
+  images.push({label:'three-geometry-entry',dataUrl:canvas.toDataURL('image/png')});
+  for(let i=0;i<300&&three.state.regionId!=='hyperbolic';i++)three.advance(.04,[0,1,0]);
+  if(three.state.regionId!=='hyperbolic'||three.halted)throw Error('Three-geometry model route did not reach H3');
+  const before=JSON.stringify(three.state.position);
+  three.editEntities([{id:'h3-target',patch:{radius:.7}}]);
+  if(JSON.stringify(three.state.position)!==before)throw Error('H3 edit relocated player');
+  if(!three.undoEdit()||!three.redoEdit())throw Error('Three-geometry history failed');
+  renderer.draw(three.state,{width:320,height:240,range:60});
+  images.push({label:'three-geometry-h3-edited',dataUrl:canvas.toDataURL('image/png')});
+  const threeGeometry={distance:cpu.distance,gpuDistance:gpu.distances[0],region:three.state.regionId};
+  return {scene:scene.id,hardware:renderer.hardware,defaultRefused,material,threeGeometry,
     counts:renderer.packed.counts,views,frames,images,disagreements,
     answeredRefusals,hitShortfall,
     verdict:disagreements?'DISAGREEMENTS FOUND':'no per-pixel disagreement in these views',
