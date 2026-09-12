@@ -493,7 +493,10 @@ try {
       checks.push(`live exclusion pass ${record.status} (${record.certificatePixels.certified}/${width*height} certified pixels, ${record.acceptedPixels} accepted, ${record.certificateOmissions} omissions): ${record.recoveredPixels} previously unresolved pixels resolved, ${record.cpuDisagreements} CPU disagreements, no settled pixel changed; frame cost ${JSON.stringify(record.baselineCost.gpuMs)} -> ${JSON.stringify(record.passCost.gpuMs)} (${record.passCost.gpuStatus})`);
       return record;
     })();
-    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,ordering,census,exclusion,livePass]});
+    const {checkRefinementMotion}=await import('./refinement-motion-probe.js');
+    const motion=await checkRefinementMotion(model,renderer);
+    checks.push('Refinement motion: E3/S3/H3 round trip, strict settled parity; GPU timing status '+motion.arms.map(a=>a.timingStatus).join('/'));
+    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,ordering,census,exclusion,livePass,motion]});
   } else {
     const records=[],poses=[];
     if(!/no gravity/i.test(document.body.textContent)||!/COMPLETE S3/.test(document.body.textContent))throw Error('Page lost its complete-S3/no-gravity label');

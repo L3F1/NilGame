@@ -16,18 +16,18 @@ REJECTED: little timing benefit and repeatable settled-distance change on the
 hardware backend; see live-miss-pass-review.md. Do not revive it as accepted.
 Fixed eligibility/group scanning is now precomputed per packed world and
 updated transactionally on edits. No measured frame-rate benefit claimed.
-Keep the intermittent hardware distance difference at(6,43) open; no further
-precision/performance algorithm changes before isolation. Measuring the existing
-path during movement is allowed and may supply a new reproduction.
-Claude's report-only investigation is reviewed in
-docs/qa/claude-distance-drift-review.md, including a required lead correction:
-debug 8 red is final-active, not ever-accepted; do not use zero to exclude prior
-refinement. Two cold runs now captured all sixteen alternating samples without drift;
-see distance-drift-capture.json in docs/qa. Stop repeating unchanged cold runs.
-The off/off resize guard already landed at52bf179; no reproduction/fix yet.
-No external agents are running; do not redispatch the completed manifest.
-Next: sustained movement cost at playable resolution with strict parity;
-retain diagnostic capture for a naturally recurring failure. Then AA/sample policy. Do not enable globally from a single view. Do not embed interval
+The intermittent baseline drift is now CAPTURED with refinement OFF after
+resize/timing, before the new motion probe runs. See
+docs/qa/refinement-motion-review.md and distance-drift-baseline-failure.json.
+First repeated primary ray also changed slightly; later readings stabilized.
+Next: isolate GLSL normalization and the E3 quadratic's unit-length assumption
+at the captured ray, with packed coefficients. No presumed driver diagnosis.
+Do not rerun whole-scene timing blindly. Strict equality checks remain.
+Motion probe: initial hardware correctness/timing passed; final software
+correctness passed but timing INCOMPLETE. Final hardware run hit the old
+baseline failure before motion. Refinement remains default-off, AA unsupported.
+No external agents running; completed Claude manifest must not be redispatched.
+Do not embed interval
 arithmetic in the main shader (prior300s/60s no-report failures).
 
 New raster experiment: at320x240, one portal/ball GPU pass p95~.023ms RTX5070Ti

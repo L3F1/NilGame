@@ -28,11 +28,11 @@ exposed with smoothing refusal explained;320x240 GPU costs measured. Next:
 isolate intermittent hardware settled-distance mismatch, then AA and sustained
 motion cost checks. Fixed eligibility is now precomputed per world; no measured
 speedup claimed, and default-off refinement remains experimental.
-Baseline-only resize/timing invariance now checked separately. Issue remains
-open; Claude report reviewed with corrected diagnostic semantics. Next bounded
-experiment completed: two cold hardware runs, sixteen stable samples. Evidence
-in docs/qa/distance-drift-capture.json; no fix claimed. Stop identical reruns;
-next measure sustained-motion cost with strict parity, retaining capture.
+Baseline-only resize/timing failure now captured with refinement OFF; primary
+ray also varied in subsequent diagnostic draws. Next: normalization / E3
+quadratic sensitivity, using packed data. See docs/qa/refinement-motion-review.md.
+Motion corpus correctness passed initial hardware and final software; software
+timings incomplete, final hardware blocked by the existing baseline failure.
 Non-E3 camera regions skip the inapplicable pass. Near-tangent scheduling trial
 rejected (small timing benefit, hardware settled-distance regression); keep
 the diagnostic and do not weaken equality checks. See live-miss-pass-review.md
