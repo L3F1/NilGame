@@ -15,8 +15,8 @@ in H3 distance's time difference. MUSE-67 rev2 accepted as sampled evidence;
 MUSE-68 aperture audit accepted as sampled evidence (review in muse-log.md).
 Earlier removal/orientation UI and MUSE-64 are accepted and integrated.
 Check bridge status before dispatch: do not restart completed or running work.
-Latest Node validation:118/118 in h3-region-suite.log. Connected-global
-real-GPU cold browser check52/52 on LeoPC after saved H3 CPU region support.
+Latest Node validation:119/119 in h3-sight-suite.log. Connected-global
+real-GPU cold browser check52/52 on LeoPC after connected H3 CPU sight support.
 Earlier S3 timeout evidence remains in portal-ui-review.md; runner deadline
 and assertions are unchanged. Prior browser43 passed on real GPU and SwiftShader;
 new removal/orientation browser evidence is in claude-portal-removal-ui.md.
@@ -33,11 +33,12 @@ not shader programs. The model.world and renderer.packed properties are getters.
 Portal construction/transit and connected host camera/movement coefficients now
 use adapter metric products; E3/S3 parity checks passed. Sight and movement now
 normalize explicit aperture refusals. See H3_QUERY_CONTRACT.md and
-aperture-motion-review.md. MUSE-69 is accepted as sampled consumer evidence. MUSE-70 independently audits
-saved H3 fields and the outward aperture rule; check bridge status first.
+aperture-motion-review.md. MUSE-69 is accepted as sampled consumer evidence. MUSE-70 delivered saved H3/outward checks, pending review (run
+2026-09-12T03-50-50-055Z-b257aa97). MUSE-71 audits connected H3 sight; check bridge status first.
 H3 saved regions now compile through compileHyperbolicRegionWorld. Read
-h3-region-review.md and H3_QUERY_CONTRACT.md. Next lead task: CPU connected sight
-H3 dispatch (no S3 fallback), then GPU. No visible preset before GPU support.
+h3-region-review.md and H3_QUERY_CONTRACT.md. Connected CPU sight now uses H3 fields and foreground-bounded aperture queries.
+Read h3-sight-review.md. Next lead task: review MUSE-70/71, then specify and
+implement the bounded GPU H3 path. No visible preset before GPU support.
 Camera adaptation is complete. Do not expose an H3 preset
 before camera/portal/GPU support. Extent<=2R and representative<=4R are numerical
 policies; exceptions must not become silent ray misses or artificial walls.

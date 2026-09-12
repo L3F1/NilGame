@@ -64,8 +64,8 @@ It shares E3/S3 radial correspondence and metric tangent maps, adds H3 signed
 height and explicit aperture packets (hit.at aliases hit.point), validates H3
 centres in-domain and disc radii <=R. compileFramedPortals still rejects H3.
 Saved scene admission is available through compileHyperbolicRegionWorld,
-using the existing v2 schema. No authoring preset, sight-field dispatch or GPU
-admission yet. Its renderData explicitly refuses H3 worlds.
+using the existing v2 schema. Connected CPU sight now uses the H3 field's analytic
+queries. No authoring preset or GPU admission yet; renderData refuses H3 worlds.
 
 The saved H3 subset permits additive balls, spawns, objectives and anchors.
 It refuses floors, other solids, modifiers and extents beyond2R. Ball/disc radii
@@ -73,6 +73,14 @@ must be <=R. hyperbolic-field.js snapshots decoded balls; samples preserve
 owner and normal-feature metadata. Its union exterior distance is exact, while
 interior magnitude is conservative. rayCast retains the helper's explicit
 status, range, domain and work-budget policies. No Boolean or renderer fallback.
+
+Connected sight queries the H3 field first to obtain any definite foreground
+hit. Its distance bounds every aperture query equally; this avoids remote
+aperture range/domain ambiguity hiding a nearer solid. Unknowns are not upgraded
+to hits or safe prefixes. A tied aperture still refuses. If a nearer portal
+shortens an unresolved field query, query that smaller segment before transit
+and charge its tests to the same work budget. Reuse full-range misses and valid
+foreground hits. hyperbolic-sight.test.js pins these orderings and limits.
 
 ## Consumer integration gate
 

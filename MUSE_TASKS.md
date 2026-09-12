@@ -68,10 +68,17 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-70. MUSE-69 accepted; see docs/qa/muse-log.md.
+Order: review MUSE-70; MUSE-71 may run independently.
 
-## MUSE-70 - QUEUED: saved H3 and outward aperture audit
+## MUSE-70 - READY FOR REVIEW
 
-Assignment/allowed files: tools/agent-bridge-tasks.json.
-Independent Node checks and isolated mutation; no production repairs.
-Check bridge status before dispatch; never restart running/delivered work.
+Delivered run2026-09-12T03-50-50-055Z-b257aa97, base41f1548. Report inspected:
+no production failures reported. Test source/rerun/mutation acceptance pending.
+Do not redispatch. Files: hyperbolic-region-truth.test.js and
+docs/qa/muse70-h3-saved.md in its bridge checkout.
+
+## MUSE-71 - QUEUED: independent connected H3 sight
+
+Assignment and allowed files in tools/agent-bridge-tasks.json.
+Focused Node plus isolated fail-demo; no production changes.
+Check bridge status; never restart running or delivered work.

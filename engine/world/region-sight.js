@@ -27,6 +27,7 @@ export function traceRegionSight(world, ray, {
     const region = world.regions.get(regionId);
     if (!region) throw new Error(`Unknown region ${regionId}`);
     const { space, field } = region;
+    if(!['e3','s3','h3'].includes(space.kind))return result('unresolved','unsupported-geometry');
     space.validatePoint(position); space.validateTangent(position, direction);
     if (Math.abs(space.norm(position, direction) - 1) > 1e-8) throw new Error('Sight direction must be unit length');
     if (!space.withinDomain(position)) return result('unresolved', 'domain-exit');
@@ -34,6 +35,22 @@ export function traceRegionSight(world, ray, {
     if (!spend()) return result('unresolved', 'work-budget');
     const domain = space.boundaryDistance(position, direction, remaining);
     let end = Math.min(remaining, domain), gate = null, gateTie = false;
+    let h3Query=null,h3Range=end;
+    const queryH3=limit=>{
+      const query=field.rayCast(position,direction,{maxDistance:limit,maxTests:maxWork-work});
+      work+=query.tests;return query;
+    };
+    if(space.kind==='h3'){
+      if(typeof field.rayCast!=='function'||field.capabilities?.intersection!=='analytic-with-refusals')
+        return result('unresolved','unsupported-h3-field');
+      // Establish a definite foreground endpoint before asking apertures. A
+      // heuristic ambiguity at a distant gate/range limit need not conceal a
+      // nearer solid. All apertures still see ONE identical bounded segment.
+      h3Query=queryH3(end);
+      if(h3Query.status==='hit')end=h3Query.distance;
+      if(h3Query.status==='unresolved'&&h3Query.reason==='work-budget')
+        return result('unresolved','work-budget',{query:h3Query});
+    }
     const horizon=end, uncertainties=[];
     const uncertainResult=()=>result('unresolved','aperture-query',{
       apertures:uncertainties.slice().sort((a,b)=>a.fromId.localeCompare(b.fromId)) });
@@ -80,6 +97,19 @@ export function traceRegionSight(world, ray, {
           return result('unresolved', 'range-boundary', { certifiedLocalDistance: end });
         local = end;
       }
+    } else if(space.kind==='h3') {
+      // The experimental H3 field owns metric intersections. Never send H3
+      // through spherical events or silently substitute an approximate marcher.
+      // Reuse the foreground hit or a full-range miss. If a nearer aperture
+      // shortened an unresolved query, retry only that smaller segment and
+      // charge its work; a remote uncertain solid must not hide a nearer gate.
+      const reusable=h3Query.status==='miss'||end===h3Range
+        ||(h3Query.status==='hit'&&end===h3Query.distance);
+      const query=reusable?h3Query:queryH3(end);
+      if(query.status==='unresolved')return result('unresolved',query.reason,{query});
+      if(query.status==='hit'){
+        local=query.distance;hit={...query,t:query.distance,owner:query.id,method:'h3-balls'};
+      }else local=end;
     } else if(space.coverage==='s3-cover') {
       if(!Array.isArray(region.balls))return result('unresolved','unsupported-global-field');
       const query=castSphericalBalls(space,region.balls,position,direction,{maxDistance:end,maxTests:maxWork-work});

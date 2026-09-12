@@ -43,7 +43,8 @@ radial coordinates. Region extent is a numerical coverage limit, not a wall.
   sampled consumer evidence. See H3_QUERY_CONTRACT.md.
 - scene fields, query normals, GPU packing/shaders and finite-domain crossing
   need explicit H3 capabilities. Additive CPU fields now exist in hyperbolic-field.js;
-  sight and GPU dispatch remain pending. Search all flat-versus-curved branches before
+  connected CPU sight now dispatches explicitly to those fields. GPU remains
+  pending. Search all flat-versus-curved branches before
   extending schema acceptance. Do not make unknown kinds inherit S3 behavior.
 
 ## Ordered implementation and acceptance
