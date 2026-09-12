@@ -2860,3 +2860,11 @@ saved-pair crossing checks passed. Lead added carried-up checks and tightened
 forward alignment; an isolated 180-degree-roll mutation now fails. Metric
 primitives are shared, so this is independent frame assembly, not a separate
 geometric oracle. See muse63-portal-api.md for evidence and limitations.
+
+## MUSE-64 accepted with stronger expected normals — 2026-09-11
+
+Base c3e1078, portal-removal-truth.test.js read and rerun on Windows Node24.20.0.
+Six sections passed. Lead added exact expected exit-chart normals to the cover
+reframe check, and corrected the report's attribution of near-entry displacement
+as integration drift: the explicit portal exit offset accounts for it. See
+muse64-portal-removal.md. Claude's controls remain a separate integration review.

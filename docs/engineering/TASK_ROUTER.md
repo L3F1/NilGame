@@ -25,6 +25,7 @@ historical status claims.
 | Review / integration / delegation | COORDINATION.md; assigned MUSE_TASKS.md section only | changed diff and referenced tests |
 | Docs / context maintenance | this router; affected source for status claims | no automatic math/archive read |
 | Host migration | docs/what-this-is.md; docs/decisions/001-runtime-strategy.md; docs/host-capability-map.md | current parity evidence |
+| Next connected geometry (H3) | H3_CONNECTED_CONTRACT.md; SUBSYSTEM_RULES.md math contracts | metric-space.js; camera-frame.js; region-portal.js; connected-shader.js |
 
 Kernel files above are under engine/world/ or engine/geometry/.
 Select code checks from SUBSYSTEM_RULES.md's Required checks table.

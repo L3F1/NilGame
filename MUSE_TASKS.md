@@ -68,11 +68,8 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-64. MUSE-63 accepted; see docs/qa/muse-log.md.
+Order: no open assignment. MUSE-64 accepted; see docs/qa/muse-log.md.
 
-## MUSE-64 — OPEN: portal removal and orientation checks
-
-Assignment/allowed files: tools/agent-bridge-tasks.json, muse64-portal-removal-checks.
-Exercise actual model APIs and adversarial history/ownership/carried-frame cases.
-Do not repeat the entire lead corpus. No implementation repairs or full suite;
-focused Node only, report defects and limits. Lead reviews before integration.
+Do not rerun the completed MUSE-64 manifest task. Claude's UI work is still a
+separate review. Next geometry reference checks require a bounded assignment
+from H3_CONNECTED_CONTRACT.md; this file does not enable H3 implementation.

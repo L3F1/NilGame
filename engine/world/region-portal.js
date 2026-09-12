@@ -42,6 +42,9 @@ export function compileFramedPortals(connections,anchors,playerRadius) {
   const entities=new Map(),used=new Set(),ids=new Set();
   for(const anchor of anchors){
     const {space,center,normal,up}=anchor;
+    // Plane roots and ambient frame projections below are E3/S3 only. A new
+    // metric must implement these operations before it can enter this path.
+    if(!space||!['e3','s3'].includes(space.kind))throw Error(`Unsupported portal geometry: ${space?.kind}`);
     if(!anchor.id||!anchor.regionId||entities.has(anchor.id))throw Error('Invalid or duplicate anchor ID');
     space.validatePoint(center);space.validateTangent(center,normal);space.validateTangent(center,up);
     if(Math.abs(space.norm(center,normal)-1)>1e-8||Math.abs(space.norm(center,up)-1)>1e-8||Math.abs(space.dot(center,normal,up))>1e-8)throw Error('Aperture frame must be orthonormal');
