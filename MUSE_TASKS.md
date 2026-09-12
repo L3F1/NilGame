@@ -78,5 +78,6 @@ Primary-source shortlist inspected; source-file specificity and license claims
 still require lead review before integration or code reuse. Do not redispatch.
 Claude's initial H3 GPU draft was returned for changes (h3-gpu-lead-review.md).
 claude-h3-gpu-repair stopped at session quota; do not dispatch more Claude work
-until availability is renewed. Partial draft and lead fix preserved in its
-checkout; see docs/qa/h3-gpu-lead-review.md. GPU verification is still pending.
+until availability is renewed. Lead integrated the repaired draft behind opt-in
+with stable ball spans and GPU readback: see docs/qa/h3-stable-span-review.md.
+Do not resume the obsolete clone; broader precision and H3 material work remain.

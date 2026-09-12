@@ -24,9 +24,10 @@ below. Implementation details and acceptance criteria:
 - [x] Document editor launch and higher-resolution preview choices in README.
 - [ ] Finish review of the partial H3 GPU repair, run real-GPU and SwiftShader
   readback, inspect images and measure frame distributions. Claude stopped at
-  session quota; draft remains isolated. First real/software GPU runs completed:
-  331 extra refusals per backend, including191 CPU hits. Refine refusal bands
-  with verified error analysis before admission. See docs/qa/h3-first-gpu-review.md.
+  session quota. Opt-in experimental renderer now has durable real/software GPU
+  checks. Stable ball spans reduced extra refusals331->22, lost hits191->1 in
+  the fixed corpus. Broader precision cases, H3 materials and GPU timing remain.
+  See docs/qa/h3-stable-span-review.md; visible H3 editor not yet shipped.
 - [ ] Expose the three-geometry fixture through the existing editor/preset UI
   only after GPU verification; validate full edit/save/load/traverse workflow.
 - [ ] Polish that level: useful architecture/scale cues, reliable contact,

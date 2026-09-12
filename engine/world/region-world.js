@@ -144,8 +144,11 @@ function compileWorld(source,allowHyperbolic) {
       radius:scene.units.playerRadius,grounded:false,transits:0,stalled:false,blocked:null};
   }
   return Object.freeze({document:()=>structuredClone(scene),regions,portals,spawn,
-    renderData:()=>{
-      if([...regions.values()].some(r=>r.space.kind==='h3'))throw Error('H3 region rendering is not implemented');
+    // Default render packets still refuse H3. experimentalH3 is an explicit
+    // caller opt-in for the bounded GPU experiment; it changes no CPU geometry,
+    // schema admission or query policy.
+    renderData:({experimentalH3=false}={})=>{
+      if(!experimentalH3&&[...regions.values()].some(r=>r.space.kind==='h3'))throw Error('H3 region rendering is not implemented');
       return {regions:[...regions.values()].map(r=>({id:r.id,...r.descriptor.geometry,extent:r.descriptor.extent})),
         primitives:structuredClone(packets),portals:portals.map(p=>p.renderData())};
     }});

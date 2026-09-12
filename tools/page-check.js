@@ -50,9 +50,10 @@ const worlds = process.argv.includes('--worlds');
 const ballLab = process.argv.includes('--ball-lab');
 const regionLab = process.argv.includes('--region-lab');
 const connectedGlobal = process.argv.includes('--connected-global');
+const h3Gpu = process.argv.includes('--h3-gpu');
 const connectedPreview = process.argv.includes('--connected-preview') || connectedGlobal;
 const sphericalCover = process.argv.includes('--spherical-cover');
-const lab = ballLab || regionLab || connectedPreview || sphericalCover;
+const lab = ballLab || regionLab || connectedPreview || sphericalCover || h3Gpu;
 let timeoutMs;
 try {
   timeoutMs = parseReportTimeoutMs(process.argv);
@@ -108,6 +109,7 @@ const srv = createServer((req, res) => {
   }
   if (url === '/' || url === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html' });
+    if (h3Gpu) { res.end(readFileSync(join(ROOT,'tools/h3-gpu-probe.html'),'utf8')); return; }
     if (ballLab) { res.end(readFileSync(join(ROOT, 'tools/ball-lab.html'), 'utf8')); return; }
     if (regionLab) { res.end(readFileSync(join(ROOT, 'tools/region-lab.html'), 'utf8')); return; }
     if (connectedPreview) { res.end(readFileSync(join(ROOT, connectedGlobal?'tools/connected-global-preview.html':'tools/connected-preview.html'), 'utf8')); return; }
@@ -213,6 +215,10 @@ if (!report) {
 }
 
 const first = (report.hud || '').split('\n')[0].trim();
+if(h3Gpu&&report.h3Evidence){
+  mkdirSync(join(ROOT,'.agent-bridge'),{recursive:true});
+  writeFileSync(join(ROOT,'.agent-bridge',sw?'h3-gpu-sw.json':'h3-gpu-real.json'),JSON.stringify(report.h3Evidence,null,2));
+}
 const label = sphericalCover ? 'whole-S3 GPU check' : connectedPreview ? 'connected GPU preview check' : ballLab ? 'ball editor checks' : regionLab ? 'S3 viewport checks' : worlds ? 'world suite time' : `time to ${FRAMES} frames`;
 console.log(`${label} : ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 console.log('page error        :', report.err || '(none)');

@@ -1,6 +1,9 @@
 import {packConnectedWorld,CONNECTED_VERTEX,CONNECTED_FRAGMENT} from './connected-shader.js';
-export function createConnectedRenderer(canvas,world) {
-  let packed=packConnectedWorld(world);
+// experimentalH3 opts this renderer into the bounded H3 experiment. Default
+// callers keep the existing E3/S3 admission, including its H3 refusal.
+export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) {
+  const packOptions={experimentalH3};
+  let packed=packConnectedWorld(world,packOptions);
   const gl=canvas.getContext('webgl2',{alpha:true,premultipliedAlpha:false,antialias:false,preserveDrawingBuffer:true});
   if(!gl)throw Error('Connected preview requires WebGL2');
   gl.disable(gl.DITHER); // Debug packets are bytes, not display colors.
@@ -22,7 +25,7 @@ export function createConnectedRenderer(canvas,world) {
   const ext=gl.getExtension('EXT_disjoint_timer_query_webgl2'), pending=[], times=[];
   function replaceWorld(nextWorld){
     // Capacity/geometry refusals happen before touching GL or the current packet.
-    const next=packConnectedWorld(nextWorld),candidate=gl.createTexture();
+    const next=packConnectedWorld(nextWorld,packOptions),candidate=gl.createTexture();
     if(!candidate)throw Error('Cannot allocate connected world texture');
     try{
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,candidate);
@@ -38,9 +41,14 @@ export function createConnectedRenderer(canvas,world) {
     gl.deleteTexture(texture);texture=candidate;packed=next;
     for(const q of pending)gl.deleteQuery(q);pending.length=0;times.length=0;
   }
-  function draw(state,{width=320,height=240,debug=0,timer=false,diagnostics=false,polished=true,ao=true,antialias=false}={}) {
+  // range overrides the packed ray budget for one draw, so a probe can compare
+  // against a CPU query made with the same maxDistance. It never widens it.
+  function draw(state,{width=320,height=240,debug=0,timer=false,diagnostics=false,polished=true,ao=true,antialias=false,range}={}) {
+    if(range!==undefined&&(!(range>0)||range>packed.maxDistance))
+      throw Error('Draw range must be positive and within the packed budget');
     if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
     gl.viewport(0,0,width,height);gl.useProgram(program);
+    gl.uniform1f(loc.uMaxDistance,range===undefined?packed.maxDistance:range);
     for(const [key,vector] of [['uPosition',state.position],['uForward',state.camera.forward],['uRight',state.camera.right],['uUp',state.camera.up]])
       gl.uniform4fv(loc[key],[...vector,...Array(4-vector.length).fill(0)]);
     gl.uniform2f(loc.uResolution,width,height);gl.uniform1i(loc.uRegion,packed.ids.indexOf(state.regionId));gl.uniform1i(loc.uDebug,debug);
@@ -58,6 +66,10 @@ export function createConnectedRenderer(canvas,world) {
     }
     const error=gl.getError();if(error!==gl.NO_ERROR)throw Error(`Connected GL error ${error}`);
   }
+  // debug 3 is the NORMAL packet. For an H3 hit the shader writes the bounded
+  // local-frame encoding (hyperbolic-gpu.js h3LocalFrame), because an ambient
+  // unit H3 tangent does not fit n*.5+.5 in RGBA8; its alpha byte is 255 so a
+  // reader can tell the two encodings apart without guessing.
   function read(state,width=16,height=12,options={}) {
     draw(state,{...options,width,height,debug:1});const pixels=new Uint8Array(width*height*4);gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
     draw(state,{...options,width,height,debug:2});const bytes=new Uint8Array(width*height*4);gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,bytes);

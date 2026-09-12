@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NilGame · Experimental H3 GPU probe</title>
+<style>
+body{margin:24px auto;padding:0 18px;max-width:1000px;background:#101a27;color:#e0edf0;font:15px system-ui}
+canvas,img{image-rendering:pixelated;background:#16191e;max-width:100%}
+img{width:320px;height:240px;border:1px solid #3d5e77}
+button{padding:12px;margin:4px;background:#22384b;color:inherit;border:1px solid #829aaf;border-radius:6px}
+pre{white-space:pre-wrap;background:#0b131d;padding:10px;border-radius:6px;max-height:60vh;overflow:auto}
+figure{display:inline-block;margin:6px}figcaption{font-size:13px;max-width:320px}
+table{border-collapse:collapse;font-size:13px;width:100%}th,td{border:1px solid #2e4a60;padding:3px 6px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+.bad{color:#ff9bb0}.ok{color:#9be6b4}
+</style>
+<h1>Experimental H3 GPU probe</h1>
+<p>This page draws the saved fixture <code>levels/fixtures/connected-h3-cpu.nil.json</code> with the
+<strong>runtime</strong> connected shader (<code>engine/geometry/connected-shader.js</code>) through WebGL2, reads the
+status/distance/normal packets back with <code>gl.readPixels</code>, and compares every pixel with
+<code>traceRegionSight</code> on the same camera. Nothing is emulated in JavaScript: with no GPU there are no numbers.</p>
+<p>Cameras are deliberately <strong>non-axis-aligned</strong>. Views cover a single H3 ball, E3→H3 and H3→E3 legs, the
+return leg, a nearer solid against a remote gate at the range limit, a start inside the ball, and the chart
+boundary. Magenta is numerical/traversal uncertainty; dark checkers are the end of the supported chart —
+neither is sky. Agreement with the CPU is evidence, not mathematical proof.</p>
+<p>Four columns below decide the lead review's four findings:</p>
+<ul>
+<li><code>ambientStretch</code> — how far an ambient <code>normalize</code> would be from the metric one at this pose.
+A view near 1.000 cannot test finding&nbsp;1 at all; <code>h3-metric-camera-radial</code> is about 1.32.</li>
+<li><code>hitShortfall</code> — CPU hits minus GPU hits. An entry-only ball solver (finding&nbsp;2) makes this
+large on <code>h3-entry-exit-sweep</code> and <code>h3-beyond-ball</code>, whose ranges are many times the exit root.</li>
+<li>normal disagreements — compared in the tangent metric through the bounded local-frame encoding, and the
+decoded vector must itself be metric-unit (finding&nbsp;3). Clipped RGBA8 ambient normals fail both.</li>
+<li><code>answeredRefusals</code> — GPU answers where the CPU refused. This is the exact shape of the rejected
+aperture relaxation (finding&nbsp;4); over two thousand refused pixels are checked at 49×37.</li>
+</ul>
+<p>Serve the repository over HTTP (the page fetches the saved scene). Run real GPU and SwiftShader
+<strong>sequentially</strong> through the host queue and record the hardware string printed below with each run.</p>
+<p><button id="run">Run probe</button> <span id="status" role="status">idle</span></p>
+<p>Readback target (small, one pixel per query): <canvas id="view" width="49" height="37"></canvas></p>
+<table id="summary"></table>
+<div id="images"></div>
+<pre id="report">No run yet.</pre>
+<script type="module">
+import {runProbe} from '../tools/h3-gpu-probe.js';
+const checking=new URLSearchParams(location.search).has('check');
+const send=data=>fetch('/__report',{method:'POST',body:JSON.stringify(data)});
+const status=document.getElementById('status'),report=document.getElementById('report');
+const COLUMNS=['label','range','ambientStretch','cpuHits','hitShortfall','answeredRefusals',
+  'maxDistanceDelta','maxNormalDelta'];
+const cell=(row,text,header)=>{const c=document.createElement(header?'th':'td');c.textContent=text;row.append(c);};
+document.getElementById('run').addEventListener('click',async()=>{
+  status.textContent='running…';report.textContent='';
+  try{
+    const result=await runProbe({canvas:document.getElementById('view'),
+      onProgress:text=>{status.textContent=text;}});
+    const table=document.getElementById('summary');table.textContent='';
+    const head=table.insertRow();for(const key of [...COLUMNS,'disagree','refused'])cell(head,key,true);
+    for(const view of result.views){
+      const row=table.insertRow();
+      for(const key of COLUMNS)cell(row,typeof view[key]==='number'?Number(view[key].toPrecision(4)):view[key]);
+      cell(row,view.verdicts.disagree);
+      cell(row,view.verdicts['gpu-refused-where-cpu-answered']);
+      if(view.verdicts.disagree)row.className='bad';
+    }
+    const gallery=document.getElementById('images');gallery.textContent='';
+    for(const image of result.images){
+      const figure=document.createElement('figure'),img=document.createElement('img');
+      img.src=image.dataUrl;img.alt=`H3 GPU view ${image.label}`;
+      const caption=document.createElement('figcaption');caption.textContent=image.label;
+      figure.append(img,caption);gallery.append(figure);
+    }
+    const extra=result.views.reduce((n,v)=>n+v.verdicts['gpu-refused-where-cpu-answered'],0);
+    // Measured regression ceilings, not permission to turn unknowns into hits.
+    // These thirteen fixed views retain explicit silhouette/refusal bands.
+    const failed=result.disagreements||result.answeredRefusals||result.hitShortfall>1||extra>22
+      ||!result.defaultRefused||result.views.length!==13||result.views.reduce((n,v)=>n+v.cpuHits,0)<700;
+    status.textContent=failed?'DISAGREEMENTS FOUND':'complete';
+    status.className=failed?'bad':'ok';
+    report.textContent=JSON.stringify(result,(k,v)=>k==='images'?undefined:v,2);
+    if(checking)await send({err:failed?'H3 GPU regression failed':'',hud:`H3 GPU: ${result.hitShortfall} lost hits, ${extra} extra refusals`,
+      h3Evidence:result,shots:result.images.map(i=>({name:i.label,data:i.dataUrl}))});
+  }catch(error){
+    status.textContent='BLOCKED';status.className='bad';
+    report.textContent=`probe failed: ${error.message}\n${error.stack??''}`;
+    if(checking)await send({err:String(error.stack||error),hud:'H3 GPU probe failed'});
+  }
+});
+if(checking)document.getElementById('run').click();
+</script>
+</html>

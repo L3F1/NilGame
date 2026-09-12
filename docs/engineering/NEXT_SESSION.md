@@ -1,5 +1,15 @@
 # Fresh-chat handoff for Astra
 
+Newest 2026-09-12: H3 GPU draft integrated behind experimentalH3 opt-in, with
+lead stable local-frame ball spans. Read docs/qa/h3-stable-span-review.md.
+Durable queue commands page-check --h3-gpu [--sw] both pass:22 extra refusals,
+1 lost hit vs331/191 before, no checked disagreements on23569 rays/backend.
+Default connected-global real-GPU52 passes. Queue worker nowPID32728.
+Full approved-host Node suite125/125 passed (h3-stable-suite.log).
+Do not resume old isolated draft. Next: broader precision evidence and H3-aware
+materials, then expose three-geometry editor fixture. Driver timing still pending.
+Claude remains quota-limited until renewed. Update TODO as milestones land.
+
 2026-09-12 newest: first real-GPU and SwiftShader draft readback completed,
 NOT admitted. Both:23569 rays/13views,0 checked answer disagreements,331 extra
 refusals including191 CPU hits. Read docs/qa/h3-first-gpu-review.md. Draft still
