@@ -83,15 +83,12 @@ with stable ball spans and GPU readback: see docs/qa/h3-stable-span-review.md.
 Do not resume the obsolete clone; broader precision and H3 material work remain.
 
 
-## MUSE-75: primary-through-transfer independent reference
+## MUSE-76: renderer startup stage evidence
 
-Status: QUEUED, Muse, 2026-09-12; isolated bridge checkout after lead commit.
-Allowed: primary-transfer-truth.test.js; docs/qa/muse75-primary-transfer.md.
+Status: QUEUED, Muse, 2026-09-12; isolated checkout after lead commit.
 
-Independently reconstruct pinhole ray, source-plane crossing and normalized
-outgoing tangent. Check primary-ray-bounds -> portal-transfer-bounds against
-at least30 crossings across3 rotated cameras plus simultaneous camera input
-perturbations. Preserve input boxes; normalize output as the transfer policy
-requires. Refusals are valid and must be counted. Scope/details supplied in the
-bounded bridge instruction. Focused test, isolated fail-demo, full Node suite
-once; no engine/app changes, GPU jobs, nested agents, commits or pushes.
+Add optional startup/first-draw stage callbacks and check-only stage reporting.
+A stage is diagnostic evidence, never a final report or proof of stall cause.
+Preserve all timeouts, rendering and lifecycle behavior. Exact allowed paths and
+validation requirements are in the bridge assignment. Node checks plus isolated
+fail-demo; browser may remain unrun for lead review. No shader/math changes.

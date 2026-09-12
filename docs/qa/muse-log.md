@@ -2957,3 +2957,11 @@ Revision run2026-09-12T07-17-54-000Z-fb8483c0, base017901c. Lead reran36/36
 normalized-output enclosure cases and missing-transport mutation (fails direction3).
 Rev1 raw nonunit-output oracle superseded. Imported test/report only.
 See docs/qa/live-transfer-review.md for integration and limitations.
+
+
+## MUSE-75 - ACCEPTED, 2026-09-12
+
+Base d9679fb; isolated run2026-09-12T07-54-52-608Z-f2ac959b. Lead reviewed and
+reran34 nominal /102 perturbed enclosures,14 honest rim refusals; zero-error
+mutation fails at perturbed distance containment. Test/report imported only.
+Sampling is not a portable GPU or whole-scene proof. See muse75-primary-transfer.md.

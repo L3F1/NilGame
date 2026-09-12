@@ -13,8 +13,12 @@ All52 old-guard candidates distinguish into18 root sets and34 misses under the
 composed reference bounds. This is NOT whole-scene event/traversal certification.
 Live display still has52 numerical refusals; no tolerance or diagnostic change.
 
-Next lead task: propagate error alongside live selected transfer and a scoped
-S3 root evaluator, then feed interval-aware ordering. Include the GPU arithmetic
+Next lead task: read docs/qa/spherical-miss-attempt.md. Embedding full interval
+helpers in the shared shader produced no report at300s; hoisting still failed
+at60s. Restored live shader passes in about3s. Try a tiny standalone precision
+program before designing a separate exclusion pass. Do not repeat the large
+shader integration. Stage instrumentation is assigned to MUSE-76.
+Eventually propagate errors into a scoped S3 root evaluator and ordering. Include the GPU arithmetic
 and transcendental evaluation errors; CPU root reference alone is insufficient.
 Avoid another disconnected probe unless it answers a specific integration gap.
 
@@ -23,8 +27,8 @@ SPHERICAL_ROOT_PRECISION.md; additive-event-order.js. Stable selected E3/S3
 transfer already live with fallback/guards. Read live-transfer-review.md if
 changing that call. Root/order intervals must not be collapsed to points.
 
-MUSE-74 corrected revision accepted; no redispatch. MUSE-75 is the bounded
-independent primary-through-transfer composition audit. See queue/bridge status.
+MUSE-74 corrected revision accepted; no redispatch. MUSE-75 accepted:34 nominal /102 perturbations /14 honest rim refusals,
+zero-error mutation caught. MUSE-76 instruments startup stages; see bridge status.
 MUSE-72 source/license review remains pending. Claude remains quota limited.
 Census runs through page-check --three-geometry [--sw]; preserve diagnostic colors.
 
@@ -39,8 +43,9 @@ Census runs through page-check --three-geometry [--sw]; preserve diagnostic colo
 - MUSE-73 corrected CPU census rerun twice on LeoPC/Node24.20.0: 12740 rays,
   1241 hits, 8357 misses, 3142 domain exits. NOT proof that GPU purple pixels
   are coverage. Refusal classifier regression caught false domain labels.
-- Latest primary-ray review: full approved-host Node suite133/133 passed
-  (primary-suite-final.log); real connected-global52 and H3 GPU checks passed.
+- Latest MUSE-75 integration: full approved-host Node suite134/134 passed
+  (muse75-integration-suite.log); restored software gallery9 passed. Prior
+  primary-ray review real connected-global52/H3 evidence remains attributed.
 - Driver GPU timing and representative interactive latency remain open.
 - Godot trial follows visible three-geometry acceptance, before a large custom
   gizmo/asset workflow. Keep browser as reference. Future optics/portals/physics

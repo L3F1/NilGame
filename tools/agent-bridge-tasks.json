@@ -2,14 +2,18 @@
   "version": 1,
   "tasks": [
     {
-      "id": "muse75-primary-transfer",
+      "id": "muse76-render-stages",
       "agent": "muse",
-      "instruction": "MUSE-75: independent CPU audit of the composed primary camera -> E3/S3 transfer bounds. Read MUSE.md and ONLY MUSE-75 in MUSE_TASKS.md. Allowed writes primary-transfer-truth.test.js and docs/qa/muse75-primary-transfer.md. Use the current gallery fixture and compiled portal frame. Reconstruct an independent pinhole ray with image plane at unit forward distance and tan(35 degrees) half-height, normalize it, intersect source plane, use compiled gate.transit(at), then normalize carried direction in destination metric at arrival. Compare that truth against e3PrimaryRayBounds -> e3S3TransferBounds using midpoint/component half-width conversion. Test at least30 distinct successful crossings (off-axis pixels and at least3 rotated camera frames facing the aperture), plus simultaneous camera-component perturbations within explicit input boxes. Keep perturbed inputs within their boxes; do not normalize the camera basis before comparing it, since that changes the input. Output direction normalization IS transfer policy. Refusal near an aperture rim is valid, report counts instead of weakening it. Do not infer a confident miss or whole-scene safety from the root reference. Run focused check, one isolated fail-demo omitting a material uncertainty or transport stage (no working-tree engine mutation), full Node suite once. Report failures without repairs. No GPU jobs, dependencies, engine/app/doc edits beyond allowed report, commits, pushes, nested agents. Report under500words with commands and actual counts; samples are not a universal proof.",
+      "instruction": "MUSE-76: bounded diagnostics only. Read MUSE.md and your MUSE_TASKS entry. The lead candidate shader had no report after300s; we cannot tell compile, link or first draw. Add OPTIONAL synchronous onStage callback to createConnectedRenderer options, called before/after vertex compilation, fragment compilation, program link, and the FIRST draw submission/completion (include getError completion; once per renderer). Default absent hook must leave rendering unchanged. No shaders, math, uniforms, cache, timeout or lifecycle policy changes. In app/connected-global-preview.js check mode ONLY, provide callback sending short fixed stage names to a new /__stage endpoint of tools/page-check.js. Stages never finish the report promise. Keep at most16 validated stage records; limit request bodies, reject unknown names; include latest RECEIVED stage/time in timeout output and normal test evidence. Clearly call it last received stage, not proof where the GPU stalled; asynchronous delivery can lag. No stages or networking in ordinary non-check play. Factor pure validation/recording into tools/render-stage.js if useful. Add render-stage.test.js with invalid/oversize messages and evidence that a stage cannot become final report; use a GL mock for callback ordering/once behavior if feasible without mirroring internals. Allowed files only engine/geometry/connected-renderer.js, app/connected-global-preview.js, tools/page-check.js, tools/render-stage.js, render-stage.test.js, docs/qa/muse76-render-stages.md. Run focused checks and one isolated negative demonstration, full Node suite once. Browser evidence may remain UNRUN if host-probe says unavailable: lead will run real GPU. No commits, pushes, extra agents or geometry changes. Report under500words.",
       "allowedFiles": [
-        "primary-transfer-truth.test.js",
-        "docs/qa/muse75-primary-transfer.md"
+        "engine/geometry/connected-renderer.js",
+        "app/connected-global-preview.js",
+        "tools/page-check.js",
+        "tools/render-stage.js",
+        "render-stage.test.js",
+        "docs/qa/muse76-render-stages.md"
       ],
-      "report": "docs/qa/muse75-primary-transfer.md"
+      "report": "docs/qa/muse76-render-stages.md"
     }
   ]
 }
