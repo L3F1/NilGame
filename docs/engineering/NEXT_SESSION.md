@@ -9,8 +9,10 @@ wrong intersections. No new geometry or precision helper milestone meanwhile.
 The separate exclusion pass is now integrated behind draw's
 `sphericalMissPass:true`, default false. Claude's candidate needed lead repairs
 to its acceptance pose and total GPU timing. See docs/qa/live-miss-pass-review.md.
-Next: cost-aware admission and a user-visible opt-in, with AA/sample policy;
-do not enable globally from a single160x120 view. Do not embed interval
+The editor now exposes an explicit refinement checkbox (default off), with
+visible refusal while Smooth edges is active. Next: demand-driven execution or
+cheaper validated error bounds, then AA/sample policy and sustained movement
+cost checks. Do not enable globally from a single view. Do not embed interval
 arithmetic in the main shader (prior300s/60s no-report failures).
 
 New raster experiment: at320x240, one portal/ball GPU pass p95~.023ms RTX5070Ti

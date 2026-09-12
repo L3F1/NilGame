@@ -32,10 +32,14 @@ the experiments.
 For the current **connected editor**, run `node tools/relay.js` from this
 directory and open http://localhost:8080/tools/connected-global-preview.html.
 Entity and portal editing controls are below the viewport. It currently runs
-E3 and complete S3; H3 rendering is under review. This is the same renderer as
+E3 and complete S3; choose the three-geometry preset for experimental H3. This is the same renderer as
 the connected demo, not a separate finished editor. Choose a higher Resolution
 for sharper output; Polished lighting, Ambient occlusion and Smooth edges are
 available in the page. Numerical refusal pixels still need renderer work.
+For the current E3/S3/H3 gallery, open `tools/connected-global-preview.html?preset=three`.
+Turn off **Smooth edges**, then enable **Refine spherical edges through portals**
+to try the checked miss-exclusion pass. It resolves some purple fringes, not all;
+it starts off because software rendering can be substantially slower.
 The older flat-room authoring lab is at http://localhost:8080/tools/ball-lab.html.
 
 All eight Thurston geometries now have navigable experiments: H3, S3, H2 x R,

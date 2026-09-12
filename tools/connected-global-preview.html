@@ -41,6 +41,11 @@ is numerically uncertain the whole pixel stays magenta; the unresolved-ray highl
 <label><input id="ao" type="checkbox" checked> Ambient occlusion</label> — contact shading near other surfaces;
 no shadows from lights or through portals. Its effect is subtle on isolated spheres.
 For floors and corners, try the <a href="connected-preview.html">bounded room preview</a>.</fieldset>
+<fieldset><legend>Experimental rendering</legend>
+<label><input id="refine-spherical" type="checkbox" aria-describedby="refine-status"> Refine spherical edges through portals</label>
+<p id="refine-status" role="status">Off. Resolves some uncertain edges; other purple pixels remain.</p>
+<p>Requires Smooth edges off. May reduce frame rate, especially with software rendering.
+The first activation may pause while the additional shader loads.</p></fieldset>
 <div id="controls"><button data-action="forward">Forward (W)</button><button data-action="back">Back (S)</button>
 <button data-action="left">Look left (←)</button><button data-action="right">Look right (→)</button>
 <button data-action="up">Look up (↑)</button><button data-action="down">Look down (↓)</button>

@@ -45,6 +45,45 @@ and resize GPU checks, and AA sample handling before promotion. The separate
 pass is deliberately off by default; a missing/unsupported pass retains refusal.
 No repair for the18 hit-side tangency cases is claimed. No native host migration.
 
+## Precedent and the earlier timeout
+
+Follow-up UI delivery (same date): checkbox exposed under Experimental rendering,
+off by default. Browser tests exercise enable, AA refusal with explanation and
+disable; screenshot `page-check-shot-three-gallery-refinement.png` inspected.
+Both backends still recover34 entry-census pixels. Total320x240 GPU timings,
+12 fully drained samples each, baseline -> refinement median (max):
+RTX5070Ti .196224(.208288) -> .273472(.285824)ms;
+SwiftShader107.5794(110.1284) ->166.1422(176.4721)ms.
+Logs `.agent-bridge/refine-ui-{real,sw}.log`; same fixed pose, no AA, not a
+sustained walking/frame-presentation benchmark. This justifies opt-in, not a
+universal performance default. No additional math or shader changes this step.
+Final follow-up suite `node tools/test.js`:136/136 passed
+(`.agent-bridge/refine-ui-suite.log`).
+
+Primary sources checked2026-09-12:
+- [PBRT rounding-error management](https://www.pbr-book.org/4ed/Shapes/Managing_Rounding_Error):
+  error bounds and interval arithmetic for ray/shape intersections.
+- [NVIDIA self-intersection analysis](https://developer.nvidia.com/blog/solving-self-intersection-artifacts-in-directx-raytracing/):
+  derived error bounds and safe origins for triangle rays, not a solution for
+  spherical portal tangencies.
+- [Shewchuk adaptive predicates](https://www.cs.cmu.edu/~quake/robust.html):
+  escalate precision only when needed; determinant predicates, not our
+  transcendental/geodesic intersection implementation.
+- [Megakernels Considered Harmful](https://research.nvidia.com/sites/default/files/pubs/2013-07_Megakernels-Considered-Harmful/laine2013hpg_paper.pdf):
+  splitting GPU work can reduce divergence/register pressure. This does not
+  prove what our compiler did or imply every split renderer is faster.
+
+Established numerical techniques do not establish that embedding them throughout
+our connected fragment program was a good execution plan. That choice was ours.
+Our interval multiply evaluates four endpoint products, minima/maxima and outward
+rounding instead of one product. Portal transfer carries many such intermediates;
+the original shader already has surface, event ordering, crossing and sample loops.
+Inlining/unrolling and compiler optimization of the expanded graph are plausible
+startup-cost causes, not measured causes: earlier timeout runs did not isolate
+compile versus link versus deferred first-draw work. Do not describe those
+timeouts as measured slow frame times. A small separate program did complete;
+the live pass now provides actual frame measurements. No outside code copied.
+
 ## Claude usage correction
 
 Recorded75,057 output tokens,24,413 thinking tokens and7,827,424 cached-input

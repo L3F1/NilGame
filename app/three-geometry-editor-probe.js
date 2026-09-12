@@ -9,6 +9,19 @@ export async function checkThreeGeometryEditor({model,renderer,canvas,editor,dra
   draw();shots.push({name:'three-gallery-entry',data:canvas.toDataURL()});
   const census=galleryRayCensus(model,renderer);
   checks.push('Gallery entry census: 19200 CPU/GPU rays, no confident answer disagreements');
+  const refine=document.querySelector('#refine-spherical'),smooth=document.querySelector('#smooth');
+  const initialSmooth=smooth.checked;
+  assert(refine&&!refine.checked,'Refinement must start off');
+  smooth.checked=false;refine.checked=true;refine.dispatchEvent(new Event('change'));
+  assert(renderer.missPass.status==='generated','Refinement control did not reach live renderer');
+  shots.push({name:'three-gallery-refinement',data:canvas.toDataURL()});
+  smooth.checked=true;smooth.dispatchEvent(new Event('change'));
+  assert(renderer.missPass.status==='antialias-refused'&&/Paused/.test(document.querySelector('#refine-status').textContent),
+    'Smoothing must refuse centre-ray certificates and explain why');
+  refine.checked=false;refine.dispatchEvent(new Event('change'));
+  assert(renderer.missPass.status==='disabled','Refinement toggle did not restore baseline');
+  smooth.checked=initialSmooth;smooth.dispatchEvent(new Event('change'));
+  checks.push('Real refinement checkbox reaches renderer, refuses AA with explanation, and restores baseline');
   const route=['flat'];
   for(let i=0;i<400&&model.state.regionId!=='hyperbolic';i++){
     model.advance(.04,[0,1,0]);assert(!model.halted,'Forward route halted');

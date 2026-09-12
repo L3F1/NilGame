@@ -41,7 +41,14 @@ try {
   // Smooth edges averages four display samples; the diagnostics view always shows single centre rays.
   const smoothing=()=>document.querySelector('#smooth').checked&&!document.querySelector('#diagnostics').checked;
   function draw(){
-    renderer.draw(model.state,{...dimensions(),...appearance(),antialias:smoothing(),diagnostics:document.querySelector('#diagnostics').checked});
+    const refining=document.querySelector('#refine-spherical').checked;
+    renderer.draw(model.state,{...dimensions(),...appearance(),antialias:smoothing(),sphericalMissPass:refining,diagnostics:document.querySelector('#diagnostics').checked});
+    const passStatus=renderer.missPass.status;
+    document.querySelector('#refine-status').textContent=!refining
+      ? 'Off. Resolves some uncertain edges; other purple pixels remain.'
+      :passStatus==='antialias-refused'?'Paused: turn off Smooth edges to use spherical refinement.'
+      :passStatus==='generated'?'On for eligible portal views. Other uncertain pixels remain purple.'
+      :`Unavailable (${passStatus}). The original rendering is still in use.`;
     status.textContent=model.status();
     const guide=model.renderGuide(),near=guide.nearest,aim=guide.aimed;
     document.querySelector('#portal-hint').textContent=[
@@ -61,6 +68,7 @@ try {
   document.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>{stop();document.exitPointerLock();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();document.exitPointerLock();}});
   document.querySelector('#quality').onchange=draw;
+  document.querySelector('#refine-spherical').onchange=draw;
   document.querySelector('#diagnostics').onchange=draw;
   document.querySelector('#polished').onchange=draw;
   document.querySelector('#ao').onchange=draw;
@@ -392,6 +400,7 @@ try {
       const quantiles=values=>{const v=[...values].sort((a,b)=>a-b);
         return v.length?{samples:v.length,p50:v[Math.floor(v.length*.5)],max:v.at(-1)}:null;};
       const frameCost=async options=>{
+        const width=320,height=240; // Default playable viewport, independent of the160x120 census.
         renderer.draw(state,{width,height,...options});renderer.finish();
         await new Promise(resolve=>setTimeout(resolve,20));
         const wall=[];renderer.times.length=0;
@@ -407,7 +416,7 @@ try {
         }while(renderer.times.length<12&&performance.now()<deadline);
         if(renderer.timerSupported&&renderer.times.length!==12)
           throw Error(`Live frame timing incomplete: ${renderer.times.length}/12; cannot compare cases`);
-        return {drawFinishCallMs:quantiles(wall),gpuMs:quantiles(renderer.times),
+        return {width,height,drawFinishCallMs:quantiles(wall),gpuMs:quantiles(renderer.times),
           gpuStatus:!renderer.timerSupported?'unsupported':renderer.times.length?'measured':'unavailable'};
       };
       const before=renderer.read(state,width,height);
