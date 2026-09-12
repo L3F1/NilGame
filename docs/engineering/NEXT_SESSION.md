@@ -10,11 +10,11 @@ Claude finite-aperture task stopped at quota and is superseded by the lead's
 experimental hyperbolic-aperture.js. Do not restart that old task. See
 docs/qa/h3-aperture-review.md: centre-crossing tests found and fixed cancellation
 in H3 distance's time difference. MUSE-67 rev2 accepted as sampled evidence;
-Muse-only manifest assigns MUSE-68 independent aperture checks.
+MUSE-68 aperture audit accepted as sampled evidence (review in muse-log.md).
 Earlier removal/orientation UI and MUSE-64 are accepted and integrated.
 Check bridge status before dispatch: do not restart completed or running work.
-Latest Node validation:113/113 in aperture-refusal-suite.log. Connected-global
-real-GPU cold browser check52/52 on LeoPC after sight refusal integration.
+Latest Node validation:115/115 in aperture-motion-suite.log. Connected-global
+real-GPU cold browser check52/52 on LeoPC after movement refusal integration.
 Earlier S3 timeout evidence remains in portal-ui-review.md; runner deadline
 and assertions are unchanged. Prior browser43 passed on real GPU and SwiftShader;
 new removal/orientation browser evidence is in claude-portal-removal-ui.md.
@@ -29,13 +29,12 @@ newer file choice or property edit. Renderer.replaceWorld changes texture data,
 not shader programs. The model.world and renderer.packed properties are getters.
 
 Portal construction/transit and connected host camera/movement coefficients now
-use adapter metric products; E3/S3 parity checks passed. Next bounded task: review
-MUSE-68 (delivered in run2026-09-12T03-10-41-479Z-dae27fe5, not integrated), then
-implement movement refusal propagation. Sight now uses aperture-result.js to
-normalize explicit query outcomes and order uncertainty against nearer solids
-and gates. See aperture-refusal.test.js and docs/qa/aperture-refusal-review.md.
-Movement still accepts hit-or-null: preserve its correction/debt/time policies
-when integrating unknowns. H3_QUERY_CONTRACT.md remains the consumer contract.
+use adapter metric products; E3/S3 parity checks passed. Sight and movement now
+normalize explicit aperture refusals. See H3_QUERY_CONTRACT.md and
+aperture-motion-review.md. MUSE-69 is assigned independent consumer checks;
+review its bridge output before further integration. Next lead task: integrate
+experimental H3 aperture construction and field sampling behind a CPU-only
+region gate, retaining explicit query outcomes (no visible preset yet).
 Camera adaptation is complete. Do not expose an H3 preset
 before camera/portal/GPU support. Extent<=2R and representative<=4R are numerical
 policies; exceptions must not become silent ray misses or artificial walls.

@@ -68,14 +68,10 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-68. MUSE-67 accepted as sampled evidence; see docs/qa/muse-log.md.
+Order: MUSE-69. MUSE-68 accepted; see docs/qa/muse-log.md.
 
-## MUSE-68 - READY FOR REVIEW: independent H3 aperture checks
+## MUSE-69 � QUEUED: independent aperture movement refusals
 
-Delivered in run2026-09-12T03-10-41-479Z-dae27fe5 on base b88788b.
-Report inspected; full test review/rerun and acceptance still pending. Do not
-redispatch this assignment. No production repairs or integration by Muse.
-
-Assignment/allowed files: tools/agent-bridge-tasks.json, muse68-h3-aperture.
-Falsify confident answers near rims, range/domain boundaries and centre crossings.
-No production repairs or scene integration. Focused Node plus isolated fail-demo.
+MUSE-68 accepted. Assignment and allowed writes are in tools/agent-bridge-tasks.json.
+Focused Node, isolated fail-demo, no production repairs or integration.
+Check bridge status before dispatch; do not restart running or delivered work.

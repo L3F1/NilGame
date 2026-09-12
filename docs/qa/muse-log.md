@@ -2895,3 +2895,15 @@ scan-only misses are not certified. Lead changed output wording from certified
 to observed and added a result-vocabulary assertion. Isolated .01R hit-distance
 mutation caught (exit1), production untouched. Full112/112 with aperture work.
 No scene/GPU admission; MUSE-68 audits the experimental aperture helper next.
+
+## MUSE-68 accepted � H3 aperture evidence
+
+Lead review on LeoPC/Node24.20.0 against ad7b7cb plus movement work. Reran
+hyperbolic-aperture-truth.test.js: 30 observed hits, 84 sampled misses, 42
+unknowns. Isolated omitted-body-radius mutant fails clearance at R=.5.
+Source reviewed; shared adapter limits stand. Scratch 1080-query sweep remains
+Muse-attributed evidence, not rerun by lead. Corrected the durable domain-case
+comment: its construction does not establish a root beyond the domain; it tests
+that a domain-limited request cannot claim a full-range miss, even if the disc
+was missed earlier. Existing lead aperture suite covers domain-before-root.
+Accepted as bounded sampled evidence, not a universal aperture proof.

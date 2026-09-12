@@ -37,6 +37,7 @@
 import { moveProbe, sweep } from './collision.js';
 import { mapFrame } from './camera-frame.js';
 import { PORTAL_PLANE_TOLERANCE } from './region-portal.js';
+import { apertureResult } from './aperture-result.js';
 
 export const REGION_MOTION_DEFAULTS = Object.freeze({
   skin: 1e-4, maxSteps: 96, maxContacts: 4, maxCrossings: 8,
@@ -147,8 +148,23 @@ function regionEvents(region, portals, radius, safetyMargin) {
     for (const portal of portals) {
       // RADIAL FIT IS CHECKED WITH THE PHYSICAL PLAYER RADIUS, not the centre
       // ray: an aperture the centre clears but the body does not is a wall.
-      const crossing = portal.crossing(position, direction, distance, radius);
-      if (!crossing) continue;
+      let raw = portal.crossing(position, direction, distance, radius);
+      // Preserve the legacy frame-end rounding convention only for legacy hits.
+      // Explicit query packets must honour their own bounded-range contract.
+      if (raw && raw.status === undefined && raw.distance > distance) {
+        if (raw.distance <= distance + tie) raw = { ...raw, distance };
+        else if (Number.isFinite(raw.distance)) continue;
+      }
+      const crossing = apertureResult(raw, distance);
+      if (crossing.status === 'miss') continue;
+      if (crossing.status === 'unresolved') {
+        candidates.push({ kind: 'unresolved', regionId: region.id,
+          detail: 'aperture-query', limit: crossing.uncertaintyFrom,
+          distance: crossing.uncertaintyFrom,
+          apertures: [{ portalId: portal.id, fromId: portal.fromId,
+            regionId: region.id, reason: crossing.reason }] });
+        continue;
+      }
       let t = crossing.distance;
       // `crossing` admits a root a hair past its own maxTravel so an exact
       // frame-end crossing is not lost to rounding. Accept that hair and
@@ -168,6 +184,9 @@ function regionEvents(region, portals, radius, safetyMargin) {
       // answer -- not a coin flip decided by whichever was authored first.
       return { kind: 'unresolved', regionId: region.id, distance: tied[0].distance,
         limit: tied[0].limit, tolerance: tie,
+        ...(tied.some(c => c.apertures) ? { detail: 'aperture-query',
+          apertures: tied.flatMap(c => c.apertures ?? [])
+            .sort((a,b) => String(a.fromId).localeCompare(String(b.fromId))) } : {}),
         competitors: tied.map((c) => (c.kind === 'portal'
           ? { kind: 'portal', portalId: c.portal.id, toRegionId: c.portal.toRegionId, limit: c.limit }
           : { kind: c.kind, limit: c.limit })) };
@@ -237,7 +256,8 @@ function attemptCrossing(world, source, event, at, velocity, camera, radius, opt
     events: regionEvents(destination, outbound, radius, safetyMargin),
     phase: 'correction',
   });
-  if (offset.event) return { ok: false, reason: `exit-offset-${offset.event.kind}`, steps: offset.steps };
+  if (offset.event) return { ok: false, reason: `exit-offset-${offset.event.kind}`,
+    apertures: offset.event.apertures, steps: offset.steps };
   if (offset.hit || offset.stalled || offset.travelled < exitOffset - 1e-12)
     return { ok: false, reason: 'exit-offset-obstructed', steps: offset.steps };
 
@@ -451,6 +471,7 @@ export function moveRegionProbe(world, state, dt, options = {}) {
       portalId: event.portal?.id ?? null,
       toRegionId: event.portal?.toRegionId ?? null,
       competitors: event.competitors ?? null,
+      apertures: event.apertures ?? null,
     }));
 
     if (result.event) {
@@ -465,7 +486,7 @@ export function moveRegionProbe(world, state, dt, options = {}) {
 
       if (event.kind === 'unresolved') {
         record(event, commit(toLegStart()).position);
-        status = 'unresolved'; detail = 'competing-events'; break;
+        status = 'unresolved'; detail = event.detail ?? 'competing-events'; break;
       }
       if (event.kind === 'domain') {
         // Stopped just inside, and the chart edge is not a surface: this one is
@@ -482,13 +503,14 @@ export function moveRegionProbe(world, state, dt, options = {}) {
         status = 'unresolved'; detail = 'correction-boundary'; break;
       }
 
-      const retain = (reason, kind) => {
+      const retain = (reason, kind, apertures = null) => {
+        const refusalEvent = apertures ? { ...event, apertures } : event;
         const safe = checkpoint
           && certifiedCheckpoint(space, regionId, checkpoint, frameBefore, event.portal, skin);
-        if (safe) { record(event, commit(safe).position); status = kind; detail = reason; return; }
+        if (safe) { record(refusalEvent, commit(safe).position); status = kind; detail = reason; return; }
         // The entering side could not be certified even at the leg start, so
         // the leg is not committed at all and the uncertainty is reported.
-        record(event, commit(toLegStart()).position);
+        record(refusalEvent, commit(toLegStart()).position);
         status = 'unresolved'; detail = 'uncertifiable-checkpoint';
       };
 
@@ -497,7 +519,7 @@ export function moveRegionProbe(world, state, dt, options = {}) {
         reached.frame, radius,
         { skin, safetyMargin, exitOffset, stepBudget: settings.maxSteps - stepsUsed });
       stepsUsed += crossed.steps ?? 0;
-      if (!crossed.ok) { retain(crossed.reason, 'blocked-exit'); break; }
+      if (!crossed.ok) { retain(crossed.reason, 'blocked-exit', crossed.apertures); break; }
 
       // Only now is the approach real. Commit it, charge its time normally,
       // and move ownership.
@@ -639,6 +661,7 @@ export function resumeRegionCorrection(world, suspended, options = {}) {
         portalId: swept.event.portal?.id ?? null,
         toRegionId: swept.event.portal?.toRegionId ?? null,
         competitors: swept.event.competitors ?? null,
+        apertures: swept.event.apertures ?? null,
       })],
     });
   }

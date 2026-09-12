@@ -52,8 +52,8 @@ This deliberately makes no safe-prefix claim based on a heuristic interval.
 
 ## Consumer integration gate
 
-Sight now adapts hit/null and explicit query results through aperture-result.js.
-Movement still accepts hit-or-null and is the next integration gate.
+Sight and movement adapt hit/null and explicit query results through
+aperture-result.js. Scene admission and H3 portal construction remain gated.
 Never adapt unresolved to null, or treat its distance as a confirmed crossing.
 Before integration, define an earliest-uncertainty distance: a finite lower bound
 in physical arclength before which this aperture cannot affect this query. If
@@ -66,11 +66,19 @@ the responsible aperture/region and reason, and perform no speculative transit.
 Domain-exit uncertainty must not conceal a definitely nearer solid. Movement
 may consume only an independently certified safe prefix; do not spend remaining
 time or create correction debt by treating uncertainty as a contact normal.
+Movement reuses its event-stop checkpoint: an uncertain approach rolls back its
+final leg, refunds that leg's time, and retains work counters and correction debt.
+An uncertain correction commits nothing and issues no replacement continuation.
+Destination exit-offset uncertainty refuses the entire crossing, with the
+responsible destination aperture IDs/reasons retained on the source event.
+Legacy hit-only frame-end rounding remains local to movement; explicit query
+packets receive strict range validation. This does not admit H3 into factories.
 
 Required consumer regressions: a near solid before remote uncertainty, unknown
 at the origin, uncertainty tied with a portal/domain event, reversed portal
-array order, and preservation of movement time/state on refusal. These are
-Movement checks remain future requirements. Sight pins nearer solids/gates,
+array order, and preservation of movement time/state on refusal. Movement pins
+these in aperture-motion-refusal.test.js, including S3 correction debt and
+destination-offset rollback. Sight pins nearer solids/gates,
 origin uncertainty, ties, array-order invariance and malformed packets in
 aperture-refusal.test.js. Every aperture sees the same bounded segment; explicit
 misses must cover it. A refusal retains aperture IDs/reasons and does not advance
