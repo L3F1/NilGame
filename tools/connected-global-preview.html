@@ -21,7 +21,7 @@ the blue ball is the flat destination. This is a flight fixture, not a finished 
 Buttons take quarter-unit steps. Mouse look stays upright relative to an up direction carried along your flight
 and through portals, not a world up. Routine contacts remain steerable; unresolved movement or the
 flat boundary halts the preview. Reset recovers.</p>
-<p><a href="#editor">Edit this world</a>: change existing objects and portals, add or remove balls, create or reconnect portal pairs, undo changes, or save/load your level.</p>
+<p><a href="#editor">Edit this world</a>: change existing objects and portals, add or remove balls, create, reconnect or remove portal pairs, turn an existing portal anchor, undo changes, or save/load your level.</p>
 <p>Magenta marks numerical/traversal uncertainty; thin silhouette outlines remain under investigation.
 Dark checkers mark the end of the flat region, including when viewed through a portal from inside S3.</p>
 <p><label>Resolution <select id="quality"><option value="160">160 × 120</option><option value="320" selected>320 × 240</option><option value="480">480 × 360</option></select></label></p>
@@ -48,8 +48,10 @@ For floors and corners, try the <a href="connected-preview.html">bounded room pr
 <p><a href="#view">Back to the view</a></p>
 <p>Values are in the selected entity's own chart or flat region, in design units. No conversion between
 charts is applied. Your position and view are kept; invalid edits are refused and nothing changes.
-Anchor radius edits resize both ends of the portal together. Anchor directions are shown read-only.
-Only added balls can be removed; spawns and portal anchors are protected. Undo restores a removed ball.</p>
+Anchor radius edits resize both ends of the portal together.
+Remove selected ball affects balls only; use Remove a portal pair below for portals. Undo restores a removal.</p>
+<p>To turn a portal opening, set <strong>forward</strong> and <strong>up</strong> to perpendicular unit vectors
+in its chart or flat-region coordinates. Only the selected anchor turns; its partner and your view stay unchanged.</p>
 <label>Region <select id="edit-region"></select></label>
 <label>Entity <select id="edit-entity"></select></label>
 <p id="edit-frame"></p>
@@ -57,6 +59,12 @@ Only added balls can be removed; spawns and portal anchors are protected. Undo r
 <label>y <input id="edit-y" type="number" step="any" size="7"></label>
 <label>z <input id="edit-z" type="number" step="any" size="7"></label>
 <label>radius <input id="edit-radius" type="number" step="any" size="7"></label><br>
+<label>forward x <input id="edit-fx" type="number" step="any" size="7"></label>
+<label>forward y <input id="edit-fy" type="number" step="any" size="7"></label>
+<label>forward z <input id="edit-fz" type="number" step="any" size="7"></label><br>
+<label>up x <input id="edit-ux" type="number" step="any" size="7"></label>
+<label>up y <input id="edit-uy" type="number" step="any" size="7"></label>
+<label>up z <input id="edit-uz" type="number" step="any" size="7"></label><br>
 <button id="edit-apply" type="button">Apply edit</button><button id="edit-remove" type="button">Remove selected ball</button>
 <button id="edit-undo" type="button">Undo</button><button id="edit-redo" type="button">Redo</button>
 <fieldset id="ball-form"><legend>New ball in the selected region</legend>
@@ -112,6 +120,11 @@ pairs, change both rows before applying. Each endpoint can belong to only one pa
 Applying another edit or changing the selected object discards unapplied choices in these rows.</p>
 <div id="reconnect-rows"></div>
 <button id="reconnect-apply" type="button">Apply connections</button></fieldset>
+<fieldset id="remove-form"><legend>Remove a portal pair</legend>
+<p>Each button removes the named saved connection and both anchors. Unapplied reconnect choices above are ignored.</p>
+<p>Removing the last exit can disconnect a region while you remain inside it. Use Undo, load a saved file,
+or choose a spawn to recover. If Undo would restore an opening through your current position, step aside and try again.</p>
+<div id="remove-rows"></div></fieldset>
 <button id="edit-download" type="button">Download JSON</button>
 <label>Load JSON <input id="edit-load" type="file" accept=".json,application/json"></label>
 <p id="edit-message" role="status"></p></fieldset>

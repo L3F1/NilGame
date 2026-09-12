@@ -4,13 +4,13 @@
 Latest: removePortalPair API and explicit removal/reorientation contract; see
 CONNECTED_PORTAL_AUTHORING.md and docs/qa/portal-removal-review.md.
 Creation/reconnection browser controls were shipped in f5a605c.
-Claude removal/orientation controls are still running at this checkpoint;
-MUSE-64 is accepted and integrated with stronger expected-normal checks.
+Claude removal/orientation controls are reviewed and integrated;
+MUSE-64 is accepted with stronger expected-normal checks.
 Check bridge status before dispatch: do not restart completed or running work.
 Latest Node validation: 105/105 in geometry-gate-suite.log, no concurrent browser
 work. Earlier S3 timeout evidence remains in portal-ui-review.md; runner deadline
 and assertions are unchanged. Prior browser43 passed on real GPU and SwiftShader;
-new removal/orientation browser checks remain pending agent integration.
+new removal/orientation browser evidence is in claude-portal-removal-ui.md.
 
 The complete E3/S3/E3 fixture now supports creating/removing balls, anchor position
 and paired radius, spawn position, undo/redo, JSON download/file-input load.
@@ -21,10 +21,10 @@ Halted motion forbids edits until reset. Delayed file reads cannot overwrite a
 newer file choice or property edit. Renderer.replaceWorld changes texture data,
 not shader programs. The model.world and renderer.packed properties are getters.
 
-Next bounded task: review/integrate safe pair removal and existing-anchor
-orientation controls from Claude. Removal API is implemented.
+Next bounded task: H3 metric adapter and independent identities, following
+H3_CONNECTED_CONTRACT.md. Do not expose an H3 preset before camera/portal/GPU support.
 Read CONNECTED_PORTAL_AUTHORING.md, especially final-graph swaps and
-base-to-envelope migration. Existing property-form orientation is still read-only;
+base-to-envelope migration. Existing property-form orientation is now editable;
 no gizmos or global S3 floors/cells yet. CONNECTED_NEXT_MILESTONE.md gives the
 sequence. Bounded H3 is the next adapter test AFTER connected authoring; Nil/Sol
 require numerical contracts, not new shader tags. Godot remains a possible host.

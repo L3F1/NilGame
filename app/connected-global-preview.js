@@ -54,9 +54,13 @@ try {
   document.querySelector('#smooth').onchange=draw;
   // Bounded entity editing. The model validates candidates and owns history; the page only builds
   // patches in each entity's own chart-local coordinates. No chart conversion happens here.
-  const editor=Object.fromEntries(['region','entity','frame','x','y','z','radius','apply','remove','undo','redo','download','load','message'].map(k=>[k,document.querySelector(`#edit-${k}`)]));
+  const editor=Object.fromEntries(['region','entity','frame','x','y','z','radius','fx','fy','fz','ux','uy','uz',
+    'apply','remove','undo','redo','download','load','message'].map(k=>[k,document.querySelector(`#edit-${k}`)]));
   const editable=typeof model.editEntities==='function',axes=['x','y','z'];
-  const EDITABLE={ball:['position','radius'],anchor:['position','radius'],spawn:['position']};
+  // Only an anchor carries a construction frame; its forward/up are edited in that anchor's own
+  // unchanged frame, never derived from the camera, a world up axis or the partner endpoint.
+  const EDITABLE={ball:['position','radius'],anchor:['position','radius','orientation'],spawn:['position']};
+  const forwardKeys=['fx','fy','fz'],upKeys=['ux','uy','uz'];
   let selectedFields=[],loading=Promise.resolve(),loadGeneration=0;
   // Ball creation/removal. The page never picks a chart or position for the author: a cover region
   // requires an explicit chart choice, and a flat region's ball carries no chartId at all.
@@ -72,7 +76,10 @@ try {
   const portalForm={id:document.querySelector('#portal-id'),radius:document.querySelector('#portal-radius'),
     create:document.querySelector('#portal-create'),a:endpointForm('a'),b:endpointForm('b')};
   const reconnectForm={rows:document.querySelector('#reconnect-rows'),apply:document.querySelector('#reconnect-apply')};
+  // Removal rows are built from the SAVED connections only; a reconnection draft never names them.
+  const removeForm={rows:document.querySelector('#remove-rows')};
   const pairable=editable&&typeof model.addPortalPair==='function'&&typeof model.reconnectPortals==='function';
+  const pairRemovable=editable&&typeof model.removePortalPair==='function';
   const portalSuggestions={id:'',a:'',b:''};
   const endpointRegion={a:null,b:null};
   const anchorRows=doc=>entityRows(doc).filter(r=>r.entity.kind==='anchor')
@@ -103,6 +110,7 @@ try {
     editor.remove.disabled=halted||!creatable||!removable(selectedEntity);
     portalForm.create.disabled=halted||!pairable;
     reconnectForm.apply.disabled=halted||!pairable||!reconnectForm.rows.querySelector('select');
+    for(const button of removeForm.rows.querySelectorAll('button'))button.disabled=halted||!pairRemovable;
   }
   // Chart choices belong to the endpoint's own region; a bounded region carries no chart at all.
   function refreshEndpoint(end,form,doc=model.document()){
@@ -127,6 +135,32 @@ try {
         select.value=connection[end];
         const wrap=document.createElement('label');wrap.append(`${end} `,select);row.append(wrap);
       }
+      return row;
+    }));
+  }
+  // One button per SAVED pair, naming the connection and the two endpoints the document records.
+  // An empty list still renders, as its own sentence rather than a blank panel.
+  function refreshRemovals(doc=model.document()){
+    const rows=connectionRows(doc);
+    if(!rows.length){
+      const empty=document.createElement('p');
+      empty.id='remove-empty';
+      empty.textContent='No portal pairs in this world. Create one above to connect regions again.';
+      removeForm.rows.replaceChildren(empty);
+      return;
+    }
+    removeForm.rows.replaceChildren(...rows.map(({connection,owner})=>{
+      const row=document.createElement('p'),button=document.createElement('button');
+      button.type='button';button.id=`remove-portal-${connection.id}`;
+      button.textContent=`Remove ${connection.id}: ${connection.a} ↔ ${connection.b}`;
+      button.onclick=()=>editAction(()=>{
+        // Re-read the saved record at click time; the rows above may hold unapplied choices.
+        const saved=connectionRows(model.document()).find(r=>r.connection.id===connection.id)?.connection;
+        if(!saved)throw Error(`Unknown connection ${connection.id}`);
+        model.removePortalPair(saved.id);
+        return `Removed portal ${saved.id} and its anchors ${saved.a} and ${saved.b}. You have not moved, and no route is promised: Undo, load a file or use a spawn.`;
+      });
+      row.append(button,` (${owner}) — deletes anchors ${connection.a} and ${connection.b}.`);
       return row;
     }));
   }
@@ -158,11 +192,16 @@ try {
         if(!current||current===portalSuggestions[key]){portalSuggestions[key]=fresh;field.value=fresh;}
       }}
     refreshReconnect(doc);
+    refreshRemovals(doc);
     const position=selectedFields.includes('position'),radius=selectedFields.includes('radius');
+    const orientation=selectedFields.includes('orientation');
     axes.forEach((k,i)=>{editor[k].disabled=!position;editor[k].value=position?String(e.position[i]):'';});
     editor.radius.disabled=!radius;editor.radius.value=radius?String(e.radius):'';
+    // Components of the anchor's own construction frame, shown exactly as saved.
+    for(const [keys,vectorKey] of [[forwardKeys,'forward'],[upKeys,'up']])
+      keys.forEach((k,i)=>{editor[k].disabled=!orientation;editor[k].value=orientation?String(e[vectorKey]?.[i]??''):'';});
     editor.frame.textContent=!e?'No entities in this region.':
-      `${e.id} (${e.kind}) in ${row.frame} of ${row.regionId}${e.forward?`; forward [${e.forward}], up [${e.up}] (read-only)`:''}${selectedFields.length?'':'; not editable here'}.`;
+      `${e.id} (${e.kind}) in ${row.frame} of ${row.regionId}${e.forward?`; forward [${e.forward}], up [${e.up}] in that frame${orientation?', editable below (this anchor only)':' (read-only)'}`:''}${selectedFields.length?'':'; not editable here'}.`;
     syncEditControls();
   }
   function numberField(key,input=editor[key]){
@@ -236,6 +275,13 @@ try {
       const r=numberField('radius');
       if(r!==e.radius){patch.radius=r;if(e.kind==='anchor')for(const id of portalPartners(doc,e.id))edits.push({id,patch:{radius:r}});}
     }
+    // Orientation travels as both vectors, verbatim, for THIS anchor only: apertures need not stay
+    // parallel, so the partner is never rotated. Nothing here normalizes or repairs a bad frame.
+    if(fields.includes('orientation')){
+      const forward=forwardKeys.map((k,i)=>numberField(`forward ${axes[i]}`,editor[k]));
+      const up=upKeys.map((k,i)=>numberField(`up ${axes[i]}`,editor[k]));
+      if(forward.some((v,i)=>v!==e.forward?.[i])||up.some((v,i)=>v!==e.up?.[i])){patch.forward=forward;patch.up=up;}
+    }
     return Object.keys(patch).length?edits:null;
   }
   // Validation errors go to the edit message only: no fatal failure and no redraw over the old image.
@@ -283,6 +329,8 @@ try {
     });
     if(!pairable){for(const id of ['#portal-form','#reconnect-form'])document.querySelector(id).disabled=true;
       editor.message.textContent='Creating and reconnecting portals is unavailable: this model lacks addPortalPair/reconnectPortals.';}
+    if(!pairRemovable){document.querySelector('#remove-form').disabled=true;
+      editor.message.textContent='Removing portal pairs is unavailable: this model lacks removePortalPair.';}
     editor.undo.onclick=()=>editAction(()=>{model.undoEdit();return 'Undid the last edit.';});
     editor.redo.onclick=()=>editAction(()=>{model.redoEdit();return 'Redid the edit.';});
     editor.download.onclick=()=>{
@@ -721,10 +769,13 @@ try {
       draw();
       if(!editor.apply.disabled||!editor.undo.disabled||!editor.redo.disabled||!editor.load.disabled)throw Error('Edit controls must be disabled while halted');
       if(!ballForm.create.disabled||!portalForm.create.disabled||!reconnectForm.apply.disabled)throw Error('Creation controls must be disabled while halted');
+      const removalButtons=()=>[...removeForm.rows.querySelectorAll('button')];
+      if(!removalButtons().length||removalButtons().some(b=>!b.disabled))throw Error('Portal removal buttons must be disabled while halted');
       $('[data-action="reset"]').click();
       if(model.halted||editor.apply.disabled||portalForm.create.disabled||reconnectForm.apply.disabled)throw Error('Reset did not re-enable editing');
+      if(removalButtons().some(b=>b.disabled))throw Error('Reset did not re-enable the portal removal buttons');
       expectButtons('after reset');
-      checks.push('halt disables Apply/Undo/Redo/Load, Create ball, Create portal pair and Apply connections until reset');
+      checks.push('halt disables Apply/Undo/Redo/Load, Create ball, Create portal pair, Apply connections and every portal removal button until reset');
 
       // Ball creation/removal through the real form controls. Needs lead model.addBall/removeBall.
       if(!creatable)throw Error('Ball create/remove checks pending lead integration: model.addBall and model.removeBall are required');
@@ -1052,6 +1103,236 @@ try {
           if(reconnectDescriptor?.writable)model.reconnectPortals=reconnectDescriptor.value;
         }
         records.push(portalRecord);
+      }
+
+      // Portal pair removal and existing-anchor reorientation through the real controls.
+      if(!pairRemovable)throw Error('Portal removal checks pending lead integration: model.removePortalPair is required');
+      {
+        const removalRecord={label:'portal-removal'};
+        const links=()=>{const d=model.document();return [...d.baseScene.connections,...d.connections];};
+        const link=id=>links().find(c=>c.id===id);
+        const wiring=()=>canon(model.world.portals.map(p=>[p.id,p.fromId,p.toId,p.fromRegionId,p.toRegionId,p.radius]));
+        const portalOf=fromId=>model.world.portals.find(p=>p.fromId===fromId);
+        const packetPortals=()=>renderer.packed.counts[3];
+        const removeButton=id=>{const b=document.querySelector(`#remove-portal-${id}`);if(!b)throw Error(`No removal button for ${id}`);return b;};
+        const removeButtons=()=>[...removeForm.rows.querySelectorAll('button')].map(b=>b.id);
+        const label=c=>`Remove ${c.id}: ${c.a} ↔ ${c.b}`;
+        const row=(id,end)=>{const s=document.querySelector(`#reconnect-${id}-${end}`);if(!s)throw Error(`No reconnect row for ${id} ${end}`);return s;};
+        const setRow=(id,end,value)=>{const s=row(id,end);if(![...s.options].some(o=>o.value===value))throw Error(`Row ${id}.${end} has no anchor ${value}`);s.value=value;};
+        const anchorsIn=doc=>entityRows(doc).filter(r=>r.entity.kind==='anchor').map(r=>r.entity.id).sort();
+        // An explicit pose on an aperture's axis: `away` units in front of the anchor centre, looking at it.
+        const probePose=(regionId,position,forward,up)=>{
+          const space=model.world.regions.get(regionId).space;
+          return {...model.state,regionId,position,velocity:position.map(()=>0),camera:createCameraFrame(space,position,{forward,up})};
+        };
+        // Axis ray plus a stride-3 grid: centre-route evidence only, never a whole-aperture proof.
+        // `beyond` asks for a GPU surface hit through the aperture; it is only claimed where the
+        // destination is known to hold one, never assumed for a rewired route.
+        const probe=(name,state,fromId,present,beyond=present)=>{
+          const W=80,H=60,max=renderer.packed.maxDistance;
+          const axisCpu=model.pixelSight(1,1,0,0,max,state),axisGpu=renderer.read(state,1,1);
+          const gpuStatus=axisGpu.pixels[0],region=renderer.packed.ids[axisGpu.pixels[1]-1],owner=renderer.packed.primitiveIds[axisGpu.pixels[2]-1];
+          const axisCrossings=axisCpu.crossings.filter(c=>c.fromId===fromId).length;
+          if(present?!axisCrossings:axisCrossings)throw Error(`${name}: axis ray crosses ${fromId} ${axisCrossings} times`);
+          if(axisCpu.status==='hit'){
+            if(gpuStatus!==1||owner!==axisCpu.query.owner||region!==axisCpu.regionId||Math.abs(axisGpu.distances[0]-axisCpu.distance)>.001)
+              throw Error(`${name} axis: GPU ${gpuStatus}/${region}/${owner}/${axisGpu.distances[0]}, CPU hit ${axisCpu.regionId}/${axisCpu.query.owner}/${axisCpu.distance}`);
+          }else if(axisCpu.status==='miss'?gpuStatus!==0:gpuStatus!==2)throw Error(`${name} axis: GPU status ${gpuStatus}, CPU ${axisCpu.status}/${axisCpu.reason}`);
+          const {pixels,distances}=renderer.read(state,W,H);
+          let sampled=0,gpuHits=0,crossings=0,crossedHits=0;const owners={};
+          for(let y=0;y<H;y+=3)for(let x=0;x<W;x+=3){
+            const i=y*W+x,cpu=model.pixelSight(W,H,x,y,max,state);sampled++;
+            if(cpu.crossings.some(c=>c.fromId===fromId))crossings++;
+            if(pixels[4*i]===1){
+              if(cpu.crossings.some(c=>c.fromId===fromId))crossedHits++;
+              gpuHits++;const o=renderer.packed.primitiveIds[pixels[4*i+2]-1];owners[o]=(owners[o]||0)+1;
+              if(cpu.status!=='hit'||cpu.query.owner!==o||renderer.packed.ids[pixels[4*i+1]-1]!==cpu.regionId||Math.abs(distances[i]-cpu.distance)>.001)
+                throw Error(`${name} ${x},${y}: GPU ${o}/${distances[i]}, CPU ${cpu.status}/${cpu.query?.owner}/${cpu.distance}`);
+            }else if(pixels[4*i]===0&&cpu.status!=='miss')throw Error(`${name} ${x},${y}: GPU miss, CPU ${cpu.status}`);
+          }
+          if(present?!crossings:crossings)throw Error(`${name}: ${crossings} sampled rays cross ${fromId}, expected ${present?'some':'none'}`);
+          if(beyond&&!crossedHits)throw Error(`${name}: no GPU surface hit beyond the ${fromId} aperture`);
+          const result={name,fromId,sampled,gpuHits,crossings,crossedHits,owners,axis:{cpu:axisCpu.status,owner:axisCpu.query?.owner??null,
+            cpuDistance:axisCpu.distance,gpuDistance:axisGpu.distances[0],gpuStatus,route:axisCpu.crossings.map(c=>c.fromId)}};
+          removalRecord[name]=result;draw();return result;
+        };
+        // Saved images use the probe's own pose, not the unchanged player pose.
+        const probeShot=(name,state)=>{renderer.draw(state,{...dimensions(),...appearance(),antialias:smoothing()});
+          shots.push({name,data:canvas.toDataURL()});draw();};
+        // Straight in front of flat-entry on its saved axis (enter travelling toward −forward).
+        const entryPose=()=>probePose('flat',[0,-3,0],[0,1,0],[0,0,1]);
+
+        $('[data-action="spawn-flat"]').click();draw();
+        const poseBefore=pose(),docBefore=canon(model.document()),textBefore=await download(),wiringBefore=wiring();
+        if(typeof packetPortals()!=='number')throw Error('GPU packet does not report a portal count');
+        const portalsBefore=packetPortals(),anchorsBefore=anchorsIn(model.document());
+        if(links().length!==2||model.world.portals.length!==4)throw Error(`Removal checks expect two saved pairs, found ${links().map(c=>c.id)}`);
+
+        // Every saved pair gets exactly one button, naming the connection and both saved endpoints.
+        for(const c of links())if(removeButton(c.id).textContent!==label(c))throw Error(`Removal button for ${c.id} reads ${removeButton(c.id).textContent}`);
+        if(canon(removeButtons())!==canon(links().map(c=>`remove-portal-${c.id}`)))throw Error(`Removal buttons ${removeButtons()} for connections ${links().map(c=>c.id)}`);
+        probe('before-removal',entryPose(),'flat-entry',true);
+        checks.push(`removal buttons ${links().map(c=>label(c))} name the saved connection and both saved endpoints`);
+
+        // Undo is still subject to the body/aperture check: removal is allowed, restoring under the body is not.
+        removeButton('enter-sphere').click();accepted('Remove enter-sphere for the undo-safety check');
+        for(let i=0;i<8;i++)document.querySelector('[data-action="forward"]').click();
+        if(Math.abs(model.state.position[1])>1e-9||model.halted)throw Error(`Aperture walk ended at ${model.state.position}`);
+        {
+          const before=snapshot();editor.undo.click();expectUnchanged('Undo that would restore an aperture under the body',before);
+          if(!model.canUndo)throw Error('Refused Undo dropped the history entry');
+          if(!/aperture/i.test(editor.message.textContent))throw Error(`Aperture refusal text: ${editor.message.textContent}`);
+        }
+        document.querySelector('[data-action="back"]').click();
+        editor.undo.click();accepted('Undo after stepping off the aperture');
+        if(canon(model.document())!==docBefore||wiring()!==wiringBefore)throw Error('Undo did not restore the pair after stepping aside');
+        checks.push('removal allowed while standing in the region; Undo refused (history kept) while the body is on the restored aperture, accepted one step back');
+
+        // Removal reads the SAVED graph after a swap, never the unapplied rows above it.
+        $('[data-action="spawn-flat"]').click();draw();
+        setRow('enter-sphere','b','sphere-exit');setRow('leave-sphere','a','sphere-entry');
+        reconnectForm.apply.click();accepted('Swap before removal');
+        if(link('enter-sphere').b!=='sphere-exit'||link('leave-sphere').a!=='sphere-entry')throw Error('Swap before removal did not take');
+        const docSwapped=canon(model.document()),wiringSwapped=wiring(),poseSwapped=pose();
+        for(const c of links())if(removeButton(c.id).textContent!==label(c))throw Error(`Removal button after the swap reads ${removeButton(c.id).textContent}, saved ${label(c)}`);
+        setRow('enter-sphere','b','sphere-entry');setRow('leave-sphere','a','sphere-exit');
+        if(removeButton('enter-sphere').textContent!==label(link('enter-sphere')))throw Error('Removal button followed an unapplied reconnection draft');
+        removeButton('enter-sphere').click();accepted('Remove the swapped enter-sphere');
+        if(!/flat-entry/.test(editor.message.textContent)||!/sphere-exit/.test(editor.message.textContent))throw Error(`Removal message: ${editor.message.textContent}`);
+        const docOne=canon(model.document()),wiringOne=wiring();
+        if(canon(links().map(c=>c.id))!==canon(['leave-sphere']))throw Error(`Connections after removal ${links().map(c=>c.id)}`);
+        if(canon(anchorsIn(model.document()))!==canon(['flat-return','sphere-entry']))throw Error(`Anchors after removal ${anchorsIn(model.document())}`);
+        if(model.world.portals.some(p=>['flat-entry','sphere-exit'].includes(p.fromId)||['flat-entry','sphere-exit'].includes(p.toId)))throw Error('World still links a removed anchor');
+        if(model.world.portals.length!==2||packetPortals()!==portalsBefore-2)throw Error(`Portal links after removal: world ${model.world.portals.length}, packet ${packetPortals()}`);
+        if(portalOf('sphere-entry').toId!=='flat-return')throw Error('Removal disturbed the surviving pair');
+        if([...editor.entity.options].some(o=>o.value==='flat-entry')&&editor.region.value==='flat')throw Error('Removed anchor still offered in the entity list');
+        if(document.querySelector('#reconnect-enter-sphere-a'))throw Error('Reconnect rows still show the removed connection');
+        if(canon(removeButtons())!==canon(['remove-portal-leave-sphere']))throw Error(`Removal buttons after removal ${removeButtons()}`);
+        if(pose()!==poseSwapped)throw Error('Removal moved the player or camera');
+        if(!model.canUndo||model.canRedo)throw Error('Removal left the wrong history');
+        expectButtons('after removal');
+        probe('after-removal',entryPose(),'flat-entry',false);
+        checks.push('removing the swapped enter-sphere deleted exactly flat-entry, sphere-exit and their connection: saved endpoints (not the draft rows), no anchor left behind, two fewer world and GPU-packet portal links, surviving pair untouched, pose kept, no ray crosses the removed aperture');
+
+        // The final pair may go: empty portal lists still render and the page still draws.
+        removeButton('leave-sphere').click();accepted('Remove the last pair');
+        const docNone=canon(model.document()),textNone=await download();
+        if(links().length||anchorsIn(model.document()).length)throw Error(`Zero-pair document still has ${links().length} connections and ${anchorsIn(model.document())} anchors`);
+        if(model.world.portals.length||packetPortals())throw Error(`Zero-pair world ${model.world.portals.length} / packet ${packetPortals()} portal links`);
+        if(!document.querySelector('#remove-empty')||removeButtons().length)throw Error('Zero-pair removal list did not render its empty message');
+        if(reconnectForm.rows.querySelector('select')||!reconnectForm.apply.disabled)throw Error('Zero-pair reconnect form still offers rows');
+        if(/Preview stopped/.test(status.textContent))throw Error(`Zero-pair draw failed: ${status.textContent}`);
+        const guide=model.renderGuide();
+        if(guide.nearest!==null||guide.aimed!==null)throw Error('Zero-pair guide still reports a portal');
+        if(!/No entering portal|Crosshair hits solid/.test(document.querySelector('#portal-hint').textContent))throw Error(`Zero-pair hint: ${document.querySelector('#portal-hint').textContent}`);
+        const noneProbe=probe('zero-portals',entryPose(),'flat-entry',false);
+        // A portal-free room may be seen entirely past the surviving landmark; record that rather
+        // than claiming parity evidence from a view with no GPU hits at all.
+        removalRecord.zeroPortalVacuous=!noneProbe.gpuHits;
+        probeShot('portals-removed',entryPose());
+        {
+          // No auto-teleport and no silent recovery: the exit helper refuses and the player stays put.
+          const poseNone=pose();
+          document.querySelector('[data-action="approach-exit"]').click();
+          if(pose()!==poseNone)throw Error('approach-exit moved the player with no portals left');
+          if(!/refused/i.test(editor.message.textContent))throw Error(`approach-exit with no portals: ${editor.message.textContent}`);
+          if(/Preview stopped/.test(status.textContent))throw Error('approach-exit with no portals was reported as fatal');
+        }
+        checks.push(`last pair removed: zero world and GPU-packet portal links, empty removal/reconnect lists still rendered, guide reports no portal, the portal-free view still draws and its ${noneProbe.sampled} sampled rays agree between CPU and GPU (${noneProbe.gpuHits} hits${noneProbe.gpuHits?'':'; NO GPU HITS — vacuous parity'}), and the exit helper refuses without moving the player`);
+
+        // Undo, redo and file reload across both removals.
+        editor.undo.click();accepted('Undo the last removal');
+        if(canon(model.document())!==docOne||wiring()!==wiringOne)throw Error('Undo did not restore the last pair');
+        editor.undo.click();accepted('Undo the first removal');
+        if(canon(model.document())!==docSwapped||wiring()!==wiringSwapped)throw Error('Undo did not restore the swapped graph');
+        for(const c of links())if(removeButton(c.id).textContent!==label(c))throw Error('Undo did not rebuild the removal buttons from the restored graph');
+        // The swapped route leads somewhere this fixture makes no promise about, so only the
+        // restored crossing and CPU/GPU agreement are claimed here.
+        probe('after-undo',entryPose(),'flat-entry',true,false);
+        editor.redo.click();accepted('Redo the first removal');editor.redo.click();accepted('Redo the last removal');
+        if(canon(model.document())!==docNone)throw Error('Redo did not reapply both removals');
+        await load(textNone,'no-portals.nil.json');accepted('Load the zero-pair file');
+        if(canon(model.document())!==docNone||pose()!==poseSwapped)throw Error('Zero-pair file load changed the document or pose');
+        if(!document.querySelector('#remove-empty'))throw Error('Loaded zero-pair document lost its empty removal list');
+        if(canon(createConnectedGlobalPreview(JSON.parse(textNone)).document())!==docNone)throw Error('Fresh model load of the zero-pair JSON differs');
+        await load(textBefore,'both-pairs.nil.json');accepted('Load the two-pair file');
+        if(canon(model.document())!==docBefore||wiring()!==wiringBefore||canon(anchorsIn(model.document()))!==canon(anchorsBefore))throw Error('Reloading the earlier file did not restore both pairs');
+        probe('reloaded',entryPose(),'flat-entry',true);
+        checks.push('both removals undo, redo and survive a JSON download/reload (fresh model and file input); reloading the earlier file restores both pairs and their apertures');
+
+        // Existing-anchor orientation: explicit components in the anchor's own frame, this anchor only.
+        {
+          const fields=[...forwardKeys,...upKeys];
+          choose('flat','flat-target');
+          if(fields.some(k=>!editor[k].disabled))throw Error('Orientation fields must be disabled for a ball');
+          choose('flat','flat-spawn');
+          if(fields.some(k=>!editor[k].disabled))throw Error('Orientation fields must be disabled for a spawn');
+          choose('flat','flat-entry');
+          if(fields.some(k=>editor[k].disabled))throw Error('Orientation fields must be enabled for an anchor');
+          if(canon(fields.map(k=>Number(editor[k].value)))!==canon([0,-1,0,0,0,1]))throw Error(`Orientation fields show ${fields.map(k=>editor[k].value)}`);
+          checks.push('forward/up fields appear only for anchors and show the saved construction frame');
+
+          // The straight axis route through the saved frame, measured from the spawn two units out.
+          const straight=model.pixelSight(1,1,0,0,renderer.packed.maxDistance,probePose('flat',[0,-2,0],[0,1,0],[0,0,1]));
+          if(straight.status!=='hit'||straight.query.owner!=='flat-target'||straight.crossings.length!==2)
+            throw Error(`Saved-frame axis route ${straight.status}/${straight.query?.owner}/${straight.crossings.length}`);
+
+          const turn=(f,u)=>{[...forwardKeys,...upKeys].forEach((k,i)=>{editor[k].value=String([...f,...u][i]);editor[k].dispatchEvent(new Event('input'));});};
+          for(const [name,f,u,pattern] of [
+            ['parallel forward and up',[0,-1,0],[0,-1,0],/orthonormal/],
+            ['non-unit forward',[0,-2,0],[0,0,1],/orthonormal/],
+            ['blank up component',[0,-1,0],['',0,1],/finite/]]){
+            choose('flat','flat-entry');turn(f,u);
+            const before=snapshot();editor.apply.click();expectUnchanged(`rotation with ${name}`,before);
+            if(pattern&&!pattern.test(editor.message.textContent))throw Error(`${name}: unexpected refusal ${editor.message.textContent}`);
+          }
+          if(canon(entity('flat-entry').forward)!==canon([0,-1,0]))throw Error('A refused rotation normalized or wrote the saved frame');
+          checks.push('rotations with a parallel frame, a non-unit forward and a blank component refused unchanged: nothing is normalized for the author');
+
+          // Turn flat-entry only; its partner, the other pair and the player pose stay as they are.
+          const forward=[-.6,-.8,0],up=[0,0,1],partner=canon(entity('sphere-entry')),otherPair=canon(entity('flat-return'));
+          const partnerNormal=canon(portalOf('sphere-entry').normal),poseSaved=pose();
+          const calls=[],descriptor=Object.getOwnPropertyDescriptor(model,'editEntities');
+          if(descriptor?.writable)model.editEntities=edits=>{calls.push(structuredClone(edits));return descriptor.value.call(model,edits);};
+          try{choose('flat','flat-entry');turn(forward,up);editor.apply.click();}finally{if(descriptor?.writable)model.editEntities=descriptor.value;}
+          accepted('Rotate flat-entry');
+          if(descriptor?.writable&&(calls.length!==1||canon(calls[0])!==canon([{id:'flat-entry',patch:{forward,up}}])))
+            throw Error(`Rotation sent ${JSON.stringify(calls)}`);
+          if(canon(entity('flat-entry'))!==canon({id:'flat-entry',regionId:'flat',kind:'anchor',position:[0,0,0],radius:.9,forward,up}))
+            throw Error(`Rotated anchor ${JSON.stringify(entity('flat-entry'))}`);
+          if(canon(entity('sphere-entry'))!==partner||canon(entity('flat-return'))!==otherPair)throw Error('Rotation changed another anchor');
+          if(canon(link('enter-sphere'))!==canon({id:'enter-sphere',kind:'portal',a:'flat-entry',b:'sphere-entry',velocity:'preserve-speed',scale:1}))throw Error('Rotation changed the connection record');
+          if(canon(portalOf('flat-entry').normal)!==canon(forward))throw Error(`Rotated directed portal normal ${portalOf('flat-entry').normal}`);
+          if(canon(portalOf('sphere-entry').normal)!==partnerNormal)throw Error('Rotation turned the partner aperture');
+          if(pose()!==poseSaved)throw Error('Rotation moved the player or camera');
+          expectFields('after rotation','flat-entry');
+          const docRotated=canon(model.document());
+
+          // The aperture now faces the new axis: same transported route, three units out instead of two.
+          const turned=probePose('flat',[-1.8,-2.4,0],[.6,.8,0],[0,0,1]);
+          const seen=probe('rotated-aperture',turned,'flat-entry',true);
+          if(seen.axis.cpu!=='hit'||seen.axis.owner!=='flat-target'||canon(seen.axis.route)!==canon(['flat-entry','sphere-exit']))
+            throw Error(`Rotated axis ray ${seen.axis.cpu}/${seen.axis.owner} via ${seen.axis.route}`);
+          if(Math.abs(seen.axis.cpuDistance-(straight.distance+1))>1e-4)throw Error(`Rotated axis distance ${seen.axis.cpuDistance}, saved-frame route + 1 unit ${straight.distance+1}`);
+          probeShot('portal-rotated-aperture',turned);
+          removalRecord.rotation={forward,up,savedRoute:straight.distance,turnedRoute:seen.axis.cpuDistance,gpuDistance:seen.axis.gpuDistance};
+          checks.push(`flat-entry turned to forward [${forward}] in its own frame (one observed editEntities edit, partner and pose untouched): the axis ray three units out crosses flat-entry and sphere-exit to flat-target at ${seen.axis.cpuDistance.toFixed(5)} = saved route ${straight.distance.toFixed(5)} + 1, GPU ${seen.axis.gpuDistance.toFixed(5)}, with CPU/GPU agreement on ${seen.gpuHits} sampled hits`);
+
+          const rotatedText=await download();
+          if(canon(JSON.parse(rotatedText))!==docRotated)throw Error('Downloaded JSON differs from the rotated document');
+          editor.undo.click();accepted('Undo rotation');
+          if(canon(model.document())!==docBefore||canon(portalOf('flat-entry').normal)!==canon([0,-1,0]))throw Error('Undo did not restore the saved frame');
+          editor.redo.click();accepted('Redo rotation');
+          if(canon(model.document())!==docRotated)throw Error('Redo did not restore the rotated frame');
+          await load(rotatedText,'rotated.nil.json');accepted('Load the rotated file');
+          if(canon(model.document())!==docRotated||pose()!==poseSaved)throw Error('Rotated file load changed the document or pose');
+          probe('rotated-reloaded',probePose('flat',[-1.8,-2.4,0],[.6,.8,0],[0,0,1]),'flat-entry',true);
+          await load(textBefore,'saved-frame.nil.json');accepted('Load the saved-frame file');
+          if(canon(model.document())!==docBefore)throw Error('Reloading did not restore the saved frame');
+          checks.push('rotation undo/redo, JSON download and file reload restore the turned and saved frames exactly, with the player pose kept');
+        }
+        if(pose()!==poseBefore)throw Error('Removal and rotation checks moved the player overall');
+        records.push(removalRecord);
       }
 
       // Round trip to the original file, then fly the original route.

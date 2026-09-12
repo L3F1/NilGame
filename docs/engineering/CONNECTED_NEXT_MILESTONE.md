@@ -11,9 +11,9 @@ separate. Avoid making polished test fixtures a substitute for that integration.
 Progress: existing-entity properties, paired radii, undo/redo and JSON file
 round-trip now run in the complete connected preview (CONNECTED_EDITING.md).
 Ball creation/removal and portal-pair creation/reconnection now have browser
-controls on that transaction path, including GPU checks and file reload
-(CONNECTED_PORTAL_AUTHORING.md). Remaining usability gaps: safe pair removal,
-existing-anchor orientation, and direct spatial manipulation. Keep the authored
+controls on that transaction path, including GPU checks and file reload.
+Safe pair removal and existing-anchor orientation now also have controls
+(CONNECTED_PORTAL_AUTHORING.md). Direct spatial manipulation remains. Keep the authored
 route usable before extending the adapter set.
 
 1. Keep contact recovery and ray uncertainty honest. Display sampling may improve
@@ -31,6 +31,7 @@ route usable before extending the adapter set.
 ## Then test the adapter boundary
 
 Add bounded H3 metric balls first, reusing the existing hyperboloid mathematics.
+H3_CONNECTED_CONTRACT.md records adapter leaks and the ordered implementation.
 Before implementation, specify coverage, distance/ray guarantees, construction
 frames, transported movement and GPU numerical limits. Adapt existing portal
 anchor-frame mapping; do not invent geometry-specific teleport control flow.

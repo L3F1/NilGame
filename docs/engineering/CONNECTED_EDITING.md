@@ -53,5 +53,6 @@ New portal pairs/reconnection now have browser forms; see CONNECTED_PORTAL_AUTHO
 Both endpoints need explicit coordinates and orthonormal forward/up components.
 Apply all changed reconnect rows together when swapping endpoints. The
 portal removal API deletes a saved pair and its two anchors, not draft row choices;
-its browser control is pending. Existing-anchor orientation controls are pending too.
+its browser controls name both saved endpoints. Existing-anchor orientation fields
+edit only that anchor's forward/up vectors, preserving its partner and the player.
 Global surfaces/cells, new charts and visual manipulation remain follow-up work.
