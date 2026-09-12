@@ -11,7 +11,7 @@ Duplicate entries are refused. Paired aperture radii must change together in one
 batch; the existing portal compiler enforces matching endpoints.
 
 Preview model API: document(), editEntities(), loadDocument(), undoEdit(),
-redoEdit(), addBall(), removeBall(), addPortalPair(), reconnectPortals(),
+redoEdit(), addBall(), removeBall(), addPortalPair(), reconnectPortals(), removePortalPair(),
 canUndo/canRedo. Compile the whole candidate, compare physical region
 descriptors and body radius, certify the current body and all saved spawns, and
 rebind the existing camera axes to the new adapter at the SAME point. Reference
@@ -51,5 +51,7 @@ restore a removed ball only if it is still safe at the current player position.
 Imported documents can replace supported entity sets through this same validation.
 New portal pairs/reconnection now have browser forms; see CONNECTED_PORTAL_AUTHORING.md.
 Both endpoints need explicit coordinates and orthonormal forward/up components.
-Apply all changed reconnect rows together when swapping endpoints. Global
-surfaces/cells, new charts and visual manipulation remain follow-up work.
+Apply all changed reconnect rows together when swapping endpoints. The
+portal removal API deletes a saved pair and its two anchors, not draft row choices;
+its browser control is pending. Existing-anchor orientation controls are pending too.
+Global surfaces/cells, new charts and visual manipulation remain follow-up work.

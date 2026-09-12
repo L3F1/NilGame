@@ -1,14 +1,15 @@
 # Fresh-chat handoff for Astra
 
 2026-09-11. Read WORKING_RULES, inspect status, use relevant TASK_ROUTER row.
-Latest: portal-pair creation/reconnection browser controls, with undo/redo and
-JSON reload. Read CONNECTED_PORTAL_AUTHORING.md and docs/qa/portal-ui-review.md.
-Claude's resumed portal-controls batch and MUSE-63 are reviewed and integrated.
-Manifest retains the completed Claude task: DO NOT START IT AGAIN unchanged.
-No open Muse task. Check bridge status before any new dispatch.
-Validation caveat: full Node runner 101/102; unchanged s3-truth exceeded120s
-twice, then passed all5 checks when run directly on host. Do not call the full
-runner green. Browser43 checks passed on both real GPU and SwiftShader.
+Latest: removePortalPair API and explicit removal/reorientation contract; see
+CONNECTED_PORTAL_AUTHORING.md and docs/qa/portal-removal-review.md.
+Creation/reconnection browser controls were shipped in f5a605c.
+Next batch: Claude removal/orientation controls and MUSE-64 independent checks.
+Check bridge status before dispatch: do not restart completed or running work.
+Latest Node validation: 103/103 in portal-removal-suite.log, no concurrent browser
+work. Earlier S3 timeout evidence remains in portal-ui-review.md; runner deadline
+and assertions are unchanged. Prior browser43 passed on real GPU and SwiftShader;
+new removal/orientation browser checks remain pending agent integration.
 
 The complete E3/S3/E3 fixture now supports creating/removing balls, anchor position
 and paired radius, spawn position, undo/redo, JSON download/file-input load.
@@ -19,8 +20,8 @@ Halted motion forbids edits until reset. Delayed file reads cannot overwrite a
 newer file choice or property edit. Renderer.replaceWorld changes texture data,
 not shader programs. The model.world and renderer.packed properties are getters.
 
-Next bounded task: safe portal-pair removal through the same transaction (whole
-pair, no dangling anchors/references), then existing-anchor orientation controls.
+Next bounded task: review/integrate safe pair removal and existing-anchor
+orientation controls from Claude, plus MUSE-64. Removal API is implemented.
 Read CONNECTED_PORTAL_AUTHORING.md, especially final-graph swaps and
 base-to-envelope migration. Existing property-form orientation is still read-only;
 no gizmos or global S3 floors/cells yet. CONNECTED_NEXT_MILESTONE.md gives the

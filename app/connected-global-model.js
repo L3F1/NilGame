@@ -5,7 +5,7 @@ import {createCameraFrame} from '../engine/world/camera-frame.js';
 import {moveRegionProbe,resumeRegionCorrection} from '../engine/world/region-motion.js';
 import {traceRegionSight} from '../engine/world/region-sight.js';
 import {motionPause} from './motion-pause.js';
-import {patchConnectedEntities,addConnectedBall,removeConnectedBall,addConnectedPortalPair,reconnectConnectedPortals} from '../engine/world/connected-cover-edit.js';
+import {patchConnectedEntities,addConnectedBall,removeConnectedBall,addConnectedPortalPair,reconnectConnectedPortals,removeConnectedPortalPair} from '../engine/world/connected-cover-edit.js';
 
 export const GLOBAL_FLIGHT_SPEED=4;
 export const GLOBAL_PITCH_LIMIT=1.5;
@@ -173,6 +173,7 @@ export function createConnectedGlobalPreview(document,{installWorld=()=>{}}={}){
     removeBall:id=>install(removeConnectedBall(world.document(),id),'remove'),
     addPortalPair:spec=>install(addConnectedPortalPair(world.document(),spec),'add'),
     reconnectPortals:edits=>install(reconnectConnectedPortals(world.document(),edits),'edit'),
+    removePortalPair:id=>install(removeConnectedPortalPair(world.document(),id),'remove'),
     undoEdit:()=>undo.length?install(undo.at(-1),'undo'):false,
     redoEdit:()=>redo.length?install(redo.at(-1),'redo'):false,
     get canUndo(){return undo.length>0;},get canRedo(){return redo.length>0;},

@@ -98,3 +98,24 @@ export function reconnectConnectedPortals(document, edits) {
   }
   return next;
 }
+
+// Delete exactly the saved pair and its two anchors, never a selected endpoint
+// from an unapplied reconnection draft. No recursive/cascading deletion.
+export function removeConnectedPortalPair(document, id) {
+  const next=structuredClone(document),connections=[next.baseScene.connections,next.connections];
+  const matches=connections.flatMap(list=>list.filter(c=>c.id===id).map(connection=>({list,connection})));
+  if(typeof id!=='string'||matches.length!==1)throw Error('Choose one existing portal connection');
+  const {list,connection}=matches[0],ends=new Set([connection.a,connection.b]);
+  if(connection.kind!=='portal'||ends.size!==2)throw Error('Invalid portal pair');
+  const entityLists=[next.baseScene.entities,...next.coverRegions.map(r=>r.entities)];
+  const entities=entityLists.flat();
+  for(const end of ends){
+    const anchors=entities.filter(e=>e.id===end);
+    if(anchors.length!==1||anchors[0].kind!=='anchor')throw Error('Portal pair must own two anchors');
+    if(connections.some(cs=>cs.some(c=>c!==connection&&(c.a===end||c.b===end)))
+      ||entities.some(e=>e.target===end))throw Error('Portal anchor is referenced elsewhere; removal refused');
+  }
+  list.splice(list.indexOf(connection),1);
+  for(const es of entityLists)for(let i=es.length-1;i>=0;i--)if(ends.has(es[i].id))es.splice(i,1);
+  return next;
+}

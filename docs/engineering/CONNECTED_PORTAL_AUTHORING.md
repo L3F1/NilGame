@@ -56,5 +56,24 @@ Test a two-pair swap, base-to-envelope migration, and obstructed destination.
 UI must state the one-sided entering direction and distinguish an image from a
 nearby physical endpoint. Preserve the existing portal guide and refusal display.
 
-Separate follow-ups: removing pairs/anchors and visual endpoint manipulation.
-No generic deletion that leaves dangling connections; no new geometry required.
+## Remove and reorient
+
+`model.removePortalPair(connectionId)` removes the saved connection and its two
+anchor entities as one undoable transaction, from their actual owning containers.
+No recursive deletion: refuse missing/non-anchor endpoints, shared endpoints or
+modifier references. Never infer endpoints from unapplied reconnect form choices.
+Name the saved pair and both endpoints on the removal control. Existing body,
+spawn, suspended-motion and host-install checks remain active, including on Undo.
+Removing the final pair is allowed; empty portal lists must still render. Removing
+an exit does not move the player or promise that the resulting region is reachable.
+The author can Undo, load a prior file or use a saved spawn. No auto-teleport.
+
+Existing-anchor orientation uses editEntities with forward/up in that anchor's
+unchanged author frame. Edit only the selected anchor; its partner is not rotated.
+Pass both vectors explicitly, require orthonormality, and do not normalize invalid
+input. Rotation is construction intent, never a replacement player camera frame.
+Tests must retain the player pose and check changed directed portal frames, saved
+data, refusal, undo/redo, and CPU/GPU sight through a reoriented aperture.
+
+Visual endpoint manipulation remains follow-up work. No generic dangling deletion
+or new geometry is required for these operations.

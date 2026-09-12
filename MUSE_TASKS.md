@@ -68,7 +68,11 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: no open Muse assignment. MUSE-63 accepted; see docs/qa/muse-log.md.
+Order: MUSE-64. MUSE-63 accepted; see docs/qa/muse-log.md.
 
-Claude is completing portal editor controls. Do not rerun MUSE-63 or start a
-new task without a bounded assignment; the next useful checks depend on that UI.
+## MUSE-64 — OPEN: portal removal and orientation checks
+
+Assignment/allowed files: tools/agent-bridge-tasks.json, muse64-portal-removal-checks.
+Exercise actual model APIs and adversarial history/ownership/carried-frame cases.
+Do not repeat the entire lead corpus. No implementation repairs or full suite;
+focused Node only, report defects and limits. Lead reviews before integration.
