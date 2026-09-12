@@ -2851,3 +2851,12 @@ reconstruction is not host transaction evidence; the empty untouched-base check
 is vacuous, and unit camera axes do not prove orientation transport. Lead added
 actual API/history/nonempty migration checks separately. Review and limitations:
 portal-authoring-review.md. Full Node 101/101, existing GPU preview 37 checks.
+
+## MUSE-63 accepted with stronger camera check — 2026-09-11
+
+Based303482, portal-authoring-api-truth.test.js reviewed and rerun on Windows
+Node24.20.0. Eight invalid graphs, redo restoration, metadata/ownership and
+saved-pair crossing checks passed. Lead added carried-up checks and tightened
+forward alignment; an isolated 180-degree-roll mutation now fails. Metric
+primitives are shared, so this is independent frame assembly, not a separate
+geometric oracle. See muse63-portal-api.md for evidence and limitations.

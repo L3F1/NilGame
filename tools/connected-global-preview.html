@@ -21,7 +21,7 @@ the blue ball is the flat destination. This is a flight fixture, not a finished 
 Buttons take quarter-unit steps. Mouse look stays upright relative to an up direction carried along your flight
 and through portals, not a world up. Routine contacts remain steerable; unresolved movement or the
 flat boundary halts the preview. Reset recovers.</p>
-<p><a href="#editor">Edit this world</a>: change existing objects and portals, add or remove balls, undo changes, or save/load your level.</p>
+<p><a href="#editor">Edit this world</a>: change existing objects and portals, add or remove balls, create or reconnect portal pairs, undo changes, or save/load your level.</p>
 <p>Magenta marks numerical/traversal uncertainty; thin silhouette outlines remain under investigation.
 Dark checkers mark the end of the flat region, including when viewed through a portal from inside S3.</p>
 <p><label>Resolution <select id="quality"><option value="160">160 × 120</option><option value="320" selected>320 × 240</option><option value="480">480 × 360</option></select></label></p>
@@ -70,6 +70,48 @@ body or a spawn is refused.</p>
 <label>z <input id="ball-z" type="number" step="any" size="7"></label>
 <label>radius <input id="ball-radius" type="number" step="any" size="7"></label>
 <button id="ball-create" type="button">Create ball</button></fieldset>
+<fieldset id="portal-form"><legend>New portal pair</legend>
+<p>Choose a region and position for each end. In S3, also choose the chart that defines its coordinates.
+Set forward and up to perpendicular unit vectors in that coordinate frame; both ends share one opening radius.
+Create adds the whole pair, and one Undo removes it. Invalid values leave your world unchanged.</p>
+<p><strong>Portals are one-sided.</strong> You enter an aperture from the side its forward vector points out
+of, travelling toward <em>−forward</em>; the other face does not transport you. A portal image seen
+in S3 may be the far end viewed the long way around the sphere, not a physical endpoint near you.</p>
+<label>Connection ID <input id="portal-id" type="text" size="16" spellcheck="false" autocomplete="off"></label>
+<label>Shared aperture radius <input id="portal-radius" type="number" step="any" size="7"></label>
+<fieldset id="portal-a-fields"><legend>Endpoint A</legend>
+<label>ID <input id="portal-a-id" type="text" size="16" spellcheck="false" autocomplete="off"></label>
+<label>Region <select id="portal-a-region"></select></label>
+<label>Chart <select id="portal-a-chart"></select></label><br>
+<label>x <input id="portal-a-x" type="number" step="any" size="7"></label>
+<label>y <input id="portal-a-y" type="number" step="any" size="7"></label>
+<label>z <input id="portal-a-z" type="number" step="any" size="7"></label><br>
+<label>forward x <input id="portal-a-fx" type="number" step="any" size="7"></label>
+<label>forward y <input id="portal-a-fy" type="number" step="any" size="7"></label>
+<label>forward z <input id="portal-a-fz" type="number" step="any" size="7"></label><br>
+<label>up x <input id="portal-a-ux" type="number" step="any" size="7"></label>
+<label>up y <input id="portal-a-uy" type="number" step="any" size="7"></label>
+<label>up z <input id="portal-a-uz" type="number" step="any" size="7"></label></fieldset>
+<fieldset id="portal-b-fields"><legend>Endpoint B</legend>
+<label>ID <input id="portal-b-id" type="text" size="16" spellcheck="false" autocomplete="off"></label>
+<label>Region <select id="portal-b-region"></select></label>
+<label>Chart <select id="portal-b-chart"></select></label><br>
+<label>x <input id="portal-b-x" type="number" step="any" size="7"></label>
+<label>y <input id="portal-b-y" type="number" step="any" size="7"></label>
+<label>z <input id="portal-b-z" type="number" step="any" size="7"></label><br>
+<label>forward x <input id="portal-b-fx" type="number" step="any" size="7"></label>
+<label>forward y <input id="portal-b-fy" type="number" step="any" size="7"></label>
+<label>forward z <input id="portal-b-fz" type="number" step="any" size="7"></label><br>
+<label>up x <input id="portal-b-ux" type="number" step="any" size="7"></label>
+<label>up y <input id="portal-b-uy" type="number" step="any" size="7"></label>
+<label>up z <input id="portal-b-uz" type="number" step="any" size="7"></label></fieldset>
+<button id="portal-create" type="button">Create portal pair</button></fieldset>
+<fieldset id="reconnect-form"><legend>Reconnect existing portals</legend>
+<p>Choose both ends for each connection, then apply all changed rows together. To swap ends between two
+pairs, change both rows before applying. Each endpoint can belong to only one pair.
+Applying another edit or changing the selected object discards unapplied choices in these rows.</p>
+<div id="reconnect-rows"></div>
+<button id="reconnect-apply" type="button">Apply connections</button></fieldset>
 <button id="edit-download" type="button">Download JSON</button>
 <label>Load JSON <input id="edit-load" type="file" accept=".json,application/json"></label>
 <p id="edit-message" role="status"></p></fieldset>

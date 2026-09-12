@@ -65,6 +65,20 @@ try {
   // Only additive balls; spawns, anchors and modifiers stay protected. The compiler refuses referenced balls.
   const removable=e=>e?.kind==='ball'&&(e.op===undefined||e.op==='add');
   let selectedEntity=null,pendingSelection=null,suggestedId='',creationRegion=null;
+  // Portal pair creation and reconnection. Each endpoint owns its region, chart and construction frame;
+  // the page never converts between charts, normalizes a frame, or invents a missing value.
+  const endpointFields=['id','region','chart','x','y','z','fx','fy','fz','ux','uy','uz'];
+  const endpointForm=end=>Object.fromEntries(endpointFields.map(k=>[k,document.querySelector(`#portal-${end}-${k}`)]));
+  const portalForm={id:document.querySelector('#portal-id'),radius:document.querySelector('#portal-radius'),
+    create:document.querySelector('#portal-create'),a:endpointForm('a'),b:endpointForm('b')};
+  const reconnectForm={rows:document.querySelector('#reconnect-rows'),apply:document.querySelector('#reconnect-apply')};
+  const pairable=editable&&typeof model.addPortalPair==='function'&&typeof model.reconnectPortals==='function';
+  const portalSuggestions={id:'',a:'',b:''};
+  const endpointRegion={a:null,b:null};
+  const anchorRows=doc=>entityRows(doc).filter(r=>r.entity.kind==='anchor')
+    .map(r=>({id:r.entity.id,label:`${r.entity.id} · ${r.frame} of ${r.regionId}`}));
+  const connectionRows=doc=>[...doc.baseScene.connections.map(c=>({connection:c,owner:'base scene'})),
+    ...(doc.connections||[]).map(c=>({connection:c,owner:'connected envelope'}))];
   const worldIds=doc=>new Set([doc.id,doc.baseScene.id,...doc.baseScene.regions.map(r=>r.id),...doc.baseScene.entities.map(e=>e.id),
     ...doc.baseScene.connections.map(c=>c.id),...(doc.coverRegions||[]).flatMap(r=>[r.id,...r.charts.map(c=>c.id),...r.entities.map(e=>e.id)]),...(doc.connections||[]).map(c=>c.id)]);
   const entityRows=doc=>[...doc.baseScene.entities.map(entity=>({regionId:entity.regionId,frame:`region ${entity.regionId}`,entity})),
@@ -87,6 +101,34 @@ try {
     editor.load.disabled=halted;
     ballForm.create.disabled=halted||!creatable;
     editor.remove.disabled=halted||!creatable||!removable(selectedEntity);
+    portalForm.create.disabled=halted||!pairable;
+    reconnectForm.apply.disabled=halted||!pairable||!reconnectForm.rows.querySelector('select');
+  }
+  // Chart choices belong to the endpoint's own region; a bounded region carries no chart at all.
+  function refreshEndpoint(end,form,doc=model.document()){
+    const cover=(doc.coverRegions||[]).find(r=>r.id===form.region.value);
+    setOptions(form.chart,cover?[{id:'',label:'Choose chart…'},...cover.charts.map(c=>({id:c.id,label:c.id}))]
+      :[{id:'',label:'none (region coordinates)'}]);
+    if(endpointRegion[end]!==form.region.value)form.chart.value='';
+    endpointRegion[end]=form.region.value;
+    form.chart.disabled=!cover;
+  }
+  // Rows mirror the saved graph; unapplied row choices are discarded when the document changes.
+  function refreshReconnect(doc=model.document()){
+    const anchors=anchorRows(doc);
+    reconnectForm.rows.replaceChildren(...connectionRows(doc).map(({connection,owner})=>{
+      const row=document.createElement('p'),name=document.createElement('span');
+      name.textContent=`${connection.id} (${owner}) `;row.append(name);
+      for(const end of ['a','b']){
+        const select=document.createElement('select');
+        select.id=`reconnect-${connection.id}-${end}`;
+        select.dataset.connection=connection.id;select.dataset.end=end;
+        select.replaceChildren(...anchors.map(({id,label})=>new Option(label,id)));
+        select.value=connection[end];
+        const wrap=document.createElement('label');wrap.append(`${end} `,select);row.append(wrap);
+      }
+      return row;
+    }));
   }
   // Rebuild selectors and fields from the model's current document.
   function refreshEditor(){
@@ -106,6 +148,16 @@ try {
     // Replace the suggestion only if the author has not typed their own ID.
     const current=ballForm.id.value.trim();
     if(!current||current===suggestedId){const ids=worldIds(doc);let n=1;while(ids.has(`ball-${n}`))n++;suggestedId=`ball-${n}`;ballForm.id.value=suggestedId;}
+    // Portal endpoints pick their own regions, so they never follow the entity selector.
+    for(const end of ['a','b']){setOptions(portalForm[end].region,regionRows(doc));refreshEndpoint(end,portalForm[end],doc);}
+    // Three user-visible IDs; each suggestion is replaced only while the author has not typed their own.
+    {const ids=worldIds(doc);let n=1;
+      while(['','-a','-b'].some(suffix=>ids.has(`portal-${n}${suffix}`)))n++;
+      for(const [key,field] of [['id',portalForm.id],['a',portalForm.a.id],['b',portalForm.b.id]]){
+        const current=field.value.trim(),fresh=`portal-${n}${key==='id'?'':`-${key}`}`;
+        if(!current||current===portalSuggestions[key]){portalSuggestions[key]=fresh;field.value=fresh;}
+      }}
+    refreshReconnect(doc);
     const position=selectedFields.includes('position'),radius=selectedFields.includes('radius');
     axes.forEach((k,i)=>{editor[k].disabled=!position;editor[k].value=position?String(e.position[i]):'';});
     editor.radius.disabled=!radius;editor.radius.value=radius?String(e.radius):'';
@@ -131,6 +183,47 @@ try {
     ball.position=axes.map(k=>numberField(`ball ${k}`,ballForm[k]));
     ball.radius=numberField('ball radius',ballForm.radius);
     return ball;
+  }
+  // One endpoint of a new pair. chartId is omitted entirely for a bounded region, not sent empty.
+  function buildEndpoint(end,form,doc){
+    const regionId=form.region.value,id=form.id.value.trim();
+    if(!regionId)throw Error(`Select a region for endpoint ${end.toUpperCase()}`);
+    if(!id)throw Error(`Enter an ID for endpoint ${end.toUpperCase()}`);
+    const endpoint={id,regionId};
+    if((doc.coverRegions||[]).some(r=>r.id===regionId)){
+      if(!form.chart.value)throw Error(`Choose the chart endpoint ${end.toUpperCase()} is written in`);
+      endpoint.chartId=form.chart.value;
+    }
+    const read=(keys,label)=>keys.map((k,i)=>numberField(`endpoint ${end.toUpperCase()} ${label} ${axes[i]}`,form[k]));
+    endpoint.position=read(axes,'position');
+    // Author-frame components, passed through unchanged: no normalization, no ambient world up.
+    endpoint.forward=read(['fx','fy','fz'],'forward');
+    endpoint.up=read(['ux','uy','uz'],'up');
+    return endpoint;
+  }
+  function buildPortalPair(){
+    const doc=model.document(),id=portalForm.id.value.trim();
+    if(!id)throw Error('Enter an ID for the new connection');
+    return {id,radius:numberField('portal radius',portalForm.radius),
+      a:buildEndpoint('a',portalForm.a,doc),b:buildEndpoint('b',portalForm.b,doc)};
+  }
+  // Every changed row travels in ONE batch so a swap never needs a valid intermediate graph.
+  // Untouched rows are left out: rewriting a base connection would migrate its ownership.
+  function buildReconnect(){
+    const doc=model.document(),saved=new Map(connectionRows(doc).map(({connection})=>[connection.id,connection]));
+    const edits=new Map();
+    for(const select of reconnectForm.rows.querySelectorAll('select')){
+      const edit=edits.get(select.dataset.connection)||{id:select.dataset.connection};
+      edit[select.dataset.end]=select.value;edits.set(edit.id,edit);
+    }
+    const batch=[];
+    for(const edit of edits.values()){
+      if(!edit.a||!edit.b)throw Error(`Choose both endpoints for connection ${edit.id}`);
+      const connection=saved.get(edit.id);
+      if(!connection)throw Error(`Unknown connection ${edit.id}`);
+      if(edit.a!==connection.a||edit.b!==connection.b)batch.push(edit);
+    }
+    return batch.length?batch:null;
   }
   // Only changed properties are patched; a paired radius goes into the same editEntities call.
   function buildEdits(){
@@ -175,6 +268,21 @@ try {
       model.removeBall(e.id);return `Removed ball ${e.id}. Undo restores it.`;
     });
     if(!creatable){document.querySelector('#ball-form').disabled=true;editor.message.textContent='Creating and removing balls is unavailable: this model lacks addBall/removeBall.';}
+    for(const end of ['a','b'])portalForm[end].region.onchange=()=>{editor.message.textContent='';refreshEndpoint(end,portalForm[end]);};
+    portalForm.create.onclick=()=>editAction(()=>{
+      const pair=buildPortalPair();model.addPortalPair(pair);
+      // Offer fresh IDs; a refused pair keeps everything the author typed.
+      for(const field of [portalForm.id,portalForm.a.id,portalForm.b.id])field.value='';
+      const where=e=>`${e.chartId?`chart ${e.chartId} of `:'region '}${e.regionId}`;
+      return `Created portal ${pair.id}: ${pair.a.id} in ${where(pair.a)} and ${pair.b.id} in ${where(pair.b)}, aperture radius ${pair.radius}. Enter each end from its forward side, travelling toward −forward.`;
+    });
+    reconnectForm.apply.onclick=()=>editAction(()=>{
+      const batch=buildReconnect();if(!batch)return 'No connection changes to apply.';
+      model.reconnectPortals(batch);
+      return `Reconnected ${batch.map(e=>`${e.id} (${e.a} ↔ ${e.b})`).join(', ')} in one transaction.`;
+    });
+    if(!pairable){for(const id of ['#portal-form','#reconnect-form'])document.querySelector(id).disabled=true;
+      editor.message.textContent='Creating and reconnecting portals is unavailable: this model lacks addPortalPair/reconnectPortals.';}
     editor.undo.onclick=()=>editAction(()=>{model.undoEdit();return 'Undid the last edit.';});
     editor.redo.onclick=()=>editAction(()=>{model.redoEdit();return 'Redid the edit.';});
     editor.download.onclick=()=>{
@@ -612,10 +720,11 @@ try {
       if(!model.halted)throw Error('Backward flight did not halt at the flat extent');
       draw();
       if(!editor.apply.disabled||!editor.undo.disabled||!editor.redo.disabled||!editor.load.disabled)throw Error('Edit controls must be disabled while halted');
+      if(!ballForm.create.disabled||!portalForm.create.disabled||!reconnectForm.apply.disabled)throw Error('Creation controls must be disabled while halted');
       $('[data-action="reset"]').click();
-      if(model.halted||editor.apply.disabled)throw Error('Reset did not re-enable editing');
+      if(model.halted||editor.apply.disabled||portalForm.create.disabled||reconnectForm.apply.disabled)throw Error('Reset did not re-enable editing');
       expectButtons('after reset');
-      checks.push('halt disables Apply/Undo/Redo/Load until reset');
+      checks.push('halt disables Apply/Undo/Redo/Load, Create ball, Create portal pair and Apply connections until reset');
 
       // Ball creation/removal through the real form controls. Needs lead model.addBall/removeBall.
       if(!creatable)throw Error('Ball create/remove checks pending lead integration: model.addBall and model.removeBall are required');
@@ -763,6 +872,186 @@ try {
           checks.push('Remove/Undo/Redo and JSON download/load add and remove authored-ball exactly: document, GPU owner ids, centre ray and sparse CPU/GPU views agree; pose kept');
         }finally{if(addDescriptor?.writable)model.addBall=addDescriptor.value;}
         records.push(ballRecord);
+      }
+
+      // Portal pair creation and reconnection through the real form controls.
+      if(!pairable)throw Error('Portal authoring checks pending lead integration: model.addPortalPair and model.reconnectPortals are required');
+      {
+        const portalRecord={label:'portal-authoring'};
+        const fillEnd=(form,end)=>{
+          form.id.value=end.id;form.id.dispatchEvent(new Event('input'));
+          pick(form.region,end.regionId);
+          if(end.chartId!==undefined)pick(form.chart,end.chartId);
+          for(const [keys,values] of [[axes,end.position],[['fx','fy','fz'],end.forward],[['ux','uy','uz'],end.up]])
+            keys.forEach((k,i)=>{form[k].value=String(values[i]);form[k].dispatchEvent(new Event('input'));});
+        };
+        const fillPair=spec=>{
+          portalForm.id.value=spec.id;portalForm.id.dispatchEvent(new Event('input'));
+          portalForm.radius.value=String(spec.radius);portalForm.radius.dispatchEvent(new Event('input'));
+          fillEnd(portalForm.a,spec.a);fillEnd(portalForm.b,spec.b);
+        };
+        const refusePair=(label,spec,pattern)=>{
+          fillPair(spec);const before=snapshot();portalForm.create.click();expectUnchanged(label,before);
+          if(pattern&&!pattern.test(editor.message.textContent))throw Error(`${label}: unexpected refusal ${editor.message.textContent}`);
+        };
+        const row=(id,end)=>{const s=document.querySelector(`#reconnect-${id}-${end}`);if(!s)throw Error(`No reconnect row for ${id} ${end}`);return s;};
+        const setRow=(id,end,value)=>{const s=row(id,end);if(![...s.options].some(o=>o.value===value))throw Error(`Row ${id}.${end} has no anchor ${value}`);s.value=value;};
+        const links=()=>{const d=model.document();return [...d.baseScene.connections,...d.connections];};
+        const link=id=>links().find(c=>c.id===id);
+        const portalOf=fromId=>model.world.portals.find(p=>p.fromId===fromId);
+        const wiring=()=>canon(model.world.portals.map(p=>[p.id,p.fromId,p.toId,p.fromRegionId,p.toRegionId,p.radius]));
+        // The same endpoints the Node authoring test uses.
+        const spec={id:'bench-nook',radius:.9,
+          a:{id:'flat-bench',regionId:'flat',position:[6,0,0],forward:[0,-1,0],up:[0,0,1]},
+          b:{id:'sphere-nook',regionId:'sphere',chartId:'exit-chart',position:[1,1,0],forward:[1,0,0],up:[0,0,1]}};
+        // A pose three units in front of the new flat aperture, aimed at its centre along -forward.
+        // The world is replaced by every edit, so the frame is always built from the CURRENT space.
+        const benchPose=()=>{const p=[6,-3,0],space=model.world.regions.get('flat').space;
+          return {...model.state,regionId:'flat',position:p,velocity:[0,0,0],camera:createCameraFrame(space,p,{forward:[0,1,0],up:[0,0,1]})};};
+        const aperture=(label,present)=>{
+          const state=benchPose(),W=80,H=60,max=renderer.packed.maxDistance;
+          const axisCpu=model.pixelSight(1,1,0,0,max,state),axisGpu=renderer.read(state,1,1);
+          const gpuStatus=axisGpu.pixels[0],region=renderer.packed.ids[axisGpu.pixels[1]-1],owner=renderer.packed.primitiveIds[axisGpu.pixels[2]-1];
+          const axisCrossings=axisCpu.crossings.filter(c=>c.fromId==='flat-bench').length;
+          if(present?!axisCrossings:axisCrossings)throw Error(`${label}: axis ray crosses flat-bench ${axisCrossings} times`);
+          if(axisCpu.status==='hit'){
+            if(gpuStatus!==1||owner!==axisCpu.query.owner||region!==axisCpu.regionId||Math.abs(axisGpu.distances[0]-axisCpu.distance)>.001)
+              throw Error(`${label} axis: GPU ${gpuStatus}/${region}/${owner}/${axisGpu.distances[0]}, CPU hit ${axisCpu.regionId}/${axisCpu.query.owner}/${axisCpu.distance}`);
+          }else if(axisCpu.status==='miss'?gpuStatus!==0:gpuStatus!==2)throw Error(`${label} axis: GPU status ${gpuStatus}, CPU ${axisCpu.status}/${axisCpu.reason}`);
+          const {pixels,distances}=renderer.read(state,W,H);
+          let sampled=0,gpuHits=0,crossings=0,crossedHits=0;const owners={};
+          for(let y=0;y<H;y+=3)for(let x=0;x<W;x+=3){
+            const i=y*W+x,cpu=model.pixelSight(W,H,x,y,max,state);sampled++;
+            if(cpu.crossings.some(c=>c.fromId==='flat-bench'))crossings++;
+            if(pixels[4*i]===1){
+              if(cpu.crossings.some(c=>c.fromId==='flat-bench'))crossedHits++;
+              gpuHits++;const o=renderer.packed.primitiveIds[pixels[4*i+2]-1];owners[o]=(owners[o]||0)+1;
+              if(cpu.status!=='hit'||cpu.query.owner!==o||renderer.packed.ids[pixels[4*i+1]-1]!==cpu.regionId||Math.abs(distances[i]-cpu.distance)>.001)
+                throw Error(`${label} ${x},${y}: GPU ${o}/${distances[i]}, CPU ${cpu.status}/${cpu.query?.owner}/${cpu.distance}`);
+            }else if(pixels[4*i]===0&&cpu.status!=='miss')throw Error(`${label} ${x},${y}: GPU miss, CPU ${cpu.status}`);
+          }
+          if(present?!crossings:crossings)throw Error(`${label}: ${crossings} sampled rays cross flat-bench, expected ${present?'some':'none'}`);
+          if(present&&!crossedHits)throw Error(`${label}: no GPU surface hit beyond the created aperture`);
+          const result={label,sampled,gpuHits,crossings,crossedHits,owners,axis:{cpu:axisCpu.status,owner:axisCpu.query?.owner??null,
+            cpuDistance:axisCpu.distance,gpuDistance:axisGpu.distances[0],gpuStatus,route:axisCpu.crossings.map(c=>c.fromId)}};
+          portalRecord[label]=result;draw();return result;
+        };
+        $('[data-action="spawn-flat"]').click();draw();
+        const poseBefore=pose(),docBefore=canon(model.document()),textBefore=await download(),wiringBefore=wiring();
+        const undoBefore=model.canUndo,portalsBefore=model.world.portals.length;
+
+        // Rows show the saved graph, over every anchor in the document.
+        for(const c of links())for(const end of ['a','b']){
+          if(row(c.id,end).value!==c[end])throw Error(`Reconnect row ${c.id}.${end} shows ${row(c.id,end).value}, document says ${c[end]}`);
+          if(canon([...row(c.id,end).options].map(o=>o.value))!==canon(['flat-entry','flat-return','sphere-entry','sphere-exit']))
+            throw Error(`Reconnect row ${c.id}.${end} anchor choices ${[...row(c.id,end).options].map(o=>o.value)}`);
+        }
+        aperture('before-creation',false);
+        checks.push(`reconnect rows list ${links().map(c=>c.id)} with every anchor as a choice and the saved endpoints selected`);
+
+        // Invalid or occupied candidates are refused with document, history, pose, world and image unchanged.
+        refusePair('duplicate connection ID',{...spec,id:'enter-sphere'},/unique/);
+        refusePair('duplicate endpoint ID',{...spec,a:{...spec.a,id:'flat-entry'}},/unique/);
+        refusePair('negative aperture radius',{...spec,radius:-.9});
+        refusePair('blank forward component',{...spec,a:{...spec.a,forward:['',-1,0]}},/finite/);
+        refusePair('cover endpoint without a chart',{...spec,b:{...spec.b,chartId:''}},/chart/);
+        refusePair('non-orthonormal construction frame',{...spec,b:{...spec.b,up:[1,0,0]}},/orthonormal/);
+        {
+          // Reconnecting onto an endpoint another pair still owns is refused, not stolen.
+          setRow('enter-sphere','b','flat-return');
+          const before=snapshot();reconnectForm.apply.click();expectUnchanged('reconnect onto an occupied endpoint',before);
+          if(!/already connected/i.test(editor.message.textContent))throw Error(`Occupied endpoint refusal: ${editor.message.textContent}`);
+          if(link('leave-sphere').b!=='flat-return')throw Error('Refused reconnection disturbed the owning pair');
+          setRow('enter-sphere','b','sphere-entry');
+          reconnectForm.apply.click();
+          if(refused()||!/No connection changes/.test(editor.message.textContent))throw Error(`Unchanged rows: ${editor.message.textContent}`);
+          if(model.canUndo!==undoBefore||canon(model.document())!==docBefore)throw Error('Unchanged rows created a history entry');
+        }
+        checks.push('duplicate connection/endpoint IDs, negative radius, blank forward component, missing chart, non-orthonormal frame and an occupied reconnection target refused: document, history, pose, world and image unchanged; unchanged rows apply nothing');
+
+        const addCalls=[],addDescriptor=Object.getOwnPropertyDescriptor(model,'addPortalPair');
+        const reconnectCalls=[],reconnectDescriptor=Object.getOwnPropertyDescriptor(model,'reconnectPortals');
+        if(addDescriptor?.writable)model.addPortalPair=s=>{addCalls.push(structuredClone(s));return addDescriptor.value.call(model,s);};
+        if(reconnectDescriptor?.writable)model.reconnectPortals=e=>{reconnectCalls.push(structuredClone(e));return reconnectDescriptor.value.call(model,e);};
+        try{
+          fillPair(spec);portalForm.create.click();accepted('portal pair creation');
+          const docCreated=canon(model.document()),wiringCreated=wiring();
+          const anchors={'flat-bench':{id:'flat-bench',kind:'anchor',regionId:'flat',position:[6,0,0],radius:.9,forward:[0,-1,0],up:[0,0,1]},
+            'sphere-nook':{id:'sphere-nook',kind:'anchor',chartId:'exit-chart',position:[1,1,0],radius:.9,forward:[1,0,0],up:[0,0,1]}};
+          for(const [id,expected] of Object.entries(anchors))if(canon(entity(id))!==canon(expected))throw Error(`Created anchor ${id}: ${JSON.stringify(entity(id))}`);
+          if('chartId' in entity('flat-bench'))throw Error('Bounded endpoint serialized a chartId');
+          if(addDescriptor?.writable&&(addCalls.length!==1||'chartId' in addCalls[0].a
+            ||canon(addCalls[0])!==canon({id:'bench-nook',radius:.9,a:{id:'flat-bench',regionId:'flat',position:[6,0,0],forward:[0,-1,0],up:[0,0,1]},
+              b:{id:'sphere-nook',regionId:'sphere',chartId:'exit-chart',position:[1,1,0],forward:[1,0,0],up:[0,0,1]}})))
+            throw Error(`addPortalPair call ${JSON.stringify(addCalls)}`);
+          if(model.document().baseScene.connections.some(c=>c.id==='bench-nook'))throw Error('New connection landed in the base scene');
+          if(canon(link('bench-nook'))!==canon({id:'bench-nook',kind:'portal',a:'flat-bench',b:'sphere-nook',velocity:'preserve-speed',scale:1}))
+            throw Error(`New connection record ${JSON.stringify(link('bench-nook'))}`);
+          if(model.world.portals.length!==portalsBefore+2||portalOf('flat-bench').toId!=='sphere-nook'
+            ||portalOf('sphere-nook').toRegionId!=='flat'||portalOf('flat-bench').radius!==.9)throw Error('New pair is not wired both ways in the world');
+          {const expected=JSON.parse(docCreated);
+            expected.baseScene.entities=expected.baseScene.entities.filter(e=>e.id!=='flat-bench');
+            const s=expected.coverRegions.find(r=>r.id==='sphere');s.entities=s.entities.filter(e=>e.id!=='sphere-nook');
+            expected.connections=expected.connections.filter(c=>c.id!=='bench-nook');
+            if(canon(expected)!==docBefore)throw Error('Pair creation changed more than the two anchors and their connection');}
+          if(pose()!==poseBefore||!model.canUndo||model.canRedo)throw Error('Pair creation moved the player or left wrong history');
+          expectButtons('after pair creation');
+          if(/chartId/.test(JSON.stringify(JSON.parse(await download()).baseScene.entities.find(e=>e.id==='flat-bench'))))throw Error('Downloaded bounded anchor has chartId');
+          const ids=worldIds(model.document());
+          for(const field of [portalForm.id,portalForm.a.id,portalForm.b.id])
+            if(ids.has(field.value)||!/^[a-z][a-z0-9_-]*$/.test(field.value))throw Error(`Portal ID suggestion ${field.value} is not fresh and valid`);
+          const created=aperture('created',true);
+          renderer.draw(benchPose(),{...dimensions(),...appearance(),antialias:smoothing()});
+          shots.push({name:'portal-pair-created',data:canvas.toDataURL()});draw();
+          checks.push(`bench-nook created from one form: flat-bench (no chartId) and sphere-nook in exit-chart, radius .9, wired both ways; ${created.crossings}/${created.sampled} sampled rays cross the new aperture, axis ray ${created.axis.cpu} via ${created.axis.route} with CPU/GPU status, owner and distance agreeing on ${created.gpuHits} sampled GPU hits`);
+
+          // One undo removes the whole pair; redo restores it.
+          editor.undo.click();accepted('Undo pair creation');
+          if(canon(model.document())!==docBefore||wiring()!==wiringBefore)throw Error('Undo did not remove the whole pair');
+          if(entity('flat-bench')||entity('sphere-nook'))throw Error('Undo left an orphan anchor');
+          aperture('after-undo',false);
+          editor.redo.click();accepted('Redo pair creation');
+          if(canon(model.document())!==docCreated||wiring()!==wiringCreated)throw Error('Redo did not restore the pair');
+          aperture('after-redo',true);
+          checks.push('one Undo removes both anchors and the connection (no ray crosses the aperture); Redo restores all three');
+
+          // Final swap: both changed rows travel in one reconnect batch.
+          const swapBefore=canon(model.document());
+          setRow('enter-sphere','b','sphere-exit');setRow('leave-sphere','a','sphere-entry');
+          const calls0=reconnectCalls.length;
+          reconnectForm.apply.click();accepted('Endpoint swap');
+          if(reconnectDescriptor?.writable&&canon(reconnectCalls.slice(calls0))!==canon([[{id:'enter-sphere',a:'flat-entry',b:'sphere-exit'},{id:'leave-sphere',a:'sphere-entry',b:'flat-return'}]]))
+            throw Error(`Swap used ${reconnectCalls.length-calls0} reconnect calls: ${JSON.stringify(reconnectCalls.slice(calls0))}`);
+          if(portalOf('flat-entry').toId!=='sphere-exit'||portalOf('sphere-entry').toId!=='flat-return')throw Error('Swap did not exchange the endpoints');
+          if(canon(link('bench-nook'))!==canon({id:'bench-nook',kind:'portal',a:'flat-bench',b:'sphere-nook',velocity:'preserve-speed',scale:1}))throw Error('Swap disturbed the untouched pair');
+          if(pose()!==poseBefore)throw Error('Swap moved the player or camera');
+          const docSwapped=canon(model.document());
+          for(const c of links())for(const end of ['a','b'])if(row(c.id,end).value!==c[end])throw Error(`Rows do not show the swapped graph for ${c.id}.${end}`);
+          aperture('after-swap',true);
+          renderer.draw(benchPose(),{...dimensions(),...appearance(),antialias:smoothing()});
+          shots.push({name:'portal-swap',data:canvas.toDataURL()});draw();
+          checks.push(`enter-sphere/leave-sphere endpoints exchanged in ${reconnectDescriptor?.writable?'one observed':'one (unobserved)'} reconnectPortals batch; bench-nook untouched; pose kept`);
+
+          // Save, reload and undo the swap.
+          const savedText=await download();
+          if(canon(JSON.parse(savedText))!==docSwapped)throw Error('Downloaded JSON differs from the swapped document');
+          if(canon(createConnectedGlobalPreview(JSON.parse(savedText)).document())!==docSwapped)throw Error('Fresh model load of the swapped JSON differs');
+          editor.undo.click();accepted('Undo swap');
+          if(canon(model.document())!==swapBefore||portalOf('flat-entry').toId!=='sphere-entry')throw Error('Undo did not restore the original connections');
+          editor.redo.click();accepted('Redo swap');
+          if(canon(model.document())!==docSwapped)throw Error('Redo did not restore the swap');
+          await load(savedText,'portals.nil.json');accepted('Load swapped document');
+          if(canon(model.document())!==docSwapped||pose()!==poseBefore)throw Error('File load did not reproduce the swapped document with the pose kept');
+          aperture('reloaded',true);
+          await load(textBefore,'before-portals.nil.json');accepted('Load document without the pair');
+          if(canon(model.document())!==docBefore||wiring()!==wiringBefore)throw Error('Loading the earlier file did not remove the pair');
+          aperture('reloaded-without-pair',false);
+          checks.push('swapped document downloads, reloads in a fresh model and through the file input, and undo/redo restore both graphs exactly; reloading the earlier file removes the pair and its aperture');
+        }finally{
+          if(addDescriptor?.writable)model.addPortalPair=addDescriptor.value;
+          if(reconnectDescriptor?.writable)model.reconnectPortals=reconnectDescriptor.value;
+        }
+        records.push(portalRecord);
       }
 
       // Round trip to the original file, then fly the original route.

@@ -1,12 +1,14 @@
 # Fresh-chat handoff for Astra
 
 2026-09-11. Read WORKING_RULES, inspect status, use relevant TASK_ROUTER row.
-Latest: portal-pair creation/reconnection transaction APIs, with history and
-atomic refusals. Read CONNECTED_PORTAL_AUTHORING.md and
-docs/qa/portal-authoring-review.md. MUSE-62 accepted as bounded compiler evidence.
-Inspect bridge status: Claude portal controls and MUSE-63 API checks are the
-next batch. Do not redispatch an active/completed task. UI integration remains
-pending review; API tests are not evidence that new controls render correctly.
+Latest: portal-pair creation/reconnection browser controls, with undo/redo and
+JSON reload. Read CONNECTED_PORTAL_AUTHORING.md and docs/qa/portal-ui-review.md.
+Claude's resumed portal-controls batch and MUSE-63 are reviewed and integrated.
+Manifest retains the completed Claude task: DO NOT START IT AGAIN unchanged.
+No open Muse task. Check bridge status before any new dispatch.
+Validation caveat: full Node runner 101/102; unchanged s3-truth exceeded120s
+twice, then passed all5 checks when run directly on host. Do not call the full
+runner green. Browser43 checks passed on both real GPU and SwiftShader.
 
 The complete E3/S3/E3 fixture now supports creating/removing balls, anchor position
 and paired radius, spawn position, undo/redo, JSON download/file-input load.
@@ -17,9 +19,10 @@ Halted motion forbids edits until reset. Delayed file reads cannot overwrite a
 newer file choice or property edit. Renderer.replaceWorld changes texture data,
 not shader programs. The model.world and renderer.packed properties are getters.
 
-Next milestone: review/integrate portal controls using addPortalPair and
-reconnectPortals. Read CONNECTED_PORTAL_AUTHORING.md, especially final-graph swaps
-and base-to-envelope migration. Existing property-form orientation is read-only;
+Next bounded task: safe portal-pair removal through the same transaction (whole
+pair, no dangling anchors/references), then existing-anchor orientation controls.
+Read CONNECTED_PORTAL_AUTHORING.md, especially final-graph swaps and
+base-to-envelope migration. Existing property-form orientation is still read-only;
 no gizmos or global S3 floors/cells yet. CONNECTED_NEXT_MILESTONE.md gives the
 sequence. Bounded H3 is the next adapter test AFTER connected authoring; Nil/Sol
 require numerical contracts, not new shader tags. Godot remains a possible host.

@@ -6,7 +6,8 @@ Implemented transaction APIs (2026-09-11):
 `model.reconnectPortals([{id,a,b}, ...])` takes existing connection and anchor
 IDs. These use the same installWorld/undo/load boundary as ball edits.
 Helpers in connected-cover-edit.js only create candidates; calling a helper
-alone does not validate a graph or publish an edit. Browser controls are pending.
+alone does not validate a graph or publish an edit. Browser forms now expose
+creation and batch reconnection in Full S3 portals → Edit this world.
 
 Use the existing connected-document transaction, not incremental runtime portal
 mutation. The final graph must compile and pass current-player/spawn checks and

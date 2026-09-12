@@ -10,9 +10,11 @@ separate. Avoid making polished test fixtures a substitute for that integration.
 
 Progress: existing-entity properties, paired radii, undo/redo and JSON file
 round-trip now run in the complete connected preview (CONNECTED_EDITING.md).
-Ball creation/removal and portal-pair creation/reconnection APIs now use that
-transaction path. Next: browser controls and GPU checks for the portal APIs
-(CONNECTED_PORTAL_AUTHORING.md); the current form cannot yet build a new graph.
+Ball creation/removal and portal-pair creation/reconnection now have browser
+controls on that transaction path, including GPU checks and file reload
+(CONNECTED_PORTAL_AUTHORING.md). Remaining usability gaps: safe pair removal,
+existing-anchor orientation, and direct spatial manipulation. Keep the authored
+route usable before extending the adapter set.
 
 1. Keep contact recovery and ray uncertainty honest. Display sampling may improve
    edges, but must not broaden collision/ray tolerances or turn unresolved rays
