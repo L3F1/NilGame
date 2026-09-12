@@ -1,81 +1,47 @@
-# Fresh-chat handoff for Astra
+# Astra handoff - connected renderer
 
-Current work follows cedfdd2: visible three-geometry gallery has paired portal
-markers and an E3 return landmark; sparse numerical fixture remains unchanged.
-Read WORKING_RULES.md, then the relevant TASK_ROUTER.md row only.
+Read WORKING_RULES.md; select references through TASK_ROUTER.md. One active
+outcome: visibly reduce false purple fringes in the E3/full-S3/H3 editor without
+wrong intersections. No new geometry or precision helper milestone meanwhile.
 
-## Next task
+## Next implementation
 
-Read RENDERER_COMPARISON.md: reuse old specialization/CPU packing where valid;
-the new renderer need not remain monolithic or exclusively analytic.
+Integrate a scoped separate exclusion pass for the eligible FIRST E3->S3
+crossing, with cost-aware admission. app/spherical-miss-experiment.js and its
+GLSL helper are currently TEST-ONLY. Do not embed interval arithmetic in the
+main shader again (prior300s/60s no-report failures).
 
-After80392df: E3 primary ray bounds now complete the CPU camera -> E3/S3
-transfer -> S3 ball coefficient chain. Read docs/qa/primary-ray-review.md.
-All19200 live entry-view primary directions enclosed on both GPU backends.
-All52 old-guard candidates distinguish into18 root sets and34 misses under the
-composed reference bounds. This is NOT whole-scene event/traversal certification.
-Live display still has52 numerical refusals; no tolerance or diagnostic change.
+New raster experiment: at320x240, one portal/ball GPU pass p95~.023ms RTX5070Ti
+versus~45.9ms SwiftShader (12 samples each). This is not total frame cost.
+See docs/qa/render-loop-review.md. Actual GPU queries, not gl.finish call time.
+Costs for all objects, transfers and AA remain to be measured at integration.
+Do not turn this on unconditionally. Live gallery still has52 numeric fringes.
 
-Next lead task: read docs/qa/spherical-miss-small-program.md. A separate small
-GPU program now passes156 cases on real/SwiftShader:94 exclusions,58 retained
-root candidates,4 aperture refusals; forced-exclusion mutation caught. Original
-52 candidates distinguish34 misses/18 potential hits. Production renderer still
-unchanged. Cold program link/first-read takes about4-5s; per-pixel readback is NOT
-full-frame cost. Measure a full-screen pass before interactive integration.
+Bind outputs to exact portal/object, packed world revision, pose, viewport and
+AA sample. Consume only at the matching eligible first crossing. Regenerate on
+edits/motion/resize; invalid/unaffordable cases retain the existing query policy.
+S3 packed ball rows are -centre/-cos(radius/R); reverse BOTH signs for exclusion.
+Keep original hit/root ordering; this miss-only path targets34 sampled false
+alarms. The18 hit-side fringes need root intervals later, not midpoint guesses.
 
-Crucial packing correction: S3 ball rows are -centre/-cos(radius/R); convert both
-signs before the positive-constant exclusion test. The earlier timed-out inline
-candidate lacked this conversion and would have declined its exclusion branch.
+## Reading only when needed
 
-Proposed pass must bind exclusions to the same directed portal/object, world
-revision, camera, viewport and sample offset; only eligible firstE3/S3 crossings
-consume them. AA centre results cannot be reused for other samples. Shader/CPU
-sample agreement is not a portable floating-point proof. Hit-side fringes need
-root intervals and interval-aware ordering later. Do not repeat monolithic
-interval integration (300s and60s no-report failures).
+- Exclusion evidence/limits: docs/qa/spherical-miss-small-program.md.
+- Contracts: PORTAL_TRANSFER_PRECISION.md; SPHERICAL_ROOT_PRECISION.md.
+- Stable transfer already live: docs/qa/live-transfer-review.md.
+- Existing code reuse: RENDERER_COMPARISON.md. Shader specialization and CPU
+  packing are useful; no requirement that all surfaces use one analytic shader.
+- Other safeguards: SUBSYSTEM_RULES.md relevant heading; REGION_MOTION_CONTRACT.md
+  for motion. Do not alter movement while changing this rendering path.
 
-Modules/contracts: primary-ray-bounds.js; PORTAL_TRANSFER_PRECISION.md;
-SPHERICAL_ROOT_PRECISION.md; additive-event-order.js. Stable selected E3/S3
-transfer already live with fallback/guards. Read live-transfer-review.md if
-changing that call. Root/order intervals must not be collapsed to points.
+## Coordination
 
-MUSE-74 corrected revision accepted; no redispatch. MUSE-75 accepted:34 nominal /102 perturbations /14 honest rim refusals,
-zero-error mutation caught. MUSE-76 instruments startup stages; see bridge status.
-MUSE-72 completed with corrections; read docs/research/geometry-implementation-sources.md only before selecting outside code. Claude remains quota limited.
-Census runs through page-check --three-geometry [--sw]; preserve diagnostic colors.
+Muse76 returned429 with no delivery, reset advertised2026-09-14T00:00Z; no retry
+until available. Claude quota unavailable until user renews. Accepted72-75 are
+in docs/qa/muse-log.md; do not reread them routinely. MUSE72 code-license gates
+are in docs/research/geometry-implementation-sources.md before external reuse.
+Run host-probe once; use current queue verdict. Never assume an old worker PID.
 
-## Current evidence and limits
-
-- H3 GPU admission is opt-in. Stable span, material and refusal provenance fixes
-  are integrated; review h3-stable-span-review.md, h3-material-review.md and
-  h3-refusal-provenance-review.md under docs/qa when touching those paths.
-- Historical latest GPU: 13 views / 23569 rays per backend, 22 extra refusals,
-  one lost hit, no checked answer disagreements. Existing connected-global52
-  passed. These counts are attributed evidence until rerun.
-- MUSE-73 corrected CPU census rerun twice on LeoPC/Node24.20.0: 12740 rays,
-  1241 hits, 8357 misses, 3142 domain exits. NOT proof that GPU purple pixels
-  are coverage. Refusal classifier regression caught false domain labels.
-- Latest small-program experiment: full approved-host Node suite134/134 passed
-  (miss-small-suite.log); both backends gallery9 plus156 experiment cases passed. Prior
-  primary-ray review real connected-global52/H3 evidence remains attributed.
-- Driver GPU timing and representative interactive latency remain open.
-- Godot trial follows visible three-geometry acceptance, before a large custom
-  gizmo/asset workflow. Keep browser as reference. Future optics/portals/physics
-  estimates and distinctions live in FEATURE_ROADMAP.md.
-
-## Coordination and durable traps
-
-MUSE-73 accepted. MUSE-72 review complete with explicit PLM/WLU copying gates.
-MUSE-76 failed429 quota, no delivery; do not redispatch before availability. No duplicate dispatch. Claude remains quota
-limited until user renews availability. Run host-probe once each new session;
-use its current queue verdict, never historical worker PIDs.
-
-Do not hide numerical refusals. Keep metric transport across actual motion,
-portal and correction paths; recompilation is not movement. Do not replay
-unspent motion when settling correction debt. Preserve reduced S3 shader trig,
-CPU/GPU tolerances, and no derivatives in divergent material branches.
-Construction coordinates are not ambient tangents. Global coverage and bounded
-charts are different policies, not different S3 geometries.
-
-Older status entries were archived in docs/archive/next-session-through-2026-09-12.md;
-read only for historical provenance, not current instructions.
+Preserve numerical refusals until resolved. Global S3 and a bounded S3 chart
+are coverage policies, not different geometries. Existing body/portal transport,
+correction-debt semantics and save/load are not part of this rendering change.

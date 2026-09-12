@@ -24,6 +24,11 @@ Applies to Astra, Claude and Muse. The user's current instructions take preceden
   and blocked/unrun checks explicitly. Put summaries last, before exit.
 - Preserve geometry IDs/preset order, effective options (optVal), menu isolation,
   resets and visible boot errors when modifying the arena.
+- Keep one active end-to-end deliverable. Before extending an algorithm family,
+  run its smallest GPU path and measure relevant cost. A helper or test count
+  is progress evidence, not acceptance of the visible feature.
+- Use focused checks during investigation; run the full suite once the candidate
+  integration batch is ready, repeating only for relevant changes/failures.
 - Use bounded assignments for corpora, reproducible checks and scoped implementation;
   reserve unresolved contracts for the lead. Muse reads MUSE.md and only its
   assigned task. Report defects outside assigned scope without fixing them.

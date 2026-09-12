@@ -14,6 +14,14 @@ Detailed sequencing, Godot trial gate and scoped effort estimates:
 - [x] Review MUSE-73 CPU census; correct false domain-only labels and pin mixed
   refusal classification. CPU-only evidence does not clear GPU artifacts.
 
+## Active delivery
+
+Reduce false purple fringes in the existing editor. Separate-pass cost measured:
+fast on tested hardware GPU, too expensive as a default on SwiftShader.
+Next is scoped integration with measured cost, exact state/sample association,
+and before/after images. See docs/qa/render-loop-review.md. No new geometry or
+standalone precision API until this delivery is integrated or explicitly rejected.
+
 ## Current milestone: polished E3 / full-S3 / H3 editor
 
 Status reconciled 2026-09-12. This section supersedes historical milestones
@@ -53,8 +61,10 @@ below. Implementation details and acceptance criteria:
 - [x] Test a standalone spherical exclusion program: both GPU backends pass156
   cases (94 misses,58 root candidates,4 aperture refusals), negative witness caught.
   See spherical-miss-small-program.md; test-only, no live fringe fix.
-- [ ] Measure full-frame precision-pass cost and bind results to portal/object,
-  world revision, pose, viewport and AA sample before interactive integration.
+- [x] Measure full-raster one-portal/ball pass at160x120 and320x240 on both
+  backends; GPU query distributions recorded in render-loop-review.md.
+- [ ] Integrate scoped, cost-aware exclusion; bind results to portal/object,
+  world revision, pose, viewport and AA sample. Measure TOTAL frame cost.
   MUSE-76 stage telemetry is quota-blocked; no automatic retry.
 - [ ] Repair S3 ball root precision with a scoped error model; preserve genuine
   tangencies and portal guards. Broaden artifact checks beyond the entry pose.

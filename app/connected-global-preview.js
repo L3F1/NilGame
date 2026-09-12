@@ -381,7 +381,7 @@ try {
     checks.push('Candidate GPU portal transfer: interval enclosure and missing-transport mutation');
     const census=await checkThreeGeometryEditor({model,renderer,canvas,editor,draw,checks,shots,loadDone:()=>loading});
     const {checkSphericalMissExperiment}=await import('./spherical-miss-experiment.js');
-    const exclusion=checkSphericalMissExperiment(census);
+    const exclusion=await checkSphericalMissExperiment(census);
     await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,ordering,census,exclusion]});
   } else {
     const records=[],poses=[];
