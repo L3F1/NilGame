@@ -141,6 +141,10 @@ before timing) and `baseline-drift-unprimed-real.log` (no extra pre-timing reads
 This does NOT reproduce or close the intermittent observation. A bounded
 read-only Claude review is queued to examine GL state and the exact draw sequence;
 no new renderer heuristic or weakened comparison introduced.
+Software also passed (`baseline-drift-sw.log`); full Node suite136/136 passed
+(`baseline-isolation-suite.log`). Claude task `claude-distance-drift-review`
+launched frombd25fe3, report-only, targeted12-tool-call/400-word scope. Review
+its delivery before another optimization. Intermittent issue remains OPEN.
 
 ## Claude usage correction
 

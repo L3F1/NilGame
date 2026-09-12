@@ -423,6 +423,12 @@ try {
       const before=renderer.read(state,width,height);
       const beforeShot=(renderer.draw(state,{width,height}),canvas.toDataURL());
       const baselineCost=await frameCost({});
+      const baselineAgain=renderer.read(state,width,height);
+      for(let i=0;i<width*height;i++)if(before.pixels[4*i]!==2&&before.distances[i]!==baselineAgain.distances[i]){
+        const primaryAgain=renderer.readPrimaryRays(state,width,height);
+        throw Error(`Unrefined baseline drift after resize/timing at ${i%width},${Math.floor(i/width)}: distance ${before.distances[i]} -> ${baselineAgain.distances[i]}, repeated primary ${primaryAgain.map(v=>v[i])}`);
+      }
+      checks.push('Unrefined settled distances remain identical after the320x240 timing/resize sequence');
       const after=renderer.read(state,width,height,{sphericalMissPass:true});
       const evidence=renderer.readMissPass(state,width,height);
       renderer.draw(state,{width,height,sphericalMissPass:true});
