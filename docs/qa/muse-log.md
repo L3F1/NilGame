@@ -2868,3 +2868,12 @@ Six sections passed. Lead added exact expected exit-chart normals to the cover
 reframe check, and corrected the report's attribution of near-entry displacement
 as integration drift: the explicit portal exit offset accounts for it. See
 muse64-portal-removal.md. Claude's controls remain a separate integration review.
+
+## MUSE-65 accepted — 2026-09-11
+
+Base f52251c. Lead read and reran hyperbolic-space-truth.test.js on Windows
+Node24.20.0: all sections pass. Independent distance/right-triangle and transport
+invariant checks cover seeded interior/envelope cases. logAt length exceeding4R
+cannot be executed by one expAt under the explicit step cap; no promise of an
+unrestricted round trip. No production repairs. See muse65-h3-metric.md and
+h3-camera-integration.md; full108/108 and existing preview GPU52 passed.

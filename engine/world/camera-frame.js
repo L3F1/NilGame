@@ -22,16 +22,35 @@
 //     want. It is no longer an assumption baked into the reconstruction where
 //     nothing can decline it.
 //
-// Host-free: no DOM, no renderer, no scene document. Works in any space
-// `engine/geometry/metric-space.js` produces.
+// Host-free: no DOM, no renderer, no scene document. Works in any space that
+// implements the metric adapter contract -- `engine/geometry/metric-space.js`
+// (E3/S3), `spherical-cover.js`, and the experimental `hyperbolic-space.js`.
+// Nothing here is specialised per kind; an adapter that cannot supply an
+// ambient pairing is refused rather than approximated.
 
-// The ambient inner product. Both supported spaces embed in a Euclidean
-// ambient space and `metric-space.dot` is that same sum -- the difference is
-// which vectors are tangent, not how they multiply. Used here only where a
-// vector may have drifted OFF the tangent space and so cannot be handed to
-// `space.dot`, which would reject it.
-const ambient = (u, v) => u.reduce((sum, x, i) => sum + x * v[i], 0);
 const combine = (a, x, b, y) => a.map((v, i) => v * x + b[i] * y);
+
+/**
+ * The ambient inner product OF THE SPACE, for vectors that may not be tangent.
+ *
+ * This file used to spell the sum out itself, on the reasoning that both
+ * supported spaces embed Euclidean-ly. That reasoning is a property of E3 and
+ * S3, not of a metric space, and H3 embeds in a Lorentzian ambient space whose
+ * last component enters with a minus sign. So the pairing is asked for, never
+ * assumed: a space that does not offer one is refused rather than quietly
+ * handed the Euclidean answer, which on a hyperboloid is not a small error but
+ * a different projector, and would read downstream as a camera that slowly
+ * rolls for no reason.
+ *
+ * `space.dot` cannot serve here because it validates tangency and these
+ * vectors are exactly the ones that have drifted off it.
+ */
+function ambientDot(space, u, v) {
+  if (typeof space.ambientDot !== 'function') {
+    throw new Error(`metric '${space.kind}' exposes no ambientDot; a camera frame cannot guess its ambient pairing`);
+  }
+  return space.ambientDot(u, v);
+}
 
 /**
  * Project a possibly-drifted vector back onto the tangent space at `p`.
@@ -39,11 +58,14 @@ const combine = (a, x, b, y) => a.map((v, i) => v * x + b[i] * y);
  * Numerical drift takes a carried vector off the tangent space slowly -- on
  * S3 a vector must stay orthogonal to the position 4-vector, and float error
  * does not respect that. Left alone the drift compounds over a walk. The
- * tangent basis at `p` is the projector.
+ * tangent basis at `p` is the projector -- but only when the coefficients are
+ * taken with the SPACE's ambient pairing, since that is what makes the basis
+ * orthonormal. On H3 the Euclidean coefficients are orthonormal in no metric at
+ * all and the "repair" would push the vector further off the tangent space.
  */
 function toTangent(space, p, v) {
   const basis = space.frame(p);
-  return basis.reduce((acc, e) => combine(acc, 1, e, ambient(v, e)),
+  return basis.reduce((acc, e) => combine(acc, 1, e, ambientDot(space, v, e)),
     new Array(v.length).fill(0));
 }
 
@@ -95,9 +117,14 @@ export function createCameraFrame(space, position, { forward, up }) {
   // space S3 uses, so take it in the COORDINATES of the tangent basis at this
   // point, which is orthonormal and right-handed, and map the answer back.
   // In E3 that basis is the standard one and this is the ordinary cross
-  // product; on S3 it is the only place handedness is even defined.
+  // product; on S3 and H3 it is the only place handedness is even defined.
+  //
+  // `f` and `u` came out of `toTangent`, so they ARE tangent and the validated
+  // metric dot is the right coefficient -- taking the ambient pairing again
+  // here would work on S3 by accident and give a sheared, non-orthonormal
+  // coordinate triple on H3, where the ambient and intrinsic products differ.
   const basis = space.frame(position);
-  const fc = basis.map((e) => ambient(f, e)), uc = basis.map((e) => ambient(u, e));
+  const fc = basis.map((e) => space.dot(position, f, e)), uc = basis.map((e) => space.dot(position, u, e));
   const cross = [fc[1] * uc[2] - fc[2] * uc[1], fc[2] * uc[0] - fc[0] * uc[2], fc[0] * uc[1] - fc[1] * uc[0]];
   const right = basis.reduce((acc, e, i) => combine(acc, 1, e, cross[i]),
     new Array(position.length).fill(0));

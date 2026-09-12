@@ -6,7 +6,9 @@ from createMetricSpace. Domain extent <=2R; finite point representation <=4R
 from origin and signed per-step travel <=4R. Out-of-envelope queries throw;
 these are deliberately narrow numerical policies, not geometric singularities.
 The adapter exposes ambientDot for off-tangent frame repair and validated dot
-for tangent products. Existing camera code still needs to consume that metric.
+for tangent products. Camera-frame assembly now consumes those operations.
+logAt may describe endpoint displacements longer than4R; a single expAt/step
+still refuses travel exceeding4R. Round-trip claims must respect query limits.
 The existing arena hyperboloid code is a reference, not connected-runtime support.
 Finish the current removal/orientation UI review before adding a visible preset.
 
@@ -24,9 +26,9 @@ radial coordinates. Region extent is a numerical coverage limit, not a wall.
 
 - metric-space.js admits only E3/S3. Add a separately tested H3 adapter using
   the established geometry(-1) mathematics where its units/conditioning fit.
-- camera-frame.js uses ambient Euclidean projection, including off-tangent
-  repair. Expose an adapter-owned ambient pairing/tangent-repair operation;
-  do not bypass validated tangent dot with a mislabeled Euclidean fallback.
+- camera-frame.js has been converted to adapter-owned ambient pairing for drift
+  repair and validated metric dot for tangent frame coefficients. Tested H3
+  cameras now retain aim, orientation and transported holonomy off origin.
 - region-portal.js uses raw dot for construction coefficients, plane height,
   and ray roots; every non-E3 root formerly took the S3 branch. It now explicitly
   refuses unsupported kinds. Frame coefficients need metric dot; plane height

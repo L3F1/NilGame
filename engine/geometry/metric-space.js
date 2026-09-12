@@ -42,6 +42,15 @@ export function createMetricSpace({ kind, curvatureRadius = 1, maxDistance } = {
     validateTangent(p, u); validateTangent(p, v);
     return scalar(u, v);
   }
+  /** The pairing of the AMBIENT embedding, for vectors that are not tangent.
+   * E3 and S3 embed Euclidean-ly, so this is the same sum `dot` uses; H3's is
+   * Lorentzian and is not. A caller repairing drift must ask the adapter which
+   * one it has rather than assume the Euclidean one. Unlike `dot` this takes no
+   * point and accepts off-tangent vectors -- that is precisely its purpose. */
+  function ambientDot(a, b) {
+    vector(a, dimension, 'ambient vector'); vector(b, dimension, 'ambient vector');
+    return scalar(a, b);
+  }
   function norm(p, v) { validateTangent(p, v); return Math.hypot(...v); }
   // Remove representational radial error BEFORE normalizing a short tangent.
   // Validation still rejects invalid callers; this does not widen its tolerance.
@@ -181,7 +190,7 @@ export function createMetricSpace({ kind, curvatureRadius = 1, maxDistance } = {
     return exit <= maxTravel ? Math.max(0, exit) : Infinity;
   }
   return Object.freeze({ kind, curvatureRadius: R, maxDistance, dimension,
-    origin: Object.freeze(origin), validatePoint, validateTangent, dot, norm,
+    origin: Object.freeze(origin), validatePoint, validateTangent, dot, ambientDot, norm,
     normalize, project, withinDomain, decode, encode, distance, step,
     stepWithTransport, logAt, expAt, transport, frame, boundaryDistance });
 }
