@@ -373,8 +373,8 @@ try {
   if(!checking)requestAnimationFrame(frame);
   else if(threeGeometry){
     const {checkThreeGeometryEditor}=await import('./three-geometry-editor-probe.js');
-    await checkThreeGeometryEditor({model,renderer,canvas,editor,draw,checks,shots,loadDone:()=>loading});
-    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs}]});
+    const census=await checkThreeGeometryEditor({model,renderer,canvas,editor,draw,checks,shots,loadDone:()=>loading});
+    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},census]});
   } else {
     const records=[],poses=[];
     if(!/no gravity/i.test(document.body.textContent)||!/COMPLETE S3/.test(document.body.textContent))throw Error('Page lost its complete-S3/no-gravity label');

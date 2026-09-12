@@ -1,22 +1,26 @@
 # Fresh-chat handoff for Astra
 
-Current work follows5a251a4: visible three-geometry gallery has paired portal
+Current work follows cedfdd2: visible three-geometry gallery has paired portal
 markers and an E3 return landmark; sparse numerical fixture remains unchanged.
 Read WORKING_RULES.md, then the relevant TASK_ROUTER.md row only.
 
 ## Next task
 
-Improve the visible three-geometry level's architecture/scale cues and diagnose
-remaining GPU purple patches using saved poses and CPU/GPU provenance. Keep
-numerical refusals visible. Do not add a fourth geometry yet. H3 is a bounded
-additive-ball/aperture subset, not unrestricted construction support.
+Repair the S3 BALL tangency/root precision, not the global E constant. Read
+ docs/qa/gallery-ray-census-review.md for the bounded contract and concrete ray.
+Current shader ratio guard abs(ratio)>1-4E with E=.00003 covers all52 sampled
+numerical refusals at gallery entry; CPU resolves18 hits/34 misses. Both GPU
+backends agree. This is a candidate mechanism, not a proven tighter error bound.
+Account for packed coefficients, camera/portal drift and reduced trig. Retain
+true tangencies, half-space behavior, event ordering and unresolved semantics.
 
-Worlds menu now links to tools/connected-global-preview.html?preset=three.
-The same page's World selector opens either preset and explicitly restarts it,
-discarding unsaved session edits. H3 policy is retained across edit/load/history.
-Read docs/qa/three-gallery-review.md and THREE_GEOMETRY_MILESTONE.md.
-Gallery uses14/16 primitive slots. Next work should target GPU refusal
-provenance and richer supported constructions, not pile on more marker balls.
+Durable census runs with page-check --three-geometry [--sw]; packets include
+scene/pose/raw status counts/crossings and replayed guard candidates. Root
+regression injects owner/distance/lost-hit faults. No shader change this turn.
+
+The visible gallery uses14/16 primitive slots. Do not pile on more marker balls.
+Keep the sparse connected-three-geometries.nil.json unchanged for reference.
+Worlds menu opens tools/connected-global-preview.html?preset=three.
 
 ## Current evidence and limits
 

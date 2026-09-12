@@ -1,3 +1,4 @@
+import {galleryRayCensus} from './gallery-ray-census.js';
 // Browser-only acceptance through the live editor's controls and renderer.
 export async function checkThreeGeometryEditor({model,renderer,canvas,editor,draw,checks,shots,loadDone}){
   const assert=(ok,message)=>{if(!ok)throw Error(message);},json=JSON.stringify;
@@ -6,6 +7,8 @@ export async function checkThreeGeometryEditor({model,renderer,canvas,editor,dra
   assert(document.querySelector('#world-preset').value==='three','Three-geometry preset not selected');
   assert(/H3/.test(document.querySelector('h1').textContent),'Missing H3 title');
   draw();shots.push({name:'three-gallery-entry',data:canvas.toDataURL()});
+  const census=galleryRayCensus(model,renderer);
+  checks.push('Gallery entry census: 19200 CPU/GPU rays, no confident answer disagreements');
   const route=['flat'];
   for(let i=0;i<400&&model.state.regionId!=='hyperbolic';i++){
     model.advance(.04,[0,1,0]);assert(!model.halted,'Forward route halted');
@@ -59,4 +62,5 @@ export async function checkThreeGeometryEditor({model,renderer,canvas,editor,dra
   assert(back.join()==='hyperbolic,sphere,flat',`Return route ${back}`);
   draw();shots.push({name:'three-e3-return',data:canvas.toDataURL()});
   checks.push('Edited/reloaded scene returns H3 / full S3 / E3 by actual flight');
+  return census;
 }

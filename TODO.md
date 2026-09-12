@@ -33,8 +33,11 @@ below. Implementation details and acceptance criteria:
   docs/qa/h3-material-review.md. Browser preset now exposed; see three-editor-review.md.
 - [x] Preserve H3 numerical-vs-coverage refusal reasons; numeric causes win
   across mixed portal order. Both backends verified; unresolved status retained.
-- [ ] Diagnose visible E3/S3 silhouette/portal purple patches by reproducible
-  rays; MUSE-73 CPU census accepted; GPU attribution remains.
+- [x] Census the gallery entry fringe on CPU/real GPU/SwiftShader: all52
+  numerical refusals have S3 ball tangency-guard candidates; no confident
+  disagreements in19200 rays. See gallery-ray-census-review.md.
+- [ ] Repair S3 ball root precision with a scoped error model; preserve genuine
+  tangencies and portal guards. Broaden artifact checks beyond the entry pose.
 - [x] Integrate H3 GPU repair and verify real/software readback, materials and
   refusal provenance; see h3-stable-span-review.md and follow-up reviews.
 - [ ] Broaden precision cases and collect reliable GPU frame-time distributions.
