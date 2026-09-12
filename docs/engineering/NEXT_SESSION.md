@@ -37,7 +37,9 @@ alarms. The18 hit-side fringes need root intervals later, not midpoint guesses.
 ## Coordination
 
 Muse76 returned429 with no delivery, reset advertised2026-09-14T00:00Z; no retry
-until available. Claude quota unavailable until user renews. Accepted72-75 are
+until available. Claude renewed and assigned `claude-live-miss-pass` at94f0a44;
+check bridge status and review its candidate against LIVE_MISS_PASS.md before
+any overlapping edits. Run without automatic review to save tokens. Accepted72-75 are
 in docs/qa/muse-log.md; do not reread them routinely. MUSE72 code-license gates
 are in docs/research/geometry-implementation-sources.md before external reuse.
 Run host-probe once; use current queue verdict. Never assume an old worker PID.

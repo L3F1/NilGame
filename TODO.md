@@ -22,6 +22,10 @@ Next is scoped integration with measured cost, exact state/sample association,
 and before/after images. See docs/qa/render-loop-review.md. No new geometry or
 standalone precision API until this delivery is integrated or explicitly rejected.
 
+Claude assigned opt-in live exclusion-pass integration (LIVE_MISS_PASS.md),
+isolated bridge run from94f0a44. Lead reviews, then runs GPU/image/cost acceptance;
+delivery is not yet integrated. Muse paused until reported quota reset Sept14 UTC.
+
 ## Current milestone: polished E3 / full-S3 / H3 editor
 
 Status reconciled 2026-09-12. This section supersedes historical milestones

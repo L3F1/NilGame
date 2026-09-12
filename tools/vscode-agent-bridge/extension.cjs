@@ -27,13 +27,19 @@ function activate(context) {
         current = latest(folder);
         bar.text = `$(organization) Agents: ${current.summary.status}`;
         bar.tooltip = 'Claude / Muse bridge — click for status'; bar.show();
-        if (['review-finished', 'review-needs-attention'].includes(current.summary.status)) {
+        const tasksDone = current.summary.status === 'tasks-finished' && !current.summary.reviewRequested;
+        if (tasksDone || ['review-finished', 'review-needs-attention'].includes(current.summary.status)) {
           const key = `${current.id}:${current.summary.status}`;
           if (context.workspaceState.get('lastNotification') !== key) {
             await context.workspaceState.update('lastNotification', key);
-            const choice = await vscode.window.showInformationMessage(
-              current.summary.status === 'review-finished' ? 'NilGame: automatic Astra review is ready.' : 'NilGame: automatic review needs attention.',
-              'Open Review', 'Open Status');
+            const tasks = current.summary.tasks || [];
+            const clean = tasks.length > 0 && tasks.every(task => task.status === 'awaiting-review');
+            const message = tasksDone
+              ? (clean ? 'NilGame: all assigned agents have finished. Results await lead review.'
+                : 'NilGame: agent run finished with failures or blocked work. Open status for details.')
+              : (current.summary.status === 'review-finished' ? 'NilGame: automatic Astra review is ready.' : 'NilGame: automatic review needs attention.');
+            const choice = await vscode.window.showInformationMessage(message,
+              ...(tasksDone ? ['Open Status'] : ['Open Review', 'Open Status']));
             if (choice) await open(choice === 'Open Review' ? 'astra-review.md' : 'summary.json');
           }
         }

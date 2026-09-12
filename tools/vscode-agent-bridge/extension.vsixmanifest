@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
   <Metadata>
-    <Identity Language="en-US" Id="nilgame-agent-bridge" Version="0.1.0" Publisher="nilgame-local"/>
+    <Identity Language="en-US" Id="nilgame-agent-bridge" Version="0.1.1" Publisher="nilgame-local"/>
     <DisplayName>NilGame Agent Bridge</DisplayName>
     <Description xml:space="preserve">Local bridge status and completion notifications.</Description>
     <Tags>agent,local</Tags>

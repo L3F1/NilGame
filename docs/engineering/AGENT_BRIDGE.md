@@ -11,7 +11,7 @@ and configured default models are used; these runs consume their normal usage.
 From the main checkout, after reviewing the bounded task manifest:
 
 ```sh
-node tools/agent-bridge.js start --review
+node tools/agent-bridge.js start
 node tools/agent-bridge.js status
 ```
 
@@ -28,6 +28,17 @@ Code and Codex extensions provide their normal clients. A small local extension,
 `nilgame-local.nilgame-agent-bridge`, is also installed: it watches result files,
 shows status and opens the latest review. Source: tools/vscode-agent-bridge/.
 It makes no model calls and cannot inject prompts into either chat.
+
+To know when it is time to return: watch **Agents:** in VS Code's status bar,
+or run `node tools/agent-bridge.js status`. Extension 0.1.1 announces ordinary
+task completion without requiring a token-consuming automatic review. A run
+marked `tasks-finished` has no assigned agent still working, but inspect each
+task: `awaiting-review` is delivered; `needs-attention`/`failed` needs triage.
+Click the bar or use **NilGame: Open Agent Bridge Status** in the command palette.
+Provider work uses CLI sessions, not the existing chat tabs. Saved task logs and
+reports are in the run folder below; Claude's JSON result can arrive only at the
+end, so a quiet stdout file does not establish inactivity. You may ask the lead
+questions while agents run; their isolated checkouts keep that safe.
 
 ## Files and status
 
