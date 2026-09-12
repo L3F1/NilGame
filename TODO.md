@@ -8,6 +8,12 @@ first-person levels to test each capability. Game-mode expansion is secondary.
 The previous backlog is preserved in
 [docs/archive/gameplay-backlog.md](docs/archive/gameplay-backlog.md).
 
+Detailed sequencing, Godot trial gate and scoped effort estimates:
+[FEATURE_ROADMAP.md](docs/engineering/FEATURE_ROADMAP.md).
+
+- [x] Review MUSE-73 CPU census; correct false domain-only labels and pin mixed
+  refusal classification. CPU-only evidence does not clear GPU artifacts.
+
 ## Current milestone: polished E3 / full-S3 / H3 editor
 
 Status reconciled 2026-09-12. This section supersedes historical milestones

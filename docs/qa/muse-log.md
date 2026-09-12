@@ -2940,3 +2940,12 @@ Isolated omitted-foreground-bound mutation fails a translated gate-at-limit
 case: unresolved instead of hit. No production defect reported or reproduced.
 Full suite with the corpus passed 122/122, then 123/123 with the new three-region
 fixture. Report: docs/qa/muse71-h3-sight.md. Script: review-muse71.mjs in scratch.
+
+
+## MUSE-73 - ACCEPTED with lead corrections, 2026-09-12
+
+Integrated CPU census from run2026-09-12T05-56-25-610Z-e6c60a87 at base26c90ce.
+Lead fixed false domain-only classification; refusal-census.test.js catches it
+before correction. Two local runs byte-identical, 12740 rays / 3142 domain
+exits. CPU evidence only. Review: docs/qa/muse73-s3-refusals.md.
+MUSE-72 research source/license review remains pending.
