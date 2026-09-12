@@ -17,6 +17,8 @@
 //     --scale <n>      nearest-neighbour magnification of the SAVED png only
 //     --out <path>     png path (default connected-sight.png)
 //     --packet <path>  json path (default connected-sight.json)
+//     --runtime <name> standard | experimental-h3 (explicit CPU-only opt-in)
+//     --rays <name>    selected | all (all includes a record for every pixel)
 //
 // The packet records the scene, the exact pose, the range and the colour
 // legend, so another host repeats the same sample and compares ANSWERS rather
@@ -26,13 +28,14 @@ import { execFileSync } from 'node:child_process';
 import { deflateSync } from 'node:zlib';
 import { hostname, platform } from 'node:os';
 import { pathToFileURL } from 'node:url';
-import { compileRegionWorld } from '../engine/world/region-world.js';
+import { compileRegionWorld, compileHyperbolicRegionWorld } from '../engine/world/region-world.js';
 import { traceRegionSight } from '../engine/world/region-sight.js';
 import { createCameraFrame, turn } from '../engine/world/camera-frame.js';
 
 export const PROBE_DEFAULTS = Object.freeze({
   scene: 'levels/fixtures/connected-sight.nil.json',
   pose: 'entry-spawn', width: 96, height: 72, fov: 70, range: 32, work: 2048, scale: 1,
+  runtime:'standard', rays:'selected',
 });
 
 // NAMED POSES, so a report says WHERE it stood in one word and a rerun puts
@@ -43,6 +46,9 @@ export const POSES = Object.freeze({
   'entry-spawn': { regionId: 'entry', position: [0, -3, 0], yaw: 0, pitch: 0 },
   doorway: { regionId: 'curve', position: [0, -1, 0], yaw: 0, pitch: 0 },
   'far-spawn': { regionId: 'far', position: [0, -1.5, 0], yaw: 0, pitch: 0 },
+  'h3-entry': { regionId:'flat',position:[0,-1,0],yaw:0,pitch:0 },
+  'h3-inside': { regionId:'hyperbolic',position:[0,.5,0],yaw:0,pitch:0 },
+  'h3-landmark': { regionId:'hyperbolic',position:[0,.5,0],yaw:-Math.atan2(1,.5),pitch:0 },
 });
 
 // ----------------------------------------------------------------- colours
@@ -254,6 +260,8 @@ export function rayRecord(label, ray) {
     crossings: result.crossings.map((crossing) => ({ id: crossing.id,
       fromRegionId: crossing.fromRegionId, toRegionId: crossing.toRegionId, distance: crossing.distance })),
     segments: result.segments.map((segment) => ({ regionId: segment.regionId, distance: segment.distance })),
+    hitPoint:result.status==='hit'?[...result.position]:null,
+    hitNormal:result.query?.normal?[...result.query.normal]:null,
   };
 }
 
@@ -294,13 +302,16 @@ export function parseArguments(argv) {
 export function runProbe(options = {}) {
   const settings = { ...PROBE_DEFAULTS, out: 'connected-sight.png', packet: 'connected-sight.json', ...options };
   const scene = JSON.parse(readFileSync(settings.scene, 'utf8'));
-  const world = compileRegionWorld(scene);
+  if(!['standard','experimental-h3'].includes(settings.runtime))throw Error('Unknown probe runtime');
+  if(!['selected','all'].includes(settings.rays))throw Error('Unknown ray record selection');
+  const world = (settings.runtime==='experimental-h3'?compileHyperbolicRegionWorld:compileRegionWorld)(scene);
   const pose = POSES[settings.pose];
   if (!pose) throw new Error(`Unknown pose ${settings.pose}; try ${Object.keys(POSES).join(', ')}`);
   const sample = sampleSight(world, pose, settings);
   const packet = {
     what: 'CPU traceRegionSight sample. Not a rendered frame, not a GPU measurement.',
-    scene: { path: settings.scene, id: scene.id, version: scene.version },
+    scene: { path: settings.scene, id: scene.id, version: scene.version,document:world.document() },
+    runtime:settings.runtime,
     host: { name: hostname(), platform: platform(), node: process.version, revision: revision() },
     pose: {
       name: settings.pose, regionId: pose.regionId, position: [...pose.position],
@@ -315,7 +326,7 @@ export function runProbe(options = {}) {
     },
     counts: sample.counts, work: sample.work, cpuQueryTiming: sample.cpuQueryTiming,
     legend: Object.fromEntries([...sample.legend].sort()),
-    rays: selectRays(sample, settings.width, {
+    rays: settings.rays==='all'?sample.rays.map(ray=>rayRecord(`pixel ${ray.px},${ray.py}`,ray)):selectRays(sample, settings.width, {
       centre: [Math.floor(settings.width / 2), Math.floor(settings.height / 2)],
       'top-left': [0, 0], 'bottom-right': [settings.width - 1, settings.height - 1],
     }),

@@ -2918,3 +2918,13 @@ counterexample reported or reproduced. Gate producers assume their tested axial
 rays; curved cases share the adapter and existing field. These are sampled
 consumer checks, not a general theorem that increasing speed cannot transit.
 Report: docs/qa/muse69-aperture-motion.md.
+
+## MUSE-70 accepted with lead corrections
+
+Base47dba7c plus reference tooling, LeoPC/Node24.20.0. Source review caught a
+pseudo-tangent parallel to the normal in rotated variants, and expected outcomes
+conditioned on a copied production predicate. Lead replaced both with explicitly
+constructed cases; rerun9 documents/162 queries:18 hits,36 misses,108 unresolved.
+Isolated B>0 guard mutant fails two off-centre tangent checks. No production
+repair. See docs/qa/h3-reference-review.md; original report counts are historical.
+Far-field large-R behavior remains untested by this corpus.
