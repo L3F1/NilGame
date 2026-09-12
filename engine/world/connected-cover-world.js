@@ -1,8 +1,8 @@
 // Experimental persistence envelope. Scene-v2 retains its bounded meaning;
 // each global region owns explicit local authoring charts in its own document.
-import {compileRegionWorld,REGION_LIMITS} from './region-world.js';
+import {compileRegionWorld,compileHyperbolicRegionWorld,REGION_LIMITS} from './region-world.js';
 import {compileCoverRegion} from './cover-region-document.js';
-import {compileFramedPortals,decodeRegionAnchor} from './region-portal.js';
+import {compileFramedPortals,compileHyperbolicFramedPortals,decodeRegionAnchor} from './region-portal.js';
 import {createCameraFrame} from './camera-frame.js';
 
 function ballField(space,balls){
@@ -21,10 +21,11 @@ function ballField(space,balls){
     capabilities:Object.freeze({distance:'bound',exteriorDistance:'exact',interior:'sign-with-conservative-magnitude',normal:'piecewise-with-seams',intersection:'global-s3-balls'})});
 }
 
-export function compileConnectedCoverWorld(source){
+export function compileConnectedCoverWorld(source,{experimentalH3=false}={}){
+  if(typeof experimentalH3!=='boolean')throw Error('Invalid H3 runtime opt-in');
   if(!source||Object.keys(source).some(k=>!['format','version','id','baseScene','coverRegions','connections'].includes(k))||source.format!=='nil-connected-cover'||source.version!==1
     ||typeof source.id!=='string'||! /^[a-z][a-z0-9_-]*$/.test(source.id)||!Array.isArray(source.coverRegions)||!Array.isArray(source.connections))throw Error('Invalid connected-cover document');
-  const base=compileRegionWorld(source.baseScene),baseDoc=base.document(),radius=baseDoc.units.playerRadius;
+  const base=(experimentalH3?compileHyperbolicRegionWorld:compileRegionWorld)(source.baseScene),baseDoc=base.document(),radius=baseDoc.units.playerRadius;
   const regions=new Map(base.regions),compiled=source.coverRegions.map(d=>compileCoverRegion(d,{playerRadius:radius}));
   if(regions.size+compiled.length>REGION_LIMITS.regions)throw Error('At most four regions');
   const ids=new Set([baseDoc.id,...baseDoc.regions.map(r=>r.id),...baseDoc.entities.map(e=>e.id),...baseDoc.connections.map(c=>c.id)]);
@@ -41,7 +42,7 @@ export function compileConnectedCoverWorld(source){
     if(!c||Object.keys(c).some(k=>!['id','kind','a','b','velocity','scale'].includes(k))||typeof c.id!=='string'||! /^[a-z][a-z0-9_-]*$/.test(c.id))throw Error('Invalid connection record');
     claim(c.id);
   }
-  const portals=compileFramedPortals([...baseDoc.connections,...source.connections],anchors,radius);
+  const portals=(experimentalH3?compileHyperbolicFramedPortals:compileFramedPortals)([...baseDoc.connections,...source.connections],anchors,radius);
   if(portals.length>REGION_LIMITS.portals)throw Error('Too many portals');
   const document=structuredClone({...source,baseScene:baseDoc,coverRegions:compiled.map(r=>r.document())});
   function spawn(regionId=baseDoc.regions[0].id){
@@ -50,8 +51,8 @@ export function compileConnectedCoverWorld(source){
     const p=r.spawnPosition.slice();
     return {regionId,position:p,velocity:p.map(()=>0),radius,camera:createCameraFrame(r.space,p,{forward:r.spawnFrame[1],up:r.spawnFrame[2]})};
   }
-  function renderData(){
-    const data=base.renderData();
+  function renderData(options){
+    const data=base.renderData(options);
     for(const r of compiled){
       data.regions.push({id:r.id,kind:'s3',curvatureRadius:r.space.curvatureRadius,coverage:'s3-cover',extent:null});
       for(const b of r.balls)data.primitives.push({id:b.id,regionId:r.id,kind:'ball',op:'add',target:null,center:b.center.slice(),radius:b.radius,planes:[],axes:[],halfExtent:[0,0,0]});

@@ -2928,3 +2928,15 @@ constructed cases; rerun9 documents/162 queries:18 hits,36 misses,108 unresolved
 Isolated B>0 guard mutant fails two off-centre tangent checks. No production
 repair. See docs/qa/h3-reference-review.md; original report counts are historical.
 Far-field large-R behavior remains untested by this corpus.
+
+## MUSE-71 accepted - H3 connected sight oracle
+
+Lead, LeoPC/Node24.20.0, base4b75b3a plus integration, 2026-09-12 UTC.
+Reviewed source and reran hyperbolic-sight-truth.test.js. Strengthened the return
+ball reference to require a finite positive hit (preventing null coercion).
+Independent root scanning/bisection shares metric and portal adapters; it is
+sampled ordering/range evidence, not independent validation of every primitive.
+Isolated omitted-foreground-bound mutation fails a translated gate-at-limit
+case: unresolved instead of hit. No production defect reported or reproduced.
+Full suite with the corpus passed 122/122, then 123/123 with the new three-region
+fixture. Report: docs/qa/muse71-h3-sight.md. Script: review-muse71.mjs in scratch.

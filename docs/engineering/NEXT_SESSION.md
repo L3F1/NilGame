@@ -1,5 +1,29 @@
 # Fresh-chat handoff for Astra
 
+## Current task - supersedes older status below
+
+2026-09-12 UTC: follow THREE_GEOMETRY_MILESTONE.md. User wants a polished simple
+E3/full-S3/H3 editor before another geometry. Infrastructure must lead to that
+visible payoff. Preserve current gameplay portals; matched-interface portals
+from Bridges2022 are a distinct future policy, not a silent replacement.
+
+New connected-three-geometries.nil.json is a CPU fixture in the existing saved
+cover envelope. Explicit compileConnectedCoverWorld(...,{experimentalH3:true})
+composes bounded E3/H3 with complete S3, forward/return motion and antipode
+passage verified. Default GPU remains gated. Read three-geometry-world-review.md
+under docs/qa. Latest full Node123/123 and queued real-GPU connected-global52
+passed this turn; GPU evidence covers existing E3/S3 only.
+
+MUSE-71 accepted with one strengthened assertion; see muse-log.md. Bridge run
+2026-09-12T04-27-14-201Z-b8cb8cc5 (base4b75b3a): Claude H3 GPU still running at
+last check; Muse72 research awaiting review. Check status, do not redispatch.
+Claude does not have this turn's later cover wrapper/fixture; files do not
+overlap. Next: review his patch, verify H3 GPU readback through the host queue,
+then integrate all three geometries into existing editor transactions/presets.
+Research draft needs more exact source-file/license verification before reuse.
+
+## Earlier subsystem pointers (status counts below are historical)
+
 2026-09-11. Read WORKING_RULES, inspect status, use relevant TASK_ROUTER row.
 Latest: experimental H3 metric adapter in hyperbolic-space.js. Read
 H3_CONNECTED_CONTRACT.md and docs/qa/h3-metric-review.md. It is deliberately

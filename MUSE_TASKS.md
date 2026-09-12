@@ -68,11 +68,12 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: review MUSE-71. MUSE-70 accepted; see docs/qa/muse-log.md.
+Order: review MUSE-72 research. MUSE-71 accepted; see docs/qa/muse-log.md.
 
-## MUSE-71 - READY FOR REVIEW
+## MUSE-72 - READY FOR REVIEW
 
-Delivered run2026-09-12T03-59-15-270Z-f3fbffed, base47dba7c. Report inspected:
-no production counterexamples reported. Source/rerun/mutation acceptance pending.
-Files in its checkout: hyperbolic-sight-truth.test.js and docs/qa/muse71-h3-sight.md.
-Do not redispatch. Next bounded assignment follows acceptance.
+Delivered run2026-09-12T04-27-14-201Z-b8cb8cc5, base4b75b3a.
+File in its checkout: docs/research/geometry-implementation-sources.md.
+Primary-source shortlist inspected; source-file specificity and license claims
+still require lead review before integration or code reuse. Do not redispatch.
+Claude H3 GPU implementation is running in the same bridge run; check status.
