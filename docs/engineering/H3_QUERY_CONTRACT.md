@@ -52,7 +52,8 @@ This deliberately makes no safe-prefix claim based on a heuristic interval.
 
 ## Consumer integration gate
 
-Current portal consumers accept hit-or-null, not the helper's three outcomes.
+Sight now adapts hit/null and explicit query results through aperture-result.js.
+Movement still accepts hit-or-null and is the next integration gate.
 Never adapt unresolved to null, or treat its distance as a confirmed crossing.
 Before integration, define an earliest-uncertainty distance: a finite lower bound
 in physical arclength before which this aperture cannot affect this query. If
@@ -69,4 +70,8 @@ time or create correction debt by treating uncertainty as a contact normal.
 Required consumer regressions: a near solid before remote uncertainty, unknown
 at the origin, uncertainty tied with a portal/domain event, reversed portal
 array order, and preservation of movement time/state on refusal. These are
-future integration requirements, not claims about the currently gated runtime.
+Movement checks remain future requirements. Sight pins nearer solids/gates,
+origin uncertainty, ties, array-order invariance and malformed packets in
+aperture-refusal.test.js. Every aperture sees the same bounded segment; explicit
+misses must cover it. A refusal retains aperture IDs/reasons and does not advance
+the current ray leg. Unknown results without a prefix default to zero.

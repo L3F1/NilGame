@@ -4,6 +4,7 @@
 import { PORTAL_PLANE_TOLERANCE } from './region-portal.js';
 import { castSphericalRegion } from './s3-ray-cast.js';
 import { castSphericalBalls } from '../geometry/spherical-cover.js';
+import { apertureResult } from './aperture-result.js';
 
 export function traceRegionSight(world, ray, {
   maxDistance = 32, maxWork = 2048, maxCrossings = 4, surfaceTolerance = 1e-7,
@@ -33,6 +34,9 @@ export function traceRegionSight(world, ray, {
     if (!spend()) return result('unresolved', 'work-budget');
     const domain = space.boundaryDistance(position, direction, remaining);
     let end = Math.min(remaining, domain), gate = null, gateTie = false;
+    const horizon=end, uncertainties=[];
+    const uncertainResult=()=>result('unresolved','aperture-query',{
+      apertures:uncertainties.slice().sort((a,b)=>a.fromId.localeCompare(b.fromId)) });
     for (const portal of world.portals.filter(p => p.fromRegionId === regionId)) {
       if (!spend()) return result('unresolved', 'work-budget');
       const height = portal.signedHeight(position);
@@ -45,13 +49,21 @@ export function traceRegionSight(world, ray, {
         // Suppress only the zero event. Global crossing searches future roots
         // and still rejects the antipodal disc of this finite aperture.
       }
-      const event = portal.crossing(position, direction, end, 0);
-      if (!event) continue;
-      if (event.distance > end) return result('unresolved', 'event-range');
+      // Every aperture sees the same segment: a previous portal must not change
+      // a later producer's range-boundary classification by array order.
+      const event = apertureResult(portal.crossing(position, direction, horizon, 0),horizon);
+      if(event.status==='miss')continue;
+      if(event.status==='unresolved'){
+        uncertainties.push({...event,fromId:portal.fromId,portalId:portal.id,regionId});continue;
+      }
+      if(event.distance>end+PORTAL_PLANE_TOLERANCE)continue;
       if (gate && Math.abs(event.distance - end) <= PORTAL_PLANE_TOLERANCE) gateTie = true;
       else { gate = portal; gateTie = false; }
       end = event.distance;
     }
+    const uncertainty=Math.min(Infinity,...uncertainties.map(e=>e.uncertaintyFrom));
+    if(uncertainty<=PORTAL_PLANE_TOLERANCE)return uncertainResult();
+    end=Math.min(end,uncertainty);
     let local = 0, hit = null;
     if (space.kind === 'e3') {
       // One bounded analytic query; its primitive count is compile-time capped.
@@ -100,6 +112,9 @@ export function traceRegionSight(world, ray, {
         local = next;
       }
     }
+    // Neither a surface nor a confirmed gate wins a tie with an unknown event.
+    // Refuse before mutating ray state; uncertainty itself grants no advancement.
+    if(local>=uncertainty-PORTAL_PLANE_TOLERANCE)return uncertainResult();
     const leg = space.stepWithTransport(position, direction, local);
     segments.push({ regionId, start: position.slice(), end: leg.position.slice(), distance: local });
     position = leg.position; direction = leg.direction; distance += local;

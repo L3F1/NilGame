@@ -35,9 +35,10 @@ radial coordinates. Region extent is a numerical coverage limit, not a wall.
 - connected-global-model.js now uses the point's metric for reference-up,
   elevation and movement normalization. This preserves current E3/S3 behavior;
   it does not admit H3 worlds.
-- region-motion.js and region-sight.js consume crossing as hit-or-null. They
-  must preserve unresolved aperture results and order uncertainty against nearer
-  solids/domain events before H3 admission. See H3_QUERY_CONTRACT.md.
+- region-sight.js now preserves explicit aperture uncertainty through
+  aperture-result.js and orders it against nearer solids/gates. region-motion.js
+  still consumes hit-or-null; preserving its time/correction policies while
+  handling uncertainty is required before H3 admission. See H3_QUERY_CONTRACT.md.
 - scene fields, query normals, GPU packing/shaders and finite-domain crossing
   need explicit H3 capabilities. Search all flat-versus-curved branches before
   extending schema acceptance. Do not make unknown kinds inherit S3 behavior.

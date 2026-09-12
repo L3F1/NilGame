@@ -13,9 +13,8 @@ in H3 distance's time difference. MUSE-67 rev2 accepted as sampled evidence;
 Muse-only manifest assigns MUSE-68 independent aperture checks.
 Earlier removal/orientation UI and MUSE-64 are accepted and integrated.
 Check bridge status before dispatch: do not restart completed or running work.
-Latest Node validation: 112/112 in h3-aperture-suite.log. Prior connected-global
-real-GPU cold browser check 52/52 on LeoPC after metric frame/host routing;
-new isolated H3 query modules do not change a browser execution path.
+Latest Node validation:113/113 in aperture-refusal-suite.log. Connected-global
+real-GPU cold browser check52/52 on LeoPC after sight refusal integration.
 Earlier S3 timeout evidence remains in portal-ui-review.md; runner deadline
 and assertions are unchanged. Prior browser43 passed on real GPU and SwiftShader;
 new removal/orientation browser evidence is in claude-portal-removal-ui.md.
@@ -31,9 +30,12 @@ not shader programs. The model.world and renderer.packed properties are getters.
 
 Portal construction/transit and connected host camera/movement coefficients now
 use adapter metric products; E3/S3 parity checks passed. Next bounded task: review
-MUSE-68, then integrate the aperture helper with explicit refusal propagation.
-Before wiring the helper, implement the uncertainty-ordering consumer contract
-in H3_QUERY_CONTRACT.md: current sight/motion accept only hit-or-null.
+MUSE-68 (delivered in run2026-09-12T03-10-41-479Z-dae27fe5, not integrated), then
+implement movement refusal propagation. Sight now uses aperture-result.js to
+normalize explicit query outcomes and order uncertainty against nearer solids
+and gates. See aperture-refusal.test.js and docs/qa/aperture-refusal-review.md.
+Movement still accepts hit-or-null: preserve its correction/debt/time policies
+when integrating unknowns. H3_QUERY_CONTRACT.md remains the consumer contract.
 Camera adaptation is complete. Do not expose an H3 preset
 before camera/portal/GPU support. Extent<=2R and representative<=4R are numerical
 policies; exceptions must not become silent ray misses or artificial walls.

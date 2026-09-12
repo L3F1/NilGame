@@ -70,7 +70,11 @@ had accumulated before anyone noticed, each naming a different task as first.
 
 Order: MUSE-68. MUSE-67 accepted as sampled evidence; see docs/qa/muse-log.md.
 
-## MUSE-68 - OPEN: independent H3 aperture checks
+## MUSE-68 - READY FOR REVIEW: independent H3 aperture checks
+
+Delivered in run2026-09-12T03-10-41-479Z-dae27fe5 on base b88788b.
+Report inspected; full test review/rerun and acceptance still pending. Do not
+redispatch this assignment. No production repairs or integration by Muse.
 
 Assignment/allowed files: tools/agent-bridge-tasks.json, muse68-h3-aperture.
 Falsify confident answers near rims, range/domain boundaries and centre crossings.
