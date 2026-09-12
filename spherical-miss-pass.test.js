@@ -204,6 +204,15 @@ const pose=extra=>({...state,...extra});
   check(h.missUniform()===0,'an unknown region must not enable consumption');
 }
 // --------------------------------------------------------- association ------
+{
+  const h=renderer(),region=packed.ids.find((id,i)=>packed.texture[(128+i)*4]===1);
+  check(!!region,'scope regression needs an S3 region');
+  const count=h.drawCount();
+  h.instance.draw({...state,regionId:region},{width:8,height:6,sphericalMissPass:true});
+  check(h.instance.missPass.status==='outside-scope','S3 starts cannot use the first-E3-transfer pass');
+  check(h.drawCount()===count+1,'S3 start must submit only the main draw');
+  check(h.instance.missPass.stats.draws===0&&h.missUniform()===0,'skipping must neither generate nor consume certificates');
+}
 // Every distinguishing part of the draw description must change the key: a
 // certificate set proved for one of these is not a certificate for another.
 {

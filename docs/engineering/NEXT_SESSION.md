@@ -10,7 +10,11 @@ The separate exclusion pass is now integrated behind draw's
 `sphericalMissPass:true`, default false. Claude's candidate needed lead repairs
 to its acceptance pose and total GPU timing. See docs/qa/live-miss-pass-review.md.
 The editor now exposes an explicit refinement checkbox (default off), with
-visible refusal while Smooth edges is active. Next: demand-driven execution or
+visible refusal while Smooth edges is active. Non-E3 camera regions now skip
+the inapplicable pass on the host. A near-tangency scheduling experiment was
+REJECTED: little timing benefit and repeatable settled-distance change on the
+hardware backend; see live-miss-pass-review.md. Do not revive it as accepted.
+Next: hoist immutable eligibility/group scanning out of per-pixel work or
 cheaper validated error bounds, then AA/sample policy and sustained movement
 cost checks. Do not enable globally from a single view. Do not embed interval
 arithmetic in the main shader (prior300s/60s no-report failures).

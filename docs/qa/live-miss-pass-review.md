@@ -84,6 +84,29 @@ compile versus link versus deferred first-draw work. Do not describe those
 timeouts as measured slow frame times. A small separate program did complete;
 the live pass now provides actual frame measurements. No outside code copied.
 
+## Scheduling follow-up
+
+Follow-up scheduling investigation: a cheap near-tangent filter reduced tagged
+interval-pass pixels4668 ->112 at the160x120 gallery, preserving34 recoveries in
+initial real/software checks. At320x240, median total times filtered/unfiltered
+were .268288/.274912ms hardware and159.1546/162.5514ms software (12 samples).
+This small difference is not persuasive evidence of a meaningful speedup.
+Expanded hardware runs then twice failed settled-distance invariance at(6,43):
+2.594223976135254 ->2.594233274459839, same hit/region/owner. Exact cause remains
+unresolved; do not claim the scheduling heuristic itself mathematically moved
+the hit. Candidate rejected, saved locally in
+`.agent-bridge/rejected-refine-filter.patch`; production source restored and
+hardware browser check passed. Logs `refine-filter-{real,sw,final-real,distance-real,restored-real}.log`.
+
+Landed alternative: host skips the refinement draw for non-E3 camera regions,
+where the existing pass cannot apply. Main rendering/uncertainty is unchanged;
+UI explains it is waiting for a flat-region view. Focused regression verifies
+one draw, no generation/consumption in S3; removing the guard fails that check.
+Browser route verifies H3 also skips it. No claimed measured frame-rate gain.
+Final validation: real/software `page-check --three-geometry --timeout=90`
+passed (`refine-scope-{real,sw}.log`), focused135 checks, full136/136 suites
+(`.agent-bridge/refine-scope-suite.log`).
+
 ## Claude usage correction
 
 Recorded75,057 output tokens,24,413 thinking tokens and7,827,424 cached-input

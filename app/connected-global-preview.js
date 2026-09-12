@@ -47,6 +47,7 @@ try {
     document.querySelector('#refine-status').textContent=!refining
       ? 'Off. Resolves some uncertain edges; other purple pixels remain.'
       :passStatus==='antialias-refused'?'Paused: turn off Smooth edges to use spherical refinement.'
+      :passStatus==='outside-scope'?'Waiting for a flat-region view through a spherical portal.'
       :passStatus==='generated'?'On for eligible portal views. Other uncertain pixels remain purple.'
       :`Unavailable (${passStatus}). The original rendering is still in use.`;
     status.textContent=model.status();
@@ -436,7 +437,7 @@ try {
         const was=before.pixels.slice(4*i,4*i+4),now=after.pixels.slice(4*i,4*i+4);
         if(was.every((v,k)=>v===now[k])&&before.distances[i]===after.distances[i])continue;
         record.changedStatus++;
-        if(was[0]!==2)throw Error(`Live miss pass changed a settled pixel ${i%width},${Math.floor(i/width)}: ${[...was]} -> ${[...now]}`);
+        if(was[0]!==2)throw Error(`Live miss pass changed a settled pixel ${i%width},${Math.floor(i/width)}: ${[...was]} -> ${[...now]}, distance ${before.distances[i]} -> ${after.distances[i]}`);
         if(now[0]===2)continue;
         record.recoveredPixels++;
         // A recovered pixel must agree with the independent CPU query.

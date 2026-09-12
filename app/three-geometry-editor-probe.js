@@ -29,6 +29,12 @@ export async function checkThreeGeometryEditor({model,renderer,canvas,editor,dra
   }
   assert(route.join()==='flat,sphere,hyperbolic',`Forward route ${route}`);
   checks.push('Preset boots; actual flight traverses E3 / full S3 / H3');
+  const priorPassDraws=renderer.missPass.stats.draws;
+  refine.checked=true;refine.dispatchEvent(new Event('change'));
+  assert(renderer.missPass.status==='outside-scope'&&renderer.missPass.stats.draws===priorPassDraws,
+    'H3 must skip first-E3-transfer refinement before submitting the pass');
+  refine.checked=false;refine.dispatchEvent(new Event('change'));
+  checks.push('H3 view skips inapplicable refinement without submitting the extra pass');
   draw();shots.push({name:'three-h3-arrival',data:canvas.toDataURL()});
   const savedPose=pose(),original=json(model.document()),radius=target().radius;
   editor.region.value='hyperbolic';editor.region.dispatchEvent(new Event('change'));

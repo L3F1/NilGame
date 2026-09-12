@@ -25,7 +25,10 @@ standalone precision API until this delivery is integrated or explicitly rejecte
 Claude's opt-in live exclusion pass reviewed with lead fixes:34/52 gallery
 fringes resolved on real/software GPU; default remains off. Editor opt-in now
 exposed with smoothing refusal explained;320x240 GPU costs measured. Next:
-demand-driven refinement/cheaper bounds, AA and sustained motion cost checks. See live-miss-pass-review.md
+immutable eligibility precomputation, AA and sustained motion cost checks.
+Non-E3 camera regions skip the inapplicable pass. Near-tangent scheduling trial
+rejected (small timing benefit, hardware settled-distance regression); keep
+the diagnostic and do not weaken equality checks. See live-miss-pass-review.md
 under docs/qa. Muse paused until reported quota reset Sept14 UTC. Future Claude
 batches smaller, auto-compaction100k; no new agent run this turn.
 

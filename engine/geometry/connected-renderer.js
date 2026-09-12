@@ -76,6 +76,7 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
     // Generated BEFORE the main draw, for exactly this pose/size/range/world,
     // and consumed by exactly this draw. Nothing is cached between draws.
     missStatus=!sphericalMissPass?'disabled'
+      :regionIndex>=0&&packed.texture[(128+regionIndex)*4]!==0?'outside-scope'
       :missPass.generate({dataTexture:texture,counts:packed.counts,
         position:state.position,forward:state.camera.forward,right:state.camera.right,up:state.camera.up,
         width,height,maxDistance,regionIndex,revision,offsetX:0,offsetY:0,antialias,timer:false});
