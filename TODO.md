@@ -29,7 +29,8 @@ isolate intermittent hardware settled-distance mismatch, then AA and sustained
 motion cost checks. Fixed eligibility is now precomputed per world; no measured
 speedup claimed, and default-off refinement remains experimental.
 Baseline-only resize/timing invariance now checked separately. Issue remains
-open; bounded Claude report-only diagnosis dispatched (`claude-distance-drift-review`).
+open; Claude report reviewed with corrected diagnostic semantics. Next bounded
+experiment: docs/qa/claude-distance-drift-review.md lead review.
 Non-E3 camera regions skip the inapplicable pass. Near-tangent scheduling trial
 rejected (small timing benefit, hardware settled-distance regression); keep
 the diagnostic and do not weaken equality checks. See live-miss-pass-review.md

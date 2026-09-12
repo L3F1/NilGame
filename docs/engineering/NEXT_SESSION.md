@@ -19,10 +19,12 @@ updated transactionally on edits. No measured frame-rate benefit claimed.
 Next: isolate the intermittent hardware settled-distance difference at(6,43)
 before further precision/performance changes; diagnostics now repeat primary
 rays and baseline distance on failure. See eligible-owners logs in the review.
-Check `node tools/agent-bridge.js status` first: `claude-distance-drift-review`
-is a bounded report-only investigation frombd25fe3. Review its report before
-overlapping work. New browser guard compares unrefined distances before/after
-the timing/resize sequence; real and software passed, but no reproduction/fix.
+Claude's report-only investigation is reviewed in
+docs/qa/claude-distance-drift-review.md, including a required lead correction:
+debug 8 red is final-active, not ever-accepted; do not use zero to exclude prior
+refinement. Next experiment is specified there (two cold runs maximum).
+The off/off resize guard already landed at52bf179; no reproduction/fix yet.
+No external agents are running; do not redispatch the completed manifest.
 Then AA/sample policy and sustained movement
 cost checks. Do not enable globally from a single view. Do not embed interval
 arithmetic in the main shader (prior300s/60s no-report failures).
