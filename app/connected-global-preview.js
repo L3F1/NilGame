@@ -375,9 +375,12 @@ try {
     const {checkThreeGeometryEditor}=await import('./three-geometry-editor-probe.js');
     const {checkPortalTransferGpu}=await import('./portal-transfer-gpu-probe.js');
     const transfer=checkPortalTransferGpu(model.document());
+    const {checkAdditiveOrderGpu}=await import('./additive-event-gpu-probe.js');
+    const ordering=checkAdditiveOrderGpu();
+    checks.push('GPU interval event ordering: strict order, overlaps, horizons and negative mutation');
     checks.push('Candidate GPU portal transfer: interval enclosure and missing-transport mutation');
     const census=await checkThreeGeometryEditor({model,renderer,canvas,editor,draw,checks,shots,loadDone:()=>loading});
-    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,census]});
+    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,ordering,census]});
   } else {
     const records=[],poses=[];
     if(!/no gravity/i.test(document.body.textContent)||!/COMPLETE S3/.test(document.body.textContent))throw Error('Page lost its complete-S3/no-gravity label');

@@ -83,8 +83,12 @@ with stable ball spans and GPU readback: see docs/qa/h3-stable-span-review.md.
 Do not resume the obsolete clone; broader precision and H3 material work remain.
 
 
-## MUSE-74 - ASSIGNED
+## MUSE-74 - CHANGES REQUESTED / REVISION ASSIGNED
 
 Independent E3-to-S3 transfer interval corpus. Exact bounded assignment and
 allowed files in tools/agent-bridge-tasks.json. Report counterexamples without
 repair. No browser jobs from the isolated checkout; no duplicate dispatch.
+
+Lead review: raw perturbed direction is nonunit; interval API normalizes output.
+Rev1 compared raw carry(v) instead. Revision must normalize output at destination
+without changing the input box. Rev1 not accepted. See bridge revision task.

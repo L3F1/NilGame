@@ -43,6 +43,8 @@ below. Implementation details and acceptance criteria:
 - [x] Verify isolated stable GPU transfer evaluation on real GPU/SwiftShader:
   60 cases,540 components enclosed, missing-transport mutation caught.
   Live interval propagation and root ordering remain open.
+- [x] Add and GPU-check interval-aware additive entry ordering; overlap/tie
+  mutation fails on both backends. Not yet wired into the live trace.
 - [ ] Repair S3 ball root precision with a scoped error model; preserve genuine
   tangencies and portal guards. Broaden artifact checks beyond the entry pose.
 - [x] Integrate H3 GPU repair and verify real/software readback, materials and

@@ -19,10 +19,17 @@ real GPU and SwiftShader; missing-transport mutation caught. Read
  docs/qa/portal-transfer-gpu-review.md. Candidate lives in portal-transfer-gpu.js;
 live connected shader still unchanged. Not a universal backend proof.
 
-Next: propagate intervals alongside the chosen float32 evaluation, then consume
-spherical root interval widths in event ordering. Keep E/half-space guards.
-MUSE-74 independently audits CPU transfer bounds in isolated checkout; check
-bridge status and review counterexamples. Do not duplicate its corpus work.
+Interval-aware additive event selector now exists in additive-event-order.js
+with CPU and GLSL variants. Both GPU backends pass8 isolated ordering cases and
+catch an omitted-overlap mutation. See docs/qa/additive-event-order-review.md.
+No live renderer change; additive/outside-start/completeness assumptions matter.
+
+Next: GPU propagation of upstream error and spherical root intervals, then wire
+one supported path to interval-aware ordering. Transfer evaluation and ordering
+are separately GPU tested; their live error propagation is still missing.
+MUSE-74 rev1 NOT accepted: oracle compared raw carry(v) with normalized output.
+Revision dispatched; check bridge status, review corrected output normalization,
+and integrate only after checks. Do not duplicate Muse's corpus work.
 
 Read docs/qa/gallery-ray-census-review.md for the baseline:52 sampled numeric
 refusals,18 CPU hits/34 misses, all with S3 ball tangency-guard candidates.
