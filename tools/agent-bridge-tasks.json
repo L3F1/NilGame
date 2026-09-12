@@ -1,19 +1,22 @@
 {
-  "version": 1,
-  "tasks": [
-    {
-      "id": "muse76-render-stages",
-      "agent": "muse",
-      "instruction": "MUSE-76: bounded diagnostics only. Read MUSE.md and your MUSE_TASKS entry. The lead candidate shader had no report after300s; we cannot tell compile, link or first draw. Add OPTIONAL synchronous onStage callback to createConnectedRenderer options, called before/after vertex compilation, fragment compilation, program link, and the FIRST draw submission/completion (include getError completion; once per renderer). Default absent hook must leave rendering unchanged. No shaders, math, uniforms, cache, timeout or lifecycle policy changes. In app/connected-global-preview.js check mode ONLY, provide callback sending short fixed stage names to a new /__stage endpoint of tools/page-check.js. Stages never finish the report promise. Keep at most16 validated stage records; limit request bodies, reject unknown names; include latest RECEIVED stage/time in timeout output and normal test evidence. Clearly call it last received stage, not proof where the GPU stalled; asynchronous delivery can lag. No stages or networking in ordinary non-check play. Factor pure validation/recording into tools/render-stage.js if useful. Add render-stage.test.js with invalid/oversize messages and evidence that a stage cannot become final report; use a GL mock for callback ordering/once behavior if feasible without mirroring internals. Allowed files only engine/geometry/connected-renderer.js, app/connected-global-preview.js, tools/page-check.js, tools/render-stage.js, render-stage.test.js, docs/qa/muse76-render-stages.md. Run focused checks and one isolated negative demonstration, full Node suite once. Browser evidence may remain UNRUN if host-probe says unavailable: lead will run real GPU. No commits, pushes, extra agents or geometry changes. Report under500words.",
-      "allowedFiles": [
-        "engine/geometry/connected-renderer.js",
-        "app/connected-global-preview.js",
-        "tools/page-check.js",
-        "tools/render-stage.js",
-        "render-stage.test.js",
-        "docs/qa/muse76-render-stages.md"
-      ],
-      "report": "docs/qa/muse76-render-stages.md"
-    }
-  ]
+    "version":  1,
+    "tasks":  [
+                  {
+                      "instruction":  "Implement docs/engineering/LIVE_MISS_PASS.md. Read working rules and that contract, then relevant source only. This is an opt-in LIVE renderer integration, not another standalone experiment. Reference app/spherical-miss-experiment.js and its GLSL helper. Stay within allowed files. Run focused tests, one meaningful negative check, and full Node suite once candidate ready if environment permits; record blocked checks honestly. Do not send browser queue work from this clone. No commits, pushes, extra agents, motion changes, epsilon changes or automatic enabling. Report under600 words with checks, behavior and remaining risks.",
+                      "agent":  "claude",
+                      "id":  "claude-live-miss-pass",
+                      "allowedFiles":  [
+                                           "engine/geometry/connected-renderer.js",
+                                           "engine/geometry/connected-shader.js",
+                                           "engine/geometry/spherical-miss-pass.js",
+                                           "engine/geometry/spherical-miss-pass-glsl.js",
+                                           "app/spherical-miss-experiment-glsl.js",
+                                           "app/spherical-miss-experiment.js",
+                                           "app/connected-global-preview.js",
+                                           "spherical-miss-pass.test.js",
+                                           "docs/qa/claude-live-miss-pass.md"
+                                       ],
+                      "report":  "docs/qa/claude-live-miss-pass.md"
+                  }
+              ]
 }
