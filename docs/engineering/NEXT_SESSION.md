@@ -10,11 +10,15 @@ Read SPHERICAL_ROOT_PRECISION.md: shared CPU root-interval reference now exists
 in engine/geometry/spherical-root-bounds.js.241 independently bracketed roots
 pass; removing amplitude input uncertainty fails. No GPU behavior changed.
 
-Next: derive/propagate position and direction error through one E3-to-S3 portal
-and implement float32 spherical-ball intervals with width-aware event ordering.
-Do not plug interval midpoints into the old sweep and discard widths. Do not
-reduce global E or infer directional error solely from unit-vector residuals.
-The binary64 reference's engineering libm allowance is not a float32 proof.
+E3-to-S3 interval transfer reference now exists in portal-transfer-bounds.js;
+read PORTAL_TRANSFER_PRECISION.md.90 reference crossings and central ball-root
+composition pass; bypassing parallel transport fails. No renderer change.
+
+Next: isolated GPU stable-transfer evaluation and uncertainty propagation,
+read back point/direction against the CPU reference, then width-aware spherical
+root event ordering. The old shader uses a different trig sequence; do not claim
+this reference already encloses that executable. Keep E/half-space guards.
+Only one E3-to-S3 transfer is covered so far, not H3/repeated crossings.
 
 Read docs/qa/gallery-ray-census-review.md for the baseline:52 sampled numeric
 refusals,18 CPU hits/34 misses, all with S3 ball tangency-guard candidates.

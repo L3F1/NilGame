@@ -38,6 +38,8 @@ below. Implementation details and acceptance criteria:
   disagreements in19200 rays. See gallery-ray-census-review.md.
 - [x] Add shared spherical coefficient/root interval reference with mandatory
   input errors and independently bracketed roots; GPU integration remains open.
+- [x] Add interval E3-to-S3 transfer reference and compose it with spherical
+  root bounds; live GPU evaluation/admission remains separate.
 - [ ] Repair S3 ball root precision with a scoped error model; preserve genuine
   tangencies and portal guards. Broaden artifact checks beyond the entry pose.
 - [x] Integrate H3 GPU repair and verify real/software readback, materials and
