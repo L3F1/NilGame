@@ -6,16 +6,19 @@ wrong intersections. No new geometry or precision helper milestone meanwhile.
 
 ## Next implementation
 
-Integrate a scoped separate exclusion pass for the eligible FIRST E3->S3
-crossing, with cost-aware admission. app/spherical-miss-experiment.js and its
-GLSL helper are currently TEST-ONLY. Do not embed interval arithmetic in the
-main shader again (prior300s/60s no-report failures).
+The separate exclusion pass is now integrated behind draw's
+`sphericalMissPass:true`, default false. Claude's candidate needed lead repairs
+to its acceptance pose and total GPU timing. See docs/qa/live-miss-pass-review.md.
+Next: cost-aware admission and a user-visible opt-in, with AA/sample policy;
+do not enable globally from a single160x120 view. Do not embed interval
+arithmetic in the main shader (prior300s/60s no-report failures).
 
 New raster experiment: at320x240, one portal/ball GPU pass p95~.023ms RTX5070Ti
 versus~45.9ms SwiftShader (12 samples each). This is not total frame cost.
 See docs/qa/render-loop-review.md. Actual GPU queries, not gl.finish call time.
-Costs for all objects, transfers and AA remain to be measured at integration.
-Do not turn this on unconditionally. Live gallery still has52 numeric fringes.
+The live pass resolves34/52 gallery fringes on both tested backends;18 remain.
+Default play still uses the original path. Costs at playable resolutions and
+AA remain to be measured before default admission.
 
 Bind outputs to exact portal/object, packed world revision, pose, viewport and
 AA sample. Consume only at the matching eligible first crossing. Regenerate on
@@ -37,9 +40,11 @@ alarms. The18 hit-side fringes need root intervals later, not midpoint guesses.
 ## Coordination
 
 Muse76 returned429 with no delivery, reset advertised2026-09-14T00:00Z; no retry
-until available. Claude renewed and assigned `claude-live-miss-pass` at94f0a44;
-check bridge status and review its candidate against LIVE_MISS_PASS.md before
-any overlapping edits. Run without automatic review to save tokens. Accepted72-75 are
+until available. Claude's `claude-live-miss-pass` at94f0a44 is delivered and
+reviewed; do not redispatch that manifest. Bridge now uses auto-compaction100k,
+medium effort and usage reporting. Give smaller implementation slices; the last
+batch took80 turns/75k output tokens. No agent is currently assigned more work.
+Run without automatic review to save tokens. Accepted72-75 are
 in docs/qa/muse-log.md; do not reread them routinely. MUSE72 code-license gates
 are in docs/research/geometry-implementation-sources.md before external reuse.
 Run host-probe once; use current queue verdict. Never assume an old worker PID.

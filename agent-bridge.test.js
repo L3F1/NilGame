@@ -29,6 +29,10 @@ try {
     assert.equal(scopeVerdict(['report.md'], ['report.md']).scopeOK, true);
   });
   await check('provider error inside a successful-looking JSON result remains failure', () => {
+    const measured = claudeOutcome(JSON.stringify({type:'result',num_turns:80,total_cost_usd:7.31,
+      usage:{output_tokens:75057,cache_read_input_tokens:7827424,cache_creation_input_tokens:151783}}));
+    assert.deepEqual(measured.usage, {turns:80,outputTokens:75057,cacheReadTokens:7827424,
+      cacheWriteTokens:151783,estimatedCostUSD:7.31});
     assert.equal(claudeOutcome('{"type":"result","subtype":"success","is_error":true,"terminal_reason":"api_error"}').isError, true);
     assert.equal(claudeOutcome('{"type":"result","is_error":false,"result":"done"}').isError, false);
     assert.equal(claudeOutcome('not JSON').isError, true);

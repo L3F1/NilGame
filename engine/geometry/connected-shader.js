@@ -3,6 +3,7 @@ import {E3_S3_TRANSFER_GLSL} from './portal-transfer-gpu.js';
 // Bounded float32 GPU reference for E3/S3. Surface candidates are analytic;
 // uncertain roots, intervals, portal rims and chart exits stay unresolved.
 import {CONNECTED_MATERIAL_GLSL} from './connected-material.js';
+import {SPHERICAL_MISS_CERTIFICATE_TAG} from './spherical-miss-pass-glsl.js';
 import {H3_GEOMETRY_GLSL,H3_REGION_CODE,H3_SURFACE_TYPE,h3BallSurfaceRow,
   validateH3GpuRegion,validateH3GpuPortal} from './hyperbolic-gpu.js';
 export const CONNECTED_LIMITS = Object.freeze({ surfaces:48, primitives:16, groups:16, regions:4, portals:8 });
@@ -84,6 +85,12 @@ uniform vec2 uResolution;
 uniform int uRegion,uDebug,uDiagnostics;
 uniform int uPolished,uAO,uAntialias;
 uniform float uMaxDistance;
+// Opt-in first-transfer exclusion certificates, drawn by spherical-miss-pass.js
+// into separate textures. uMissPass==0 (the default) keeps this program exactly
+// as it was: the samplers are never read and no branch below changes.
+uniform highp usampler2D uMissCertificate;
+uniform highp sampler2D uMissPoint,uMissDirection;
+uniform int uMissPass;
 out vec4 frag;
 const float PI=3.141592653589793;
 // Numerical refusal bands for bounded float32 data, not a portable libm proof.
@@ -91,6 +98,12 @@ const float E=0.00003;
 // Query status stays unresolved. Kind 1 identifies a reached chart boundary;
 // kind 2 is numerical/traversal uncertainty, never silently painted as sky.
 int refusalKind=2;
+// Accepted exclusion certificate for THIS sample: a bitset over packed SURFACE
+// indices proved missed by the ray produced at the first stable E3 -> S3
+// transfer, and the region that ray lives in. No interval arithmetic here; the
+// proof was made in the separate pass and is accepted only on exact identity.
+uint certificateLow=0u,certificateHigh=0u;
+int certificateRegion=-1,certificateUsed=0;
 vec4 hitPoint;
 // Range-reduced atan2: the shader compiler's native atan approximation caused
 // measurable drift through two portals. Half-angle reduction keeps the Taylor
@@ -203,6 +216,19 @@ bool excluded(int j,vec4 p,vec4 u,vec4 r,float end){
     if(minimum>4.*E)return true;
   }return false;
 }
+// Certificate consumption. The mapping is explicit and bounded: primitive j owns
+// the single surface row int(D(96+j).x), and only that surface's bit can omit
+// it. The certificate is used only in the region it was proved for, and the pass
+// already restricted itself to additive one-surface balls of that region.
+bool certifiedMiss(int j,int region){
+  if(certificateRegion!=region)return false;
+  vec4 pr=D(96+j);if(int(pr.y)!=1||pr.w<.5)return false;
+  int i=int(pr.x);if(i<0||i>=uCounts.x)return false;
+  if(int(D(2*i+1).w)!=region)return false;
+  bool set=i<32?(certificateLow&(1u<<uint(i)))!=0u:(certificateHigh&(1u<<uint(i-32)))!=0u;
+  if(set)certificateUsed++;
+  return set;
+}
 // SHARED occupancy sweep of one segment [0,end] in ONE region. uncertainEvent is
 // the nearest already-known unresolved event on that segment; travel through it
 // is never claimed. Returns 0 empty travel, 1 a definite hit, 2 unresolved.
@@ -211,7 +237,7 @@ int sweep(vec4 p,vec4 u,vec4 r,int region,float end,float uncertainEvent,
   out float hitAt,out int hitOwner,out int hitSurface){
   hitAt=end;hitOwner=-1;hitSurface=-1;
   count=0;uncertainAt=uncertainEvent;
-  for(int j=0;j<16;j++){omitted[j]=false;if(j>=uCounts.y)break;if(int(D(96+j).z)==region)omitted[j]=excluded(j,p,u,r,end);}
+  for(int j=0;j<16;j++){omitted[j]=false;if(j>=uCounts.y)break;if(int(D(96+j).z)==region)omitted[j]=excluded(j,p,u,r,end)||certifiedMiss(j,region);}
   // An H3 start inside a solid refuses, matching castHyperbolicBalls: the
   // adapter makes no interior claim a ray could be launched from.
   int owner;int start=occupancy(p,region,owner);
@@ -355,6 +381,21 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
       vec4 newV=-tdot(v,D(base+2),r)*D(base+6)+tdot(v,D(base+3),r)*D(base+7)-tdot(v,D(base+4),r)*D(base+8);
       newU=unitize(newP,transport(exitCenter,newP,newV,dest),dest);
     }
+    // Any crossing retires the certificate: it was proved for the ray leaving
+    // the FIRST transfer only. A second crossing is a different ray.
+    certificateRegion=-1;certificateLow=0u;certificateHigh=0u;
+    if(uMissPass==1&&uAntialias==0&&crossing==0&&stable&&r.x<.5&&dest.x>.5&&!isH3(dest)){
+      ivec2 texel=ivec2(gl_FragCoord.xy);
+      uvec4 cert=texelFetch(uMissCertificate,texel,0);
+      // Identity, not similarity: the tag proves the pixel was written by this
+      // pass, the index proves it is about THIS portal, and bitwise equality of
+      // the transferred point/direction proves it is about THIS ray. Anything
+      // else -- missing texture, other pose, other size, other gate -- fails.
+      if(cert.w==${SPHERICAL_MISS_CERTIFICATE_TAG}u&&int(cert.x)==gate+1
+        &&texelFetch(uMissPoint,texel,0)==newP&&texelFetch(uMissDirection,texel,0)==newU){
+        certificateLow=cert.y;certificateHigh=cert.z;certificateRegion=int(info.y);
+      }
+    }
     u=newU;p=newP;region=int(info.y);reverse=int(info.w);traveled+=end;
   }return vec4(2,region,-1,traveled);
 }
@@ -393,7 +434,12 @@ void main(){
     if(sampleIndex>=sampleCount)break;
     vec2 offset=sampleCount==1?vec2(0):vec2(float(sampleIndex%2),float(sampleIndex/2))*.5-.25;
     vec4 n,t;refusalKind=2;
+    certificateLow=0u;certificateHigh=0u;certificateRegion=-1;certificateUsed=0;
     vec4 result=trace(uPosition,pixelRay(gl_FragCoord.xy+offset),uRegion,n,t);
+    // debug 8: exclusion-pass evidence for the centre ray. r = a certificate was
+    // accepted at the first transfer, g = how many primitives it omitted,
+    // b = traced status. Never consumed by display.
+    if(uDebug==8){frag=vec4(certificateRegion>=0?1.:0.,float(certificateUsed),result.x,255.)/255.;return;}
     if(uDebug==1){frag=vec4(result.x,result.y+1.,result.z+1.,result.x==2.?float(refusalKind):0.)/255.;return;}
     if(uDebug==2){uint bits=floatBitsToUint(result.w);frag=vec4(float(bits&255u),float((bits>>8)&255u),float((bits>>16)&255u),float(bits>>24))/255.;return;}
     if(uDebug==3){

@@ -84,6 +84,21 @@ Tasks have a 30-minute timeout; Muse also has an 80-model-step limit and a
 timeout owns Muse's process group, with a later Windows transport watchdog.
 Only owned live process handles/PIDs are stopped. Review has a 20-minute limit.
 
+Claude cost policy (2026-09-12): session-local `--autocompact 100k`, medium
+effort, fresh context per bounded assignment, no automatic follow-up/review.
+The installed CLI supports this flag; no persistent account settings changed.
+Assign one implementation slice at a time; leave host GPU acceptance to the
+lead. Compaction itself uses tokens, so do not periodically invoke `/compact`
+on a timer. Preserve continuity through CLAUDE.md's compact instructions.
+Record turns/output/cache tokens and estimated list-price cost in results;
+these are NOT subscription usage percentages or an invoice.
+
+The prior live-pass batch used80 turns/75,057 output tokens/7,827,424 cached
+input tokens in17 minutes. That batch was too large; model usage alone cannot
+attribute its cost to context versus required implementation/testing. Official
+references: https://code.claude.com/docs/en/costs and
+https://code.claude.com/docs/en/cli-reference (checked2026-09-12).
+
 ## Local configuration / another machine
 
 `.agent-bridge/config.json` contains executable locations, not credentials:

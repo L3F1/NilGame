@@ -382,7 +382,71 @@ try {
     const census=await checkThreeGeometryEditor({model,renderer,canvas,editor,draw,checks,shots,loadDone:()=>loading});
     const {checkSphericalMissExperiment}=await import('./spherical-miss-experiment.js');
     const exclusion=await checkSphericalMissExperiment(census);
-    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,ordering,census,exclusion]});
+    // Live opt-in exclusion pass, through the ACTUAL renderer: the same pose is
+    // drawn with the pass off and on. The baseline is preserved -- the off pass
+    // is the existing path, and anything other than an unresolved pixel turning
+    // into a certified answer is a failure, not an improvement.
+    const livePass=await (async()=>{
+      const width=160,height=120,state={...model.state,regionId:census.pose.regionId,
+        position:census.pose.position,camera:{forward:census.pose.forward,right:census.pose.right,up:census.pose.up}};
+      const quantiles=values=>{const v=[...values].sort((a,b)=>a-b);
+        return v.length?{samples:v.length,p50:v[Math.floor(v.length*.5)],max:v.at(-1)}:null;};
+      const frameCost=async options=>{
+        renderer.draw(state,{width,height,...options});renderer.finish();
+        await new Promise(resolve=>setTimeout(resolve,20));
+        const wall=[];renderer.times.length=0;
+        for(let i=0;i<12;i++){const t=performance.now();
+          renderer.draw(state,{width,height,timer:true,...options});renderer.finish();wall.push(performance.now()-t);
+          await new Promise(resolve=>setTimeout(resolve,20));}
+        // Drain the submitted samples before changing timing cases. Otherwise
+        // slow baseline results can be attributed to the following opt-in case.
+        const deadline=performance.now()+2000;
+        do{
+          await new Promise(resolve=>setTimeout(resolve,20));
+          renderer.draw(state,{width,height,...options});
+        }while(renderer.times.length<12&&performance.now()<deadline);
+        if(renderer.timerSupported&&renderer.times.length!==12)
+          throw Error(`Live frame timing incomplete: ${renderer.times.length}/12; cannot compare cases`);
+        return {drawFinishCallMs:quantiles(wall),gpuMs:quantiles(renderer.times),
+          gpuStatus:!renderer.timerSupported?'unsupported':renderer.times.length?'measured':'unavailable'};
+      };
+      const before=renderer.read(state,width,height);
+      const beforeShot=(renderer.draw(state,{width,height}),canvas.toDataURL());
+      const baselineCost=await frameCost({});
+      const after=renderer.read(state,width,height,{sphericalMissPass:true});
+      const evidence=renderer.readMissPass(state,width,height);
+      renderer.draw(state,{width,height,sphericalMissPass:true});
+      const afterShot=canvas.toDataURL();
+      const passCost=await frameCost({sphericalMissPass:true});
+      const record={label:'live-miss-pass',regionId:state.regionId,width,height,range:maxDistance,
+        status:renderer.missPass.status,supported:renderer.missPass.supported,
+        counters:renderer.missPass.stats,certificatePixels:evidence.candidates,
+        acceptedPixels:evidence.accepted,certificateOmissions:evidence.omissions,
+        recoveredPixels:0,cpuDisagreements:0,changedStatus:0,baselineCost,passCost};
+      for(let i=0;i<width*height;i++){
+        const was=before.pixels.slice(4*i,4*i+4),now=after.pixels.slice(4*i,4*i+4);
+        if(was.every((v,k)=>v===now[k])&&before.distances[i]===after.distances[i])continue;
+        record.changedStatus++;
+        if(was[0]!==2)throw Error(`Live miss pass changed a settled pixel ${i%width},${Math.floor(i/width)}: ${[...was]} -> ${[...now]}`);
+        if(now[0]===2)continue;
+        record.recoveredPixels++;
+        // A recovered pixel must agree with the independent CPU query.
+        const cpu=model.pixelSight(width,height,i%width,Math.floor(i/width),maxDistance,state);
+        const region=renderer.packed.ids[now[1]-1],owner=renderer.packed.primitiveIds[now[2]-1];
+        if(now[0]===1&&(cpu.status!=='hit'||cpu.regionId!==region||cpu.query.owner!==owner
+          ||Math.abs(after.distances[i]-cpu.distance)>.001)
+          ||now[0]===0&&cpu.status!=='miss'){
+          record.cpuDisagreements++;
+          throw Error(`Live miss pass disagrees with CPU at ${i%width},${Math.floor(i/width)}: GPU ${[...now]} ${region}/${owner}, CPU ${cpu.status}/${cpu.reason}/${cpu.query?.owner}`);
+        }
+      }
+      if(record.status==='generated'&&record.recoveredPixels===0)
+        throw Error('Live gallery miss pass recovered no fringe pixels; this is not an exercised acceptance');
+      shots.push({name:'live-miss-pass-off',data:beforeShot},{name:'live-miss-pass-on',data:afterShot});
+      checks.push(`live exclusion pass ${record.status} (${record.certificatePixels.certified}/${width*height} certified pixels, ${record.acceptedPixels} accepted, ${record.certificateOmissions} omissions): ${record.recoveredPixels} previously unresolved pixels resolved, ${record.cpuDisagreements} CPU disagreements, no settled pixel changed; frame cost ${JSON.stringify(record.baselineCost.gpuMs)} -> ${JSON.stringify(record.passCost.gpuMs)} (${record.passCost.gpuStatus})`);
+      return record;
+    })();
+    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,ordering,census,exclusion,livePass]});
   } else {
     const records=[],poses=[];
     if(!/no gravity/i.test(document.body.textContent)||!/COMPLETE S3/.test(document.body.textContent))throw Error('Page lost its complete-S3/no-gravity label');

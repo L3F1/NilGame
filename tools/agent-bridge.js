@@ -51,7 +51,11 @@ export function claudeOutcome(text) {
     const result = Array.isArray(value) ? value.findLast(item => item.type === 'result') : value;
     if (result?.type !== 'result') return { isError: true, reason: 'missing-result' };
     return { isError: result.is_error === true, reason: result.terminal_reason ?? result.subtype,
-      sessionId: result.session_id ?? null, message: String(result.result ?? '').slice(0, 1500) };
+      sessionId: result.session_id ?? null, message: String(result.result ?? '').slice(0, 1500),
+      usage: { turns: result.num_turns ?? null, outputTokens: result.usage?.output_tokens ?? null,
+        cacheReadTokens: result.usage?.cache_read_input_tokens ?? null,
+        cacheWriteTokens: result.usage?.cache_creation_input_tokens ?? null,
+        estimatedCostUSD: result.total_cost_usd ?? null } };
   } catch { return { isError: true, reason: 'invalid-result-json' }; }
 }
 export function resolveCodex(config) {
@@ -137,6 +141,7 @@ async function taskRun(task, ctx) {
     if (task.agent === 'claude') {
       record.process = await runProcess(ctx.config.claude, [
         '-p', '--output-format', 'json', '--permission-mode', 'acceptEdits', '--effort', 'medium',
+        '--autocompact', '100k',
         '--allowedTools', 'Read,Edit,Write,Glob,Grep,Bash(node *),Bash(git status *),Bash(git diff *),Bash(rg *),Bash(pwd),Bash(ls *)',
       ], { cwd: checkout, prefix, input: prompt, timeoutMs: ctx.timeoutMs });
       record.agentResult = claudeOutcome(fs.readFileSync(`${prefix}.stdout.jsonl`, 'utf8'));
@@ -213,6 +218,8 @@ async function main() {
     if (summary.review) delete summary.review.tail;
     console.log(`${summary.status} | base ${summary.base.slice(0, 7)}`);
     for (const task of summary.tasks) console.log(`${task.id}: ${task.status}${task.agentResult?.message ? ' | ' + task.agentResult.message.slice(0, 180) : ''}`);
+    for (const task of summary.tasks) if (task.agentResult?.usage)
+      console.log(`${task.id} usage (not subscription percentage): ${JSON.stringify(task.agentResult.usage)}`);
     console.log(`Details: ${latest.dir}`); return;
   }
   if (command !== 'start' && command !== 'worker') throw new Error('Usage: node tools/agent-bridge.js start [--review] | status');
