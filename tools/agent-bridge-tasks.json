@@ -2,21 +2,13 @@
     "version":  1,
     "tasks":  [
                   {
-                      "instruction":  "Implement docs/engineering/LIVE_MISS_PASS.md. Read working rules and that contract, then relevant source only. This is an opt-in LIVE renderer integration, not another standalone experiment. Reference app/spherical-miss-experiment.js and its GLSL helper. Stay within allowed files. Run focused tests, one meaningful negative check, and full Node suite once candidate ready if environment permits; record blocked checks honestly. Do not send browser queue work from this clone. No commits, pushes, extra agents, motion changes, epsilon changes or automatic enabling. Report under600 words with checks, behavior and remaining risks.",
+                      "instruction":  "READ-ONLY diagnosis, no implementation. Read AGENTS.md and working rules, then only the Fixed eligibility precomputation and Scheduling follow-up sections in docs/qa/live-miss-pass-review.md. Investigate why a settled E3 sphere hit at pixel6,43 of160x120 changed distance2.594223976135254 to2.594233274459839 in some real ANGLE/D3D11 runs with refinement enabled; same hit/region/owner, later reruns pass. Main CONNECTED_FRAGMENT source was unchanged by both failed optimization trials. Inspect targeted sections: engine/geometry/connected-renderer.js draw/read/replaceWorld, engine/geometry/spherical-miss-pass.js GL state restore, engine/geometry/connected-shader.js E3 solve/trace/debug output, app/connected-global-preview.js livePass read/timing sequence. Current lead added an off/off baseline check before refinement; two real runs passed (one with extra primary reads, one without). Do not infer a fix from that. Identify at most3 specific hypotheses with supporting/contradicting code evidence and ONE smallest experiment to discriminate them. Distinguish driver speculation from observed facts. Do not read whole archives/logs or research broadly. Aim at at most12 targeted tool calls, then write report under400 words. No code edits, browser runs, full suite, commits, pushes or subagents. Only allowed report write.",
                       "agent":  "claude",
-                      "id":  "claude-live-miss-pass",
+                      "id":  "claude-distance-drift-review",
                       "allowedFiles":  [
-                                           "engine/geometry/connected-renderer.js",
-                                           "engine/geometry/connected-shader.js",
-                                           "engine/geometry/spherical-miss-pass.js",
-                                           "engine/geometry/spherical-miss-pass-glsl.js",
-                                           "app/spherical-miss-experiment-glsl.js",
-                                           "app/spherical-miss-experiment.js",
-                                           "app/connected-global-preview.js",
-                                           "spherical-miss-pass.test.js",
-                                           "docs/qa/claude-live-miss-pass.md"
+                                           "docs/qa/claude-distance-drift-review.md"
                                        ],
-                      "report":  "docs/qa/claude-live-miss-pass.md"
+                      "report":  "docs/qa/claude-distance-drift-review.md"
                   }
               ]
 }

@@ -133,6 +133,15 @@ Final Node validation: focused144 checks and full136/136 suites passed
 (`.agent-bridge/eligible-owners-suite.log`). These do not close the intermittent
 GPU observation above.
 
+Baseline isolation follow-up: the browser check now repeats the UNREFINED
+160x120 packet after the320x240 timing/resize sequence, before the refined read.
+It fails on any settled-distance change and reports the repeated primary ray.
+Two real-GPU cold runs passed: `baseline-drift-real.log` (extra primary reads
+before timing) and `baseline-drift-unprimed-real.log` (no extra pre-timing reads).
+This does NOT reproduce or close the intermittent observation. A bounded
+read-only Claude review is queued to examine GL state and the exact draw sequence;
+no new renderer heuristic or weakened comparison introduced.
+
 ## Claude usage correction
 
 Recorded75,057 output tokens,24,413 thinking tokens and7,827,424 cached-input
