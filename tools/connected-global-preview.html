@@ -24,7 +24,8 @@ flat boundary halts the preview. Reset recovers.</p>
 <p><a href="#editor">Edit this world</a>: change existing objects and portals, add or remove balls, create, reconnect or remove portal pairs, turn an existing portal anchor, undo changes, or save/load your level.</p>
 <p>Magenta marks numerical/traversal uncertainty; thin silhouette outlines remain under investigation.
 Dark checkers mark the end of the flat region, including when viewed through a portal from inside S3.</p>
-<p><label>Resolution <select id="quality"><option value="160">160 × 120</option><option value="320" selected>320 × 240</option><option value="480">480 × 360</option></select></label></p>
+<p><label>Resolution <select id="quality"><option value="160">160 × 120</option><option value="320" selected>320 × 240</option><option value="480">480 × 360</option><option value="640">640 × 480</option><option value="960">960 × 720</option></select></label>
+Higher resolutions sharpen the view and cost more GPU time. The default prioritizes responsiveness.</p>
 <div style="position:relative"><canvas id="view" width="80" height="60" aria-label="Connected complete-S3 sight preview" style="display:block"></canvas><span aria-hidden="true" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;color:white;text-shadow:0 0 2px black">+</span></div>
 <p id="portal-hint"></p>
 <p>Portals currently accept front-to-back crossings only. Aim through the centre: your body needs

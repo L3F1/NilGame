@@ -25,6 +25,12 @@ The editor model now retains explicit experimentalH3 across all transactions;
 three-geometry-editor.test.js checks edits after actual transit into H3.
 Validation:124/124 host Node suites and52 queued real-GPU existing E3/S3 checks;
 see docs/qa/three-geometry-editor-review.md. First sandbox run hit cleanup EPERM.
+Editor launch is now documented in README: node tools/relay.js, then
+/tools/connected-global-preview.html on localhost:8080. Resolution options now
+include640/480 and960/720; default320/240 unchanged. Queued existing browser52
+passed again (editor-resolution-browser.log); new high-resolution performance
+has not been measured. User wants graphics closer to the arena and an honest
+explanation of diagnostic purple pixels, not another hidden editor prototype.
 Next: review the repaired GPU draft, verify runtime readback through the queue,
 then expose the fixture through existing editor forms/presets.
 Research draft needs more exact source-file/license verification before reuse.

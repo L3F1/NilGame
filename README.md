@@ -29,6 +29,15 @@ and open the local address it prints. The root app uses plain JavaScript ES
 modules and WebGL2; Node tests need no package install. Press **O** to browse
 the experiments.
 
+For the current **connected editor**, run `node tools/relay.js` from this
+directory and open http://localhost:8080/tools/connected-global-preview.html.
+Entity and portal editing controls are below the viewport. It currently runs
+E3 and complete S3; H3 rendering is under review. This is the same renderer as
+the connected demo, not a separate finished editor. Choose a higher Resolution
+for sharper output; Polished lighting, Ambient occlusion and Smooth edges are
+available in the page. Numerical refusal pixels still need renderer work.
+The older flat-room authoring lab is at http://localhost:8080/tools/ball-lab.html.
+
 All eight Thurston geometries now have navigable experiments: H3, S3, H2 x R,
 S2 x R, E3, Nil, Sol and the universal cover of SL2R.
 The new [Sol and SL2R laboratories](docs/lie-labs.md) provide bounded flight
@@ -43,8 +52,10 @@ the world in the menu resets an experiment, rather than crossing a portal.
 
 Scene-v1 now feeds a separate E3 ball authoring experiment in Godot and the
 browser, with position/radius edits, undo/redo and JSON save/load. The main
-game still uses its existing authored levels. Connected-region traversal,
-the full editor and the geometry-sphere ability remain to be built.
+game still uses its existing authored levels. The connected editor additionally
+supports E3/complete-S3 portal traversal and transactional entity/portal edits,
+undo/redo and JSON persistence. A full authoring toolset and the geometry-sphere
+ability remain to be built.
 
 ## Repository map
 
