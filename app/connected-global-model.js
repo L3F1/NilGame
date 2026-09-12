@@ -18,8 +18,9 @@ export function pixelDirection(space,position,camera,width,height,x,y){
   return space.normalize(position,raw);
 }
 
-export function createConnectedGlobalPreview(document,{installWorld=()=>{}}={}){
-  let world=compileConnectedCoverWorld(document),undo=[],redo=[];
+export function createConnectedGlobalPreview(document,{installWorld=()=>{},experimentalH3=false}={}){
+  const compile=source=>compileConnectedCoverWorld(source,{experimentalH3});
+  let world=compile(document),undo=[],redo=[];
   let state,referenceUp,halted=false,motion='spawn',spawnRegion='flat';
   // No gravity and no floor: a reference up is CARRIED. Its coefficients in the
   // camera axes before a move are reapplied to the solver's returned axes, so
@@ -69,7 +70,7 @@ export function createConnectedGlobalPreview(document,{installWorld=()=>{}}={}){
     r.descriptor.coverage??'bounded',r.descriptor.extent??null]).sort((a,b)=>a[0].localeCompare(b[0])));
   function install(source,operation){
     if(halted)throw Error('Reset the halted movement before editing or loading');
-    const next=compileConnectedCoverWorld(source),nextDocument=next.document(),previous=world.document();
+    const next=compile(source),nextDocument=next.document(),previous=world.document();
     if(geometryKey(next)!==geometryKey(world)||nextDocument.baseScene.units.playerRadius!==state.radius)
       throw Error('Changing geometry, coverage, region ownership or player radius requires a separate world-opening policy');
     const region=next.regions.get(state.regionId),space=region.space,p=[...state.position];
@@ -147,7 +148,7 @@ export function createConnectedGlobalPreview(document,{installWorld=()=>{}}={}){
     const region=world.regions.get(state.regionId),space=region.space;
     const geometry=region.descriptor.coverage==='s3-cover'
       ?`COMPLETE S3 · radius ${space.curvatureRadius} · no chart boundary, no floor`
-      :`E3 · bounded extent ${region.descriptor.extent}`;
+      :`${space.kind.toUpperCase()} · bounded extent ${region.descriptor.extent}`;
     return `${state.regionId} · ${geometry} · ${motion}${halted?' — halted; reset to recover':''}`;
   }
   function portalGuide(){

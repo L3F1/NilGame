@@ -4,6 +4,12 @@ The complete E3/S3 preview now exposes a transactional property editor over its
 existing nil-connected-cover document. It reuses the compile-before-install
 pattern of region-lab; no new scene format or geometry conversion is introduced.
 
+The host-free model additionally accepts `{experimentalH3:true}`. This policy
+is retained across every edit/load/undo/redo compilation; default callers still
+reject H3. The three-geometry fixture can traverse into H3 and edit its balls
+without resetting the camera or player. This does not admit H3 to the browser
+renderer: the host still must validate the candidate GPU packet atomically.
+
 `patchConnectedEntities(document, [{id,patch},...])` produces detached author
 data. Allowed properties: ball position/radius, anchor position/radius/forward/up,
 spawn position. IDs, kinds, region ownership and chart IDs cannot be patched.

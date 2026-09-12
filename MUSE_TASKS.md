@@ -76,4 +76,5 @@ Delivered run2026-09-12T04-27-14-201Z-b8cb8cc5, base4b75b3a.
 File in its checkout: docs/research/geometry-implementation-sources.md.
 Primary-source shortlist inspected; source-file specificity and license claims
 still require lead review before integration or code reuse. Do not redispatch.
-Claude H3 GPU implementation is running in the same bridge run; check status.
+Claude's initial H3 GPU draft was returned for changes (h3-gpu-lead-review.md).
+A new claude-h3-gpu-repair bridge task is running; check status before dispatch.

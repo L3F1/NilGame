@@ -17,9 +17,16 @@ passed this turn; GPU evidence covers existing E3/S3 only.
 MUSE-71 accepted with one strengthened assertion; see muse-log.md. Bridge run
 2026-09-12T04-27-14-201Z-b8cb8cc5 (base4b75b3a): Claude H3 GPU still running at
 last check; Muse72 research awaiting review. Check status, do not redispatch.
-Claude does not have this turn's later cover wrapper/fixture; files do not
-overlap. Next: review his patch, verify H3 GPU readback through the host queue,
-then integrate all three geometries into existing editor transactions/presets.
+Claude's initial GPU draft was reviewed and returned, NOT integrated. See
+docs/qa/h3-gpu-lead-review.md: ambient camera normalization, missing exit roots,
+normal readback clipping and unaccepted aperture uncertainty policy. New task
+claude-h3-gpu-repair dispatched from4dac906; check bridge status for its run.
+The editor model now retains explicit experimentalH3 across all transactions;
+three-geometry-editor.test.js checks edits after actual transit into H3.
+Validation:124/124 host Node suites and52 queued real-GPU existing E3/S3 checks;
+see docs/qa/three-geometry-editor-review.md. First sandbox run hit cleanup EPERM.
+Next: review the repaired GPU draft, verify runtime readback through the queue,
+then expose the fixture through existing editor forms/presets.
 Research draft needs more exact source-file/license verification before reuse.
 
 ## Earlier subsystem pointers (status counts below are historical)
