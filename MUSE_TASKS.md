@@ -77,4 +77,6 @@ File in its checkout: docs/research/geometry-implementation-sources.md.
 Primary-source shortlist inspected; source-file specificity and license claims
 still require lead review before integration or code reuse. Do not redispatch.
 Claude's initial H3 GPU draft was returned for changes (h3-gpu-lead-review.md).
-A new claude-h3-gpu-repair bridge task is running; check status before dispatch.
+claude-h3-gpu-repair stopped at session quota; do not dispatch more Claude work
+until availability is renewed. Partial draft and lead fix preserved in its
+checkout; see docs/qa/h3-gpu-lead-review.md. GPU verification is still pending.

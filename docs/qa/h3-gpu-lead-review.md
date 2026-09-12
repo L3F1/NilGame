@@ -25,3 +25,24 @@ Not integrated. Browser and shader compilation remain unrun.
 Fix within existing allowed files, keep default E3/S3 unchanged, and strengthen
 the browser harness with these cases. Node/source checks are not GPU evidence.
 No editor exposure until lead runtime readback review passes.
+
+## Partial repair recovery, 2026-09-12
+
+Claude hit its session limit; do not redispatch until user renews availability.
+Preserved checkout: run2026-09-12T04-47-57-924Z-a0051ef0,
+claude-h3-gpu-repair/checkout. Seven draft files exist; final report was not
+written. The checkout index contains Claude's partial repair; the lead's later
+two-hunk shader correction is unstaged there. Nothing copied into main runtime.
+
+Source inspection: metric pixel unitization, entry/exit span roots and bounded
+local normal encoding are present. The new H3 foreground branch incorrectly
+returned on fg==2 before querying nearer portals. CPU region-sight intentionally
+keeps non-budget uncertainty pending and re-queries a shortened segment. Lead
+removed that early return and restricted hit reuse to fg==1. The existing
+MUSE-71 nearer-portal/remote-solid case is the regression scenario to add to GPU
+readback, not a claim that its image has passed.
+
+Reran node hyperbolic-gpu.test.js and node hyperbolic-sight.test.js in that
+checkout on LeoPC/Node24.20.0: both pass. These are source/CPU checks only.
+Remaining: finish review, connect probe to the browser queue, run actual shader
+compilation/readback, repair any disagreement, full suite before integration.

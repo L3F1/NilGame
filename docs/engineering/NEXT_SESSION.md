@@ -1,5 +1,14 @@
 # Fresh-chat handoff for Astra
 
+Latest override, 2026-09-12: Claude repair stopped at session quota (not running).
+Partial files plus lead pending-foreground fix preserved in run
+2026-09-12T04-47-57-924Z-a0051ef0/claude-h3-gpu-repair/checkout. Read final section
+of h3-gpu-lead-review.md; GPU unverified, no renderer draft integrated. Finish
+that review and queue readback next; don't wait for a still-running agent.
+User asks about curved portals/gradient spaces: future construction decisions
+are in CURVED_INTERFACES_AND_TRANSITIONS.md. Do not implement those before the
+three-geometry editor payoff.
+
 ## Current task - supersedes older status below
 
 2026-09-12 UTC: follow THREE_GEOMETRY_MILESTONE.md. User wants a polished simple
