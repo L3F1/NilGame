@@ -68,8 +68,11 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: no open assignment. MUSE-64 accepted; see docs/qa/muse-log.md.
+Order: MUSE-65. MUSE-64 accepted; see docs/qa/muse-log.md.
 
-Do not rerun the completed MUSE-64 manifest task. Claude's UI work is still a
-separate review. Next geometry reference checks require a bounded assignment
-from H3_CONNECTED_CONTRACT.md; this file does not enable H3 implementation.
+## MUSE-65 — OPEN: independent H3 metric corpus
+
+Assignment/allowed files: tools/agent-bridge-tasks.json, muse65-h3-metric.
+Exercise the experimental adapter, numerical envelope, transport and first domain
+exit using independent expectations. No scene integration or production repairs.
+Focused Node only. Report counterexamples and sampled evidence, not global proof.

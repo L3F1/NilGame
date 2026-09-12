@@ -1,6 +1,12 @@
 # Next adapter: bounded H3
 
 Status: NOT enabled in scene authoring, portals or connected GPU rendering.
+Experimental `createHyperbolicSpace` now exists in hyperbolic-space.js, separate
+from createMetricSpace. Domain extent <=2R; finite point representation <=4R
+from origin and signed per-step travel <=4R. Out-of-envelope queries throw;
+these are deliberately narrow numerical policies, not geometric singularities.
+The adapter exposes ambientDot for off-tangent frame repair and validated dot
+for tangent products. Existing camera code still needs to consume that metric.
 The existing arena hyperboloid code is a reference, not connected-runtime support.
 Finish the current removal/orientation UI review before adding a visible preset.
 

@@ -1,13 +1,13 @@
 # Fresh-chat handoff for Astra
 
 2026-09-11. Read WORKING_RULES, inspect status, use relevant TASK_ROUTER row.
-Latest: removePortalPair API and explicit removal/reorientation contract; see
-CONNECTED_PORTAL_AUTHORING.md and docs/qa/portal-removal-review.md.
-Creation/reconnection browser controls were shipped in f5a605c.
-Claude removal/orientation controls are reviewed and integrated;
-MUSE-64 is accepted with stronger expected-normal checks.
+Latest: experimental H3 metric adapter in hyperbolic-space.js. Read
+H3_CONNECTED_CONTRACT.md and docs/qa/h3-metric-review.md. It is deliberately
+separate from createMetricSpace; scenes, portals and GPU still reject H3.
+Next bridge batch: Claude metric-aware camera and MUSE-65 independent H3 corpus.
+Earlier removal/orientation UI and MUSE-64 are accepted and integrated.
 Check bridge status before dispatch: do not restart completed or running work.
-Latest Node validation: 105/105 in geometry-gate-suite.log, no concurrent browser
+Latest Node validation: 106/106 in h3-metric-suite.log, no concurrent browser
 work. Earlier S3 timeout evidence remains in portal-ui-review.md; runner deadline
 and assertions are unchanged. Prior browser43 passed on real GPU and SwiftShader;
 new removal/orientation browser evidence is in claude-portal-removal-ui.md.
@@ -21,8 +21,10 @@ Halted motion forbids edits until reset. Delayed file reads cannot overwrite a
 newer file choice or property edit. Renderer.replaceWorld changes texture data,
 not shader programs. The model.world and renderer.packed properties are getters.
 
-Next bounded task: H3 metric adapter and independent identities, following
-H3_CONNECTED_CONTRACT.md. Do not expose an H3 preset before camera/portal/GPU support.
+Next bounded task: review H3 metric corpus and camera adaptation; then implement
+H3 ball/portal queries per H3_CONNECTED_CONTRACT.md. Do not expose an H3 preset
+before camera/portal/GPU support. Extent<=2R and representative<=4R are numerical
+policies; exceptions must not become silent ray misses or artificial walls.
 Read CONNECTED_PORTAL_AUTHORING.md, especially final-graph swaps and
 base-to-envelope migration. Existing property-form orientation is now editable;
 no gizmos or global S3 floors/cells yet. CONNECTED_NEXT_MILESTONE.md gives the
