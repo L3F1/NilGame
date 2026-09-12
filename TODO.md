@@ -40,6 +40,9 @@ below. Implementation details and acceptance criteria:
   input errors and independently bracketed roots; GPU integration remains open.
 - [x] Add interval E3-to-S3 transfer reference and compose it with spherical
   root bounds; live GPU evaluation/admission remains separate.
+- [x] Verify isolated stable GPU transfer evaluation on real GPU/SwiftShader:
+  60 cases,540 components enclosed, missing-transport mutation caught.
+  Live interval propagation and root ordering remain open.
 - [ ] Repair S3 ball root precision with a scoped error model; preserve genuine
   tangencies and portal guards. Broaden artifact checks beyond the entry pose.
 - [x] Integrate H3 GPU repair and verify real/software readback, materials and

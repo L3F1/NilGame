@@ -2,14 +2,14 @@
   "version": 1,
   "tasks": [
     {
-      "id": "muse73-s3-refusals",
+      "id": "muse74-transfer-bounds",
       "agent": "muse",
-      "instruction": "MUSE-73 bounded diagnostic census, no repairs. User still sees purple around objects/portals in the CURRENT E3/full-S3 editor. Read MUSE.md and docs/engineering/GLOBAL_S3_CONTRACT.md relevant query/coverage sections, then use existing createConnectedGlobalPreview/traceRegionSight/pixelSight and connected-global.nil.json. Add a deterministic Node tool sampling 65x49 rays at flat spawn, sphere spawn, antipode reached by actual movement, and approach-exit action. Record exact poses/camera frames/range (64) and classify hit/miss/unresolved; distinguish domain-only from numerical reasons, preserving nested aperture reason details and region ownership. No copying geometry math, no treating all unresolved as errors, no inferred prevalence from one pose. Report top refusal causes and a few reproducible individual rays, with command and measured output. Assert non-vacuous views and totals; run tool twice and compare stable classification counts excluding timings. No GPU/browser/queue/full suite; CPU evidence only, not a diagnosis of every purple GPU pixel. Allowed files tools/s3-refusal-census.js and docs/qa/muse73-s3-refusals.md only. No engine/app/schema/tests/other docs/commit/push changes. If API or finding outside scope blocks a case report it, do not repair it. Report under500words.",
+      "instruction": "MUSE-74: independent bounded audit of new E3-to-S3 transfer intervals. Read MUSE.md, docs/engineering/PORTAL_TRANSFER_PRECISION.md and only the referenced modules/tests. Add a seeded Node regression comparing e3S3TransferBounds with the existing compiled portal transit for simultaneous bounded direction/point perturbations and a few rotated/translated frames; include center, rim and nearly parallel cases. Use actual perturbed direction values inside declared component error boxes; do not normalize them outside those boxes without checking inclusion. Report which assumptions are tested and which are not. Do not claim existing GPU enclosure: no browser/queue/shader runs. Test interval containment, not nominal closeness. Include a meaningful isolated fail-demo (copy/mutation only; never change engine in your delivered tree). Run focused test and full Node suite once; report failures without repair. Allowed writes only portal-transfer-truth.test.js and docs/qa/muse74-transfer-bounds.md. No kernel/app/schema/other docs changes, no commits/pushes, no agents. Keep report under500 words. If a real counterexample appears, minimize and pin it, stop expanding the corpus; do not loosen the claim or fix production code.",
       "allowedFiles": [
-        "tools/s3-refusal-census.js",
-        "docs/qa/muse73-s3-refusals.md"
+        "portal-transfer-truth.test.js",
+        "docs/qa/muse74-transfer-bounds.md"
       ],
-      "report": "docs/qa/muse73-s3-refusals.md"
+      "report": "docs/qa/muse74-transfer-bounds.md"
     }
   ]
 }

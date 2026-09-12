@@ -14,11 +14,15 @@ E3-to-S3 interval transfer reference now exists in portal-transfer-bounds.js;
 read PORTAL_TRANSFER_PRECISION.md.90 reference crossings and central ball-root
 composition pass; bypassing parallel transport fails. No renderer change.
 
-Next: isolated GPU stable-transfer evaluation and uncertainty propagation,
-read back point/direction against the CPU reference, then width-aware spherical
-root event ordering. The old shader uses a different trig sequence; do not claim
-this reference already encloses that executable. Keep E/half-space guards.
-Only one E3-to-S3 transfer is covered so far, not H3/repeated crossings.
+Isolated GPU stable transfer evaluation now passes60 cases/540 components on
+real GPU and SwiftShader; missing-transport mutation caught. Read
+ docs/qa/portal-transfer-gpu-review.md. Candidate lives in portal-transfer-gpu.js;
+live connected shader still unchanged. Not a universal backend proof.
+
+Next: propagate intervals alongside the chosen float32 evaluation, then consume
+spherical root interval widths in event ordering. Keep E/half-space guards.
+MUSE-74 independently audits CPU transfer bounds in isolated checkout; check
+bridge status and review counterexamples. Do not duplicate its corpus work.
 
 Read docs/qa/gallery-ray-census-review.md for the baseline:52 sampled numeric
 refusals,18 CPU hits/34 misses, all with S3 ball tangency-guard candidates.

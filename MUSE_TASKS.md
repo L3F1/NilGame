@@ -81,3 +81,10 @@ claude-h3-gpu-repair stopped at session quota; do not dispatch more Claude work
 until availability is renewed. Lead integrated the repaired draft behind opt-in
 with stable ball spans and GPU readback: see docs/qa/h3-stable-span-review.md.
 Do not resume the obsolete clone; broader precision and H3 material work remain.
+
+
+## MUSE-74 - ASSIGNED
+
+Independent E3-to-S3 transfer interval corpus. Exact bounded assignment and
+allowed files in tools/agent-bridge-tasks.json. Report counterexamples without
+repair. No browser jobs from the isolated checkout; no duplicate dispatch.

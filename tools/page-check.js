@@ -234,7 +234,7 @@ if(report.connectedEvidence){
   mkdirSync(join(ROOT,'.agent-bridge'),{recursive:true});
   writeFileSync(join(ROOT,'.agent-bridge',threeGeometry?(sw?'three-editor-sw.json':'three-editor-real.json'):connectedGlobal?'connected-global-gpu-evidence.json':'connected-gpu-evidence.json'),JSON.stringify(report.connectedEvidence,null,2));
   for(const r of report.connectedEvidence){
-    if(r.label)console.log('parity:',JSON.stringify(r));
+    if(r.label)console.log('parity:',JSON.stringify(r.label==='gallery-entry-ray-census'?{...r,document:undefined,pose:undefined,samples:r.samples.length}:r));
     if(r.gpuMs){const sorted=[...r.gpuMs].sort((a,b)=>a-b);console.log(`GPU ${r.pose}: ${r.hardware}, ${r.resolution.width}x${r.resolution.height}, samples ${sorted.length}, median ${sorted[Math.floor(sorted.length/2)]}, p90 ${sorted[Math.floor(sorted.length*.9)]} ms`);}
   }
 }
