@@ -20,6 +20,7 @@ import {traceRegionSight} from '../engine/world/region-sight.js';
 import {createConnectedRenderer} from '../engine/geometry/connected-renderer.js';
 import {createCameraFrame,turn} from '../engine/world/camera-frame.js';
 import {createConnectedGlobalPreview} from '../app/connected-global-model.js';
+import {compileConnectedCoverWorld} from '../engine/world/connected-cover-world.js';
 import {h3LocalFrame} from '../engine/geometry/hyperbolic-gpu.js';
 
 export const SCENE_PATH='../levels/fixtures/connected-h3-cpu.nil.json';
@@ -155,6 +156,10 @@ export function checkNormal(gpuNormal,cpu,isH3,tolerance){
 export function comparePixel(gpu,cpu,packed,tolerance){
   const {status,region,owner,kind,distance,normal}=gpu;
   const cpuStatus=cpu.status;
+  const coverage=cpu.reason==='domain-exit'||cpu.reason==='aperture-query'
+    &&cpu.apertures?.length>0&&cpu.apertures.every(a=>a.reason==='domain-exit');
+  if(status===2&&kind===1&&cpuStatus==='unresolved'&&!coverage)
+    return {verdict:DISAGREE,detail:`coverage marker concealed CPU ${cpu.reason}`};
   if(status===2)return {verdict:cpuStatus==='unresolved'?AGREE:CONSERVATIVE,
     detail:`gpu unresolved kind ${kind} vs cpu ${cpuStatus}`};
   if(cpuStatus==='unresolved')return {verdict:DISAGREE,answeredRefusal:true,
@@ -326,6 +331,30 @@ export async function runProbe({canvas,scenePath=SCENE_PATH,onProgress=()=>{}}={
   images.push({label:'three-geometry-entry',dataUrl:canvas.toDataURL('image/png')});
   for(let i=0;i<300&&three.state.regionId!=='hyperbolic';i++)three.advance(.04,[0,1,0]);
   if(three.state.regionId!=='hyperbolic'||three.halted)throw Error('Three-geometry model route did not reach H3');
+  const sideways={...three.state,camera:{...three.state.camera,forward:three.state.camera.right,
+    right:three.state.camera.forward.map(x=>-x)}};
+  const boundaryCPU=three.sight(sideways.camera.forward,60);
+  const boundaryGPU=renderer.read(sideways,1,1,{range:60});
+  if(boundaryCPU.status!=='unresolved'||!boundaryCPU.apertures?.length
+    ||!boundaryCPU.apertures.every(a=>a.reason==='domain-exit')
+    ||boundaryGPU.pixels[0]!==2||boundaryGPU.pixels[3]!==1)
+    throw Error('H3 coverage refusal lost its domain provenance');
+  // Mixed causes: an on-plane numerical ambiguity must outrank a domain-only
+  // refusal regardless of authored portal order. This must stay purple.
+  const mixed=three.document(),h3Space=three.world.regions.get('hyperbolic').space;
+  mixed.baseScene.entities.push(
+    {id:'numeric-source',kind:'anchor',regionId:'hyperbolic',position:h3Space.encode(three.state.position),forward:[0,0,1],up:[0,1,0],radius:.9},
+    {id:'numeric-target',kind:'anchor',regionId:'flat',position:[5,5,0],forward:[0,0,1],up:[0,1,0],radius:.9});
+  mixed.connections.push({id:'numeric-link',kind:'portal',a:'numeric-source',b:'numeric-target',velocity:'preserve-speed',scale:1});
+  for(let order=0;order<2;order++){
+    mixed.connections.reverse();
+    const w=compileConnectedCoverWorld(mixed,{experimentalH3:true});renderer.replaceWorld(w);
+    const c=traceRegionSight(w,{regionId:sideways.regionId,position:sideways.position,direction:sideways.camera.forward},{maxDistance:60});
+    const g=renderer.read(sideways,1,1,{range:60});
+    if(c.reason!=='aperture-side'||g.pixels[0]!==2||g.pixels[3]!==2)
+      throw Error('Mixed H3 numeric/domain refusals lost numeric priority');
+  }
+  renderer.replaceWorld(three.world);
   const before=JSON.stringify(three.state.position);
   three.editEntities([{id:'h3-target',patch:{radius:.7}}]);
   if(JSON.stringify(three.state.position)!==before)throw Error('H3 edit relocated player');

@@ -2,20 +2,14 @@
   "version": 1,
   "tasks": [
     {
-      "id": "claude-h3-gpu-repair",
-      "agent": "claude",
-      "instruction": "Continue your previous H3 GPU draft. First copy ONLY the listed allowed files from C:/Users/lflyn/Projects/NilGame/.agent-bridge/runs/2026-09-12T04-27-14-201Z-b8cb8cc5/claude-h3-gpu/checkout into this new checkout; the draft is not on main. Read docs/qa/h3-gpu-lead-review.md and repair all four findings. The same THREE_GEOMETRY_MILESTONE GPU contract applies. Root now has three-geometry-world fixture and model opt-in; do not modify them. No CPU math/schema/sight edits. No commit/push or browser/queue/full suite from clone. Strengthen actual runtime GPU probe for entry-exit root sweep, metric camera at non-origin, bounded normal readback and CPU foreground query semantics. Focused Node checks only. Report honest remaining work under500words. Lead runs GPU queue after review.",
+      "id": "muse73-s3-refusals",
+      "agent": "muse",
+      "instruction": "MUSE-73 bounded diagnostic census, no repairs. User still sees purple around objects/portals in the CURRENT E3/full-S3 editor. Read MUSE.md and docs/engineering/GLOBAL_S3_CONTRACT.md relevant query/coverage sections, then use existing createConnectedGlobalPreview/traceRegionSight/pixelSight and connected-global.nil.json. Add a deterministic Node tool sampling 65x49 rays at flat spawn, sphere spawn, antipode reached by actual movement, and approach-exit action. Record exact poses/camera frames/range (64) and classify hit/miss/unresolved; distinguish domain-only from numerical reasons, preserving nested aperture reason details and region ownership. No copying geometry math, no treating all unresolved as errors, no inferred prevalence from one pose. Report top refusal causes and a few reproducible individual rays, with command and measured output. Assert non-vacuous views and totals; run tool twice and compare stable classification counts excluding timings. No GPU/browser/queue/full suite; CPU evidence only, not a diagnosis of every purple GPU pixel. Allowed files tools/s3-refusal-census.js and docs/qa/muse73-s3-refusals.md only. No engine/app/schema/tests/other docs/commit/push changes. If API or finding outside scope blocks a case report it, do not repair it. Report under500words.",
       "allowedFiles": [
-        "engine/geometry/connected-shader.js",
-        "engine/geometry/connected-renderer.js",
-        "engine/geometry/hyperbolic-gpu.js",
-        "engine/world/region-world.js",
-        "hyperbolic-gpu.test.js",
-        "tools/h3-gpu-probe.html",
-        "tools/h3-gpu-probe.js",
-        "docs/qa/claude-h3-gpu.md"
+        "tools/s3-refusal-census.js",
+        "docs/qa/muse73-s3-refusals.md"
       ],
-      "report": "docs/qa/claude-h3-gpu.md"
+      "report": "docs/qa/muse73-s3-refusals.md"
     }
   ]
 }

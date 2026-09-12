@@ -70,6 +70,12 @@ had accumulated before anyone noticed, each naming a different task as first.
 
 Order: review MUSE-72 research. MUSE-71 accepted; see docs/qa/muse-log.md.
 
+## MUSE-73 - ASSIGNED
+
+CPU-only refusal census for the current E3/full-S3 editor. Exact task and allowed
+files in tools/agent-bridge-tasks.json. No geometry/math repairs or browser runs.
+Check bridge status; do not redispatch. MUSE-72 research review remains pending.
+
 ## MUSE-72 - READY FOR REVIEW
 
 Delivered run2026-09-12T04-27-14-201Z-b8cb8cc5, base4b75b3a.

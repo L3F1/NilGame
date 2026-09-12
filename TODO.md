@@ -25,6 +25,10 @@ below. Implementation details and acceptance criteria:
 - [x] Metric-aware H3 materials/AO and real/software GPU verification of the
   three-region model, renderer, transit and edit/history path. See
   docs/qa/h3-material-review.md. Browser preset form still pending.
+- [x] Preserve H3 numerical-vs-coverage refusal reasons; numeric causes win
+  across mixed portal order. Both backends verified; unresolved status retained.
+- [ ] Diagnose visible E3/S3 silhouette/portal purple patches by reproducible
+  rays; MUSE-73 CPU refusal census assigned, GPU attribution follows.
 - [ ] Finish review of the partial H3 GPU repair, run real-GPU and SwiftShader
   readback, inspect images and measure frame distributions. Claude stopped at
   session quota. Opt-in experimental renderer now has durable real/software GPU

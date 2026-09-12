@@ -1,5 +1,13 @@
 # Fresh-chat handoff for Astra
 
+Latest: H3 refusal provenance fixed/tested: domain-only uses coverage pattern,
+numeric ambiguity remains purple and wins regardless of portal order. No ray
+reclassified hit/miss. See h3-refusal-provenance-review.md. Both GPU backends
+pass; existing connected-global52 passes. Remaining visible E3/S3 purple pixels
+are separate: MUSE-73 CPU census assigned through bridge, check status. Claude
+quota still unavailable. Do not conflate S3 (geometry) with full-S3 (coverage).
+Full approved-host Node suite125/125 passed (h3-provenance-suite.log).
+
 Latest override: H3 material paths corrected, GPU contact-AO fail-before caught
 old S3 fallback. Real/software checks both129 isolated hits (AO byte delta0),
 20 contact-shaded pixels; three-geometry ray crosses twice with distance42.0991,

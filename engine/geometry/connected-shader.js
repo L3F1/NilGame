@@ -257,7 +257,7 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
       // With the chart boundary inside the horizon, queryHyperbolicAperture's
       // own miss() reports unresolved domain-exit instead of a miss, so any
       // portal of this region makes the ray unresolved rather than empty.
-      bool domainInside=edge<=horizon+E;
+      bool domainInside=edge<=horizon+E,domainRefusal=false;
       end=horizon;
       for(int g=0;g<8;g++){if(g>=uCounts.w)break;int base=132+g*10;vec4 info=D(base);if(int(info.x)!=region)continue;
         vec4 center=D(base+1),n=D(base+4);
@@ -271,7 +271,7 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
         }
         vec4 ap=h3ApertureEntry(p,u,n,r.y);
         if(ap.x>1.5)return vec4(2,region,-1,traveled);
-        if(ap.x<.5||ap.y>horizon+E){if(domainInside)return vec4(2,region,-1,traveled);continue;}
+        if(ap.x<.5||ap.y>horizon+E){if(domainInside)domainRefusal=true;continue;}
         // The root band straddles the horizon: a range/domain ambiguity, and on
         // the CPU that too certifies nothing from arclength zero.
         if(ap.w>=horizon-E)return vec4(2,region,-1,traveled);
@@ -281,11 +281,16 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
         // helper does through the 1-Lipschitz property of distance.
         float radial=dist(center,q,r),rim=E+max(t-ap.y,ap.w-t);
         if(abs(info.z-radial)<=rim)return vec4(2,region,-1,traveled);
-        if(radial>info.z){if(domainInside)return vec4(2,region,-1,traveled);continue;}
+        if(radial>info.z){if(domainInside)domainRefusal=true;continue;}
         if(t>end+E)continue;
         if(gate>=0&&abs(t-end)<=E)return vec4(2,region,-1,traveled); // aperture tie
         gate=g;end=t;
       }
+      // Keep coverage distinct from numeric failure. Inspect ALL apertures first:
+      // a later numeric refusal must remain magenta regardless of array order.
+      // CPU domain refusals have uncertaintyFrom:0; this is still unresolved,
+      // never permission to cross a nearer gate or paint a confident sky.
+      if(domainRefusal){refusalKind=1;return vec4(2,region,-1,traveled);}
       // Reuse rule of the CPU: a full-range miss or an unshortened segment keeps
       // the foreground answer; a strictly nearer gate re-queries only its prefix.
       if(fg==0){found=0;hitAt=end;}
