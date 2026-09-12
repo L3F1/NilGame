@@ -3,7 +3,8 @@
 2026-09-11. Read WORKING_RULES, inspect status, use relevant TASK_ROUTER row.
 Latest: experimental H3 metric adapter in hyperbolic-space.js. Read
 H3_CONNECTED_CONTRACT.md and docs/qa/h3-metric-review.md. It is deliberately
-separate from createMetricSpace; scenes, portals and GPU still reject H3.
+separate from createMetricSpace; scenes and GPU still reject H3. The default
+portal compiler also rejects it; compileHyperbolicFramedPortals is CPU opt-in.
 Claude metric-aware camera and MUSE-66 are reviewed and integrated. New experimental
 hyperbolic-balls.js is specified in H3_QUERY_CONTRACT.md; see h3-balls-review.md.
 Claude finite-aperture task stopped at quota and is superseded by the lead's
@@ -13,8 +14,8 @@ in H3 distance's time difference. MUSE-67 rev2 accepted as sampled evidence;
 MUSE-68 aperture audit accepted as sampled evidence (review in muse-log.md).
 Earlier removal/orientation UI and MUSE-64 are accepted and integrated.
 Check bridge status before dispatch: do not restart completed or running work.
-Latest Node validation:115/115 in aperture-motion-suite.log. Connected-global
-real-GPU cold browser check52/52 on LeoPC after movement refusal integration.
+Latest Node validation:116/116 in h3-framed-suite.log. Connected-global
+real-GPU cold browser check52/52 on LeoPC after experimental H3 frame support.
 Earlier S3 timeout evidence remains in portal-ui-review.md; runner deadline
 and assertions are unchanged. Prior browser43 passed on real GPU and SwiftShader;
 new removal/orientation browser evidence is in claude-portal-removal-ui.md.
@@ -32,9 +33,11 @@ Portal construction/transit and connected host camera/movement coefficients now
 use adapter metric products; E3/S3 parity checks passed. Sight and movement now
 normalize explicit aperture refusals. See H3_QUERY_CONTRACT.md and
 aperture-motion-review.md. MUSE-69 is assigned independent consumer checks;
-review its bridge output before further integration. Next lead task: integrate
-experimental H3 aperture construction and field sampling behind a CPU-only
-region gate, retaining explicit query outcomes (no visible preset yet).
+review its bridge output before further integration. H3 physical-frame portal
+construction now works through compileHyperbolicFramedPortals. Read
+h3-framed-portal-review.md and H3_QUERY_CONTRACT.md outward-start policy.
+Next lead task: CPU H3 region field/schema admission and sight dispatch; retain
+explicit query outcomes. No visible preset before GPU support.
 Camera adaptation is complete. Do not expose an H3 preset
 before camera/portal/GPU support. Extent<=2R and representative<=4R are numerical
 policies; exceptions must not become silent ray misses or artificial walls.

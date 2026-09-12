@@ -1,6 +1,6 @@
 # Experimental H3 solid and aperture queries
 
-Not admitted by scene/portal/GPU factories yet. Use the explicit experimental
+Not admitted by scene/GPU factories yet. Use the explicit experimental
 H3 adapter. A bounded miss means the requested ray segment was checked; reaching
 the adapter domain first is unresolved/domain-exit, never a sky or wall.
 
@@ -34,8 +34,8 @@ R*asinh(Lorentz(p,normal)); the plane is totally geodesic through the centre.
 An entering crossing goes positive to negative. Its plane equation is
 A cosh(t/R)+B sinh(t/R)=0, with A=<p,n>, B=<u,n>. Use the positive finite root
 only; a back-side start cannot produce a later entering crossing on an H3
-geodesic. On-plane starts, near-asymptotic coefficients and range/rim ambiguity
-must refuse rather than claim a confident miss. Keep tolerances explicit in
+geodesic. Ambiguous on-plane starts, near-asymptotic coefficients and range/rim
+ambiguity must refuse rather than claim a confident miss. Keep tolerances explicit in
 physical units and report tested scale range. Do not normalize invalid inputs.
 
 Compute radial aperture clearance using intrinsic distance(center,intersection)
@@ -50,10 +50,25 @@ also includes the heuristic arclength root spread. Tested scales .5/8/10000.
 Every unresolved result exports uncertaintyFrom:0; distance is diagnostic only.
 This deliberately makes no safe-prefix claim based on a heuristic interval.
 
+Outward-start policy (CPU portal integration): B > abs(A) + coefficientBand
+implies the derivative A*sinh(t/R)+B*cosh(t/R) is positive for every t>=0.
+There is no future entering crossing, including from the plane. Such a ray may
+return a bounded miss; a domain exit still returns unresolved. This permits the
+destination's outward numerical offset without suppressing its reverse aperture.
+Inward and zero/ambiguous-slope on-plane starts still refuse. The sign argument
+is analytic; coefficient guard bands remain floating-point heuristics.
+
+compileHyperbolicFramedPortals is an explicitly experimental CPU entry point.
+It shares E3/S3 radial correspondence and metric tangent maps, adds H3 signed
+height and explicit aperture packets (hit.at aliases hit.point), validates H3
+centres in-domain and disc radii <=R. compileFramedPortals still rejects H3.
+No scene schema, authoring preset, sight-field dispatch or GPU admission yet.
+
 ## Consumer integration gate
 
 Sight and movement adapt hit/null and explicit query results through
-aperture-result.js. Scene admission and H3 portal construction remain gated.
+aperture-result.js. Scene admission remains gated; H3 portal construction is
+available only through the named experimental compiler above.
 Never adapt unresolved to null, or treat its distance as a confirmed crossing.
 Before integration, define an earliest-uncertainty distance: a finite lower bound
 in physical arclength before which this aperture cannot affect this query. If

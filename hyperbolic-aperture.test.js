@@ -34,7 +34,10 @@ for(const R of [.5,8,10000]) {
   const p=s.decode([.4*R,0,0]),toward=s.frame(p)[0].map(x=>-x);
   assert.equal(query(s,a,p,toward,{maxDistance:R,bodyRadius:.5*R}).reason,'aperture-rim');
   assert.equal(query(s,a,p,toward,{maxDistance:R,bodyRadius:.6*R}).status,'miss');
-  assert.equal(query(s,a,s.origin,[1,0,0,0],{maxDistance:R}).reason,'boundary-start');
+  // Outward is monotone positive height, hence cannot be an entering crossing.
+  assert.equal(query(s,a,s.origin,[1,0,0,0],{maxDistance:R}).status,'miss');
+  assert.equal(query(s,a,s.origin,[-1,0,0,0],{maxDistance:R}).reason,'boundary-start');
+  assert.equal(query(s,a,s.origin,[0,1,0,0],{maxDistance:R}).reason,'boundary-start');
   // A ray asymptotic to the plane: B=-A, with the remainder in y.
   const k=Math.tanh(.4),asym=s.frame(p)[0].map((x,i)=>-k*x+(i===1?Math.sqrt(1-k*k):0));
   assert.equal(query(s,a,p,asym,{maxDistance:R}).reason,'asymptotic-plane');

@@ -19,6 +19,11 @@ export function queryHyperbolicAperture(space, aperture, p, u, {maxDistance, bod
   const A=space.ambientDot(p,normal),B=space.ambientDot(u,normal);
   const eps=Math.max(1e-10,128*Number.EPSILON*(1+Math.abs(A)+Math.abs(B)));
   const lengthTolerance=1e-9*R;
+  // If B>|A|, height has strictly positive derivative for all future arclength:
+  // A*sinh(t/R)+B*cosh(t/R)>0. There can be no positive-to-negative
+  // crossing, even for an on-plane start. This includes a portal's outward
+  // exit offset. Retain the coefficient guard; ambiguous slopes still refuse.
+  if(B>Math.abs(A)+eps)return miss();
   if(Math.abs(A)<=eps)return unknown('boundary-start');
   if(A<0)return miss(); // At most one root; a back-side ray cannot ENTER later.
   // Positive front-side A needs B<-A for a finite entering root. Equality

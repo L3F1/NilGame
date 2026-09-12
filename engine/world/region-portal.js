@@ -1,6 +1,7 @@
 // Finite apertures are geodesic discs. Position correspondence preserves radial
 // length/angle; tangent transport preserves physical speed, NOT the differential
 // of an isometry between distinct metrics. That is an explicit gameplay policy.
+import { queryHyperbolicAperture } from '../geometry/hyperbolic-aperture.js';
 const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
 const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
 const add=(a,b)=>a.map((x,i)=>x+b[i]);
@@ -38,17 +39,27 @@ export function compileRegionPortals(scene,regions) {
 // Shared physical-frame boundary: global cover placements need no fake decode
 // through the origin chart. Scene-v2 continues to decode through its own adapter.
 export function compileFramedPortals(connections,anchors,playerRadius) {
+  return compileFrames(connections,anchors,playerRadius,false);
+}
+// CPU experiment only. Scene compilers and GPU packets retain their own gates;
+// callers must consume explicit hit/miss/unresolved crossing results.
+export function compileHyperbolicFramedPortals(connections,anchors,playerRadius) {
+  return compileFrames(connections,anchors,playerRadius,true);
+}
+function compileFrames(connections,anchors,playerRadius,allowHyperbolic) {
   if(!Number.isFinite(playerRadius)||playerRadius<=0)throw Error('Invalid player radius');
   const entities=new Map(),used=new Set(),ids=new Set();
   for(const anchor of anchors){
     const {space,center,normal,up}=anchor;
-    // Plane roots and ambient frame projections below are E3/S3 only. A new
-    // metric must implement these operations before it can enter this path.
-    if(!space||!['e3','s3'].includes(space.kind))throw Error(`Unsupported portal geometry: ${space?.kind}`);
+    // Normal scene callers stay E3/S3; the named CPU experiment additionally
+    // supplies H3 roots and explicit query results.
+    if(!space||!['e3','s3',...(allowHyperbolic?['h3']:[])].includes(space.kind))throw Error(`Unsupported portal geometry: ${space?.kind}`);
     if(!anchor.id||!anchor.regionId||entities.has(anchor.id))throw Error('Invalid or duplicate anchor ID');
     space.validatePoint(center);space.validateTangent(center,normal);space.validateTangent(center,up);
     if(Math.abs(space.norm(center,normal)-1)>1e-8||Math.abs(space.norm(center,up)-1)>1e-8||Math.abs(space.dot(center,normal,up))>1e-8)throw Error('Aperture frame must be orthonormal');
     if(!Number.isFinite(anchor.radius)||anchor.radius<=0)throw Error('Invalid aperture radius');
+    if(space.kind==='h3'&&(!space.withinDomain(center)||anchor.radius>space.curvatureRadius))
+      throw Error('H3 aperture needs an in-domain centre and radius at most R');
     const basis=space.frame(center),u=basis.map(e=>space.dot(center,up,e)),n=basis.map(e=>space.dot(center,normal,e)),r=cross(u,n);
     const right=center.map((_,i)=>basis.reduce((s,b,j)=>s+b[i]*r[j],0));
     entities.set(anchor.id,{entity:{id:anchor.id,regionId:anchor.regionId,radius:anchor.radius},space,
@@ -77,12 +88,20 @@ export function compileFramedPortals(connections,anchors,playerRadius) {
         // entering side. In E3 that is the plane offset; on S3 the aperture is
         // a great sphere and the physical height is R*asin(p.n), not the dot
         // product itself -- the two agree only near the plane, which is the one
-        // place a tolerance must not be approximated.
+        // place a tolerance must not be approximated. H3 uses the Lorentz
+        // pairing and R*asinh instead.
         signedHeight:p=>a.space.kind==='e3'
           ?dot(p.map((x,j)=>x-a.center[j]),a.normal)
-          :a.space.curvatureRadius*Math.asin(clamp1(dot(p,a.normal))),
+          :a.space.kind==='h3'
+            ?a.space.curvatureRadius*Math.asinh(a.space.ambientDot(p,a.normal))
+            :a.space.curvatureRadius*Math.asin(clamp1(dot(p,a.normal))),
         crossing(p,u,maxTravel,radius=0) {
           const s=a.space;
+          if(s.kind==='h3'){
+            const result=queryHyperbolicAperture(s,{center:a.center,normal:a.normal,radius:a.entity.radius},p,u,
+              {maxDistance:maxTravel,bodyRadius:radius});
+            return result.status==='hit'?{...result,at:result.point}:result;
+          }
           s.validatePoint(p);
           if(Math.abs(s.norm(p,u)-1)>1e-8||!(maxTravel>=0)||(!Number.isFinite(maxTravel)&&maxTravel!==Infinity)||!Number.isFinite(radius)||radius<0)throw Error('Invalid aperture crossing query');
           let t=Infinity;

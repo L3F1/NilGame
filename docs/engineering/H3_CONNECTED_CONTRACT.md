@@ -1,6 +1,7 @@
 # Next adapter: bounded H3
 
-Status: NOT enabled in scene authoring, portals or connected GPU rendering.
+Status: NOT enabled in scene authoring or connected GPU rendering. Explicit
+CPU-only compileHyperbolicFramedPortals now supports H3 experimental connections.
 Experimental `createHyperbolicSpace` now exists in hyperbolic-space.js, separate
 from createMetricSpace. Domain extent <=2R; finite point representation <=4R
 from origin and signed per-step travel <=4R. Out-of-envelope queries throw;
@@ -30,15 +31,15 @@ radial coordinates. Region extent is a numerical coverage limit, not a wall.
   repair and validated metric dot for tangent frame coefficients. Tested H3
   cameras now retain aim, orientation and transported holonomy off origin.
 - region-portal.js now uses metric dot for construction/transit frame coefficients.
-  Plane height and first entering root still implement E3/S3 only; the explicit
-  unsupported-kind gate stays until H3 queries and refusal propagation land.
+  The default compiler retains its E3/S3 gate. The named experimental compiler
+  adds H3 physical plane height and explicit entering query packets.
 - connected-global-model.js now uses the point's metric for reference-up,
   elevation and movement normalization. This preserves current E3/S3 behavior;
   it does not admit H3 worlds.
 - region-sight.js now preserves explicit aperture uncertainty through
   aperture-result.js and orders it against nearer solids/gates. region-motion.js
-  still consumes hit-or-null; preserving its time/correction policies while
-  handling uncertainty is required before H3 admission. See H3_QUERY_CONTRACT.md.
+  also preserves uncertainty, time and correction debt. MUSE-69 independently
+  audits that consumer boundary. See H3_QUERY_CONTRACT.md.
 - scene fields, query normals, GPU packing/shaders and finite-domain crossing
   need explicit H3 capabilities. Search all flat-versus-curved branches before
   extending schema acceptance. Do not make unknown kinds inherit S3 behavior.
