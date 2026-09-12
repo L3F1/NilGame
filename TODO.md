@@ -45,6 +45,8 @@ below. Implementation details and acceptance criteria:
   Live interval propagation and root ordering remain open.
 - [x] Add and GPU-check interval-aware additive entry ordering; overlap/tie
   mutation fails on both backends. Not yet wired into the live trace.
+- [x] Integrate stable selected-distance E3-to-S3 transfer in live trace;
+  existing guards/fallback retained, both GPU backends checked. MUSE-74 accepted.
 - [ ] Repair S3 ball root precision with a scoped error model; preserve genuine
   tangencies and portal guards. Broaden artifact checks beyond the entry pose.
 - [x] Integrate H3 GPU repair and verify real/software readback, materials and

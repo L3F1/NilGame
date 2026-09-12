@@ -2949,3 +2949,11 @@ Lead fixed false domain-only classification; refusal-census.test.js catches it
 before correction. Two local runs byte-identical, 12740 rays / 3142 domain
 exits. CPU evidence only. Review: docs/qa/muse73-s3-refusals.md.
 MUSE-72 research source/license review remains pending.
+
+
+## MUSE-74 - ACCEPTED corrected revision, 2026-09-12
+
+Revision run2026-09-12T07-17-54-000Z-fb8483c0, base017901c. Lead reran36/36
+normalized-output enclosure cases and missing-transport mutation (fails direction3).
+Rev1 raw nonunit-output oracle superseded. Imported test/report only.
+See docs/qa/live-transfer-review.md for integration and limitations.

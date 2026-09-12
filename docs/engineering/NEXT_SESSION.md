@@ -24,12 +24,16 @@ with CPU and GLSL variants. Both GPU backends pass8 isolated ordering cases and
 catch an omitted-overlap mutation. See docs/qa/additive-event-order-review.md.
 No live renderer change; additive/outside-start/completeness assumptions matter.
 
-Next: GPU propagation of upstream error and spherical root intervals, then wire
-one supported path to interval-aware ordering. Transfer evaluation and ordering
-are separately GPU tested; their live error propagation is still missing.
-MUSE-74 rev1 NOT accepted: oracle compared raw carry(v) with normalized output.
-Revision dispatched; check bridge status, review corrected output normalization,
-and integrate only after checks. Do not duplicate Muse's corpus work.
+Stable selected-distance E3-to-S3 transfer is NOW LIVE for its small-angle
+subset, retaining fallback and every existing guard. Read
+ docs/qa/live-transfer-review.md. Gallery52 numerical refusals are unchanged;
+no visual fix claimed. Actual live-call distance mutation fails500 GPU rays.
+
+Next: GPU error propagation alongside the chosen evaluation, then spherical
+root intervals feeding interval-aware ordering. Neither CPU interval reference
+nor sampled GPU transfer parity alone justifies tighter live root guards.
+MUSE-74 corrected revision ACCEPTED; normalized-output oracle36/36 plus lead
+mutation pass/fail. Test/report integrated; do not redispatch the completed task.
 
 Read docs/qa/gallery-ray-census-review.md for the baseline:52 sampled numeric
 refusals,18 CPU hits/34 misses, all with S3 ball tangency-guard candidates.

@@ -1,3 +1,4 @@
+import {E3_S3_TRANSFER_GLSL} from './portal-transfer-gpu.js';
 // Bounded float32 GPU reference for E3/S3. Surface candidates are analytic;
 // uncertain roots, intervals, portal rims and chart exits stay unresolved.
 import {CONNECTED_MATERIAL_GLSL} from './connected-material.js';
@@ -115,6 +116,7 @@ vec2 sincos(float x){
 float sn(float x){return sincos(x).x;}
 float cs(float x){return sincos(x).y;}
 ${H3_GEOMETRY_GLSL}
+${E3_S3_TRANSFER_GLSL}
 vec4 D(int i){return texelFetch(uData,ivec2(i,0),0);}
 // Region row x selects the geometry: 0 E3, 1 S3, ${H3_REGION_CODE} H3. Every
 // operation below dispatches explicitly; H3 is never the spherical else branch.
@@ -339,13 +341,20 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
     if(h3Path&&abs(edge-end)<=E)return vec4(2,region,-1,traveled+end); // domain/aperture tie
     if(crossing==4)return vec4(2,region,-1,traveled+end);
     int base=132+gate*10;vec4 info=D(base),center=D(base+1),exitCenter=D(base+5),dest=D(128+int(info.y));
-    vec4 q=at(p,u,end,r),v=transport(q,center,direction(p,u,end,r),r),radial=logAt(center,q,r);
-    // Frame components are read in the SOURCE region's metric (Lorentz pairing
-    // for H3) and recombined on the destination basis: radius/angle and physical
-    // speed are preserved, matching the CPU portal policy with no exit offset.
-    vec4 mapped=-tdot(radial,D(base+2),r)*D(base+6)+tdot(radial,D(base+3),r)*D(base+7);
-    vec4 newP=expAt(exitCenter,mapped,dest),newV=-tdot(v,D(base+2),r)*D(base+6)+tdot(v,D(base+3),r)*D(base+7)-tdot(v,D(base+4),r)*D(base+8);
-    u=unitize(newP,transport(exitCenter,newP,newV,dest),dest);p=newP;region=int(info.y);reverse=int(info.w);traveled+=end;
+    vec4 newP,newU;bool stable=false;
+    // Reuse the selected crossing distance; do not solve a second event with
+    // a different clock. No rim, ordering or numerical guard is weakened.
+    if(r.x<.5&&dest.x>.5&&!isH3(dest))
+      stable=e3S3TransferSelected(p.xyz,u.xyz,center.xyz,D(base+2).xyz,D(base+3).xyz,D(base+4).xyz,
+        exitCenter,D(base+6),D(base+7),D(base+8),dest.y,end,newP,newU);
+    if(!stable){
+      vec4 q=at(p,u,end,r),v=transport(q,center,direction(p,u,end,r),r),radial=logAt(center,q,r);
+      vec4 mapped=-tdot(radial,D(base+2),r)*D(base+6)+tdot(radial,D(base+3),r)*D(base+7);
+      newP=expAt(exitCenter,mapped,dest);
+      vec4 newV=-tdot(v,D(base+2),r)*D(base+6)+tdot(v,D(base+3),r)*D(base+7)-tdot(v,D(base+4),r)*D(base+8);
+      newU=unitize(newP,transport(exitCenter,newP,newV,dest),dest);
+    }
+    u=newU;p=newP;region=int(info.y);reverse=int(info.w);traveled+=end;
   }return vec4(2,region,-1,traveled);
 }
 ${CONNECTED_MATERIAL_GLSL}
