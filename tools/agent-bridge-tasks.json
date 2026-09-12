@@ -2,14 +2,14 @@
   "version": 1,
   "tasks": [
     {
-      "id": "muse74-transfer-revision",
+      "id": "muse75-primary-transfer",
       "agent": "muse",
-      "instruction": "MUSE-74 revision: prior delivery needs one oracle correction. Read MUSE.md. Read ONLY the prior delivered portal-transfer-truth.test.js and docs/qa/muse74-transfer-bounds.md under /mnt/c/Users/lflyn/Projects/NilGame/.agent-bridge/runs/2026-09-12T07-05-20-313Z-90d15ac2/muse74-transfer-bounds/checkout as starting material (read-only), then copy the two allowed files into YOUR checkout. The reference interval API returns normalized outgoing direction; your raw perturbed v is deliberately nonunit. Keep v inside its declared box and use it for the plane crossing, then normalize exact.carry(v) with the destination S3 metric AT exact.position before checking output containment. Explain why this normalization is output policy, not changing input outside its box. Add a check that perturbed input norm is actually different from1 in at least one case. Rerun focused check and isolated fail-demo, full Node suite once. Correct report and identify this lead-found oracle issue; do not claim the old check was correct. Allowed writes ONLY portal-transfer-truth.test.js and docs/qa/muse74-transfer-bounds.md. No kernel/app/other docs changes, GPU jobs, commits, pushes or agents. Report real counterexamples without repairs. Under500words.",
+      "instruction": "MUSE-75: independent CPU audit of the composed primary camera -> E3/S3 transfer bounds. Read MUSE.md and ONLY MUSE-75 in MUSE_TASKS.md. Allowed writes primary-transfer-truth.test.js and docs/qa/muse75-primary-transfer.md. Use the current gallery fixture and compiled portal frame. Reconstruct an independent pinhole ray with image plane at unit forward distance and tan(35 degrees) half-height, normalize it, intersect source plane, use compiled gate.transit(at), then normalize carried direction in destination metric at arrival. Compare that truth against e3PrimaryRayBounds -> e3S3TransferBounds using midpoint/component half-width conversion. Test at least30 distinct successful crossings (off-axis pixels and at least3 rotated camera frames facing the aperture), plus simultaneous camera-component perturbations within explicit input boxes. Keep perturbed inputs within their boxes; do not normalize the camera basis before comparing it, since that changes the input. Output direction normalization IS transfer policy. Refusal near an aperture rim is valid, report counts instead of weakening it. Do not infer a confident miss or whole-scene safety from the root reference. Run focused check, one isolated fail-demo omitting a material uncertainty or transport stage (no working-tree engine mutation), full Node suite once. Report failures without repairs. No GPU jobs, dependencies, engine/app/doc edits beyond allowed report, commits, pushes, nested agents. Report under500words with commands and actual counts; samples are not a universal proof.",
       "allowedFiles": [
-        "portal-transfer-truth.test.js",
-        "docs/qa/muse74-transfer-bounds.md"
+        "primary-transfer-truth.test.js",
+        "docs/qa/muse75-primary-transfer.md"
       ],
-      "report": "docs/qa/muse74-transfer-bounds.md"
+      "report": "docs/qa/muse75-primary-transfer.md"
     }
   ]
 }

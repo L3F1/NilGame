@@ -1,3 +1,4 @@
+import {CONNECTED_FOCAL_SCALE} from './engine/geometry/primary-ray-bounds.js';
 // Focused Node checks for the BOUNDED experimental H3 GPU path. No GL context
 // exists here: this file checks admission gates, the packed rows, two pieces of
 // real metric arithmetic that the shader must respect, and the shader SOURCE's
@@ -117,9 +118,10 @@ assert.ok(CONNECTED_FRAGMENT.includes('start==1&&(r.w>.5||isH3(r))'));
 
 // Finding 1: pixelRay unitizes in the region metric, and the ambient normalize
 // of the camera combination is gone.
-assert.ok(/return unitize\(uPosition,uForward\/tan\(35\.\*PI\/180\.\)\+uRight\*uv\.x\+uUp\*uv\.y,D\(128\+uRegion\)\)/
-  .test(CONNECTED_FRAGMENT),'pixelRay must unitize with the region metric');
-assert.ok(!/return normalize\(uForward\//.test(CONNECTED_FRAGMENT),'no ambient normalize left in pixelRay');
+assert.ok(CONNECTED_FRAGMENT.includes(`return unitize(uPosition,uForward*${CONNECTED_FOCAL_SCALE.toPrecision(17)}+uRight*uv.x+uUp*uv.y,D(128+uRegion))`),
+  'pixelRay must unitize with the region metric');
+const pixelBody=CONNECTED_FRAGMENT.slice(CONNECTED_FRAGMENT.indexOf('vec4 pixelRay('),CONNECTED_FRAGMENT.indexOf('vec3 displayColor('));
+assert.ok(!/return normalize\(/.test(pixelBody),'no ambient normalize left in pixelRay');
 
 // Finding 2: BOTH ball boundaries reach the shared sweep, so its halfway
 // occupancy sample cannot land beyond an exit the ray already passed.

@@ -47,6 +47,9 @@ below. Implementation details and acceptance criteria:
   mutation fails on both backends. Not yet wired into the live trace.
 - [x] Integrate stable selected-distance E3-to-S3 transfer in live trace;
   existing guards/fallback retained, both GPU backends checked. MUSE-74 accepted.
+- [x] Bound E3 primary camera rays and verify actual GPU directions; compose
+  primary/transfer/root reference on52 fringe candidates (18 roots/34 misses).
+  Live numerical refusals remain unchanged; see primary-ray-review.md.
 - [ ] Repair S3 ball root precision with a scoped error model; preserve genuine
   tangencies and portal guards. Broaden artifact checks beyond the entry pose.
 - [x] Integrate H3 GPU repair and verify real/software readback, materials and

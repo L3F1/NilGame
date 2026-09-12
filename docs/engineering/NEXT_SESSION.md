@@ -6,39 +6,27 @@ Read WORKING_RULES.md, then the relevant TASK_ROUTER.md row only.
 
 ## Next task
 
-Read SPHERICAL_ROOT_PRECISION.md: shared CPU root-interval reference now exists
-in engine/geometry/spherical-root-bounds.js.241 independently bracketed roots
-pass; removing amplitude input uncertainty fails. No GPU behavior changed.
+After80392df: E3 primary ray bounds now complete the CPU camera -> E3/S3
+transfer -> S3 ball coefficient chain. Read docs/qa/primary-ray-review.md.
+All19200 live entry-view primary directions enclosed on both GPU backends.
+All52 old-guard candidates distinguish into18 root sets and34 misses under the
+composed reference bounds. This is NOT whole-scene event/traversal certification.
+Live display still has52 numerical refusals; no tolerance or diagnostic change.
 
-E3-to-S3 interval transfer reference now exists in portal-transfer-bounds.js;
-read PORTAL_TRANSFER_PRECISION.md.90 reference crossings and central ball-root
-composition pass; bypassing parallel transport fails. No renderer change.
+Next lead task: propagate error alongside live selected transfer and a scoped
+S3 root evaluator, then feed interval-aware ordering. Include the GPU arithmetic
+and transcendental evaluation errors; CPU root reference alone is insufficient.
+Avoid another disconnected probe unless it answers a specific integration gap.
 
-Isolated GPU stable transfer evaluation now passes60 cases/540 components on
-real GPU and SwiftShader; missing-transport mutation caught. Read
- docs/qa/portal-transfer-gpu-review.md. Candidate lives in portal-transfer-gpu.js;
-live connected shader still unchanged. Not a universal backend proof.
+Modules/contracts: primary-ray-bounds.js; PORTAL_TRANSFER_PRECISION.md;
+SPHERICAL_ROOT_PRECISION.md; additive-event-order.js. Stable selected E3/S3
+transfer already live with fallback/guards. Read live-transfer-review.md if
+changing that call. Root/order intervals must not be collapsed to points.
 
-Interval-aware additive event selector now exists in additive-event-order.js
-with CPU and GLSL variants. Both GPU backends pass8 isolated ordering cases and
-catch an omitted-overlap mutation. See docs/qa/additive-event-order-review.md.
-No live renderer change; additive/outside-start/completeness assumptions matter.
-
-Stable selected-distance E3-to-S3 transfer is NOW LIVE for its small-angle
-subset, retaining fallback and every existing guard. Read
- docs/qa/live-transfer-review.md. Gallery52 numerical refusals are unchanged;
-no visual fix claimed. Actual live-call distance mutation fails500 GPU rays.
-
-Next: GPU error propagation alongside the chosen evaluation, then spherical
-root intervals feeding interval-aware ordering. Neither CPU interval reference
-nor sampled GPU transfer parity alone justifies tighter live root guards.
-MUSE-74 corrected revision ACCEPTED; normalized-output oracle36/36 plus lead
-mutation pass/fail. Test/report integrated; do not redispatch the completed task.
-
-Read docs/qa/gallery-ray-census-review.md for the baseline:52 sampled numeric
-refusals,18 CPU hits/34 misses, all with S3 ball tangency-guard candidates.
-Census runs via page-check --three-geometry [--sw]. Keep diagnostic colors.
-Visible gallery uses14/16 primitive slots; sparse reference remains unchanged.
+MUSE-74 corrected revision accepted; no redispatch. MUSE-75 is the bounded
+independent primary-through-transfer composition audit. See queue/bridge status.
+MUSE-72 source/license review remains pending. Claude remains quota limited.
+Census runs through page-check --three-geometry [--sw]; preserve diagnostic colors.
 
 ## Current evidence and limits
 
@@ -51,7 +39,8 @@ Visible gallery uses14/16 primitive slots; sparse reference remains unchanged.
 - MUSE-73 corrected CPU census rerun twice on LeoPC/Node24.20.0: 12740 rays,
   1241 hits, 8357 misses, 3142 domain exits. NOT proof that GPU purple pixels
   are coverage. Refusal classifier regression caught false domain labels.
-- This review: full approved-host Node suite126/126 passed (census-suite.log).
+- Latest primary-ray review: full approved-host Node suite133/133 passed
+  (primary-suite-final.log); real connected-global52 and H3 GPU checks passed.
 - Driver GPU timing and representative interactive latency remain open.
 - Godot trial follows visible three-geometry acceptance, before a large custom
   gizmo/asset workflow. Keep browser as reference. Future optics/portals/physics

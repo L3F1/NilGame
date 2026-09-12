@@ -1,3 +1,4 @@
+import {CONNECTED_FOCAL_SCALE} from './primary-ray-bounds.js';
 import {E3_S3_TRANSFER_GLSL} from './portal-transfer-gpu.js';
 // Bounded float32 GPU reference for E3/S3. Surface candidates are analytic;
 // uncertain roots, intervals, portal rims and chart exits stay unresolved.
@@ -365,7 +366,7 @@ vec4 pixelRay(vec2 pixel){
   // tangent has ambient length cosh(rho), so an ambient normalize would hand
   // the tracer a ray of the wrong physical speed -- and, away from the radial
   // direction, a differently tilted ray as well.
-  return unitize(uPosition,uForward/tan(35.*PI/180.)+uRight*uv.x+uUp*uv.y,D(128+uRegion));
+  return unitize(uPosition,uForward*${CONNECTED_FOCAL_SCALE.toPrecision(17)}+uRight*uv.x+uUp*uv.y,D(128+uRegion));
 }
 vec3 displayColor(vec4 result,vec4 n,vec4 t){
   vec3 color=result.x==2.?vec3(.69,.125,.82):result.x==0.?vec3(.086,.098,.118):result.y==0.?vec3(.33,.47,.75):result.y==1.?vec3(.30,.65,.44):vec3(.89,.71,.30);
@@ -378,6 +379,11 @@ vec3 displayColor(vec4 result,vec4 n,vec4 t){
   }return color;
 }
 void main(){
+  // Read the actual centre ray before traversal; no duplicate camera formula.
+  if(uDebug>=4&&uDebug<=7){
+    float value=pixelRay(gl_FragCoord.xy)[uDebug-4];uint bits=floatBitsToUint(value);
+    frag=vec4(float(bits&255u),float((bits>>8)&255u),float((bits>>16)&255u),float(bits>>24))/255.;return;
+  }
   // Four independent rays sample a pixel footprint; no hit epsilon changes.
   // Each follows its own portal chain and final-region material. Diagnostics
   // remain centre rays. No derivatives inside geometry-dependent control flow.

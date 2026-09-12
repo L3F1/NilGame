@@ -81,3 +81,17 @@ claude-h3-gpu-repair stopped at session quota; do not dispatch more Claude work
 until availability is renewed. Lead integrated the repaired draft behind opt-in
 with stable ball spans and GPU readback: see docs/qa/h3-stable-span-review.md.
 Do not resume the obsolete clone; broader precision and H3 material work remain.
+
+
+## MUSE-75: primary-through-transfer independent reference
+
+Status: QUEUED, Muse, 2026-09-12; isolated bridge checkout after lead commit.
+Allowed: primary-transfer-truth.test.js; docs/qa/muse75-primary-transfer.md.
+
+Independently reconstruct pinhole ray, source-plane crossing and normalized
+outgoing tangent. Check primary-ray-bounds -> portal-transfer-bounds against
+at least30 crossings across3 rotated cameras plus simultaneous camera input
+perturbations. Preserve input boxes; normalize output as the transfer policy
+requires. Refusals are valid and must be counted. Scope/details supplied in the
+bounded bridge instruction. Focused test, isolated fail-demo, full Node suite
+once; no engine/app changes, GPU jobs, nested agents, commits or pushes.

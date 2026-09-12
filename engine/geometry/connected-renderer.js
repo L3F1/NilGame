@@ -76,10 +76,19 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
     draw(state,{...options,width,height,debug:3});const normals=new Uint8Array(width*height*4);gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,normals);
     return {pixels,distances:new Float32Array(bytes.buffer),normals};
   }
+  function readPrimaryRays(state,width=16,height=12){
+    return Array.from({length:4},(_,component)=>{
+      draw(state,{width,height,debug:4+component});
+      const bytes=new Uint8Array(width*height*4);
+      gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,bytes);
+      const view=new DataView(bytes.buffer);
+      return Float32Array.from({length:width*height},(_,i)=>view.getFloat32(4*i,true));
+    });
+  }
   function readColor(state,width=80,height=60,options={}){
     draw(state,{...options,width,height,debug:0});const pixels=new Uint8Array(width*height*4);
     gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);return pixels;
   }
   const info=gl.getExtension('WEBGL_debug_renderer_info');
-  return {draw,read,readColor,replaceWorld,get packed(){return packed;},times,finish:()=>gl.finish(),hardware:info?gl.getParameter(info.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),timerSupported:!!ext};
+  return {draw,read,readPrimaryRays,readColor,replaceWorld,get packed(){return packed;},times,finish:()=>gl.finish(),hardware:info?gl.getParameter(info.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),timerSupported:!!ext};
 }
