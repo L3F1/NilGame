@@ -2907,3 +2907,14 @@ comment: its construction does not establish a root beyond the domain; it tests
 that a domain-limited request cannot claim a full-range miss, even if the disc
 was missed earlier. Existing lead aperture suite covers domain-before-root.
 Accepted as bounded sampled evidence, not a universal aperture proof.
+
+## MUSE-69 accepted - movement refusal consumer audit
+
+Lead on LeoPC/Node24.20.0, integration base0caa0a0. Reviewed source and reran
+aperture-motion-truth.test.js: all14 groups pass. Strengthened the unused input
+snapshot and asserted actual progress in the S3 miss-control. Isolated adapter
+unresolved-to-miss mutant fails truth3, complete vs unresolved. No production
+counterexample reported or reproduced. Gate producers assume their tested axial
+rays; curved cases share the adapter and existing field. These are sampled
+consumer checks, not a general theorem that increasing speed cannot transit.
+Report: docs/qa/muse69-aperture-motion.md.

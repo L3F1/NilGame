@@ -1,0 +1,183 @@
+{
+  "format": "nil-scene",
+  "version": 2,
+  "id": "connected-h3-cpu",
+  "units": {
+    "name": "design-unit",
+    "playerRadius": 0.1
+  },
+  "regions": [
+    {
+      "id": "flat",
+      "geometry": {
+        "kind": "e3",
+        "curvatureRadius": 1
+      },
+      "extent": 8,
+      "topology": "cover"
+    },
+    {
+      "id": "hyperbolic",
+      "geometry": {
+        "kind": "h3",
+        "curvatureRadius": 8
+      },
+      "extent": 12,
+      "topology": "cover"
+    },
+    {
+      "id": "return",
+      "geometry": {
+        "kind": "e3",
+        "curvatureRadius": 1
+      },
+      "extent": 8,
+      "topology": "cover"
+    }
+  ],
+  "entities": [
+    {
+      "id": "flat-spawn",
+      "regionId": "flat",
+      "kind": "spawn",
+      "position": [
+        0,
+        -1,
+        0
+      ]
+    },
+    {
+      "id": "hyperbolic-spawn",
+      "regionId": "hyperbolic",
+      "kind": "spawn",
+      "position": [
+        0,
+        0.5,
+        0
+      ]
+    },
+    {
+      "id": "return-spawn",
+      "regionId": "return",
+      "kind": "spawn",
+      "position": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "id": "flat-gate",
+      "regionId": "flat",
+      "kind": "anchor",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "forward": [
+        0,
+        -1,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "radius": 0.7
+    },
+    {
+      "id": "h3-entry",
+      "regionId": "hyperbolic",
+      "kind": "anchor",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "forward": [
+        0,
+        1,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "radius": 0.7
+    },
+    {
+      "id": "h3-exit",
+      "regionId": "hyperbolic",
+      "kind": "anchor",
+      "position": [
+        0,
+        2,
+        0
+      ],
+      "forward": [
+        0,
+        -1,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "radius": 0.7
+    },
+    {
+      "id": "return-gate",
+      "regionId": "return",
+      "kind": "anchor",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "forward": [
+        0,
+        1,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "radius": 0.7
+    },
+    {
+      "id": "landmark",
+      "regionId": "hyperbolic",
+      "kind": "ball",
+      "position": [
+        1,
+        1,
+        0
+      ],
+      "radius": 0.25
+    }
+  ],
+  "connections": [
+    {
+      "id": "into-h3",
+      "kind": "portal",
+      "a": "flat-gate",
+      "b": "h3-entry",
+      "velocity": "preserve-speed",
+      "scale": 1
+    },
+    {
+      "id": "out-of-h3",
+      "kind": "portal",
+      "a": "h3-exit",
+      "b": "return-gate",
+      "velocity": "preserve-speed",
+      "scale": 1
+    }
+  ]
+}

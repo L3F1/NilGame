@@ -68,10 +68,10 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-69. MUSE-68 accepted; see docs/qa/muse-log.md.
+Order: MUSE-70. MUSE-69 accepted; see docs/qa/muse-log.md.
 
-## MUSE-69 � QUEUED: independent aperture movement refusals
+## MUSE-70 - QUEUED: saved H3 and outward aperture audit
 
-MUSE-68 accepted. Assignment and allowed writes are in tools/agent-bridge-tasks.json.
-Focused Node, isolated fail-demo, no production repairs or integration.
-Check bridge status before dispatch; do not restart running or delivered work.
+Assignment/allowed files: tools/agent-bridge-tasks.json.
+Independent Node checks and isolated mutation; no production repairs.
+Check bridge status before dispatch; never restart running/delivered work.

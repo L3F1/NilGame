@@ -1,7 +1,8 @@
 # Next adapter: bounded H3
 
-Status: NOT enabled in scene authoring or connected GPU rendering. Explicit
-CPU-only compileHyperbolicFramedPortals now supports H3 experimental connections.
+Status: explicit CPU-only compileHyperbolicRegionWorld loads saved H3 regions;
+compileHyperbolicFramedPortals supports experimental physical-frame connections.
+Default runtime, editor and connected GPU rendering still reject H3.
 Experimental `createHyperbolicSpace` now exists in hyperbolic-space.js, separate
 from createMetricSpace. Domain extent <=2R; finite point representation <=4R
 from origin and signed per-step travel <=4R. Out-of-envelope queries throw;
@@ -38,10 +39,11 @@ radial coordinates. Region extent is a numerical coverage limit, not a wall.
   it does not admit H3 worlds.
 - region-sight.js now preserves explicit aperture uncertainty through
   aperture-result.js and orders it against nearer solids/gates. region-motion.js
-  also preserves uncertainty, time and correction debt. MUSE-69 independently
-  audits that consumer boundary. See H3_QUERY_CONTRACT.md.
+  also preserves uncertainty, time and correction debt. MUSE-69 is accepted as
+  sampled consumer evidence. See H3_QUERY_CONTRACT.md.
 - scene fields, query normals, GPU packing/shaders and finite-domain crossing
-  need explicit H3 capabilities. Search all flat-versus-curved branches before
+  need explicit H3 capabilities. Additive CPU fields now exist in hyperbolic-field.js;
+  sight and GPU dispatch remain pending. Search all flat-versus-curved branches before
   extending schema acceptance. Do not make unknown kinds inherit S3 behavior.
 
 ## Ordered implementation and acceptance

@@ -28,12 +28,18 @@ export function decodeRegionAnchor(entity,space) {
   return {id:entity.id,regionId:entity.regionId,radius:entity.radius,space,center:f.center,normal:f.normal,up:f.up};
 }
 export function compileRegionPortals(scene,regions) {
+  return compileDocumentPortals(scene,regions,compileFramedPortals);
+}
+export function compileHyperbolicRegionPortals(scene,regions) {
+  return compileDocumentPortals(scene,regions,compileHyperbolicFramedPortals);
+}
+function compileDocumentPortals(scene,regions,compiler) {
   const endpoints=new Set(scene.connections.flatMap(c=>[c.a,c.b]));
   const anchors=scene.entities.filter(e=>endpoints.has(e.id)).map(e=>decodeRegionAnchor(e,regions.get(e.regionId).space));
   // Legacy programmatic callers omit scene-document policy defaults. Keep that
   // adapter compatible; the new physical-frame API requires explicit policies.
   const connections=scene.connections.map(c=>({kind:'portal',velocity:'preserve-speed',scale:1,...c}));
-  return compileFramedPortals(connections,anchors,scene.units.playerRadius);
+  return compiler(connections,anchors,scene.units.playerRadius);
 }
 
 // Shared physical-frame boundary: global cover placements need no fake decode

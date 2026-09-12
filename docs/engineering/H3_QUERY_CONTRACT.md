@@ -1,6 +1,7 @@
 # Experimental H3 solid and aperture queries
 
-Not admitted by scene/GPU factories yet. Use the explicit experimental
+Only the experimental CPU scene compiler admits H3; GPU support is pending.
+Use the explicit experimental
 H3 adapter. A bounded miss means the requested ray segment was checked; reaching
 the adapter domain first is unresolved/domain-exit, never a sky or wall.
 
@@ -62,13 +63,22 @@ compileHyperbolicFramedPortals is an explicitly experimental CPU entry point.
 It shares E3/S3 radial correspondence and metric tangent maps, adds H3 signed
 height and explicit aperture packets (hit.at aliases hit.point), validates H3
 centres in-domain and disc radii <=R. compileFramedPortals still rejects H3.
-No scene schema, authoring preset, sight-field dispatch or GPU admission yet.
+Saved scene admission is available through compileHyperbolicRegionWorld,
+using the existing v2 schema. No authoring preset, sight-field dispatch or GPU
+admission yet. Its renderData explicitly refuses H3 worlds.
+
+The saved H3 subset permits additive balls, spawns, objectives and anchors.
+It refuses floors, other solids, modifiers and extents beyond2R. Ball/disc radii
+must be <=R. hyperbolic-field.js snapshots decoded balls; samples preserve
+owner and normal-feature metadata. Its union exterior distance is exact, while
+interior magnitude is conservative. rayCast retains the helper's explicit
+status, range, domain and work-budget policies. No Boolean or renderer fallback.
 
 ## Consumer integration gate
 
 Sight and movement adapt hit/null and explicit query results through
-aperture-result.js. Scene admission remains gated; H3 portal construction is
-available only through the named experimental compiler above.
+aperture-result.js. Default scene admission remains gated; H3 is available only
+through the named experimental compilers above.
 Never adapt unresolved to null, or treat its distance as a confirmed crossing.
 Before integration, define an earliest-uncertainty distance: a finite lower bound
 in physical arclength before which this aperture cannot affect this query. If

@@ -3,8 +3,10 @@
 import { validateScene, upgradeScene } from './document.js';
 import { compileSceneField } from './scene-field.js';
 import { createMetricSpace } from '../geometry/metric-space.js';
-import { compileRegionPortals } from './region-portal.js';
+import { compileRegionPortals, compileHyperbolicRegionPortals } from './region-portal.js';
 import { createCameraFrame } from './camera-frame.js';
+import { createHyperbolicSpace } from '../geometry/hyperbolic-space.js';
+import { compileHyperbolicField } from './hyperbolic-field.js';
 
 export const REGION_LIMITS = Object.freeze({ regions: 4, primitives: 64, planes: 192, portals: 8 });
 const dot = (a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
@@ -74,14 +76,25 @@ function sphereField(entities,space) {
 }
 
 export function compileRegionWorld(source) {
+  return compileWorld(source,false);
+}
+// CPU-only opt-in; the default runtime and render packets retain their gates.
+export function compileHyperbolicRegionWorld(source) {
+  return compileWorld(source,true);
+}
+function compileWorld(source,allowHyperbolic) {
   validateScene(source);
   const scene=upgradeScene(source);
   if(scene.regions.length>REGION_LIMITS.regions)throw new Error('Region renderer supports at most four regions');
   const regions=new Map();
   for(const descriptor of scene.regions) {
-    if(!['e3','s3'].includes(descriptor.geometry.kind))throw new Error(`Region runtime does not support ${descriptor.geometry.kind}`);
-    const space=createMetricSpace({...descriptor.geometry,maxDistance:descriptor.extent});
+    if(!['e3','s3',...(allowHyperbolic?['h3']:[])].includes(descriptor.geometry.kind))throw new Error(`Region runtime does not support ${descriptor.geometry.kind}`);
+    const space=descriptor.geometry.kind==='h3'
+      ?createHyperbolicSpace({...descriptor.geometry,maxDistance:descriptor.extent})
+      :createMetricSpace({...descriptor.geometry,maxDistance:descriptor.extent});
     const entities=scene.entities.filter(e=>e.regionId===descriptor.id);
+    if(space.kind==='h3'&&(descriptor.floorId!==undefined||entities.some(e=>!['ball','spawn','objective','anchor'].includes(e.kind))))
+      throw Error('H3 runtime supports balls, spawn, objectives and anchors; no floor policy');
     const spawns=entities.filter(e=>e.kind==='spawn');
     if(spawns.length!==1)throw new Error(`Region ${descriptor.id} needs exactly one spawn`);
     const solids=entities.filter(e=>['ball','box','plane','geodesic-cell'].includes(e.kind));
@@ -91,7 +104,7 @@ export function compileRegionWorld(source) {
     if(space.kind==='e3') {
       const doc={...scene,regions:[descriptor],entities,connections:[]};
       field=compileSceneField(doc);
-    } else field=sphereField(entities,space);
+    } else field=space.kind==='h3'?compileHyperbolicField(solids,space):sphereField(entities,space);
     const floor=descriptor.floorId?entities.find(e=>e.id===descriptor.floorId):entities.find(e=>e.kind==='plane'&&(!e.op||e.op==='add'));
     const floorPrimitive=floor&&space.kind==='s3'?sphericalPrimitive(floor,space):null;
     const up=p=>floorPrimitive?floorPrimitive.normal(p):floor?floor.up.slice():null;
@@ -99,7 +112,7 @@ export function compileRegionWorld(source) {
     if(field.distance(spawnPosition)<scene.units.playerRadius-1e-7)throw new Error(`Spawn ${spawns[0].id} overlaps authored solid`);
     regions.set(descriptor.id,Object.freeze({id:descriptor.id,descriptor:structuredClone(descriptor),space,field,up,entities,spawnPosition}));
   }
-  const portals=compileRegionPortals(scene,regions);
+  const portals=(allowHyperbolic?compileHyperbolicRegionPortals:compileRegionPortals)(scene,regions);
   if(portals.length>REGION_LIMITS.portals)throw new Error('At most eight directional apertures are supported');
   const packets=[];
   for(const [regionId,region] of regions) {
@@ -131,8 +144,11 @@ export function compileRegionWorld(source) {
       radius:scene.units.playerRadius,grounded:false,transits:0,stalled:false,blocked:null};
   }
   return Object.freeze({document:()=>structuredClone(scene),regions,portals,spawn,
-    renderData:()=>({regions:[...regions.values()].map(r=>({id:r.id,...r.descriptor.geometry,extent:r.descriptor.extent})),
-      primitives:structuredClone(packets),portals:portals.map(p=>p.renderData())})});
+    renderData:()=>{
+      if([...regions.values()].some(r=>r.space.kind==='h3'))throw Error('H3 region rendering is not implemented');
+      return {regions:[...regions.values()].map(r=>({id:r.id,...r.descriptor.geometry,extent:r.descriptor.extent})),
+        primitives:structuredClone(packets),portals:portals.map(p=>p.renderData())};
+    }});
 }
 
 export function editRegionEntity(source,id,patch) {
