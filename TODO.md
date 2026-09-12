@@ -36,6 +36,8 @@ below. Implementation details and acceptance criteria:
 - [x] Census the gallery entry fringe on CPU/real GPU/SwiftShader: all52
   numerical refusals have S3 ball tangency-guard candidates; no confident
   disagreements in19200 rays. See gallery-ray-census-review.md.
+- [x] Add shared spherical coefficient/root interval reference with mandatory
+  input errors and independently bracketed roots; GPU integration remains open.
 - [ ] Repair S3 ball root precision with a scoped error model; preserve genuine
   tangencies and portal guards. Broaden artifact checks beyond the entry pose.
 - [x] Integrate H3 GPU repair and verify real/software readback, materials and

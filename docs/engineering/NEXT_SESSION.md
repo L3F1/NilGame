@@ -6,21 +6,20 @@ Read WORKING_RULES.md, then the relevant TASK_ROUTER.md row only.
 
 ## Next task
 
-Repair the S3 BALL tangency/root precision, not the global E constant. Read
- docs/qa/gallery-ray-census-review.md for the bounded contract and concrete ray.
-Current shader ratio guard abs(ratio)>1-4E with E=.00003 covers all52 sampled
-numerical refusals at gallery entry; CPU resolves18 hits/34 misses. Both GPU
-backends agree. This is a candidate mechanism, not a proven tighter error bound.
-Account for packed coefficients, camera/portal drift and reduced trig. Retain
-true tangencies, half-space behavior, event ordering and unresolved semantics.
+Read SPHERICAL_ROOT_PRECISION.md: shared CPU root-interval reference now exists
+in engine/geometry/spherical-root-bounds.js.241 independently bracketed roots
+pass; removing amplitude input uncertainty fails. No GPU behavior changed.
 
-Durable census runs with page-check --three-geometry [--sw]; packets include
-scene/pose/raw status counts/crossings and replayed guard candidates. Root
-regression injects owner/distance/lost-hit faults. No shader change this turn.
+Next: derive/propagate position and direction error through one E3-to-S3 portal
+and implement float32 spherical-ball intervals with width-aware event ordering.
+Do not plug interval midpoints into the old sweep and discard widths. Do not
+reduce global E or infer directional error solely from unit-vector residuals.
+The binary64 reference's engineering libm allowance is not a float32 proof.
 
-The visible gallery uses14/16 primitive slots. Do not pile on more marker balls.
-Keep the sparse connected-three-geometries.nil.json unchanged for reference.
-Worlds menu opens tools/connected-global-preview.html?preset=three.
+Read docs/qa/gallery-ray-census-review.md for the baseline:52 sampled numeric
+refusals,18 CPU hits/34 misses, all with S3 ball tangency-guard candidates.
+Census runs via page-check --three-geometry [--sw]. Keep diagnostic colors.
+Visible gallery uses14/16 primitive slots; sparse reference remains unchanged.
 
 ## Current evidence and limits
 
