@@ -22,9 +22,14 @@ The tiny GPU probe reproduced both historical bad values with the legacy
 formula; new roots match independent brackets much more closely.
 Live real/software checks passed, but primary-ray variability itself remains
 OPEN. Keep strict guards and captured failure; no repeated blind resize runs.
-Next: E3-active moving portal views with CPU checks of newly resolved answers.
-The prior motion route generated the pass at only4 timed poses; software timers
-remain incomplete. No default enable, no AA support or new geometry yet.
+Active E3 sweep now passed both backends:158592 comparisons each;170/198
+uncertain observations recovered with CPU agreement and no settled changes.
+25 E3 GPU samples on hardware: p95 .087ms off / .247ms on at320x240.
+Software timings still incomplete. See docs/qa/e3-sweep-review.md.
+Next bounded task: per-AA-sample certificate identity and a smallest GPU
+prototype against supersampled reference rays. Preserve AA refusal until
+validated; never share centre-ray proofs with other samples. No default enable,
+new geometry or host migration. Primary-ray variability remains open.
 No external agents running. Do not redispatch the completed Claude manifest.
 Do not embed interval
 arithmetic in the main shader (prior300s/60s no-report failures).

@@ -9,6 +9,15 @@ export async function checkRefinementMotion(model,renderer){
     camera:{forward:[...s.camera.forward],right:[...s.camera.right],up:[...s.camera.up]}});
     if(route.at(-1)!==s.regionId)route.push(s.regionId);};
   capture();
+  // Exercise the active pass, not just its S3/H3 skip path. Turn through a
+  // bounded arc from the real spawn, returning to the original heading.
+  let previousYaw=0;
+  for(let i=1;i<=24;i++){
+    const yaw=.18*Math.sin(2*Math.PI*i/24);
+    flight.advance(0,[0,0,0],{yaw:yaw-previousYaw,pitch:0});previousYaw=yaw;capture();
+    if(flight.halted||flight.state.regionId!=='flat')throw Error('E3 sweep left its source region');
+  }
+  const sweepEnd=poses.length;
   for(let i=0;i<400&&flight.state.regionId!=='hyperbolic';i++){
     flight.advance(.04,[0,1,0]);if(flight.halted)throw Error('Refinement motion: outbound halted');capture();
   }
@@ -20,7 +29,7 @@ export async function checkRefinementMotion(model,renderer){
   }
   if(route.join()!=='flat,sphere,hyperbolic,sphere,flat')throw Error('Refinement motion: wrong route '+route);
   const indices=new Set([0,poses.length-1]);
-  for(let i=0;i<poses.length;i++)if(i%Math.max(1,Math.ceil(poses.length/96))===0||i&&poses[i].regionId!==poses[i-1].regionId)indices.add(i);
+  for(let i=0;i<poses.length;i++)if(i<sweepEnd||i%Math.max(1,Math.ceil(poses.length/96))===0||i&&poses[i].regionId!==poses[i-1].regionId)indices.add(i);
   const samples=[...indices].sort((a,b)=>a-b),pause=()=>new Promise(r=>setTimeout(r,20));
   const quantiles=values=>{const a=[...values].sort((a,b)=>a-b);return a.length?{samples:a.length,p50:a[Math.floor(a.length*.5)],p95:a[Math.floor(a.length*.95)],max:a.at(-1)}:null;};
   const arms=[];
@@ -47,20 +56,25 @@ export async function checkRefinementMotion(model,renderer){
     // Incomplete measurement is not a performance pass. Discard distributions;
     // preserve the failure and still execute ALL independent correctness checks.
     arms.push({enabled,statuses,timingStatus:timingError?'incomplete':renderer.timerSupported?'measured':'unsupported',timingError,
-      gpuMs:timingError?null:quantiles(renderer.times),drawFinishCallMs:timingError?null:quantiles(wall)});
+      gpuMs:timingError?null:quantiles(renderer.times),e3SweepGpuMs:timingError?null:quantiles(renderer.times.filter((_,k)=>samples[k]<sweepEnd)),drawFinishCallMs:timingError?null:quantiles(wall)});
   }
-  let checked=0,recovered=0;const width=48,height=36;
-  for(const i of samples.filter((v,k)=>k%8===0||v===poses.length-1||v&&poses[v].regionId!==poses[v-1].regionId)){
+  let checked=0,recovered=0,sweepChecked=0,sweepRecovered=0;const sweepRecords=[];
+  for(const i of samples.filter((v,k)=>v<sweepEnd&&v%4===0||k%8===0||v===poses.length-1||v&&poses[v].regionId!==poses[v-1].regionId)){
+    const inSweep=i<sweepEnd,width=inSweep?160:48,height=inSweep?120:36;
     const state=poses[i],off=renderer.read(state,width,height),on=renderer.read(state,width,height,{sphericalMissPass:true});
+    if(inSweep&&renderer.missPass.status!=='generated')throw Error('E3 sweep did not generate refinement');
+    const recoveredBefore=recovered;
     for(let p=0;p<width*height;p++){
-      checked++;const a=off.pixels.slice(4*p,4*p+4),b=on.pixels.slice(4*p,4*p+4);
+      checked++;if(inSweep)sweepChecked++;const a=off.pixels.slice(4*p,4*p+4),b=on.pixels.slice(4*p,4*p+4);
       if(a[0]!==2&&(!a.every((v,k)=>v===b[k])||off.distances[p]!==on.distances[p]))
         throw Error('Refinement motion settled drift '+JSON.stringify({poseIndex:i,state,pixel:[p%width,Math.floor(p/width)],off:[...a],on:[...b],distance:[off.distances[p],on.distances[p]]}));
       if(a[0]===2&&b[0]!==2){const cpu=flight.pixelSight(width,height,p%width,Math.floor(p/width),renderer.packed.maxDistance,state);
         if(b[0]===1&&(cpu.status!=='hit'||cpu.regionId!==renderer.packed.ids[b[1]-1]||cpu.query.owner!==renderer.packed.primitiveIds[b[2]-1]||Math.abs(cpu.distance-on.distances[p])>.001)||b[0]===0&&cpu.status!=='miss')throw Error('Refinement motion recovered answer disagrees with CPU');
-        recovered++;
+        recovered++;if(inSweep)sweepRecovered++;
       }
     }
+    if(inSweep)sweepRecords.push({poseIndex:i,state,recovered:recovered-recoveredBefore});
   }
-  return {label:'refinement-motion',hardware:renderer.hardware,route,simulationDt:.04,totalPoses:poses.length,sampledIndices:samples,width:320,height:240,arms,parity:{width,height,checked,recovered},scope:'same transported flight poses replayed; AA off; timings exclude readback, CPU checks and 20ms query-yield pacing; not an FPS measurement'};
+  if(!sweepRecovered)throw Error('E3 sweep recovered no pixels; active refinement was not validated');
+  return {label:'refinement-motion',hardware:renderer.hardware,route,simulationDt:.04,totalPoses:poses.length,sampledIndices:samples,width:320,height:240,arms,parity:{routeResolution:[48,36],sweepResolution:[160,120],checked,recovered,sweepChecked,sweepRecovered,sweepRecords},sweepPoses:sweepEnd,scope:'24-step E3 yaw sweep followed by same transported flight poses replayed; AA off; timings exclude readback, CPU checks and 20ms query-yield pacing; not an FPS measurement'};
 }

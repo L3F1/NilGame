@@ -31,9 +31,12 @@ speedup claimed, and default-off refinement remains experimental.
 E3 sphere/extent roots now use closest approach; the legacy GPU formula
 reproduced both captured bad distances and the correction reduced the errors
 against independent packed-surface brackets. See docs/qa/e3-ball-line-review.md.
-Primary-ray variability remains open; strict guards stay. Next: E3-active
-moving portal views, since only4 prior motion samples actually ran refinement.
-Software motion timing remains incomplete; do not claim default admission.
+Primary-ray variability remains open; strict guards stay. Active E3 sweep now
+passed158592 comparisons on each backend, with170/198 CPU-checked recoveries.
+Hardware E3 p95 .087ms off / .247ms on (25 samples,320x240). Software timing
+remains incomplete. See docs/qa/e3-sweep-review.md. Next: per-sample AA
+certificate contract and smallest supersampled-reference prototype; retain
+current AA refusal and default-off policy until validated.
 Non-E3 camera regions skip the inapplicable pass. Near-tangent scheduling trial
 rejected (small timing benefit, hardware settled-distance regression); keep
 the diagnostic and do not weaken equality checks. See live-miss-pass-review.md
