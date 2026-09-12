@@ -44,6 +44,14 @@ const flat=createHyperbolicSpace({curvatureRadius:1e6});
 const tiny=createHyperbolicSpace({maxDistance:1e-10});
 near(tiny.boundaryDistance(tiny.origin,[1,0,0,0]),1e-10,1e-24);
 const edge=createHyperbolicSpace();
+// Independent radial identity at separations where subtracting rounded time
+// coordinates loses the chord. Use encoded spatial coordinates' rapidities.
+for(const a of [.4,1.9,3.9])for(const h of [1e-8,1e-10,1e-12]){
+  const p=[Math.sinh(a),0,0,Math.cosh(a)],q=[Math.sinh(a+h),0,0,Math.cosh(a+h)];
+  const expected=Math.abs(Math.asinh(q[0])-Math.asinh(p[0]));
+  near(edge.distance(p,q),expected,2e-15);
+  near(edge.distance(q,p),expected,2e-15);
+}
 for(let i=0;i<50;i++){
   const p=edge.step(edge.origin,[1,0,0,0],3.9),f=edge.frame(p);
   const u=f[0].map((x,j)=>x*Math.cos(i)+f[1][j]*Math.sin(i));

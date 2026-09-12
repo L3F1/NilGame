@@ -2885,3 +2885,13 @@ hyperbolic-camera-envelope.test.js:7/7 on Windows Node24.20.0. Worst sampled
 camera Gram/tangency2.27e-13; input-projector residual1.85e-11. Short inward
 carries only; R largely rescales travel. No universal envelope claim or repair.
 See muse66-h3-camera.md. Full110/110 including this corpus and new H3 ball tests.
+
+## MUSE-67 accepted - 2026-09-11
+
+Rev2 on base6bad7f9, bridge run2026-09-12T02-57-41-622Z-dfa47366.
+Lead reviewed/reran on LeoPC Node24.20.0:66 observed hit agreements,33 sampled
+miss agreements,21 inside-start unknowns. Shared distance/step reference,
+scan-only misses are not certified. Lead changed output wording from certified
+to observed and added a result-vocabulary assertion. Isolated .01R hit-distance
+mutation caught (exit1), production untouched. Full112/112 with aperture work.
+No scene/GPU admission; MUSE-68 audits the experimental aperture helper next.

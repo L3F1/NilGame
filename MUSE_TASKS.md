@@ -68,15 +68,10 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-67. MUSE-66 accepted; see docs/qa/muse-log.md.
+Order: MUSE-68. MUSE-67 accepted as sampled evidence; see docs/qa/muse-log.md.
 
-## MUSE-67 — OPEN: independent H3 ball queries
+## MUSE-68 - OPEN: independent H3 aperture checks
 
-Assignment/allowed files: tools/agent-bridge-tasks.json, muse67-h3-balls-revision.
-Review: CHANGES REQUESTED. Dense-scan misses are sampled evidence, not certified
-misses; reference shares metric adapter operations. Correct the perpendicular
-offset claim and supply the missing isolated fail-demo. Original deliverables
-remain in bridge run 2026-09-12T02-46-12-010Z-78518eca; not integrated.
-Independent ray/normal expectations, especially near tangency and domain/range
-limits. Report false confident answers before coverage. No production repairs,
-scene integration or full suite. Focused Node only.
+Assignment/allowed files: tools/agent-bridge-tasks.json, muse68-h3-aperture.
+Falsify confident answers near rims, range/domain boundaries and centre crossings.
+No production repairs or scene integration. Focused Node plus isolated fail-demo.

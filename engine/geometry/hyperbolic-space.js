@@ -30,8 +30,11 @@ export function createHyperbolicSpace({curvatureRadius:R=1,maxDistance=2*R}={}){
   function decode(a){vector(a,3);if(Math.hypot(...a)>=maxDistance)throw Error('Author position outside H3 domain');return hyperbolic.exp(a.map(x=>x/R));}
   function encode(p){if(!withinDomain(p))throw Error('Point outside H3 domain');const n=Math.hypot(...p.slice(0,3));return n?p.slice(0,3).map(x=>x*R*Math.asinh(n)/n):[0,0,0];}
   function distance(p,q){validatePoint(p);validatePoint(q);
-    const s=Math.hypot(...p.slice(0,3).map((x,i)=>x-q[i]));
-    const t=Math.abs(Math.hypot(1,...p.slice(0,3))-Math.hypot(1,...q.slice(0,3)));
+    const delta=p.slice(0,3).map((x,i)=>x-q[i]),s=Math.hypot(...delta);
+    // Rationalize the time-coordinate difference. Subtracting two rounded
+    // hypot values can exceed the spatial chord for nearly coincident points.
+    const t=Math.abs(delta.reduce((sum,x,i)=>sum+x*(p[i]+q[i]),0)
+      /(Math.hypot(1,...p.slice(0,3))+Math.hypot(1,...q.slice(0,3))));
     if(t>s)throw Error('H3 distance lost spacelike chord');
     return 2*R*Math.asinh(Math.sqrt((s-t)*(s+t))/2);
   }

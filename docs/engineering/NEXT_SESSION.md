@@ -6,14 +6,16 @@ H3_CONNECTED_CONTRACT.md and docs/qa/h3-metric-review.md. It is deliberately
 separate from createMetricSpace; scenes, portals and GPU still reject H3.
 Claude metric-aware camera and MUSE-66 are reviewed and integrated. New experimental
 hyperbolic-balls.js is specified in H3_QUERY_CONTRACT.md; see h3-balls-review.md.
-Claude finite-aperture task stopped at session quota; no report delivered. Do not
-restart until quota reset. MUSE-67 requires revision (sampled miss limitations,
-perpendicular offset wording, missing isolated fail-demo); current manifest is
-Muse-only so resuming it cannot accidentally prompt quota-exhausted Claude.
+Claude finite-aperture task stopped at quota and is superseded by the lead's
+experimental hyperbolic-aperture.js. Do not restart that old task. See
+docs/qa/h3-aperture-review.md: centre-crossing tests found and fixed cancellation
+in H3 distance's time difference. MUSE-67 rev2 accepted as sampled evidence;
+Muse-only manifest assigns MUSE-68 independent aperture checks.
 Earlier removal/orientation UI and MUSE-64 are accepted and integrated.
 Check bridge status before dispatch: do not restart completed or running work.
-Latest Node validation: 110/110 in metric-portal-frame-suite.log; connected-global
-real-GPU cold browser check 52/52 on LeoPC after metric frame/host routing.
+Latest Node validation: 112/112 in h3-aperture-suite.log. Prior connected-global
+real-GPU cold browser check 52/52 on LeoPC after metric frame/host routing;
+new isolated H3 query modules do not change a browser execution path.
 Earlier S3 timeout evidence remains in portal-ui-review.md; runner deadline
 and assertions are unchanged. Prior browser43 passed on real GPU and SwiftShader;
 new removal/orientation browser evidence is in claude-portal-removal-ui.md.
@@ -29,7 +31,7 @@ not shader programs. The model.world and renderer.packed properties are getters.
 
 Portal construction/transit and connected host camera/movement coefficients now
 use adapter metric products; E3/S3 parity checks passed. Next bounded task: review
-MUSE-67 revision and resume the isolated aperture helper when Claude is available.
+MUSE-68, then integrate the aperture helper with explicit refusal propagation.
 Before wiring the helper, implement the uncertainty-ordering consumer contract
 in H3_QUERY_CONTRACT.md: current sight/motion accept only hit-or-null.
 Camera adaptation is complete. Do not expose an H3 preset

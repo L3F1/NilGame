@@ -22,9 +22,9 @@ the entry root. Existing floating-point guard bands are heuristic, not interval
 proofs. Independent sweeps must precede scene use. Report a counterexample rather
 than widening tolerances to make CPU/GPU agree. No shader implementation yet.
 
-## Finite aperture helper (next bounded implementation)
+## Finite aperture helper (implemented; integration gated)
 
-Create hyperbolic-aperture.js, separate from compileFramedPortals (gate stays).
+hyperbolic-aperture.js is separate from compileFramedPortals (gate stays).
 queryHyperbolicAperture(space,{center,normal,radius},p,u,{maxDistance,bodyRadius=0})
 returns hit with physical distance/point, bounded miss, or unresolved with reason.
 Validate centre in domain, positive radius <=R, unit spacelike normal tangent at
@@ -43,6 +43,12 @@ plus bodyRadius. A negative clearance outside the uncertainty band is a miss;
 rim ambiguity is unresolved. Domain-before-root yields unresolved/domain-exit;
 requested range strictly before all events can miss. No portal transit/camera
 mapping, schema admission, renderer work or host motion changes in this helper.
+
+Current guard policy: coefficient band max(1e-10,128*machine-epsilon*
+(1+abs(A)+abs(B))); physical residual/range/rim base band 1e-9R. Rim band
+also includes the heuristic arclength root spread. Tested scales .5/8/10000.
+Every unresolved result exports uncertaintyFrom:0; distance is diagnostic only.
+This deliberately makes no safe-prefix claim based on a heuristic interval.
 
 ## Consumer integration gate
 
