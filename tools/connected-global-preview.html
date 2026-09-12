@@ -9,21 +9,23 @@ body{margin:24px auto;padding:0 18px;max-width:900px;background:#101a27;color:#e
 #editor select{min-width:0;max-width:100%}#editor input[type=number]{width:6.5rem}#editor input[type=file]{min-width:0;max-width:100%}
 #edit-frame,#edit-message{overflow-wrap:anywhere}
 </style>
+<p><label>World <select id="world-preset"><option value="classic">E3 / complete S3 / E3</option><option value="three">E3 / complete S3 / H3 (experimental)</option></select></label>
+<button id="open-preset" type="button">Open preset and restart</button><br>Opening a preset discards unsaved edits. Download your level first to keep them.</p>
 <h1>E3 → COMPLETE S3 → E3 flight</h1>
 <p><a href="connected-preview.html">Bounded portal preview</a> · <a href="spherical-cover.html">Whole-sphere S3 flight</a> · <a href="../index.html">Worlds</a></p>
-<p>A flat E3 room opens through a portal into the COMPLETE 3-sphere (curvature radius 8), and a second
+<p id="world-description">A flat E3 room opens through a portal into the COMPLETE 3-sphere (curvature radius 8), and a second
 portal on the far side of the sphere leads back to the flat room. The sphere has no spherical floor and no
 chart boundary: an unobstructed great circle closes after 2πR ≈ 50.27, unless you cross a portal first.</p>
-<p>From the flat spawn, hold W without turning for about ten seconds to enter the sphere,
+<p id="route-description">From the flat spawn, hold W without turning for about ten seconds to enter the sphere,
 pass its antipode and return through the second portal. Green balls are spherical landmarks;
 the blue ball is the flat destination. This is a flight fixture, not a finished room.</p>
 <p><strong>No gravity.</strong> Click the view for real-time flight: WASD, Space/Shift, mouse look; Escape releases the mouse.
 Buttons take quarter-unit steps. Mouse look stays upright relative to an up direction carried along your flight
 and through portals, not a world up. Routine contacts remain steerable; unresolved movement or the
-flat boundary halts the preview. Reset recovers.</p>
+bounded-region exit halts the preview. Reset recovers.</p>
 <p><a href="#editor">Edit this world</a>: change existing objects and portals, add or remove balls, create, reconnect or remove portal pairs, turn an existing portal anchor, undo changes, or save/load your level.</p>
 <p>Magenta marks numerical/traversal uncertainty; thin silhouette outlines remain under investigation.
-Dark checkers mark the end of the flat region, including when viewed through a portal from inside S3.</p>
+Dark checkers mark the end of a bounded E3 or H3 region, including when viewed through a portal from inside S3.</p>
 <p><label>Resolution <select id="quality"><option value="160">160 × 120</option><option value="320" selected>320 × 240</option><option value="480">480 × 360</option><option value="640">640 × 480</option><option value="960">960 × 720</option></select></label>
 Higher resolutions sharpen the view and cost more GPU time. The default prioritizes responsiveness.</p>
 <div style="position:relative"><canvas id="view" width="80" height="60" aria-label="Connected complete-S3 sight preview" style="display:block"></canvas><span aria-hidden="true" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;color:white;text-shadow:0 0 2px black">+</span></div>
@@ -47,12 +49,12 @@ For floors and corners, try the <a href="connected-preview.html">bounded room pr
 <button data-action="reset">Reset to spawn</button></div>
 <fieldset id="editor"><legend>Edit entities (chart-local physical coordinates)</legend>
 <p><a href="#view">Back to the view</a></p>
-<p>Values are in the selected entity's own chart or flat region, in design units. No conversion between
+<p>Values are in the selected entity's own chart or bounded region, in design units. No conversion between
 charts is applied. Your position and view are kept; invalid edits are refused and nothing changes.
 Anchor radius edits resize both ends of the portal together.
 Remove selected ball affects balls only; use Remove a portal pair below for portals. Undo restores a removal.</p>
 <p>To turn a portal opening, set <strong>forward</strong> and <strong>up</strong> to perpendicular unit vectors
-in its chart or flat-region coordinates. Only the selected anchor turns; its partner and your view stay unchanged.</p>
+in its chart or bounded-region coordinates. Only the selected anchor turns; its partner and your view stay unchanged.</p>
 <label>Region <select id="edit-region"></select></label>
 <label>Entity <select id="edit-entity"></select></label>
 <p id="edit-frame"></p>
@@ -70,7 +72,7 @@ in its chart or flat-region coordinates. Only the selected anchor turns; its par
 <button id="edit-undo" type="button">Undo</button><button id="edit-redo" type="button">Redo</button>
 <fieldset id="ball-form"><legend>New ball in the selected region</legend>
 <p>Enter every value; your current position is never used. In a complete S3 region choose the chart the
-position is written in; a flat region uses its own coordinates and has no chart. A ball overlapping your
+position is written in; a bounded E3 or H3 region uses its own coordinates and has no chart. A ball overlapping your
 body or a spawn is refused.</p>
 <label>ID <input id="ball-id" type="text" size="16" spellcheck="false" autocomplete="off"></label>
 <label>Chart <select id="ball-chart"></select></label><br>

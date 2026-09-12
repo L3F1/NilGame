@@ -30,19 +30,17 @@ below. Implementation details and acceptance criteria:
 - [x] Document editor launch and higher-resolution preview choices in README.
 - [x] Metric-aware H3 materials/AO and real/software GPU verification of the
   three-region model, renderer, transit and edit/history path. See
-  docs/qa/h3-material-review.md. Browser preset form still pending.
+  docs/qa/h3-material-review.md. Browser preset now exposed; see three-editor-review.md.
 - [x] Preserve H3 numerical-vs-coverage refusal reasons; numeric causes win
   across mixed portal order. Both backends verified; unresolved status retained.
 - [ ] Diagnose visible E3/S3 silhouette/portal purple patches by reproducible
-  rays; MUSE-73 CPU refusal census assigned, GPU attribution follows.
-- [ ] Finish review of the partial H3 GPU repair, run real-GPU and SwiftShader
-  readback, inspect images and measure frame distributions. Claude stopped at
-  session quota. Opt-in experimental renderer now has durable real/software GPU
-  checks. Stable ball spans reduced extra refusals331->22, lost hits191->1 in
-  the fixed corpus. Broader precision cases, refusal provenance and GPU timing remain.
-  See docs/qa/h3-stable-span-review.md; visible H3 editor not yet shipped.
-- [ ] Expose the three-geometry fixture through the existing editor/preset UI
-  only after GPU verification; validate full edit/save/load/traverse workflow.
+  rays; MUSE-73 CPU census accepted; GPU attribution remains.
+- [x] Integrate H3 GPU repair and verify real/software readback, materials and
+  refusal provenance; see h3-stable-span-review.md and follow-up reviews.
+- [ ] Broaden precision cases and collect reliable GPU frame-time distributions.
+- [x] Expose the three-geometry fixture through the editor's World selector and
+  Worlds menu. Verify H3 edit/save/load/undo, rejection and bidirectional flight
+  through the browser on real GPU and SwiftShader.
 - [ ] Polish that level: useful architecture/scale cues, reliable contact,
   reduced numerical refusal pixels and appealing materials. Do not hide unknown
   rays as confident hits/misses. Measure high-resolution cost before defaults.

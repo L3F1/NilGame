@@ -15,7 +15,7 @@ export function createWorldMenu({ presets, onPreset, onOption, onClose }) {
         <button type="button" class="resume" data-close>Return to game <kbd>O</kbd></button>
       </header>
       <div class="world-grid"></div>
-      <p><a href="tools/region-lab.html">Spherical editor</a> · <a href="tools/ball-lab.html">Flat editor</a> · <a href="tools/connected-global-preview.html">Full S3 portals</a> · <a href="tools/connected-preview.html">Bounded portal preview</a> · <a href="tools/spherical-cover.html">Full S3 loop</a></p>
+      <p><a href="tools/region-lab.html">Spherical editor</a> · <a href="tools/ball-lab.html">Flat editor</a> · <a href="tools/connected-global-preview.html">Full S3 portals</a> | <a href="tools/connected-global-preview.html?preset=three">E3 / S3 / H3 editor</a> · <a href="tools/connected-preview.html">Bounded portal preview</a> · <a href="tools/spherical-cover.html">Full S3 loop</a></p>
       <p class="menu-status" role="status" aria-live="polite"></p>
       <details class="settings"><summary>Customize world &amp; performance</summary>
         <p class="settings-help">Settings marked as fixed are required by this world.

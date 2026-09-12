@@ -63,7 +63,7 @@ const PRESETS = ['fight', 'hoops', 'grapple', 'sphere', 'light', 'dropper',
 export const ALLOWED = {
   'page-check': {
     script: 'tools/page-check.js',
-    bare: ['--worlds', '--ball-lab', '--region-lab', '--connected-preview', '--connected-global', '--spherical-cover', '--h3-gpu', '--sw', '--warm'],
+    bare: ['--worlds', '--ball-lab', '--region-lab', '--connected-preview', '--connected-global', '--spherical-cover', '--h3-gpu', '--three-geometry', '--sw', '--warm'],
     valued: { '--timeout': numeric(900) },
     note: 'boots the page in a real browser and runs its in-page checks',
   },

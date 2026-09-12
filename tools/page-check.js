@@ -49,7 +49,8 @@ const sw = process.argv.includes('--sw');
 const worlds = process.argv.includes('--worlds');
 const ballLab = process.argv.includes('--ball-lab');
 const regionLab = process.argv.includes('--region-lab');
-const connectedGlobal = process.argv.includes('--connected-global');
+const threeGeometry = process.argv.includes('--three-geometry');
+const connectedGlobal = process.argv.includes('--connected-global') || threeGeometry;
 const h3Gpu = process.argv.includes('--h3-gpu');
 const connectedPreview = process.argv.includes('--connected-preview') || connectedGlobal;
 const sphericalCover = process.argv.includes('--spherical-cover');
@@ -159,7 +160,7 @@ const session = await runBrowserSession({
       '--no-first-run', '--no-default-browser-check', '--disable-background-networking',
       ...(sw ? ['--enable-unsafe-swiftshader', '--use-angle=swiftshader']
              : ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist']),
-      lab ? '--window-size=960,600' : '--window-size=640,400', `http://127.0.0.1:${PORT}/${lab ? '?check=1' : ''}`,
+      lab ? '--window-size=960,600' : '--window-size=640,400', `http://127.0.0.1:${PORT}/${lab ? '?check=1'+(threeGeometry?'&preset=three':'') : ''}`,
     ], { stdio: ['ignore','ignore','pipe'], windowsHide: true,
       // POSIX only: the child becomes its process-group leader, so cleanup
       // owns the whole tree by construction (PID == PGID). Windows spawn
@@ -231,7 +232,7 @@ if (report.checks) console.log(`${sphericalCover ? 'whole-S3 GPU' : connectedPre
 if(report.connectedGlobalEvidence)report.connectedEvidence=report.connectedGlobalEvidence;
 if(report.connectedEvidence){
   mkdirSync(join(ROOT,'.agent-bridge'),{recursive:true});
-  writeFileSync(join(ROOT,'.agent-bridge',connectedGlobal?'connected-global-gpu-evidence.json':'connected-gpu-evidence.json'),JSON.stringify(report.connectedEvidence,null,2));
+  writeFileSync(join(ROOT,'.agent-bridge',threeGeometry?(sw?'three-editor-sw.json':'three-editor-real.json'):connectedGlobal?'connected-global-gpu-evidence.json':'connected-gpu-evidence.json'),JSON.stringify(report.connectedEvidence,null,2));
   for(const r of report.connectedEvidence){
     if(r.label)console.log('parity:',JSON.stringify(r));
     if(r.gpuMs){const sorted=[...r.gpuMs].sort((a,b)=>a-b);console.log(`GPU ${r.pose}: ${r.hardware}, ${r.resolution.width}x${r.resolution.height}, samples ${sorted.length}, median ${sorted[Math.floor(sorted.length/2)]}, p90 ${sorted[Math.floor(sorted.length*.9)]} ms`);}

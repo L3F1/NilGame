@@ -3,17 +3,30 @@ import {createConnectedRenderer} from '../engine/geometry/connected-renderer.js'
 import {createMouseLook} from './mouse-look.js';
 import {createCameraFrame,rollAgainst} from '../engine/world/camera-frame.js';
 const canvas=document.querySelector('#view'),status=document.querySelector('#status'),details=document.querySelector('#details');
-const checking=new URLSearchParams(location.search).has('check');
+const params=new URLSearchParams(location.search);
+const checking=params.has('check'),threeGeometry=params.get('preset')==='three';
 const checks=[],shots=[];
 async function report(err='',extra={}){await fetch('/__report',{method:'POST',body:JSON.stringify({err,hud:status.textContent,checks,shots,...extra})});}
 function failure(error){status.textContent=`Preview stopped: ${error.message||error}`;if(checking)report(String(error.stack||error));}
 try {
-  const response=await fetch('../levels/fixtures/connected-global.nil.json');if(!response.ok)throw Error(`Scene HTTP ${response.status}`);
+  const response=await fetch(threeGeometry?'../levels/fixtures/connected-three-geometries.nil.json':'../levels/fixtures/connected-global.nil.json');if(!response.ok)throw Error(`Scene HTTP ${response.status}`);
   const scene=await response.json();
   // The model calls installWorld only for edits, never for its initial compile.
   let renderer;
-  const model=createConnectedGlobalPreview(scene,{installWorld:nextWorld=>renderer.replaceWorld(nextWorld)}),coldStart=performance.now();
-  renderer=createConnectedRenderer(canvas,model.world);
+  const model=createConnectedGlobalPreview(scene,{experimentalH3:threeGeometry,installWorld:nextWorld=>renderer.replaceWorld(nextWorld)}),coldStart=performance.now();
+  renderer=createConnectedRenderer(canvas,model.world,{experimentalH3:threeGeometry});
+  document.querySelector('#world-preset').value=threeGeometry?'three':'classic';
+  document.querySelector('#open-preset').onclick=()=>{
+    const url=new URL(location.href);url.searchParams.delete('check');
+    url.searchParams.set('preset',document.querySelector('#world-preset').value);
+    location.assign(url.href);
+  };
+  if(threeGeometry){
+    document.title='NilGame - E3 / complete S3 / H3 editor';
+    document.querySelector('h1').textContent='E3 / COMPLETE S3 / H3 editor';
+    document.querySelector('#world-description').textContent='Experimental three-geometry world: flat E3 opens into complete S3 (radius 8), then bounded H3 (radius 8, chart extent 12). H3 supports balls of radius .25 to 1 and apertures .35 to 1. Unsupported edits are refused. The spherical region has no chart boundary.';
+    document.querySelector('#route-description').textContent='Hold W from the flat spawn to enter S3, pass its antipode, and enter H3. Turn around after emerging to return through the same portal. Green balls are solid landmarks, not portals. No gravity.';
+  }
   // Four rays are affordable on the tested GPU, but not software fallback.
   // This is a starting preference, not a performance guarantee; keep the toggle.
   const defaultSmoothing=!/SwiftShader|llvmpipe|softpipe|software/i.test(renderer.hardware);
@@ -358,7 +371,11 @@ try {
   if(checking)renderer.finish();
   const coldReadyWallMs=performance.now()-coldStart;
   if(!checking)requestAnimationFrame(frame);
-  else {
+  else if(threeGeometry){
+    const {checkThreeGeometryEditor}=await import('./three-geometry-editor-probe.js');
+    await checkThreeGeometryEditor({model,renderer,canvas,editor,draw,checks,shots,loadDone:()=>loading});
+    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs}]});
+  } else {
     const records=[],poses=[];
     if(!/no gravity/i.test(document.body.textContent)||!/COMPLETE S3/.test(document.body.textContent))throw Error('Page lost its complete-S3/no-gravity label');
     function compare(label){

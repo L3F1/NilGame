@@ -1,15 +1,19 @@
 # Fresh-chat handoff for Astra
 
-Current base 26c90ce, plus the MUSE-73 census review and FEATURE_ROADMAP.md.
+Current work follows b28e32b: three-geometry preset exposed and browser checked.
 Read WORKING_RULES.md, then the relevant TASK_ROUTER.md row only.
 
 ## Next task
 
-Expose the saved E3/full-S3/H3 fixture in the connected editor with explicit
-experimental scope. Preserve experimentalH3 policy through load/edit/history;
-verify traversal both ways, render updates, undo/redo, and JSON round trip in the
-browser. Do not claim that a CPU fixture alone is a visible editor preset.
-See THREE_GEOMETRY_MILESTONE.md and FEATURE_ROADMAP.md for acceptance/sequence.
+Improve the visible three-geometry level's architecture/scale cues and diagnose
+remaining GPU purple patches using saved poses and CPU/GPU provenance. Keep
+numerical refusals visible. Do not add a fourth geometry yet. H3 is a bounded
+additive-ball/aperture subset, not unrestricted construction support.
+
+Worlds menu now links to tools/connected-global-preview.html?preset=three.
+The same page's World selector opens either preset and explicitly restarts it,
+discarding unsaved session edits. H3 policy is retained across edit/load/history.
+Read docs/qa/three-editor-review.md and THREE_GEOMETRY_MILESTONE.md.
 
 ## Current evidence and limits
 

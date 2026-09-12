@@ -7,8 +7,10 @@ pattern of region-lab; no new scene format or geometry conversion is introduced.
 The host-free model additionally accepts `{experimentalH3:true}`. This policy
 is retained across every edit/load/undo/redo compilation; default callers still
 reject H3. The three-geometry fixture can traverse into H3 and edit its balls
-without resetting the camera or player. This does not admit H3 to the browser
-renderer: the host still must validate the candidate GPU packet atomically.
+without resetting the camera or player. The experimental three-geometry browser preset now supplies the same policy
+to the renderer, which validates each candidate GPU packet atomically. Opening
+a preset navigates to a fresh world; it is explicitly destructive to unsaved
+session edits. File load within that world retains the transactional policy.
 
 `patchConnectedEntities(document, [{id,patch},...])` produces detached author
 data. Allowed properties: ball position/radius, anchor position/radius/forward/up,

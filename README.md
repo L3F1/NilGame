@@ -106,3 +106,11 @@ evaluation. A native host can supply editor widgets, asset tools and platform
 services; NilGame must still supply curved geometry, ray paths and physics.
 Migration is decided by a representative benchmark and authoring experiment,
 not by assuming a language change makes the renderer faster.
+
+
+The connected editor's **World** selector now includes **E3 / complete S3 / H3
+(experimental)**. Open it directly at
+http://localhost:8080/tools/connected-global-preview.html?preset=three after
+`node tools/relay.js`, or use **E3 / S3 / H3 editor** in the game's Worlds menu.
+Opening a preset restarts the world and discards unsaved edits; download first.
+H3 uses the current bounded ball/aperture subset, not unrestricted authoring.

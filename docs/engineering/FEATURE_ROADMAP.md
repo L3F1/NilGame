@@ -9,14 +9,15 @@ current acceptance gate, CURVED_INTERFACES_AND_TRANSITIONS.md for future math.
 
 The visible E3/full-S3 editor has connected sight/movement, property editing,
 history and saved data. Bounded H3 has an experimental CPU/GPU path and a saved
-three-region fixture; exposing and accepting it in the normal editor is still
-work. This is a geometry kernel and editor, not a complete general game engine.
+three-region fixture; the normal editor now exposes it as an experimental preset, with browser
+edit, persistence and bidirectional flight checks. Visual polish remains work. This is a geometry kernel and editor, not a complete general game engine.
 Renderer precision, diagnostic coverage and frame-time measurement remain open.
 
 MUSE-73's corrected CPU census finds chart exits in four sampled E3/S3 views.
 That is not GPU pixel evidence and does not authorize suppressing numerical
-refusals. The next visible task is the three-geometry preset with explicit
-experimental scope, persisted model policy, and browser edit/traversal checks.
+refusals. The three-geometry preset now has explicit experimental scope, persisted model
+policy and browser edit/traversal checks. Next are architecture/scale cues and
+GPU artifact diagnosis, followed by representative timing evidence.
 
 ## Estimated sequence
 
