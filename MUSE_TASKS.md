@@ -68,11 +68,11 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: MUSE-66. MUSE-65 accepted; see docs/qa/muse-log.md.
+Order: MUSE-67. MUSE-66 accepted; see docs/qa/muse-log.md.
 
-## MUSE-66 — OPEN: H3 camera numerical envelope
+## MUSE-67 — OPEN: independent H3 ball queries
 
-Assignment/allowed files: tools/agent-bridge-tasks.json, muse66-h3-camera-envelope.
-Independent Lorentz camera checks near radial3.9, with explicit short steps inside
-representation4. No scene integration/production repairs/full suite. Focused Node
-only. Report counterexamples and sampled residuals, not universal proof.
+Assignment/allowed files: tools/agent-bridge-tasks.json, muse67-h3-balls.
+Independent ray/normal expectations, especially near tangency and domain/range
+limits. Report false confident answers before coverage. No production repairs,
+scene integration or full suite. Focused Node only.

@@ -4,11 +4,12 @@
 Latest: experimental H3 metric adapter in hyperbolic-space.js. Read
 H3_CONNECTED_CONTRACT.md and docs/qa/h3-metric-review.md. It is deliberately
 separate from createMetricSpace; scenes, portals and GPU still reject H3.
-Claude metric-aware camera and MUSE-65 are reviewed and integrated. Read
-docs/qa/h3-camera-integration.md. Next bridge task: MUSE-66 camera envelope checks.
+Claude metric-aware camera and MUSE-66 are reviewed and integrated. New experimental
+hyperbolic-balls.js is specified in H3_QUERY_CONTRACT.md; see h3-balls-review.md.
+Next bridge batch: Claude finite-aperture helper, MUSE-67 independent ball queries.
 Earlier removal/orientation UI and MUSE-64 are accepted and integrated.
 Check bridge status before dispatch: do not restart completed or running work.
-Latest Node validation: 108/108 in h3-camera-suite.log.
+Latest Node validation: 110/110 in h3-balls-suite.log.
 Earlier S3 timeout evidence remains in portal-ui-review.md; runner deadline
 and assertions are unchanged. Prior browser43 passed on real GPU and SwiftShader;
 new removal/orientation browser evidence is in claude-portal-removal-ui.md.
@@ -22,8 +23,9 @@ Halted motion forbids edits until reset. Delayed file reads cannot overwrite a
 newer file choice or property edit. Renderer.replaceWorld changes texture data,
 not shader programs. The model.world and renderer.packed properties are getters.
 
-Next bounded task: implement H3 ball/portal queries per H3_CONNECTED_CONTRACT.md
-and review MUSE-66. Camera metric adaptation is complete. Do not expose an H3 preset
+Next bounded task: review aperture helper and independent ball queries, then wire
+metric-aware portal frame assembly under H3_QUERY_CONTRACT.md. Camera adaptation
+is complete. Do not expose an H3 preset
 before camera/portal/GPU support. Extent<=2R and representative<=4R are numerical
 policies; exceptions must not become silent ray misses or artificial walls.
 Read CONNECTED_PORTAL_AUTHORING.md, especially final-graph swaps and

@@ -2877,3 +2877,11 @@ invariant checks cover seeded interior/envelope cases. logAt length exceeding4R
 cannot be executed by one expAt under the explicit step cap; no promise of an
 unrestricted round trip. No production repairs. See muse65-h3-metric.md and
 h3-camera-integration.md; full108/108 and existing preview GPU52 passed.
+
+## MUSE-66 accepted — 2026-09-11
+
+Base2e44c7b. Reviewed independent point/frame construction and reran
+hyperbolic-camera-envelope.test.js:7/7 on Windows Node24.20.0. Worst sampled
+camera Gram/tangency2.27e-13; input-projector residual1.85e-11. Short inward
+carries only; R largely rescales travel. No universal envelope claim or repair.
+See muse66-h3-camera.md. Full110/110 including this corpus and new H3 ball tests.
