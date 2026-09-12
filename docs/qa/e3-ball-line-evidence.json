@@ -1,0 +1,90 @@
+{
+  "base": "69c090c",
+  "results": [
+    {
+      "file": "e3-line-candidate-real",
+      "probe": {
+        "label": "e3-ball-line",
+        "cases": 29,
+        "legacyFailures": 18,
+        "packedCentre": [
+          -1.7999999523162842,
+          0,
+          0
+        ],
+        "packedRadius": 0.4000000059604645,
+        "witness": [
+          {
+            "truth": 2.5942289324473293,
+            "candidate": 2.594228982925415,
+            "legacy": 2.594233274459839
+          },
+          {
+            "truth": 2.5942287339815255,
+            "candidate": 2.594228744506836,
+            "legacy": 2.594223976135254
+          }
+        ],
+        "worstError": 6.396685510168254e-7
+      },
+      "pagePassed": true
+    },
+    {
+      "file": "e3-line-live-real",
+      "probe": {
+        "label": "e3-ball-line",
+        "cases": 29,
+        "legacyFailures": 20,
+        "packedCentre": [
+          -1.7999999523162842,
+          0,
+          0
+        ],
+        "packedRadius": 0.4000000059604645,
+        "witness": [
+          {
+            "truth": 2.5942289324473293,
+            "candidate": 2.594228982925415,
+            "legacy": 2.594233274459839
+          },
+          {
+            "truth": 2.5942287339815255,
+            "candidate": 2.594228744506836,
+            "legacy": 2.594223976135254
+          }
+        ],
+        "worstError": 6.396685510168254e-7
+      },
+      "pagePassed": true
+    },
+    {
+      "file": "e3-line-live-sw",
+      "probe": {
+        "label": "e3-ball-line",
+        "cases": 29,
+        "boundaryChecks": 3,
+        "legacyFailures": 20,
+        "packedCentre": [
+          -1.7999999523162842,
+          0,
+          0
+        ],
+        "packedRadius": 0.4000000059604645,
+        "witness": [
+          {
+            "truth": 2.5942289324473293,
+            "candidate": 2.594228982925415,
+            "legacy": 2.594231605529785
+          },
+          {
+            "truth": 2.5942287339815255,
+            "candidate": 2.594228744506836,
+            "legacy": 2.5942249298095703
+          }
+        ],
+        "worstError": 2.648228516477502e-7
+      },
+      "pagePassed": true
+    }
+  ]
+}

@@ -385,6 +385,9 @@ try {
     const {checkPortalTransferGpu}=await import('./portal-transfer-gpu-probe.js');
     const transfer=checkPortalTransferGpu(model.document());
     const {checkAdditiveOrderGpu}=await import('./additive-event-gpu-probe.js');
+    const {checkE3BallLineGpu}=await import('./e3-ball-line-probe.js');
+    const e3Line=await checkE3BallLineGpu();
+    checks.push('E3 closest-approach roots: independent packed surface brackets and legacy mutation');
     const ordering=checkAdditiveOrderGpu();
     checks.push('GPU interval event ordering: strict order, overlaps, horizons and negative mutation');
     checks.push('Candidate GPU portal transfer: interval enclosure and missing-transport mutation');
@@ -496,7 +499,7 @@ try {
     const {checkRefinementMotion}=await import('./refinement-motion-probe.js');
     const motion=await checkRefinementMotion(model,renderer);
     checks.push('Refinement motion: E3/S3/H3 round trip, strict settled parity; GPU timing status '+motion.arms.map(a=>a.timingStatus).join('/'));
-    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,ordering,census,exclusion,livePass,motion]});
+    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,e3Line,ordering,census,exclusion,livePass,motion]});
   } else {
     const records=[],poses=[];
     if(!/no gravity/i.test(document.body.textContent)||!/COMPLETE S3/.test(document.body.textContent))throw Error('Page lost its complete-S3/no-gravity label');

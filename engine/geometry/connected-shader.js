@@ -1,3 +1,4 @@
+import {E3_BALL_LINE_GLSL} from './e3-ball-line.js';
 import {CONNECTED_FOCAL_SCALE} from './primary-ray-bounds.js';
 import {E3_S3_TRANSFER_GLSL} from './portal-transfer-gpu.js';
 // Bounded float32 GPU reference for E3/S3. Surface candidates are analytic;
@@ -161,6 +162,7 @@ int occupancy(vec4 p,int region,out int owner){
     if(v==1){owner=group.x;return 1;}if(v==2)answer=2;}
   return answer;
 }
+${E3_BALL_LINE_GLSL}
 float roots[100];int rootSurface[100];int count;float uncertainAt;
 void ambiguity(float lo,float hi,float end){if(hi>=-E&&lo<=end+E)uncertainAt=min(uncertainAt,max(0.,lo-E));}
 void root(float t,int i,float end){if(t< -E||t>end+E)return;if(t<=E||abs(t-end)<=E){ambiguity(t-4.*E,t+4.*E,end);return;}if(count>=100){ambiguity(0.,end,end);return;}roots[count]=t;rootSurface[count++]=i;}
@@ -191,7 +193,13 @@ void solve(int i,vec4 p,vec4 u,vec4 r,float end){
     return;
   }
   if(r.x<.5){
-    if(m.x>.5){vec4 v=p-n;float b=dot(v,u),c=dot(v,v)-m.z*m.z,d=b*b-c;if(d< -4.*E)return;if(d<4.*E){float s=sqrt(max(0.,d)+4.*E);ambiguity(-b-s,-b+s,end);return;}float s=sqrt(d);root(-b-s,i,end);root(-b+s,i,end);}
+    if(m.x>.5){
+      vec3 line=e3BallLine((p-n).xyz,u.xyz,m.z);
+      if(!(line.z>0.)){ambiguity(0.,end,end);return;}
+      float d=line.y;if(d< -4.*E)return;
+      if(d<4.*E){float s=sqrt((max(0.,d)+4.*E)/line.z);ambiguity(line.x-s,line.x+s,end);return;}
+      float s=sqrt(d/line.z);root(line.x-s,i,end);root(line.x+s,i,end);
+    }
     else {float a=dot(p,n)-m.z,b=dot(u,n);if(abs(b)<E){float last=a+b*end;if(abs(a)<E||abs(last)<E||a*last<0.)ambiguity(0.,end,end);return;}root(-a/b,i,end);}
   }else{
     float a=dot(p,n),b=dot(u,n),h=length(vec2(a,b)),c=m.z;
@@ -328,7 +336,7 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
         if(found==2)return vec4(2,region,-1,traveled);}
       solidGateTie=found==1&&gate>=0&&abs(hitAt-end)<=E;
     }else{
-      if(r.x<.5){if(length(p)>r.z+E)return vec4(2,region,-1,traveled);float b=dot(p,u),c=dot(p,p)-r.z*r.z;edge=-b+sqrt(max(0.,b*b-c));}
+      if(r.x<.5){if(length(p)>r.z+E)return vec4(2,region,-1,traveled);vec3 line=e3BallLine(p.xyz,u.xyz,r.z);if(!(line.z>0.))return vec4(2,region,-1,traveled);edge=line.x+sqrt(max(0.,line.y)/line.z);}
       else if(r.w<.5){float boundary=cs(r.z/r.y);if(p.w<boundary-E)return vec4(2,region,-1,traveled);float h=length(vec2(p.w,u.w));if(h<E||boundary/h>1.+E)return vec4(2,region,-1,traveled);edge=r.y*(a2(u.w,p.w)+ac(boundary/h));}
       end=min(remain,edge);float portalUncertain=1e20;
       for(int g=0;g<8;g++){if(g>=uCounts.w)break;int base=132+g*10;vec4 info=D(base);if(int(info.x)!=region)continue;

@@ -16,17 +16,16 @@ REJECTED: little timing benefit and repeatable settled-distance change on the
 hardware backend; see live-miss-pass-review.md. Do not revive it as accepted.
 Fixed eligibility/group scanning is now precomputed per packed world and
 updated transactionally on edits. No measured frame-rate benefit claimed.
-The intermittent baseline drift is now CAPTURED with refinement OFF after
-resize/timing, before the new motion probe runs. See
-docs/qa/refinement-motion-review.md and distance-drift-baseline-failure.json.
-First repeated primary ray also changed slightly; later readings stabilized.
-Next: isolate GLSL normalization and the E3 quadratic's unit-length assumption
-at the captured ray, with packed coefficients. No presumed driver diagnosis.
-Do not rerun whole-scene timing blindly. Strict equality checks remain.
-Motion probe: initial hardware correctness/timing passed; final software
-correctness passed but timing INCOMPLETE. Final hardware run hit the old
-baseline failure before motion. Refinement remains default-off, AA unsupported.
-No external agents running; completed Claude manifest must not be redispatched.
+E3 ray/sphere amplification corrected using closest approach, including the
+E3 region extent. See docs/qa/e3-ball-line-review.md and its evidence JSON.
+The tiny GPU probe reproduced both historical bad values with the legacy
+formula; new roots match independent brackets much more closely.
+Live real/software checks passed, but primary-ray variability itself remains
+OPEN. Keep strict guards and captured failure; no repeated blind resize runs.
+Next: E3-active moving portal views with CPU checks of newly resolved answers.
+The prior motion route generated the pass at only4 timed poses; software timers
+remain incomplete. No default enable, no AA support or new geometry yet.
+No external agents running. Do not redispatch the completed Claude manifest.
 Do not embed interval
 arithmetic in the main shader (prior300s/60s no-report failures).
 

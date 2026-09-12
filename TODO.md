@@ -28,11 +28,12 @@ exposed with smoothing refusal explained;320x240 GPU costs measured. Next:
 isolate intermittent hardware settled-distance mismatch, then AA and sustained
 motion cost checks. Fixed eligibility is now precomputed per world; no measured
 speedup claimed, and default-off refinement remains experimental.
-Baseline-only resize/timing failure now captured with refinement OFF; primary
-ray also varied in subsequent diagnostic draws. Next: normalization / E3
-quadratic sensitivity, using packed data. See docs/qa/refinement-motion-review.md.
-Motion corpus correctness passed initial hardware and final software; software
-timings incomplete, final hardware blocked by the existing baseline failure.
+E3 sphere/extent roots now use closest approach; the legacy GPU formula
+reproduced both captured bad distances and the correction reduced the errors
+against independent packed-surface brackets. See docs/qa/e3-ball-line-review.md.
+Primary-ray variability remains open; strict guards stay. Next: E3-active
+moving portal views, since only4 prior motion samples actually ran refinement.
+Software motion timing remains incomplete; do not claim default admission.
 Non-E3 camera regions skip the inapplicable pass. Near-tangent scheduling trial
 rejected (small timing benefit, hardware settled-distance regression); keep
 the diagnostic and do not weaken equality checks. See live-miss-pass-review.md
