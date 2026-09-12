@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import {compileRegionWorld} from './engine/world/region-world.js';
 import {packConnectedWorld,CONNECTED_FRAGMENT} from './engine/geometry/connected-shader.js';
 import {createConnectedRenderer} from './engine/geometry/connected-renderer.js';
+import {sphericalEligibleOwners} from './engine/geometry/spherical-miss-pass.js';
 import {SPHERICAL_MISS_GLSL,SPHERICAL_MISS_PASS_FRAGMENT,SPHERICAL_MISS_CERTIFICATE_TAG}
   from './engine/geometry/spherical-miss-pass-glsl.js';
 import {SPHERICAL_MISS_GLSL as EXPERIMENT_GLSL} from './app/spherical-miss-experiment-glsl.js';
@@ -45,7 +46,7 @@ for(const required of ['if(certificateRegion!=region)return false;','if(int(pr.y
 // and BOTH packed signs reversed for the positive-c equation.
 for(const required of ['if(r.x>.5)return;','if(dest.x<.5||dest.x>1.5)return;',
   '!additiveBallOwner(int(m.y))','sphericalMiss(-D(2*i),-m.z)',
-  '(group.y&(1<<owner))!=0||(group.z&(1<<owner))!=0'])
+  '(uEligibleOwners&(1<<owner))!=0'])
   check(SPHERICAL_MISS_PASS_FRAGMENT.includes(required),`pass must enforce ${required}`);
 // No precision constants moved, and no vendor-string heuristic anywhere.
 check(SPHERICAL_MISS_PASS_FRAGMENT.includes('const float E=0.00003;'),'pass reuses the existing refusal band');
@@ -57,6 +58,21 @@ for(const source of [CONNECTED_FRAGMENT,SPHERICAL_MISS_PASS_FRAGMENT,
 // --------------------------------------------------------------- packing ----
 const scene=JSON.parse(fs.readFileSync('levels/fixtures/connected-sight.nil.json'));
 const world=compileRegionWorld(scene),packed=packConnectedWorld(world);
+// Behavioural ownership tests replace the old shader-source group-scan check.
+// Include the highest owner bit and an owner shared across differently scoped groups.
+{
+  const p={texture:new Float32Array(224*4),counts:[0,16,0,0]};
+  for(let j=0;j<16;j++)p.texture.set([j,1,0,1],4*(96+j));
+  const groups=rows=>{p.counts[2]=rows.length;rows.forEach((r,i)=>p.texture.set(r,4*(112+i)));return sphericalEligibleOwners(p);};
+  check(groups([[0,0,0,0],[15,0,0,0]])===32769,'isolated bases include owner15, exclude unreferenced owners');
+  check(groups([[0,1<<15,0,0],[15,0,0,0]])===0,'cutter and modified base both excluded');
+  check(groups([[0,0,1<<15,0],[15,0,0,0]])===0,'intersection and modified base both excluded');
+  check(groups([[0,0,0,0],[0,2,0,0]])===0,'one unmodified use cannot override another modified use');
+  p.texture[4*96+1]=2;
+  check(groups([[0,0,0,0]])===0,'multi-face primitive excluded');
+  p.texture[4*96+1]=1;p.texture[4*96+3]=0;
+  check(groups([[0,0,0,0]])===0,'non-ball excluded');
+}
 const row=i=>[...packed.texture.slice(i*4,i*4+4)];
 const s3Index=packed.ids.indexOf('curve');
 let positiveC=0,carved=0;
@@ -245,6 +261,17 @@ const pose=extra=>({...state,...extra});
     'certificates from before a world replacement can never be matched again');
 }
 // Resize invalidates, and the regenerated set is keyed to the new size.
+{
+  const h=renderer(),mask=()=>[...h.uniforms].find(([key])=>key.endsWith(':uEligibleOwners'))?.[1];
+  h.instance.draw(state,{width:8,height:6,sphericalMissPass:true});
+  const original=mask(),edited=structuredClone(scene);
+  edited.entities=edited.entities.filter(e=>e.id!=='curve-post');
+  const replacement=compileRegionWorld(edited),expected=sphericalEligibleOwners(packConnectedWorld(replacement));
+  check(expected!==original,'edit must change the eligibility mask');
+  h.instance.replaceWorld(replacement);
+  h.instance.draw(state,{width:8,height:6,sphericalMissPass:true});
+  check(mask()===expected,'world replacement must upload its own recomputed eligibility');
+}
 {
   const h=renderer();
   h.instance.draw(state,{width:8,height:6,sphericalMissPass:true});

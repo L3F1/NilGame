@@ -25,7 +25,9 @@ standalone precision API until this delivery is integrated or explicitly rejecte
 Claude's opt-in live exclusion pass reviewed with lead fixes:34/52 gallery
 fringes resolved on real/software GPU; default remains off. Editor opt-in now
 exposed with smoothing refusal explained;320x240 GPU costs measured. Next:
-immutable eligibility precomputation, AA and sustained motion cost checks.
+isolate intermittent hardware settled-distance mismatch, then AA and sustained
+motion cost checks. Fixed eligibility is now precomputed per world; no measured
+speedup claimed, and default-off refinement remains experimental.
 Non-E3 camera regions skip the inapplicable pass. Near-tangent scheduling trial
 rejected (small timing benefit, hardware settled-distance regression); keep
 the diagnostic and do not weaken equality checks. See live-miss-pass-review.md

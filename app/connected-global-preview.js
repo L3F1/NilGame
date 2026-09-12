@@ -437,7 +437,12 @@ try {
         const was=before.pixels.slice(4*i,4*i+4),now=after.pixels.slice(4*i,4*i+4);
         if(was.every((v,k)=>v===now[k])&&before.distances[i]===after.distances[i])continue;
         record.changedStatus++;
-        if(was[0]!==2)throw Error(`Live miss pass changed a settled pixel ${i%width},${Math.floor(i/width)}: ${[...was]} -> ${[...now]}, distance ${before.distances[i]} -> ${after.distances[i]}`);
+        if(was[0]!==2){
+          const primary=options=>renderer.readPrimaryRays(state,width,height,options).map(values=>values[i]);
+          const off=primary({sphericalMissPass:false}),on=primary({sphericalMissPass:true});
+          const repeatedOff=renderer.read(state,width,height).distances[i];
+          throw Error(`Live miss pass changed a settled pixel ${i%width},${Math.floor(i/width)}: ${[...was]} -> ${[...now]}, distance ${before.distances[i]} -> ${after.distances[i]}, repeated off ${repeatedOff}, primary ${off} -> ${on}`);
+        }
         if(now[0]===2)continue;
         record.recoveredPixels++;
         // A recovered pixel must agree with the independent CPU query.

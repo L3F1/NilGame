@@ -14,8 +14,12 @@ visible refusal while Smooth edges is active. Non-E3 camera regions now skip
 the inapplicable pass on the host. A near-tangency scheduling experiment was
 REJECTED: little timing benefit and repeatable settled-distance change on the
 hardware backend; see live-miss-pass-review.md. Do not revive it as accepted.
-Next: hoist immutable eligibility/group scanning out of per-pixel work or
-cheaper validated error bounds, then AA/sample policy and sustained movement
+Fixed eligibility/group scanning is now precomputed per packed world and
+updated transactionally on edits. No measured frame-rate benefit claimed.
+Next: isolate the intermittent hardware settled-distance difference at(6,43)
+before further precision/performance changes; diagnostics now repeat primary
+rays and baseline distance on failure. See eligible-owners logs in the review.
+Then AA/sample policy and sustained movement
 cost checks. Do not enable globally from a single view. Do not embed interval
 arithmetic in the main shader (prior300s/60s no-report failures).
 

@@ -107,6 +107,32 @@ Final validation: real/software `page-check --three-geometry --timeout=90`
 passed (`refine-scope-{real,sw}.log`), focused135 checks, full136/136 suites
 (`.agent-bridge/refine-scope-suite.log`).
 
+## Fixed eligibility precomputation (follow-up)
+
+The pass now receives an integer owner mask computed once per packed world.
+Only unmodified, additive, single-surface ball owners qualify; any use as a
+cutter/intersection or modified base disqualifies the owner. Surface geometry
+and destination-region checks remain in the shader. World replacement updates
+the mask with the same packet transaction. No ray arithmetic or epsilon changed.
+The old per-owner shader group scan is replaced by one bit test. Behavioral
+tests cover high owner bits, shared uses, modifiers, shapes and changed-world
+uploads; suppressing the replacement assignment fails the stale-mask check.
+
+Hardware first run FAILED the same settled-distance check as the rejected
+scheduling experiment: (6,43),2.594223976135254 ->2.594233274459839. Two later
+runs passed, as did SwiftShader. This is unresolved intermittent evidence, NOT
+a repaired distance regression. Failure diagnostics now include primary rays
+and a repeated unrefined distance to distinguish baseline instability. Keep
+strict acceptance and default-off refinement; investigate before promotion.
+
+Logs `.agent-bridge/eligible-owners-{real,rays-real,repeat-real,sw}.log`.
+Successful runs retain34 recoveries.320x240/12 GPU samples: hardware median
+.266176ms; software177.1323ms. Cross-run timings do not demonstrate a speedup;
+this change removes fixed scene scans, not a claimed frame-rate improvement.
+Final Node validation: focused144 checks and full136/136 suites passed
+(`.agent-bridge/eligible-owners-suite.log`). These do not close the intermittent
+GPU observation above.
+
 ## Claude usage correction
 
 Recorded75,057 output tokens,24,413 thinking tokens and7,827,424 cached-input

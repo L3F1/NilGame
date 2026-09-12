@@ -92,6 +92,7 @@ uniform vec4 uPosition,uForward,uRight,uUp;
 uniform vec2 uResolution;
 uniform float uMaxDistance;
 uniform int uRegion;
+uniform int uEligibleOwners;
 layout(location=0) out uvec4 outCertificate;
 layout(location=1) out vec4 outPoint;
 layout(location=2) out vec4 outDirection;
@@ -104,13 +105,7 @@ ${SPHERICAL_MISS_GLSL}
 // subtracts or intersects changes that group's occupancy when omitted, so its
 // miss certificate would not be a miss of the composed solid.
 bool additiveBallOwner(int owner){
-  vec4 pr=D(96+owner);
-  if(int(pr.y)!=1||pr.w<.5)return false;
-  bool base=false;
-  for(int g=0;g<16;g++){if(g>=uCounts.z)break;ivec4 group=ivec4(D(112+g));
-    if((group.y&(1<<owner))!=0||(group.z&(1<<owner))!=0)return false;
-    if(group.x==owner){if(group.y!=0||group.z!=0)return false;base=true;}}
-  return base;
+  return (uEligibleOwners&(1<<owner))!=0;
 }
 void main(){
   outCertificate=uvec4(0u);outPoint=vec4(0);outDirection=vec4(0);

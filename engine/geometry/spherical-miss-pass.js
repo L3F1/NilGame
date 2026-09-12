@@ -1,6 +1,21 @@
 import {CONNECTED_VERTEX} from './connected-shader.js';
 import {SPHERICAL_MISS_PASS_FRAGMENT,SPHERICAL_MISS_CERTIFICATE_TAG} from './spherical-miss-pass-glsl.js';
 export {SPHERICAL_MISS_CERTIFICATE_TAG};
+// Scene topology only: compute once per packed-world revision, not per ray.
+// An owner used as any modifier, or as a modified base, is never eligible.
+export function sphericalEligibleOwners(packed){
+  const d=packed.texture;let bases=0,forbidden=0,balls=0;
+  for(let g=0;g<packed.counts[2];g++){
+    const at=4*(112+g),base=d[at],subtract=d[at+1],intersect=d[at+2];
+    bases|=1<<base;forbidden|=subtract|intersect;
+    if(subtract||intersect)forbidden|=1<<base;
+  }
+  for(let j=0;j<packed.counts[1];j++){
+    const at=4*(96+j);
+    if(d[at+1]===1&&d[at+3]>=.5)balls|=1<<j;
+  }
+  return bases&balls&~forbidden;
+}
 // Separately drawn first-transfer exclusion pass for the live connected
 // renderer. It never replaces an intersection: every certificate is a proved
 // miss of ONE packed additive S3 ball surface for ONE pixel's first stable
@@ -54,7 +69,7 @@ export function createSphericalMissPass(gl){
     gl.linkProgram(created);
     if(!gl.getProgramParameter(created,gl.LINK_STATUS))throw Error(`Spherical miss pass link: ${gl.getProgramInfoLog(created)}`);
     program=created;
-    loc=Object.fromEntries(['uData','uCounts','uPosition','uForward','uRight','uUp','uResolution','uMaxDistance','uRegion']
+    loc=Object.fromEntries(['uData','uCounts','uPosition','uForward','uRight','uUp','uResolution','uMaxDistance','uRegion','uEligibleOwners']
       .map(name=>[name,gl.getUniformLocation(program,name)]));
     framebuffer=gl.createFramebuffer();
     return program;
@@ -110,6 +125,7 @@ export function createSphericalMissPass(gl){
       gl.uniform4fv(loc.uRight,pad(right));gl.uniform4fv(loc.uUp,pad(up));
       gl.uniform2f(loc.uResolution,width,height);
       gl.uniform1f(loc.uMaxDistance,maxDistance);gl.uniform1i(loc.uRegion,regionIndex);
+      gl.uniform1i(loc.uEligibleOwners,request.eligibleOwners??0);
       const query=timer&&timerExt&&pending.length<16?gl.createQuery():null;
       if(query)gl.beginQuery(timerExt.TIME_ELAPSED_EXT,query);
       gl.drawArrays(gl.TRIANGLES,0,3);

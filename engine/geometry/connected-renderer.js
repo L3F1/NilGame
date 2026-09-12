@@ -1,10 +1,11 @@
 import {packConnectedWorld,CONNECTED_VERTEX,CONNECTED_FRAGMENT} from './connected-shader.js';
-import {createSphericalMissPass} from './spherical-miss-pass.js';
+import {createSphericalMissPass,sphericalEligibleOwners} from './spherical-miss-pass.js';
 // experimentalH3 opts this renderer into the bounded H3 experiment. Default
 // callers keep the existing E3/S3 admission, including its H3 refusal.
 export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) {
   const packOptions={experimentalH3};
   let packed=packConnectedWorld(world,packOptions);
+  let eligibleOwners=sphericalEligibleOwners(packed);
   const gl=canvas.getContext('webgl2',{alpha:true,premultipliedAlpha:false,antialias:false,preserveDrawingBuffer:true});
   if(!gl)throw Error('Connected preview requires WebGL2');
   gl.disable(gl.DITHER); // Debug packets are bytes, not display colors.
@@ -39,6 +40,7 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
   function replaceWorld(nextWorld){
     // Capacity/geometry refusals happen before touching GL or the current packet.
     const next=packConnectedWorld(nextWorld,packOptions),candidate=gl.createTexture();
+    const nextEligibleOwners=sphericalEligibleOwners(next);
     if(!candidate)throw Error('Cannot allocate connected world texture');
     try{
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,candidate);
@@ -51,7 +53,7 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
       gl.bindTexture(gl.TEXTURE_2D,texture);gl.uniform4iv(loc.uCounts,packed.counts);gl.uniform1f(loc.uMaxDistance,packed.maxDistance);
       gl.deleteTexture(candidate);throw error;
     }
-    gl.deleteTexture(texture);texture=candidate;packed=next;
+    gl.deleteTexture(texture);texture=candidate;packed=next;eligibleOwners=nextEligibleOwners;
     // A replaced world invalidates every certificate: they were proved against
     // the previous packed rows. The revision also changes, so no association
     // from before the replacement can ever match again.
@@ -77,7 +79,7 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
     // and consumed by exactly this draw. Nothing is cached between draws.
     missStatus=!sphericalMissPass?'disabled'
       :regionIndex>=0&&packed.texture[(128+regionIndex)*4]!==0?'outside-scope'
-      :missPass.generate({dataTexture:texture,counts:packed.counts,
+      :missPass.generate({dataTexture:texture,counts:packed.counts,eligibleOwners,
         position:state.position,forward:state.camera.forward,right:state.camera.right,up:state.camera.up,
         width,height,maxDistance,regionIndex,revision,offsetX:0,offsetY:0,antialias,timer:false});
     if(missStatus==='generated')missConsumingDraws++;
@@ -109,9 +111,9 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
     draw(state,{...options,width,height,debug:3});const normals=new Uint8Array(width*height*4);gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,normals);
     return {pixels,distances:new Float32Array(bytes.buffer),normals};
   }
-  function readPrimaryRays(state,width=16,height=12){
+  function readPrimaryRays(state,width=16,height=12,options={}){
     return Array.from({length:4},(_,component)=>{
-      draw(state,{width,height,debug:4+component});
+      draw(state,{...options,width,height,debug:4+component});
       const bytes=new Uint8Array(width*height*4);
       gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,bytes);
       const view=new DataView(bytes.buffer);
