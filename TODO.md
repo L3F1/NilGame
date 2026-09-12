@@ -8,7 +8,40 @@ first-person levels to test each capability. Game-mode expansion is secondary.
 The previous backlog is preserved in
 [docs/archive/gameplay-backlog.md](docs/archive/gameplay-backlog.md).
 
-## Immediate priorities after geometry coverage
+## Current milestone: polished E3 / full-S3 / H3 editor
+
+Status reconciled 2026-09-12. This section supersedes historical milestones
+below. Implementation details and acceptance criteria:
+[THREE_GEOMETRY_MILESTONE.md](docs/engineering/THREE_GEOMETRY_MILESTONE.md).
+
+- [x] E3/full-S3 connected GPU preview with transported motion and camera,
+  entity/portal property editing, atomic refusal, undo/redo and JSON persistence.
+- [x] Experimental bounded H3 CPU metric, ball/aperture queries, connected sight
+  and movement; reviewed independent sampled audits through MUSE-71.
+- [x] Saved E3 -> full S3 -> H3 fixture, antipode passage and return route.
+- [x] Explicit H3 editor-model policy retained through edit/load/history,
+  preserving player pose and camera. This is not H3 GPU admission.
+- [x] Document editor launch and higher-resolution preview choices in README.
+- [ ] Finish review of the partial H3 GPU repair, run real-GPU and SwiftShader
+  readback, inspect images and measure frame distributions. Claude stopped at
+  session quota; draft remains isolated. First real/software GPU runs completed:
+  331 extra refusals per backend, including191 CPU hits. Refine refusal bands
+  with verified error analysis before admission. See docs/qa/h3-first-gpu-review.md.
+- [ ] Expose the three-geometry fixture through the existing editor/preset UI
+  only after GPU verification; validate full edit/save/load/traverse workflow.
+- [ ] Polish that level: useful architecture/scale cues, reliable contact,
+  reduced numerical refusal pixels and appealing materials. Do not hide unknown
+  rays as confident hits/misses. Measure high-resolution cost before defaults.
+- [ ] Finish primary-source/code/license review of MUSE-72 before code reuse.
+- [ ] After visible acceptance: direct manipulation/snapping, then further
+  geometry/topology adapters through verified capabilities. Curved interfaces
+  and transition metrics are future work; see CURVED_INTERFACES_AND_TRANSITIONS.md.
+
+Evidence counts live in dated review reports, not this checklist. Update this
+section when a milestone lands; keep assignments in MUSE_TASKS and recovery
+details in NEXT_SESSION rather than letting those replace roadmap updates.
+
+## Earlier milestones and retained backlog
 
 - [x] First S3 authored-floor walking: intrinsic gravity/support, transported
   camera with local horizon, jump, bounded integration, editor mode selector and
@@ -25,18 +58,19 @@ The previous backlog is preserved in
 - [x] Independent composed-query audit (MUSE-52) and connected CPU diagnostic
   images reviewed. Chart exits remain explicitly unresolved.
 - [x] Whole-segment S3 cell exclusion helper and mathematical contract.
-- [ ] Claude classifier integration and independent helper audit (MUSE-53),
-  then GPU precision/traversal review. Numerical screening is not formal
-  certification. Do not render unresolved candidates as hits.
+- [x] Independent helper audit MUSE-53 accepted; see docs/qa/muse-log.md.
+  Connected E3/S3 GPU implementation is now working. H3 precision/traversal
+  review remains open in the current milestone; screening is not formal proof.
 
 Current lead handoff: [NEXT_SESSION.md](docs/engineering/NEXT_SESSION.md).
 Region-owned motion is implemented under
 [REGION_MOTION_CONTRACT.md](docs/engineering/REGION_MOTION_CONTRACT.md), with
 [Claude's current assignment](docs/engineering/CLAUDE_NEXT.md).
 The CPU motion coordinator, correction resumption and first single-floor S3
-walking policy are implemented and audited. The editor renders one region;
-connected CPU sight now classifies S3 Boolean hits. Connected GPU rendering and
-cross-region walking support remain separate work, not completed gameplay.
+walking policy are implemented and audited. The connected editor now renders
+E3/full-S3 portal chains and supports flight; general cross-region walking and
+H3 GPU admission remain separate work. The bounded S3 room editor also remains
+a reference for authored-floor walking and Boolean architecture.
 Use [TASK_ROUTER.md](docs/engineering/TASK_ROUTER.md) for focused reading.
 
 - [x] Fix the confirmed Sol/SL2R K-key fallback that creates hidden H3 course
@@ -73,9 +107,8 @@ Use [TASK_ROUTER.md](docs/engineering/TASK_ROUTER.md) for focused reading.
   disagree. Godot's adapter rejects planes until it implements them.
 - [ ] Teach `experiments/godot/ball_document.gd` about planes, so both hosts
   accept the same documents again. Shared conformance cases first (MUSE-09).
-- [ ] Curved balls: an H3/S3 `space` (step, transport, project) plus metric
-  distance/normal. The solver is already written against that interface;
-  `e3Space().transport` is the identity and curved spaces MUST override it.
+- [x] Curved CPU balls: H3/S3 metric advancement, transport, distance and normals.
+  H3 GPU support is tracked in the current milestone above.
 - [x] Selection and more than one entity, so the editor authors a scene rather
   than a single ball: entity list, per-kind inspector, add and delete, with
   balls and planes reaching the shader as arrays under a uniform count rather

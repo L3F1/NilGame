@@ -1,5 +1,11 @@
 # Fresh-chat handoff for Astra
 
+2026-09-12 newest: first real-GPU and SwiftShader draft readback completed,
+NOT admitted. Both:23569 rays/13views,0 checked answer disagreements,331 extra
+refusals including191 CPU hits. Read docs/qa/h3-first-gpu-review.md. Draft still
+isolated; next task is stable/error-bounded H3 query precision, not just booting
+the probe. TODO.md now has reconciled current milestone; update it as work lands.
+
 Latest override, 2026-09-12: Claude repair stopped at session quota (not running).
 Partial files plus lead pending-foreground fix preserved in run
 2026-09-12T04-47-57-924Z-a0051ef0/claude-h3-gpu-repair/checkout. Read final section
