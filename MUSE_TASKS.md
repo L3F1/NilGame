@@ -68,24 +68,13 @@ batch only -- the order line, the "what changed" note, and the open tasks --
 and is replaced wholesale when the queue turns over. Three stale order lines
 had accumulated before anyone noticed, each naming a different task as first.
 
-Order: review MUSE-72 research. MUSE-71 accepted; see docs/qa/muse-log.md.
-
-## MUSE-72 - READY FOR REVIEW
-
-Delivered run2026-09-12T04-27-14-201Z-b8cb8cc5, base4b75b3a.
-File in its checkout: docs/research/geometry-implementation-sources.md.
-Primary-source shortlist inspected; source-file specificity and license claims
-still require lead review before integration or code reuse. Do not redispatch.
-Claude's initial H3 GPU draft was returned for changes (h3-gpu-lead-review.md).
-claude-h3-gpu-repair stopped at session quota; do not dispatch more Claude work
-until availability is renewed. Lead integrated the repaired draft behind opt-in
-with stable ball spans and GPU readback: see docs/qa/h3-stable-span-review.md.
-Do not resume the obsolete clone; broader precision and H3 material work remain.
-
+MUSE-72 review completed with corrections; see docs/research/geometry-implementation-sources.md.
 
 ## MUSE-76: renderer startup stage evidence
 
-Status: QUEUED, Muse, 2026-09-12; isolated checkout after lead commit.
+Status: BLOCKED by provider quota, 2026-09-12. Run2026-09-12T08-25-00-641Z-8e438a3a
+returned429, no changed files/report; provider says reset2026-09-14T00:00:00Z.
+Do not automatically retry before quota is available.
 
 Add optional startup/first-draw stage callbacks and check-only stage reporting.
 A stage is diagnostic evidence, never a final report or proof of stall cause.

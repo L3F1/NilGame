@@ -66,7 +66,11 @@ below. Implementation details and acceptance criteria:
 - [ ] Polish that level: useful architecture/scale cues, reliable contact,
   reduced numerical refusal pixels and appealing materials. Do not hide unknown
   rays as confident hits/misses. Measure high-resolution cost before defaults.
-- [ ] Finish primary-source/code/license review of MUSE-72 before code reuse.
+- [x] Review MUSE-72 primary sources/code/licenses; corrected index at
+  docs/research/geometry-implementation-sources.md. No external code imported.
+- [ ] Before selecting external code: resolve PLM/WLU license provenance or
+  a GPL compatibility plan as applicable; BSD black-hole files are a separate
+  future candidate, not a portal-renderer replacement.
 - [ ] After visible acceptance: direct manipulation/snapping, then further
   geometry/topology adapters through verified capabilities. Curved interfaces
   and transition metrics are future work; see CURVED_INTERFACES_AND_TRANSITIONS.md.

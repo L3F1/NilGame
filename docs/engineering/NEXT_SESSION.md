@@ -6,6 +6,9 @@ Read WORKING_RULES.md, then the relevant TASK_ROUTER.md row only.
 
 ## Next task
 
+Read RENDERER_COMPARISON.md: reuse old specialization/CPU packing where valid;
+the new renderer need not remain monolithic or exclusively analytic.
+
 After80392df: E3 primary ray bounds now complete the CPU camera -> E3/S3
 transfer -> S3 ball coefficient chain. Read docs/qa/primary-ray-review.md.
 All19200 live entry-view primary directions enclosed on both GPU backends.
@@ -29,7 +32,7 @@ changing that call. Root/order intervals must not be collapsed to points.
 
 MUSE-74 corrected revision accepted; no redispatch. MUSE-75 accepted:34 nominal /102 perturbations /14 honest rim refusals,
 zero-error mutation caught. MUSE-76 instruments startup stages; see bridge status.
-MUSE-72 source/license review remains pending. Claude remains quota limited.
+MUSE-72 completed with corrections; read docs/research/geometry-implementation-sources.md only before selecting outside code. Claude remains quota limited.
 Census runs through page-check --three-geometry [--sw]; preserve diagnostic colors.
 
 ## Current evidence and limits
@@ -53,8 +56,8 @@ Census runs through page-check --three-geometry [--sw]; preserve diagnostic colo
 
 ## Coordination and durable traps
 
-MUSE-73 accepted with lead corrections; MUSE-72 research awaits source/license
-review in its isolated checkout. No duplicate dispatch. Claude remains quota
+MUSE-73 accepted. MUSE-72 review complete with explicit PLM/WLU copying gates.
+MUSE-76 failed429 quota, no delivery; do not redispatch before availability. No duplicate dispatch. Claude remains quota
 limited until user renews availability. Run host-probe once each new session;
 use its current queue verdict, never historical worker PIDs.
 

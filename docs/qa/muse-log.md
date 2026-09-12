@@ -2965,3 +2965,12 @@ Base d9679fb; isolated run2026-09-12T07-54-52-608Z-f2ac959b. Lead reviewed and
 reran34 nominal /102 perturbed enclosures,14 honest rim refusals; zero-error
 mutation fails at perturbed distance containment. Test/report imported only.
 Sampling is not a portable GPU or whole-scene proof. See muse75-primary-transfer.md.
+
+
+## MUSE-72 - ACCEPTED with lead corrections, 2026-09-12
+
+Research only. HyperRogue is technical portal/rendering precedent, GPLv2-or-later;
+Curved Spaces source/license verified, also GPLv2-or-later. Bruneton's exact
+shader files and BSD terms inspected. PLM/WLU copying permission unverified.
+Corrected durable index: docs/research/geometry-implementation-sources.md.
+No code imported. Historical READY/unknown-source notes above are superseded.
