@@ -30,7 +30,9 @@ motion cost checks. Fixed eligibility is now precomputed per world; no measured
 speedup claimed, and default-off refinement remains experimental.
 Baseline-only resize/timing invariance now checked separately. Issue remains
 open; Claude report reviewed with corrected diagnostic semantics. Next bounded
-experiment: docs/qa/claude-distance-drift-review.md lead review.
+experiment completed: two cold hardware runs, sixteen stable samples. Evidence
+in docs/qa/distance-drift-capture.json; no fix claimed. Stop identical reruns;
+next measure sustained-motion cost with strict parity, retaining capture.
 Non-E3 camera regions skip the inapplicable pass. Near-tangent scheduling trial
 rejected (small timing benefit, hardware settled-distance regression); keep
 the diagnostic and do not weaken equality checks. See live-miss-pass-review.md

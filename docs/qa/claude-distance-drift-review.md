@@ -56,3 +56,33 @@ retain the open issue rather than run a broad compiler-variant sweep.
 52bf179 already adds the off/off resize guard missing from Claude's bd25fe3
 checkout. No runtime edits or new browser/full-suite runs in this review.
 Host probe confirms browser work must use the queue.
+
+## Bounded capture result (2026-09-12)
+
+Implemented capture in the existing live-pass browser check, without editing
+either shader. Debug evidence can now explicitly draw with refinement off;
+optional per-pixel candidate readback records the tag and mask. Existing
+settled-pixel comparisons are unchanged. The renderer API comment now describes
+its legacy accepted count as final-active, not ever-accepted.
+
+Two cold queue runs on LeoPC / RTX 5070 Ti / ANGLE D3D11 passed. Both retained
+34 recovered fringes. All sixteen alternating samples at (6,43), 160x120,
+range64, had distance2.594223976135254 and the same primary ray; every debug
+read had finalActive=0 and omissions=0. On-draw candidate texels were all zero.
+This does not establish what happened during the historical failures.
+
+Durable evidence: [distance-drift-capture.json](distance-drift-capture.json),
+including exact source/world hashes, pose, hardware and draw sequence. Local
+logs: .agent-bridge/drift-capture-real1.log and drift-capture-real2.log.
+Readback fields come from separate invocations. Off-draw candidate textures
+can be stale and are deliberately not reported as current certificates.
+
+No further cold runs or shader variants: the agreed stop condition was reached.
+The issue remains OPEN. Retain capture for the next naturally occurring failure;
+do not spend another session repeating identical cold runs. Next bounded task:
+assess sustained-motion cost of the opt-in pass at playable resolution, keeping
+strict settled-answer parity and default-off admission. AA remains unsupported.
+
+Validation: node tools/test.js passed136/136 suites on LeoPC (log
+.agent-bridge/drift-capture-suite.log); git diff --check passed. No visual
+repair claimed and no tests relaxed.

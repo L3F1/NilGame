@@ -420,13 +420,38 @@ try {
         return {width,height,drawFinishCallMs:quantiles(wall),gpuMs:quantiles(renderer.times),
           gpuStatus:!renderer.timerSupported?'unsupported':renderer.times.length?'measured':'unavailable'};
       };
+      // Diagnostic-only captures: every channel is a SEPARATE invocation. Keep
+      // both shader sources unchanged while isolating the intermittent drift.
+      const captureDrift=async(index,reason)=>{
+        const rows=[];
+        for(let k=0;k<8;k++){
+          const sphericalMissPass=!!(k%2),options={sphericalMissPass};
+          const packet=renderer.read(state,width,height,options);
+          const primary=renderer.readPrimaryRays(state,width,height,options).map(v=>v[index]);
+          const debug=renderer.readMissPass(state,width,height,{...options,certificatePixel:index});
+          rows.push({sphericalMissPass,status:[...packet.pixels.slice(4*index,4*index+4)],
+            distance:packet.distances[index],primary,finalActive:debug.bytes[4*index],
+            cumulativeOmissions:debug.bytes[4*index+1],debugStatus:debug.bytes[4*index+2],
+            passStatus:debug.status,candidate: sphericalMissPass?debug.candidates.sample:null});
+        }
+        const {CONNECTED_FRAGMENT}=await import('../engine/geometry/connected-shader.js');
+        const {SPHERICAL_MISS_PASS_FRAGMENT}=await import('../engine/geometry/spherical-miss-pass-glsl.js');
+        const hash=async text=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))),b=>b.toString(16).padStart(2,'0')).join('');
+        return {reason,pixel:[index%width,Math.floor(index/width)],width,height,range:maxDistance,
+          state,hardware:renderer.hardware,revision:renderer.missPass.revision,
+          mainShader:await hash(CONNECTED_FRAGMENT),passShader:await hash(SPHERICAL_MISS_PASS_FRAGMENT),
+          packedWorld:await hash(JSON.stringify(Array.from(renderer.packed.texture))),
+          sequence:'before160 -> timing320 -> baselineAgain160 -> refined160 -> timing320 (unless baseline failed) -> eight alternating160 reads; packet(debug1,2,3), primary(debug4..7), evidence(debug8)',
+          separateInvocations:true,rows};
+      };
       const before=renderer.read(state,width,height);
       const beforeShot=(renderer.draw(state,{width,height}),canvas.toDataURL());
       const baselineCost=await frameCost({});
       const baselineAgain=renderer.read(state,width,height);
       for(let i=0;i<width*height;i++)if(before.pixels[4*i]!==2&&before.distances[i]!==baselineAgain.distances[i]){
+        const capture=await captureDrift(i,'baseline-drift');
         const primaryAgain=renderer.readPrimaryRays(state,width,height);
-        throw Error(`Unrefined baseline drift after resize/timing at ${i%width},${Math.floor(i/width)}: distance ${before.distances[i]} -> ${baselineAgain.distances[i]}, repeated primary ${primaryAgain.map(v=>v[i])}`);
+        throw Error(`Unrefined baseline drift after resize/timing at ${i%width},${Math.floor(i/width)}: distance ${before.distances[i]} -> ${baselineAgain.distances[i]}, repeated primary ${primaryAgain.map(v=>v[i])}; capture ${JSON.stringify(capture)}`);
       }
       checks.push('Unrefined settled distances remain identical after the320x240 timing/resize sequence');
       const after=renderer.read(state,width,height,{sphericalMissPass:true});
@@ -439,6 +464,7 @@ try {
         counters:renderer.missPass.stats,certificatePixels:evidence.candidates,
         acceptedPixels:evidence.accepted,certificateOmissions:evidence.omissions,
         recoveredPixels:0,cpuDisagreements:0,changedStatus:0,baselineCost,passCost};
+      record.driftCapture=await captureDrift(43*width+6,'standing-witness');
       for(let i=0;i<width*height;i++){
         const was=before.pixels.slice(4*i,4*i+4),now=after.pixels.slice(4*i,4*i+4);
         if(was.every((v,k)=>v===now[k])&&before.distances[i]===after.distances[i])continue;
@@ -447,7 +473,7 @@ try {
           const primary=options=>renderer.readPrimaryRays(state,width,height,options).map(values=>values[i]);
           const off=primary({sphericalMissPass:false}),on=primary({sphericalMissPass:true});
           const repeatedOff=renderer.read(state,width,height).distances[i];
-          throw Error(`Live miss pass changed a settled pixel ${i%width},${Math.floor(i/width)}: ${[...was]} -> ${[...now]}, distance ${before.distances[i]} -> ${after.distances[i]}, repeated off ${repeatedOff}, primary ${off} -> ${on}`);
+          throw Error(`Live miss pass changed a settled pixel ${i%width},${Math.floor(i/width)}: ${[...was]} -> ${[...now]}, distance ${before.distances[i]} -> ${after.distances[i]}, repeated off ${repeatedOff}, primary ${off} -> ${on}; capture ${JSON.stringify(record.driftCapture)}`);
         }
         if(now[0]===2)continue;
         record.recoveredPixels++;

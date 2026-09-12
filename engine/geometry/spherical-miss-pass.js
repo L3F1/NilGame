@@ -156,7 +156,7 @@ export function createSphericalMissPass(gl){
   // Candidate evidence: how many pixels the pass itself certified, and how many
   // surface bits it set, for the certificates currently in the attachments. Read
   // only; it restores the default framebuffer and never feeds the main draw.
-  function readCertificates(width,height){
+  function readCertificates(width,height,pixel){
     if(!framebuffer||!sized||sized.width!==width||sized.height!==height)
       return {pixels:0,certified:0,surfaces:0,status:'unavailable'};
     const data=new Uint32Array(width*height*4);
@@ -173,7 +173,8 @@ export function createSphericalMissPass(gl){
       if(data[4*i+3]!==SPHERICAL_MISS_CERTIFICATE_TAG||data[4*i]===0)continue;
       certified++;surfaces+=bits(data[4*i+1])+bits(data[4*i+2]);
     }
-    return {pixels:width*height,certified,surfaces,status:'read'};
+    return {pixels:width*height,certified,surfaces,status:'read',
+      ...(Number.isInteger(pixel)&&pixel>=0&&pixel<width*height?{sample:[...data.slice(4*pixel,4*pixel+4)]}:{})};
   }
   function dispose(){
     if(disposed)return;disposed=true;invalidate('disposed');

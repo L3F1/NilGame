@@ -124,18 +124,19 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
     draw(state,{...options,width,height,debug:0});const pixels=new Uint8Array(width*height*4);
     gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);return pixels;
   }
-  // Exclusion evidence for check mode: per pixel, whether the main program
-  // ACCEPTED a certificate at its first transfer and how many primitives that
-  // certificate omitted. Distinct from the pass's own candidate count, which is
-  // read from the certificate texture; the gap between them is the identity
-  // rejections (wrong portal, differing transfer result).
+  // Debug 8 evidence comes from its OWN draw, not the preceding distance draw.
+  // Legacy 'accepted' counts certificates still ACTIVE at trace termination;
+  // subsequent crossings clear that flag, but do not clear cumulative omissions.
+  // Candidate-minus-active is therefore NOT an identity-rejection count.
+  // Default on; diagnostics may explicitly request off. Off candidate textures
+  // may be stale and must not be interpreted as evidence for the off draw.
   function readMissPass(state,width=16,height=12,options={}){
-    draw(state,{...options,width,height,debug:8,antialias:false,sphericalMissPass:true});
+    draw(state,{sphericalMissPass:true,...options,width,height,debug:8,antialias:false});
     const bytes=new Uint8Array(width*height*4);
     gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,bytes);
     let accepted=0,omissions=0,pixels=0;
     for(let i=0;i<width*height;i++){accepted+=bytes[4*i]?1:0;omissions+=bytes[4*i+1];pixels++;}
-    return {status:missStatus,accepted,omissions,pixels,candidates:missPass.readCertificates(width,height),bytes};
+    return {status:missStatus,accepted,omissions,pixels,candidates:missPass.readCertificates(width,height,options.certificatePixel),bytes};
   }
   const info=gl.getExtension('WEBGL_debug_renderer_info');
   return {draw,read,readPrimaryRays,readColor,replaceWorld,readMissPass,

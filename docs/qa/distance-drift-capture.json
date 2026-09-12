@@ -1,0 +1,491 @@
+{
+  "base": "2466a61",
+  "workingChanges": [
+    "app/connected-global-preview.js",
+    "engine/geometry/connected-renderer.js",
+    "engine/geometry/spherical-miss-pass.js"
+  ],
+  "command": "node tools/check-queue.js page-check --three-geometry --timeout=90",
+  "captures": [
+    {
+      "run": 1,
+      "recovered": 34,
+      "reason": "standing-witness",
+      "pixel": [
+        6,
+        43
+      ],
+      "width": 160,
+      "height": 120,
+      "range": 64,
+      "state": {
+        "regionId": "flat",
+        "radius": 0.25,
+        "camera": {
+          "forward": [
+            0,
+            1,
+            0
+          ],
+          "right": [
+            1,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        "position": [
+          0,
+          -2,
+          0
+        ],
+        "velocity": [
+          -3.8081180088451366e-17,
+          -4,
+          4.328614462555115e-30
+        ]
+      },
+      "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "revision": 5,
+      "mainShader": "979b203cb1354f9083a9419ad5b5222ff3ed16272d68f440db1c8d2fc2922859",
+      "passShader": "04d3f823cbddf462cb291a42d2b2d36fb6c731de02b74c22c7bf23d377c34c11",
+      "packedWorld": "aaafb2a7c70d9a914812894ce719eb288fcc90502a80115d79b324191e4b408f",
+      "sequence": "before160 -> timing320 -> baselineAgain160 -> refined160 -> timing320 (unless baseline failed) -> eight alternating160 reads; packet(debug1,2,3), primary(debug4..7), evidence(debug8)",
+      "separateInvocations": true,
+      "rows": [
+        {
+          "sphericalMissPass": false,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "disabled",
+          "candidate": null
+        },
+        {
+          "sphericalMissPass": true,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "generated",
+          "candidate": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "sphericalMissPass": false,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "disabled",
+          "candidate": null
+        },
+        {
+          "sphericalMissPass": true,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "generated",
+          "candidate": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "sphericalMissPass": false,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "disabled",
+          "candidate": null
+        },
+        {
+          "sphericalMissPass": true,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "generated",
+          "candidate": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "sphericalMissPass": false,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "disabled",
+          "candidate": null
+        },
+        {
+          "sphericalMissPass": true,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "generated",
+          "candidate": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "recovered": 34,
+      "reason": "standing-witness",
+      "pixel": [
+        6,
+        43
+      ],
+      "width": 160,
+      "height": 120,
+      "range": 64,
+      "state": {
+        "regionId": "flat",
+        "radius": 0.25,
+        "camera": {
+          "forward": [
+            0,
+            1,
+            0
+          ],
+          "right": [
+            1,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        "position": [
+          0,
+          -2,
+          0
+        ],
+        "velocity": [
+          -3.8081180088451366e-17,
+          -4,
+          4.328614462555115e-30
+        ]
+      },
+      "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "revision": 5,
+      "mainShader": "979b203cb1354f9083a9419ad5b5222ff3ed16272d68f440db1c8d2fc2922859",
+      "passShader": "04d3f823cbddf462cb291a42d2b2d36fb6c731de02b74c22c7bf23d377c34c11",
+      "packedWorld": "aaafb2a7c70d9a914812894ce719eb288fcc90502a80115d79b324191e4b408f",
+      "sequence": "before160 -> timing320 -> baselineAgain160 -> refined160 -> timing320 (unless baseline failed) -> eight alternating160 reads; packet(debug1,2,3), primary(debug4..7), evidence(debug8)",
+      "separateInvocations": true,
+      "rows": [
+        {
+          "sphericalMissPass": false,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "disabled",
+          "candidate": null
+        },
+        {
+          "sphericalMissPass": true,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "generated",
+          "candidate": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "sphericalMissPass": false,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "disabled",
+          "candidate": null
+        },
+        {
+          "sphericalMissPass": true,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "generated",
+          "candidate": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "sphericalMissPass": false,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "disabled",
+          "candidate": null
+        },
+        {
+          "sphericalMissPass": true,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "generated",
+          "candidate": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "sphericalMissPass": false,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "disabled",
+          "candidate": null
+        },
+        {
+          "sphericalMissPass": true,
+          "status": [
+            1,
+            1,
+            2,
+            0
+          ],
+          "distance": 2.594223976135254,
+          "primary": [
+            -0.6442145109176636,
+            0.7510479092597961,
+            -0.14461958408355713,
+            0
+          ],
+          "finalActive": 0,
+          "cumulativeOmissions": 0,
+          "debugStatus": 1,
+          "passStatus": "generated",
+          "candidate": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}

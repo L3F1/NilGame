@@ -16,17 +16,18 @@ REJECTED: little timing benefit and repeatable settled-distance change on the
 hardware backend; see live-miss-pass-review.md. Do not revive it as accepted.
 Fixed eligibility/group scanning is now precomputed per packed world and
 updated transactionally on edits. No measured frame-rate benefit claimed.
-Next: isolate the intermittent hardware settled-distance difference at(6,43)
-before further precision/performance changes; diagnostics now repeat primary
-rays and baseline distance on failure. See eligible-owners logs in the review.
+Keep the intermittent hardware distance difference at(6,43) open; no further
+precision/performance algorithm changes before isolation. Measuring the existing
+path during movement is allowed and may supply a new reproduction.
 Claude's report-only investigation is reviewed in
 docs/qa/claude-distance-drift-review.md, including a required lead correction:
 debug 8 red is final-active, not ever-accepted; do not use zero to exclude prior
-refinement. Next experiment is specified there (two cold runs maximum).
+refinement. Two cold runs now captured all sixteen alternating samples without drift;
+see distance-drift-capture.json in docs/qa. Stop repeating unchanged cold runs.
 The off/off resize guard already landed at52bf179; no reproduction/fix yet.
 No external agents are running; do not redispatch the completed manifest.
-Then AA/sample policy and sustained movement
-cost checks. Do not enable globally from a single view. Do not embed interval
+Next: sustained movement cost at playable resolution with strict parity;
+retain diagnostic capture for a naturally recurring failure. Then AA/sample policy. Do not enable globally from a single view. Do not embed interval
 arithmetic in the main shader (prior300s/60s no-report failures).
 
 New raster experiment: at320x240, one portal/ball GPU pass p95~.023ms RTX5070Ti
