@@ -72,7 +72,11 @@ Order: MUSE-67. MUSE-66 accepted; see docs/qa/muse-log.md.
 
 ## MUSE-67 — OPEN: independent H3 ball queries
 
-Assignment/allowed files: tools/agent-bridge-tasks.json, muse67-h3-balls.
+Assignment/allowed files: tools/agent-bridge-tasks.json, muse67-h3-balls-revision.
+Review: CHANGES REQUESTED. Dense-scan misses are sampled evidence, not certified
+misses; reference shares metric adapter operations. Correct the perpendicular
+offset claim and supply the missing isolated fail-demo. Original deliverables
+remain in bridge run 2026-09-12T02-46-12-010Z-78518eca; not integrated.
 Independent ray/normal expectations, especially near tangency and domain/range
 limits. Report false confident answers before coverage. No production repairs,
 scene integration or full suite. Focused Node only.

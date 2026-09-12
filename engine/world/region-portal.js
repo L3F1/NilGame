@@ -49,7 +49,7 @@ export function compileFramedPortals(connections,anchors,playerRadius) {
     space.validatePoint(center);space.validateTangent(center,normal);space.validateTangent(center,up);
     if(Math.abs(space.norm(center,normal)-1)>1e-8||Math.abs(space.norm(center,up)-1)>1e-8||Math.abs(space.dot(center,normal,up))>1e-8)throw Error('Aperture frame must be orthonormal');
     if(!Number.isFinite(anchor.radius)||anchor.radius<=0)throw Error('Invalid aperture radius');
-    const basis=space.frame(center),u=basis.map(e=>dot(up,e)),n=basis.map(e=>dot(normal,e)),r=cross(u,n);
+    const basis=space.frame(center),u=basis.map(e=>space.dot(center,up,e)),n=basis.map(e=>space.dot(center,normal,e)),r=cross(u,n);
     const right=center.map((_,i)=>basis.reduce((s,b,j)=>s+b[i]*r[j],0));
     entities.set(anchor.id,{entity:{id:anchor.id,regionId:anchor.regionId,radius:anchor.radius},space,
       center:center.slice(),normal:normal.slice(),up:up.slice(),right});
@@ -68,7 +68,7 @@ export function compileFramedPortals(connections,anchors,playerRadius) {
     if(ends[0].entity.radius!==ends[1].entity.radius)throw Error('Aperture radii must match');
     for(let i=0;i<2;i++) {
       const a=ends[i],b=ends[1-i];
-      const fromFrame=v=>[-dot(v,a.right),dot(v,a.up),-dot(v,a.normal)];
+      const fromFrame=v=>[-a.space.dot(a.center,v,a.right),a.space.dot(a.center,v,a.up),-a.space.dot(a.center,v,a.normal)];
       const toFrame=v=>b.center.map((_,j)=>v[0]*b.right[j]+v[1]*b.up[j]+v[2]*b.normal[j]);
       portals.push(Object.freeze({id:connection.id,fromId:a.entity.id,toId:b.entity.id,
         fromRegionId:a.entity.regionId,toRegionId:b.entity.regionId,

@@ -43,3 +43,24 @@ plus bodyRadius. A negative clearance outside the uncertainty band is a miss;
 rim ambiguity is unresolved. Domain-before-root yields unresolved/domain-exit;
 requested range strictly before all events can miss. No portal transit/camera
 mapping, schema admission, renderer work or host motion changes in this helper.
+
+## Consumer integration gate
+
+Current portal consumers accept hit-or-null, not the helper's three outcomes.
+Never adapt unresolved to null, or treat its distance as a confirmed crossing.
+Before integration, define an earliest-uncertainty distance: a finite lower bound
+in physical arclength before which this aperture cannot affect this query. If
+no such bound is established, use zero. A numerical root estimate alone is not
+that bound. No new metadata may upgrade the existing heuristic guards to proofs.
+
+A definite solid or portal can win only when strictly before every competing
+uncertainty bound (including tie tolerance). Otherwise return unresolved, retain
+the responsible aperture/region and reason, and perform no speculative transit.
+Domain-exit uncertainty must not conceal a definitely nearer solid. Movement
+may consume only an independently certified safe prefix; do not spend remaining
+time or create correction debt by treating uncertainty as a contact normal.
+
+Required consumer regressions: a near solid before remote uncertainty, unknown
+at the origin, uncertainty tied with a portal/domain event, reversed portal
+array order, and preservation of movement time/state on refusal. These are
+future integration requirements, not claims about the currently gated runtime.

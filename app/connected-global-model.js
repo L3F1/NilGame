@@ -9,7 +9,6 @@ import {patchConnectedEntities,addConnectedBall,removeConnectedBall,addConnected
 
 export const GLOBAL_FLIGHT_SPEED=4;
 export const GLOBAL_PITCH_LIMIT=1.5;
-const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
 const onAperture=(world,id,p)=>world.portals.some(g=>g.fromRegionId===id&&Math.abs(g.signedHeight(p))<1e-4
   &&world.regions.get(id).space.distance(g.center,p)<g.radius+1e-4);
 
@@ -26,11 +25,11 @@ export function createConnectedGlobalPreview(document,{installWorld=()=>{}}={}){
   // camera axes before a move are reapplied to the solver's returned axes, so
   // it follows the net linear frame map of the actual motion, portals included.
   function carryReference(before,after){
-    const k=[before.forward,before.up,before.right].map(v=>dot(referenceUp,v));
+    const k=[before.forward,before.up,before.right].map(v=>before.space.dot(before.position,referenceUp,v));
     const p=after.position,space=after.space;
     return space.normalize(p,after.forward.map((x,i)=>k[0]*x+k[1]*after.up[i]+k[2]*after.right[i]));
   }
-  function elevation(){return Math.asin(Math.max(-1,Math.min(1,dot(state.camera.forward,referenceUp))));}
+  function elevation(){return Math.asin(Math.max(-1,Math.min(1,state.camera.space.dot(state.position,state.camera.forward,referenceUp))));}
   function look({yaw=0,pitch=0}={}){
     if(!Number.isFinite(yaw)||!Number.isFinite(pitch))throw Error('Look angles must be finite');
     const {space,position:p,forward,right}=state.camera,up=referenceUp,e=elevation();
@@ -131,7 +130,7 @@ export function createConnectedGlobalPreview(document,{installWorld=()=>{}}={}){
     if(halted)return;
     look(angles);
     const c=state.camera,raw=c.forward.map((x,i)=>c.right[i]*wish[0]+x*wish[1]+referenceUp[i]*wish[2]);
-    const n=Math.hypot(...raw);
+    const n=c.space.norm(state.position,raw);
     if(n===0){state={...state,velocity:state.velocity.map(()=>0)};return;}
     move(raw.map(x=>x/n),GLOBAL_FLIGHT_SPEED*Math.min(1,Math.hypot(...wish)),Math.min(.04,dt));
   }

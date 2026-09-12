@@ -29,12 +29,15 @@ radial coordinates. Region extent is a numerical coverage limit, not a wall.
 - camera-frame.js has been converted to adapter-owned ambient pairing for drift
   repair and validated metric dot for tangent frame coefficients. Tested H3
   cameras now retain aim, orientation and transported holonomy off origin.
-- region-portal.js uses raw dot for construction coefficients, plane height,
-  and ray roots; every non-E3 root formerly took the S3 branch. It now explicitly
-  refuses unsupported kinds. Frame coefficients need metric dot; plane height
-  and first entering root need geometry-owned implementations with range limits.
-- connected-global-model.js uses raw dot for reference-up coefficients and
-  elevation. Move these to the point's metric; norm(raw) must also be intrinsic.
+- region-portal.js now uses metric dot for construction/transit frame coefficients.
+  Plane height and first entering root still implement E3/S3 only; the explicit
+  unsupported-kind gate stays until H3 queries and refusal propagation land.
+- connected-global-model.js now uses the point's metric for reference-up,
+  elevation and movement normalization. This preserves current E3/S3 behavior;
+  it does not admit H3 worlds.
+- region-motion.js and region-sight.js consume crossing as hit-or-null. They
+  must preserve unresolved aperture results and order uncertainty against nearer
+  solids/domain events before H3 admission. See H3_QUERY_CONTRACT.md.
 - scene fields, query normals, GPU packing/shaders and finite-domain crossing
   need explicit H3 capabilities. Search all flat-versus-curved branches before
   extending schema acceptance. Do not make unknown kinds inherit S3 behavior.
