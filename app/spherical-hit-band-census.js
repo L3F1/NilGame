@@ -2,7 +2,8 @@ import {e3PrimaryRayBounds} from '../engine/geometry/primary-ray-bounds.js';
 import {e3S3TransferBounds} from '../engine/geometry/portal-transfer-bounds.js';
 import {sphericalBallRootBounds,sphericalRootBounds,sphericalBallExterior} from '../engine/geometry/spherical-root-bounds.js';
 import {selectAdditiveEntry} from '../engine/geometry/additive-event-order.js';
-import {interval,enclose,dot as float32Dot} from '../engine/geometry/float32-interval.js';
+import {interval,enclose,dot as float32Dot,add,sub,mul,div,scale as scaleBand,plus,minus,
+  normalize,norm} from '../engine/geometry/float32-interval.js';
 import {traceRegionSight} from '../engine/world/region-sight.js';
 import {pixelDirection} from './connected-global-model.js';
 // Measurement only, for the recorded first-transfer sphere pixels the live
@@ -97,6 +98,60 @@ function orderEntry(balls,transfer,curvatureRadius,remaining,
     {maxDistance:remaining,outsideCertified:true});
   return {exterior,certified,minMargin,queries,entry};
 }
+
+// How much of the SHADING an ordered band actually settles. The band certifies
+// owner and order only; this asks the separate question the audit's section 3
+// raises - across everything still uncertain (the band AND the transfer box),
+// how far can the surface normal move?
+//
+// Trigonometry over the band needs no interval sine: |cos a - cos b| <= |a - b|
+// and likewise for sine, so the midpoint plus the half-width is a sound
+// enclosure over an interval this narrow. The reported diameter bounds
+// |n1 - n2| for any two normals in the box, and therefore bounds the change in
+// n . L for EVERY unit light direction, so it is a lighting-independent bound.
+function shadingSpread(transfer,band,center,curvatureRadius,source='both'){
+  try{
+    const collapse=box=>box.map(([lo,hi])=>interval((lo+hi)/2));
+    if(source==='ray')band={lower:(band.lower+band.upper)/2,upper:(band.lower+band.upper)/2};
+    if(source==='band')transfer={position:collapse(transfer.position),
+      direction:collapse(transfer.direction)};
+    const half=(band.upper-band.lower)/2,middle=(band.upper+band.lower)/2;
+    const angle=middle/curvatureRadius,reach=half/curvatureRadius;
+    const cosine=interval(Math.cos(angle)-reach,Math.cos(angle)+reach);
+    const sine=interval(Math.sin(angle)-reach,Math.sin(angle)+reach);
+    const point=plus(scaleBand(transfer.position,cosine),scaleBand(transfer.direction,sine));
+    const centerBox=center.map(v=>interval(v));
+    const radial=minus(centerBox,scaleBand(point,float32Dot(centerBox,point)));
+    const length=norm(radial);
+    if(length[0]<=0)return {status:'unresolved',reason:'normal-indeterminate'};
+    const unit=normalize(radial);
+    // Diameter of the normal box: an upper bound on the distance between any
+    // two normals it contains, hence on the Lambert difference under any light.
+    const diameter=Math.hypot(...unit.map(([lo,hi])=>hi-lo));
+    if(!Number.isFinite(diameter))return {status:'unresolved',reason:'normal-overflow'};
+    // Independent witness: the normals at the two band ends, evaluated directly
+    // with no interval machinery. A sound enclosure cannot be tighter than the
+    // distance between two normals it must contain.
+    const direct=t=>{
+      const middlePoint=mid(transfer.position).map((v,i)=>v*Math.cos(t/curvatureRadius)
+        +mid(transfer.direction)[i]*Math.sin(t/curvatureRadius));
+      const along=center.reduce((sum,v,i)=>sum+v*middlePoint[i],0);
+      const radial=center.map((v,i)=>v-along*middlePoint[i]);
+      const length=Math.hypot(...radial);
+      return radial.map(v=>v/length);
+    };
+    const ends=[direct(band.lower),direct(band.upper)];
+    const endpointChord=Math.hypot(...ends[0].map((v,i)=>v-ends[1][i]));
+    return {status:'bounded',diameter,endpointChord,
+      degrees:2*Math.asin(Math.min(1,diameter/2))*180/Math.PI,
+      // The renderer writes 8-bit colour, so the honest unit for "is the pixel
+      // decided" is how many of those 255 steps the normal can still move.
+      colourSteps:diameter*255};
+  }catch(error){
+    if(!/^interval-/.test(error.message))throw error;
+    return {status:'unresolved',reason:error.message};
+  }
+}
 export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60,
   inflations=[1,2,4,8,16,32,64,128,256,512,1024],
   allowances=[0,2**-24,2**-20,2**-16,2**-14,2**-12,2**-11,2**-10,2**-8,2**-6]}){
@@ -109,6 +164,7 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
   const cameraError={forward:[0,0,0],right:[0,0,0],up:[0,0,0]};
   const records=[],summary={flagged:0,cpu:{},entry:{},exteriorRefused:0,
     bandWidth:{min:Infinity,max:0},containsTracedRoot:0,missingTracedRoot:0,inflation:{},
+    shading:{maxDiameter:0,maxDegrees:0,maxColourSteps:0,unresolved:0},
     binary32:{entry:{},bandWidth:{min:Infinity,max:0},widening:{max:0},allowance:{}}};
   for(let y=0;y<height;y++)for(let x=0;x<width;x++){
     const direction=pixelDirection(source.space,pose.position,pose.camera,width,height,x,y);
@@ -153,9 +209,22 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
     // traced root is visible instead of averaged away.
     const tracedRoot=cpu.distance===null?null
       :[cpu.distance-transfer.distance[1],cpu.distance-transfer.distance[0]];
-    let containsTracedRoot=null,bandWidth=null;
+    let containsTracedRoot=null,bandWidth=null,shading=null;
     if(measured.entry.status==='entry'){
       bandWidth=measured.entry.upper-measured.entry.lower;
+      const owner=destination.balls.find(b=>b.id===measured.entry.owner).center;
+      shading=shadingSpread(transfer,measured.entry,owner,curvatureRadius);
+      // Which input still moves the normal: the root band, or the ray that
+      // reached it. Tightening the wrong one buys nothing.
+      for(const [key,only] of [['band','band'],['ray','ray']]){
+        const part=shadingSpread(transfer,measured.entry,owner,curvatureRadius,only);
+        shading[key]=part.status==='bounded'?part.diameter:part.reason;
+      }
+      if(shading.status==='bounded'){
+        summary.shading.maxDiameter=Math.max(summary.shading.maxDiameter,shading.diameter);
+        summary.shading.maxDegrees=Math.max(summary.shading.maxDegrees,shading.degrees);
+        summary.shading.maxColourSteps=Math.max(summary.shading.maxColourSteps,shading.colourSteps);
+      }else summary.shading.unresolved++;
       summary.bandWidth.min=Math.min(summary.bandWidth.min,bandWidth);
       summary.bandWidth.max=Math.max(summary.bandWidth.max,bandWidth);
       containsTracedRoot=!!tracedRoot&&tracedRoot[0]<=measured.entry.upper&&tracedRoot[1]>=measured.entry.lower;
@@ -214,7 +283,8 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
       exterior:{certified:measured.certified,minMargin:measured.minMargin,
         refused:measured.exterior.filter(e=>e.status!=='outside').map(e=>e.owner)},
       queries:measured.queries.map(q=>[q.owner,q.status,q.reason??'',q.events.length]),
-      entry:measured.entry,bandWidth,tracedRoot,containsTracedRoot,inflationLimit,inflationFailure,remaining});
+      entry:measured.entry,bandWidth,shading,tracedRoot,containsTracedRoot,
+      inflationLimit,inflationFailure,remaining});
   }
   if(summary.bandWidth.min===Infinity)summary.bandWidth.min=null;
   if(summary.binary32.bandWidth.min===Infinity)summary.binary32.bandWidth.min=null;

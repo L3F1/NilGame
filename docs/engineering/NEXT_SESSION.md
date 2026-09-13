@@ -27,7 +27,15 @@ SwiftShader 2.533e-7 / 6.755e-5, nothing lost, both clearing 2^-10 by 14.5x and
 by three orders at the coefficients the guarded pixels produce. Treat the pair
 as ONE ANGLE data point: the worst acos value is identical on both.
 
-Next: the LEAD decides the envelope route, since both are now open. Using
+The shading question is measured too. Enclosing the normal over the band AND
+the transfer box pins it to 2.11 degrees worst case - 9.4 of 255 colour steps,
+4 to 6 typically - and the ROOT BAND causes essentially all of it: the transfer
+box contributes 80x less, so tightening the transfer buys nothing here. About a
+third of that is enclosure slack; the two band-end normals are 0.0086 apart
+where the enclosure says 0.0292.
+
+Next: the LEAD decides the envelope route, since both are now open, and whether
+a normal pinned to about two degrees is enough to call a pixel decided. Using
 atan/acos is viable but must carry an admitted allowance constant (measured
 worst 6.8e-5 leaves room around 2^-12) as a conditional binary32 contract like
 SPHERICAL_CURVE_ERROR.md; no constant is baked in by this work. The alternative

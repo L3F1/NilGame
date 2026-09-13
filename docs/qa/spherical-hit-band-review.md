@@ -79,6 +79,10 @@ Each mutation below was applied to the working copy, run, and reverted:
 - The census no longer carrying its envelope inputs, which would leave the
   accuracy probe measuring only its own sweep:
   `Ordered pixel 78,31 never reaches the accuracy probe`.
+- The shading enclosure ignoring the band it is about, and then keeping the band
+  but dropping its trigonometric reach: `No independent normal witness at 78,31`
+  and `Shading enclosure 0.00036884662982047457 excludes its own band ends
+  0.00861205850746445 at 78,31`.
 - `phaseAllowance` dropped before the phase band, then `angleAllowance` dropped
   before the angular spread: `phaseAllowance did not widen the bands` and
   `angleAllowance did not widen the bands`. The first version of that check used
@@ -154,6 +158,38 @@ identical on both backends and falls at ratio 0, mid-range rather than near the
 tangency the guard fires on - the two ANGLE paths plausibly share that
 implementation, which is a reason to treat the pair as ONE data point about
 ANGLE, not two independent backends.
+
+## How much of the picture a band actually settles (same day)
+
+The audit's section 3 asks what an ordered band leaves undecided about the
+SHADING, and that is now measured rather than deferred. For each ordered entry
+the census encloses the surface normal over everything still uncertain - the
+whole band AND the transfer box - with binary32 intervals, using the Lipschitz
+bounds |cos a - cos b| <= |a - b| and the same for sine, so no interval
+trigonometry helper is introduced. The reported diameter bounds the distance
+between any two normals in the box, and therefore bounds the change in n . L for
+EVERY unit light direction: it is a lighting-independent number.
+
+| Quantity | Worst over the 14 ordered pixels |
+| --- | --- |
+| Normal enclosure diameter | 0.0369 |
+| Equivalent angular spread | 2.11 degrees |
+| Lambert term, in 8-bit colour steps | 9.41 of 255 |
+| From the root band alone | 0.0368 |
+| From the transfer box alone | 3.69e-4 |
+
+So a certified hit would settle the pixel's shading to within about nine colour
+steps in the worst case and four to six typically. The root band, not the ray
+that reached it, is responsible for essentially all of that: the transfer box
+contributes eighty times less. Tightening the transfer would buy nothing here,
+which is the opposite of what the band-width measurement alone suggests.
+
+Part of the nine steps is enclosure slack rather than real uncertainty. The two
+band-end normals, evaluated directly as an independent witness, are 0.0086 apart
+where the enclosure reports 0.0292, so a sharper trigonometric enclosure could
+recover roughly a factor of three. The remaining question is a policy one and
+belongs to the lead: is a normal pinned to about two degrees enough to call a
+pixel decided, or must the band tighten first? Nothing here recolours anything.
 
 ## Next
 

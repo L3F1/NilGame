@@ -36,6 +36,20 @@ for(const record of census.records){
     assert.ok(record.containsTracedRoot,
       `Band ${record.entry.lower}..${record.entry.upper} misses traced root ${record.tracedRoot} at ${where}`);
     assert.ok(record.bandWidth>0,`Zero-width band at ${where}`);
+    // What the band leaves undecided about the PICTURE. The enclosure covers
+    // both uncertain inputs, so it can be no tighter than either one alone.
+    assert.equal(record.shading.status,'bounded',`Normal unbounded at ${where}: ${record.shading.reason}`);
+    assert.ok(record.shading.diameter>0&&record.shading.degrees>0&&record.shading.colourSteps>0,
+      `Degenerate shading spread at ${where}`);
+    assert.ok(record.shading.band>0&&record.shading.ray>0,`Missing shading contribution at ${where}`);
+    assert.ok(record.shading.diameter>=record.shading.band
+      &&record.shading.diameter>=record.shading.ray,`Shading enclosure tighter than one source at ${where}`);
+    // The two band-end normals are computed without any interval machinery, so
+    // an enclosure narrower than their separation is unsound, not tighter.
+    assert.ok(record.shading.endpointChord>0,`No independent normal witness at ${where}`);
+    assert.ok(record.shading.diameter>=record.shading.endpointChord,
+      `Shading enclosure ${record.shading.diameter} excludes its own band ends `
+      +`${record.shading.endpointChord} at ${where}`);
   }else{
     misses++;
     // A traced miss must never be promoted to an entry by this ordering.
@@ -70,6 +84,8 @@ for(const record of census.records){
 }
 assert.ok(entries>0&&misses>0,'Census must cover traced hits and traced misses');
 assert.equal(census.summary.missingTracedRoot,0);
+assert.equal(census.summary.shading.unresolved,0);
+assert.ok(census.summary.shading.maxColourSteps>0,'Shading spread was never measured');
 assert.equal(census.summary.exteriorRefused,0);
 
 // The exterior certificate is a strict proof in one direction only.
@@ -131,4 +147,6 @@ console.log(`spherical hit band: ${census.summary.flagged} guarded pixels, ${ent
   +`(band width ${census.summary.bandWidth.min.toPrecision(3)}..${census.summary.bandWidth.max.toPrecision(3)}), `
   +`${misses} certified misses, box separation limits ${JSON.stringify(census.summary.inflation)}, `
   +`binary32 coefficients agree with widening <=${census.summary.binary32.widening.max.toPrecision(3)}x, `
-  +`transcendental allowance limits ${JSON.stringify(census.summary.binary32.allowance)} rad`);
+  +`transcendental allowance limits ${JSON.stringify(census.summary.binary32.allowance)} rad, `
+  +`normal pinned to ${census.summary.shading.maxDegrees.toPrecision(3)} deg `
+  +`(${census.summary.shading.maxColourSteps.toPrecision(3)} of 255 colour steps)`);

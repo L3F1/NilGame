@@ -1,11 +1,11 @@
 {
  "date": "2026-09-13",
- "base": "ba2bfba",
+ "base": "ca59aa3",
  "host": "win32/Node 24.20.0",
  "command": "node tools/spherical-hit-band-evidence.js",
  "checked": "node spherical-hit-band.test.js",
  "fixture": "levels/fixtures/connected-three-geometries.nil.json",
- "wallMs": 229,
+ "wallMs": 234,
  "census": {
   "label": "spherical-hit-band",
   "width": 160,
@@ -170,6 +170,15 @@
      "upper": 37.429997106784924
     },
     "bandWidth": 0.005260344205709089,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.029248977112457882,
+     "endpointChord": 0.00861205850746445,
+     "degrees": 1.6759026863727902,
+     "colourSteps": 7.45848916367676,
+     "band": 0.028933391279544,
+     "ray": 0.00036884662982047457
+    },
     "tracedRoot": [
      37.42734419623724,
      37.42735468665472
@@ -271,6 +280,15 @@
      "upper": 37.429997106784924
     },
     "bandWidth": 0.005260344205709089,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.029248977112457882,
+     "endpointChord": 0.00861205850746445,
+     "degrees": 1.6759026863727902,
+     "colourSteps": 7.45848916367676,
+     "band": 0.028933391279544,
+     "ray": 0.00036884662982047457
+    },
     "tracedRoot": [
      37.42734419623724,
      37.42735468665472
@@ -364,6 +382,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.92060399055481,
      57.92061471939087
@@ -457,6 +476,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.92060399055481,
      57.92061471939087
@@ -558,6 +578,15 @@
      "upper": 37.46220661167521
     },
     "bandWidth": 0.005460330295157689,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.022819394685813194,
+     "endpointChord": 0.008932510492624774,
+     "degrees": 1.3074833758778297,
+     "colourSteps": 5.818945644882365,
+     "band": 0.0225795863196652,
+     "ray": 0.00028708001379664893
+    },
     "tracedRoot": [
      37.45943127620083,
      37.45944200503689
@@ -659,6 +688,15 @@
      "upper": 37.46220661167521
     },
     "bandWidth": 0.005460330295157689,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.022819394685813194,
+     "endpointChord": 0.008932510492624774,
+     "degrees": 1.3074833758778297,
+     "colourSteps": 5.818945644882365,
+     "band": 0.0225795863196652,
+     "ray": 0.00028708001379664893
+    },
     "tracedRoot": [
      37.45943127620083,
      37.45944200503689
@@ -760,6 +798,15 @@
      "upper": 37.4648147007643
     },
     "bandWidth": 0.005044997527164696,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.020668864095313388,
+     "endpointChord": 0.008245324217868581,
+     "degrees": 1.1842597605484688,
+     "colourSteps": 5.270560344304914,
+     "band": 0.020448616862220267,
+     "ray": 0.0002659125284317878
+    },
     "tracedRoot": [
      37.46226102669646,
      37.46227151711394
@@ -861,6 +908,15 @@
      "upper": 37.4648147007643
     },
     "bandWidth": 0.005044997527164696,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.020668864095313388,
+     "endpointChord": 0.008245324217868581,
+     "degrees": 1.1842597605484688,
+     "colourSteps": 5.270560344304914,
+     "band": 0.020448616862220267,
+     "ray": 0.0002659125284317878
+    },
     "tracedRoot": [
      37.46226102669646,
      37.46227151711394
@@ -954,6 +1010,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.93796753883362,
      57.9379780292511
@@ -1047,6 +1104,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.93796753883362,
      57.9379780292511
@@ -1140,6 +1198,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.966700077056885,
      57.966710567474365
@@ -1233,6 +1292,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.966700077056885,
      57.966710567474365
@@ -1326,6 +1386,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.80960297584534,
      57.80961465835571
@@ -1427,6 +1488,15 @@
      "upper": 2.1410594631318896
     },
     "bandWidth": 0.0028734741706171185,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.01500346952278877,
+     "endpointChord": 0.004694245799836176,
+     "degrees": 0.8596435447243754,
+     "colourSteps": 3.8258847283111366,
+     "band": 0.014907688485614702,
+     "ray": 0.0001284461678467962
+    },
     "tracedRoot": [
      2.139645143630135,
      2.13965706455909
@@ -1520,6 +1590,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.84116768836975,
      57.84117913246155
@@ -1613,6 +1684,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.851791858673096,
      57.85180377960205
@@ -1714,6 +1786,15 @@
      "upper": 2.2075603461837767
     },
     "bandWidth": 0.0033352536646296116,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.018110414076081528,
+     "endpointChord": 0.0054870031056699275,
+     "degrees": 1.0376644729798925,
+     "colourSteps": 4.618155589400789,
+     "band": 0.018007515344552444,
+     "ray": 0.00013327915804960225
+    },
     "tracedRoot": [
      2.205908797750464,
      2.20592048026084
@@ -1807,6 +1888,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.87320041656494,
      57.87321186065674
@@ -1908,6 +1990,15 @@
      "upper": 2.2131670988653553
     },
     "bandWidth": 0.0030268581254375704,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.01666013248515501,
+     "endpointChord": 0.004973144807445578,
+     "degrees": 0.9545663173052661,
+     "colourSteps": 4.248333783714528,
+     "band": 0.016557773294471462,
+     "ray": 0.00013328583275738694
+    },
     "tracedRoot": [
      2.2116544540795786,
      2.2116658981713755
@@ -2001,6 +2092,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.88398623466492,
      57.883997440338135
@@ -2094,6 +2186,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.884501457214355,
      57.884512424468994
@@ -2195,6 +2288,15 @@
      "upper": 2.276774243677456
     },
     "bandWidth": 0.00657632582706924,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.036902574888214336,
+     "endpointChord": 0.010913214313478485,
+     "degrees": 2.1144817850590205,
+     "colourSteps": 9.410156596494655,
+     "band": 0.036799315226005914,
+     "ray": 0.0001363157134650919
+    },
     "tracedRoot": [
      2.2733897120321247,
      2.2734006792867634
@@ -2296,6 +2398,15 @@
      "upper": 2.276774243677456
     },
     "bandWidth": 0.00657632582706924,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.036902575014776194,
+     "endpointChord": 0.01091321419128472,
+     "degrees": 2.114481792311716,
+     "colourSteps": 9.410156628767929,
+     "band": 0.036799315288940024,
+     "ray": 0.0001363157134650919
+    },
     "tracedRoot": [
      2.2733897120321247,
      2.2734006792867634
@@ -2389,6 +2500,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.884501457214355,
      57.884512424468994
@@ -2482,6 +2594,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.88398623466492,
      57.883997440338135
@@ -2583,6 +2696,15 @@
      "upper": 2.2131854326587486
     },
     "bandWidth": 0.0030566123735620288,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.01682096735829229,
+     "endpointChord": 0.005022039173461513,
+     "degrees": 0.9637817995679613,
+     "colourSteps": 4.289346676364534,
+     "band": 0.016719455619331497,
+     "ray": 0.00013332133457812784
+    },
     "tracedRoot": [
      2.2116544540795786,
      2.2116658981713755
@@ -2676,6 +2798,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.87320041656494,
      57.87321209907532
@@ -2777,6 +2900,15 @@
      "upper": 2.207563514139561
     },
     "bandWidth": 0.0033401334464673305,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.018135234667213045,
+     "endpointChord": 0.0054950326729795145,
+     "degrees": 1.0390866464847137,
+     "colourSteps": 4.624484840139327,
+     "band": 0.018032198448068713,
+     "ray": 0.00013388791284437684
+    },
     "tracedRoot": [
      2.205908797750464,
      2.20592048026084
@@ -2870,6 +3002,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.851791858673096,
      57.85180377960205
@@ -2963,6 +3096,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.84116744995117,
      57.84117913246155
@@ -3064,6 +3198,15 @@
      "upper": 2.14107764184714
     },
     "bandWidth": 0.002905043362324111,
+    "shading": {
+     "status": "bounded",
+     "diameter": 0.015169112909956052,
+     "endpointChord": 0.004745824541023766,
+     "degrees": 0.8691344817324953,
+     "colourSteps": 3.868123792038793,
+     "band": 0.01506920374078148,
+     "ray": 0.00013120888367742576
+    },
     "tracedRoot": [
      2.139645143630135,
      2.13965706455909
@@ -3157,6 +3300,7 @@
      "status": "miss"
     },
     "bandWidth": null,
+    "shading": null,
     "tracedRoot": [
      57.80960297584534,
      57.80961465835571
@@ -3196,6 +3340,12 @@
     "8": 4,
     "16": 11,
     "32": 11
+   },
+   "shading": {
+    "maxDiameter": 0.036902575014776194,
+    "maxDegrees": 2.114481792311716,
+    "maxColourSteps": 9.410156628767929,
+    "unresolved": 0
    },
    "binary32": {
     "entry": {
