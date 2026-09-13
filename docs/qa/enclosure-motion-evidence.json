@@ -1,0 +1,649 @@
+{
+  "base": "beacbb1",
+  "hardware": {
+    "label": "enclosure-integration",
+    "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "coldBuildMs": 17269,
+    "records": [
+      {
+        "pose": "census",
+        "regionId": "flat",
+        "position": [
+          0,
+          -2,
+          0
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 1,
+        "cpuChecked": 1,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "generated",
+        "accepted": 732,
+        "omissions": 5375
+      },
+      {
+        "pose": "census",
+        "regionId": "flat",
+        "position": [
+          0,
+          -2,
+          0
+        ],
+        "width": 160,
+        "height": 120,
+        "recovered": 30,
+        "cpuChecked": 30,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "generated",
+        "accepted": 4368,
+        "omissions": 32262
+      },
+      {
+        "pose": "spawn-flat-0",
+        "regionId": "flat",
+        "position": [
+          0.012626685318669237,
+          -1.9806857327435194,
+          0.00007679979520016385
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 3,
+        "cpuChecked": 3,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "generated",
+        "accepted": 742,
+        "omissions": 5483
+      },
+      {
+        "pose": "spawn-flat-5",
+        "regionId": "flat",
+        "position": [
+          0.07312567159782857,
+          -1.8824661984114321,
+          0.0016127096851989888
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 4,
+        "cpuChecked": 4,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "generated",
+        "accepted": 832,
+        "omissions": 6093
+      },
+      {
+        "pose": "spawn-flat-11",
+        "regionId": "flat",
+        "position": [
+          0.13980024935458235,
+          -1.7611513683345057,
+          0.0027646636059239765
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "generated",
+        "accepted": 949,
+        "omissions": 6907
+      },
+      {
+        "pose": "spawn-sphere-0",
+        "regionId": "sphere",
+        "position": [
+          0.12624023353190106,
+          0.0024142800592551476,
+          0.000009599961088061575,
+          0.9919967613845558
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "outside-scope",
+        "accepted": 0,
+        "omissions": 0
+      },
+      {
+        "pose": "spawn-sphere-5",
+        "regionId": "sphere",
+        "position": [
+          0.1337249954470627,
+          0.014690997866948519,
+          0.00020158284100516344,
+          0.9909095617354364
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "outside-scope",
+        "accepted": 0,
+        "omissions": 0
+      },
+      {
+        "pose": "spawn-sphere-11",
+        "regionId": "sphere",
+        "position": [
+          0.14193519753903516,
+          0.029850215373736052,
+          0.0003455137435182307,
+          0.9894257147264517
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "outside-scope",
+        "accepted": 0,
+        "omissions": 0
+      },
+      {
+        "pose": "approach-exit-0",
+        "regionId": "sphere",
+        "position": [
+          0.0015783334762091102,
+          -0.9695056934831742,
+          0.000009599961088061512,
+          -0.24506370411586545
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "outside-scope",
+        "accepted": 0,
+        "omissions": 0
+      },
+      {
+        "pose": "approach-exit-5",
+        "regionId": "sphere",
+        "position": [
+          0.009140243114589884,
+          -0.9724019708076147,
+          0.00020158284100516387,
+          -0.23313262853927422
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "outside-scope",
+        "accepted": 0,
+        "omissions": 0
+      },
+      {
+        "pose": "approach-exit-11",
+        "regionId": "sphere",
+        "position": [
+          0.017471384707955895,
+          -0.975717704355608,
+          0.0003455137435182321,
+          -0.21833367294959855
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "outside-scope",
+        "accepted": 0,
+        "omissions": 0
+      }
+    ],
+    "costs": [
+      {
+        "enabled": false,
+        "wallMs": [
+          1.3000000044703484,
+          0.29999999701976776,
+          0.29999999701976776,
+          0.29999999701976776,
+          0.20000000298023224,
+          0.20000000298023224,
+          0.10000000149011612,
+          0.20000000298023224,
+          0.20000000298023224,
+          0.19999999552965164,
+          0.10000000149011612,
+          0.20000000298023224
+        ],
+        "gpuMs": [
+          0.0688,
+          0.074592,
+          0.075616,
+          0.121888,
+          0.076448,
+          0.0752,
+          0.083904,
+          0.077216,
+          0.079136,
+          0.075936,
+          0.089728,
+          0.079584
+        ]
+      },
+      {
+        "enabled": true,
+        "wallMs": [
+          0.7999999970197678,
+          0.5999999940395355,
+          0.7999999970197678,
+          0.5,
+          0.5,
+          0.3999999985098839,
+          0.6000000014901161,
+          0.7000000029802322,
+          0.7999999970197678,
+          0.6999999955296516,
+          0.6000000014901161,
+          0.6000000014901161
+        ],
+        "gpuMs": [
+          0.12048,
+          0.12016,
+          0.110432,
+          0.119456,
+          0.116352,
+          0.120992,
+          0.119552,
+          0.111744,
+          0.11728,
+          0.119136,
+          0.128,
+          0.112384
+        ]
+      }
+    ],
+    "faults": [
+      {
+        "id": 1,
+        "rejected": true,
+        "fallbackIdentical": true
+      },
+      {
+        "id": 2,
+        "rejected": true,
+        "fallbackIdentical": true
+      },
+      {
+        "id": 3,
+        "rejected": true,
+        "fallbackIdentical": true
+      },
+      {
+        "id": 4,
+        "rejected": true,
+        "fallbackIdentical": true
+      },
+      {
+        "id": 5,
+        "rejected": true,
+        "fallbackIdentical": true
+      },
+      {
+        "id": 6,
+        "rejected": true,
+        "fallbackIdentical": true
+      }
+    ],
+    "expiredAcrossPortal": 45,
+    "memoryRefusal": true,
+    "resizeRecovery": true,
+    "readyForFurtherAcceptance": true,
+    "scope": "experimental separate programs; sampled real-host motion, payload rejection and separate AA checks; no UI admission; edit and interactive-resolution acceptance still required"
+  },
+  "software": {
+    "label": "enclosure-integration",
+    "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "coldBuildMs": 14.200000002980232,
+    "records": [
+      {
+        "pose": "census",
+        "regionId": "flat",
+        "position": [
+          0,
+          -2,
+          0
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 1,
+        "cpuChecked": 1,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "generated",
+        "accepted": 732,
+        "omissions": 5375
+      },
+      {
+        "pose": "census",
+        "regionId": "flat",
+        "position": [
+          0,
+          -2,
+          0
+        ],
+        "width": 160,
+        "height": 120,
+        "recovered": 30,
+        "cpuChecked": 30,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "generated",
+        "accepted": 4368,
+        "omissions": 32262
+      },
+      {
+        "pose": "spawn-flat-0",
+        "regionId": "flat",
+        "position": [
+          0.012626685318669237,
+          -1.9806857327435194,
+          0.00007679979520016385
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 3,
+        "cpuChecked": 3,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "generated",
+        "accepted": 742,
+        "omissions": 5483
+      },
+      {
+        "pose": "spawn-flat-5",
+        "regionId": "flat",
+        "position": [
+          0.07312567159782857,
+          -1.8824661984114321,
+          0.0016127096851989888
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 4,
+        "cpuChecked": 4,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "generated",
+        "accepted": 832,
+        "omissions": 6093
+      },
+      {
+        "pose": "spawn-flat-11",
+        "regionId": "flat",
+        "position": [
+          0.13980024935458235,
+          -1.7611513683345057,
+          0.0027646636059239765
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "generated",
+        "accepted": 949,
+        "omissions": 6907
+      },
+      {
+        "pose": "spawn-sphere-0",
+        "regionId": "sphere",
+        "position": [
+          0.12624023353190106,
+          0.0024142800592551476,
+          0.000009599961088061575,
+          0.9919967613845558
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "outside-scope",
+        "accepted": 0,
+        "omissions": 0
+      },
+      {
+        "pose": "spawn-sphere-5",
+        "regionId": "sphere",
+        "position": [
+          0.1337249954470627,
+          0.014690997866948519,
+          0.00020158284100516344,
+          0.9909095617354364
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "outside-scope",
+        "accepted": 0,
+        "omissions": 0
+      },
+      {
+        "pose": "spawn-sphere-11",
+        "regionId": "sphere",
+        "position": [
+          0.14193519753903516,
+          0.029850215373736052,
+          0.0003455137435182307,
+          0.9894257147264517
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "outside-scope",
+        "accepted": 0,
+        "omissions": 0
+      },
+      {
+        "pose": "approach-exit-0",
+        "regionId": "sphere",
+        "position": [
+          0.0015783334762091102,
+          -0.9695056934831742,
+          0.000009599961088061512,
+          -0.24506370411586545
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "outside-scope",
+        "accepted": 0,
+        "omissions": 0
+      },
+      {
+        "pose": "approach-exit-5",
+        "regionId": "sphere",
+        "position": [
+          0.009140243114589884,
+          -0.9724019708076147,
+          0.00020158284100516387,
+          -0.23313262853927422
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "outside-scope",
+        "accepted": 0,
+        "omissions": 0
+      },
+      {
+        "pose": "approach-exit-11",
+        "regionId": "sphere",
+        "position": [
+          0.017471384707955895,
+          -0.975717704355608,
+          0.0003455137435182321,
+          -0.21833367294959855
+        ],
+        "width": 65,
+        "height": 49,
+        "recovered": 0,
+        "cpuChecked": 0,
+        "settledChanged": 0,
+        "offChanged": 0,
+        "examples": [],
+        "producerStatus": "outside-scope",
+        "accepted": 0,
+        "omissions": 0
+      }
+    ],
+    "costs": [
+      {
+        "enabled": false,
+        "wallMs": [
+          1,
+          0.19999999552965164,
+          0.19999999552965164,
+          0.29999999701976776,
+          0.20000000298023224,
+          0.19999999552965164,
+          0.20000000298023224,
+          0.20000000298023224,
+          0.3999999985098839,
+          0.20000000298023224,
+          0.29999999701976776,
+          0.4000000059604645
+        ],
+        "gpuMs": [
+          25.7585,
+          27.6421,
+          27.0617,
+          27.2452,
+          26.5978,
+          26.1579,
+          26.2701,
+          27.4684,
+          26.9981,
+          27.4162,
+          25.9681,
+          25.3738
+        ]
+      },
+      {
+        "enabled": true,
+        "wallMs": [
+          0.7000000029802322,
+          0.3999999985098839,
+          0.5,
+          0.7000000029802322,
+          1,
+          0.5,
+          0.7999999970197678,
+          0.6999999955296516,
+          0.7000000029802322,
+          0.5,
+          0.6000000014901161,
+          0.7000000029802322
+        ],
+        "gpuMs": [
+          48.8094,
+          40.7706,
+          48.1854,
+          50.7492,
+          49.742,
+          50.4211,
+          50.2923,
+          47.1788,
+          35.7416,
+          42.651,
+          40.4595,
+          48.5627
+        ]
+      }
+    ],
+    "faults": [
+      {
+        "id": 1,
+        "rejected": true,
+        "fallbackIdentical": true
+      },
+      {
+        "id": 2,
+        "rejected": true,
+        "fallbackIdentical": true
+      },
+      {
+        "id": 3,
+        "rejected": true,
+        "fallbackIdentical": true
+      },
+      {
+        "id": 4,
+        "rejected": true,
+        "fallbackIdentical": true
+      },
+      {
+        "id": 5,
+        "rejected": true,
+        "fallbackIdentical": true
+      },
+      {
+        "id": 6,
+        "rejected": true,
+        "fallbackIdentical": true
+      }
+    ],
+    "expiredAcrossPortal": 45,
+    "memoryRefusal": true,
+    "resizeRecovery": true,
+    "readyForFurtherAcceptance": true,
+    "scope": "experimental separate programs; sampled real-host motion, payload rejection and separate AA checks; no UI admission; edit and interactive-resolution acceptance still required"
+  }
+}

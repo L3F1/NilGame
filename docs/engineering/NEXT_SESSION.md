@@ -62,7 +62,7 @@ lead integrated and tested it. Do not redispatch claude-enclosure-aa-acceptance.
 Software AA timings are INCOMPLETE; the refined case was skipped after baseline
 queries did not drain. Do not report the partial sample as full performance.
 
-Next: additional motion/edit poses and startup/interactive-resolution review.
+Short local motion poses now have strict packet coverage; read docs/qa/enclosure-motion-review.md. Next: edited worlds (undo/load and revision invalidation), then startup/interactive-resolution review.
 Keep current strict packet guards. Follow
 REFINEMENT_ENCLOSURE_NEXT.md for memory/association and measure intended-resolution
 cost and startup before UI exposure. Current fallback within the candidate uses

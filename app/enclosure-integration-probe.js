@@ -1,4 +1,5 @@
 import {createConnectedRenderer} from '../engine/geometry/connected-renderer.js';
+import {createConnectedGlobalPreview} from './connected-global-model.js';
 // Opt-in candidate only. No default UI admission follows merely from passing.
 export async function checkEnclosureIntegration(model,census,reference,shots){
   const canvas=document.createElement('canvas'),start=performance.now();
@@ -8,11 +9,27 @@ export async function checkEnclosureIntegration(model,census,reference,shots){
     camera:{forward:census.pose.forward,right:census.pose.right,up:census.pose.up}};
   const records=[];
   try{
-    for(const [width,height] of [[65,49],[160,120]]){
+    // Use the real host movement/camera policy, in an isolated model so this
+    // acceptance sweep cannot move the user's editor or alter its undo stack.
+    const moving=createConnectedGlobalPreview(model.document(),{experimentalH3:true});
+    const poses=[{name:'census',state,width:65,height:49},{name:'census',state,width:160,height:120}];
+    for(const action of ['spawn-flat','spawn-sphere','approach-exit']){
+      moving.act(action);
+      for(let frame=0;frame<12;frame++){
+        moving.advance(.016,[.2,.3,0],{yaw:.009,pitch:frame<6?.004:-.004});
+        if(moving.halted)throw Error('Enclosure motion fixture halted '+moving.status());
+        if(frame===0||frame===5||frame===11)poses.push({name:action+'-'+frame,state:moving.state,width:65,height:49});
+      }
+    }
+    for(const pose of poses){
+      const {state,width,height}=pose;
       const old=reference.read(state,width,height),off=renderer.read(state,width,height);
       const on=renderer.read(state,width,height,{sphericalMissPass:true});
       const participation=renderer.readMissPass(state,width,height);
-      if(participation.status!=='generated')throw Error('Enclosure producer failed '+participation.status);
+      // The producer only certifies first E3->S3 transfers. A camera already
+      // in S3 must refuse this optimization and keep ordinary tracing.
+      const expected=model.world.regions.get(state.regionId).space.kind==='e3'?'generated':'outside-scope';
+      if(participation.status!==expected)throw Error('Enclosure producer failed '+pose.name+': '+participation.status);
       let recovered=0,settledChanged=0,offChanged=0,cpuChecked=0;
       const examples=[];
       for(let i=0;i<width*height;i++){
@@ -30,10 +47,12 @@ export async function checkEnclosureIntegration(model,census,reference,shots){
           cpuChecked++;
         }
       }
-      records.push({width,height,recovered,cpuChecked,settledChanged,offChanged,examples,accepted:participation.accepted,omissions:participation.omissions});
+      records.push({pose:pose.name,regionId:state.regionId,position:[...state.position],width,height,recovered,cpuChecked,settledChanged,offChanged,examples,producerStatus:participation.status,accepted:participation.accepted,omissions:participation.omissions});
       if(width===160){renderer.readColor(state,width,height);shots.push({name:'enclosure-candidate-off',data:canvas.toDataURL()});
         renderer.readColor(state,width,height,{sphericalMissPass:true});shots.push({name:'enclosure-candidate-on',data:canvas.toDataURL()});}
     }
+    const changed=records.filter(r=>r.offChanged||r.settledChanged);
+    if(changed.length)throw Error('Enclosure changed resolved rendering '+JSON.stringify(changed));
     const off=renderer.readColor(state,640,480,{antialias:true});
     const limited=renderer.readColor(state,640,480,{antialias:true,sphericalMissPass:true,aaRefinement:true});
     if(renderer.missPass.status!=='resource-limit'||!off.every((v,k)=>v===limited[k]))throw Error('Enclosure memory refusal changed fallback');
@@ -71,6 +90,6 @@ export async function checkEnclosureIntegration(model,census,reference,shots){
     }
     return {label:'enclosure-integration',hardware:renderer.hardware,coldBuildMs,records,costs,
       faults,expiredAcrossPortal,memoryRefusal:true,resizeRecovery:true,readyForFurtherAcceptance:records.every(r=>!r.offChanged&&!r.settledChanged)&&records.some(r=>r.recovered>0),
-      scope:'experimental separate programs; no UI admission; ownership mutations, AA reference and broader pose checks still required'};
+      scope:'experimental separate programs; sampled real-host motion, payload rejection and separate AA checks; no UI admission; edit and interactive-resolution acceptance still required'};
   }finally{canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();}
 }
