@@ -12,6 +12,7 @@ import {sphericalEligibleOwners} from './engine/geometry/spherical-miss-pass.js'
 import {SPHERICAL_MISS_GLSL,SPHERICAL_MISS_PASS_FRAGMENT,SPHERICAL_MISS_CERTIFICATE_TAG}
   from './engine/geometry/spherical-miss-pass-glsl.js';
 import {SPHERICAL_MISS_GLSL as EXPERIMENT_GLSL} from './app/spherical-miss-experiment-glsl.js';
+import {PRIMARY_NORMALIZATION_GLSL} from './engine/geometry/primary-normalization.js';
 let checks=0;
 const check=(condition,message)=>{assert.ok(condition,message);checks++;};
 
@@ -19,6 +20,26 @@ const check=(condition,message)=>{assert.ok(condition,message);checks++;};
 // The interval implementation is shared, not duplicated: the experiment keeps
 // its import path and gets the very same string.
 check(EXPERIMENT_GLSL===SPHERICAL_MISS_GLSL,'experiment must reuse the geometry-layer helper');
+// The stabilization candidate changes primary Euclidean normalization only.
+// Shared source is a boundary assertion, not proof of equal driver arithmetic.
+for(const [name,source] of [['main',CONNECTED_FRAGMENT],['pass',SPHERICAL_MISS_PASS_FRAGMENT]]){
+  check(source.split(PRIMARY_NORMALIZATION_GLSL).length===2,`${name} embeds exactly one shared primary normalization helper`);
+  check(source.includes('newU=normalize(transported);'),`${name} retains existing selected-transfer normalization`);
+}
+check(PRIMARY_NORMALIZATION_GLSL.includes('float squared=((raw.x*raw.x+raw.y*raw.y)+raw.z*raw.z)+raw.w*raw.w;')
+  &&PRIMARY_NORMALIZATION_GLSL.includes('return raw/sqrt(squared);'),'candidate retains its explicit primary norm arithmetic');
+check(CONNECTED_FRAGMENT.includes('return isH3(region)?h3Unit(uPosition,raw):euclideanPrimaryUnit(raw);'),
+  'primary H3 rays retain metric normalization while E3/S3 call the shared helper');
+check(SPHERICAL_MISS_PASS_FRAGMENT.includes('vec4 u=euclideanPrimaryUnit(uForward*FOCAL_SCALE+uRight*uv.x+uUp*uv.y);'),
+  'pass nominal primary ray calls the shared helper');
+check(CONNECTED_FRAGMENT.includes('vec4 unitize(vec4 p,vec4 v,vec4 r){return isH3(r)?h3Unit(p,v):normalize(v);}')
+  &&CONNECTED_FRAGMENT.includes('newU=unitize(newP,transport(exitCenter,newP,newV,dest),dest);'),
+  'general transported-direction unitization is outside the primary-only change');
+for(const required of ['BI len=bnorm(raw);if(len.lo.x<=0.)return false;',
+  'BI v=bd(raw,len),p=bv(uPosition);',
+  '!bcontains(t,vec4(boundDistance))',
+  'if(!bcontains(point,boundPoint)||!bcontains(directionBand,boundDirection))return false;'])
+  check(SPHERICAL_MISS_GLSL.includes(required),`primary stabilization retains interval refusal/containment: ${required}`);
 
 // The contract forbids interval arithmetic inside the live fragment program.
 for(const forbidden of ['struct BI','bdown(','bup(','bdot(','firstTransferBands','sphericalMiss(','rayPointBand'])
@@ -28,13 +49,37 @@ for(const required of ['struct BI','firstTransferBands','sphericalMiss('])
 
 // Identity requirements of the consumer, stated exactly.
 for(const required of [
-  `cert.w==${SPHERICAL_MISS_CERTIFICATE_TAG}u`,      // written by THIS pass
+  `cert.w==${SPHERICAL_MISS_CERTIFICATE_TAG}u+certificateSample`, // THIS pass and sample
   'int(cert.x)==gate+1',                              // THIS portal
   'texelFetch(uMissPoint,texel,0)==newP',             // THIS ray
   'texelFetch(uMissDirection,texel,0)==newU',
-  'uMissPass==1','uAntialias==0','crossing==0','stable',
+  'uMissPass==1','ivec2 texel=certificateTexel;','crossing==0','stable',
   'certificateRegion=-1;certificateLow=0u;certificateHigh=0u;'])
   check(CONNECTED_FRAGMENT.includes(required),`consumer must require ${required}`);
+// Ownership moves from a centre-only refusal to a separate texel for each ray.
+for(const required of ['certificateTexel=ivec2(gl_FragCoord.xy);',
+  'certificateSample=sampleCount==4?uint(sampleIndex):0u;',
+  'if(sampleCount==4)certificateTexel+=ivec2(sampleIndex%2,sampleIndex/2)*ivec2(uResolution);',
+  'vec2(float(sampleIndex%2),float(sampleIndex/2))*.5-.25',
+  'certificateLow=0u;certificateHigh=0u;certificateRegion=-1;certificateUsed=0;'])
+  check(CONNECTED_FRAGMENT.includes(required),`each sample must own its certificate: ${required}`);
+check(CONNECTED_FRAGMENT.indexOf('certificateTexel=ivec2(gl_FragCoord.xy);')
+  <CONNECTED_FRAGMENT.indexOf('vec4 result=trace(uPosition,primary,uRegion,n,t);'),
+  'sample texel ownership must be established before tracing');
+check(CONNECTED_FRAGMENT.indexOf('certificateSample=sampleCount==4?uint(sampleIndex):0u;')
+  <CONNECTED_FRAGMENT.indexOf('vec4 result=trace(uPosition,primary,uRegion,n,t);'),
+  'sample tag ownership must be established before tracing');
+check(/vec4 primary=pixelRay\(gl_FragCoord.xy\+offset\);\s*vec4 result=trace\(uPosition,primary,uRegion,n,t\);\s*if\(uDebug==11\)\{frag=vec4\(primary.xyz,result.w\);return;\}/.test(CONNECTED_FRAGMENT),
+  'debug11 must export the same primary passed to trace and that invocation\'s distance');
+for(const required of ['samplePixel-=tile*uResolution;samplePixel+=tile*.5-.25;',
+  'boundPixel=samplePixel;', '(2.*samplePixel-uResolution)/uResolution.y'])
+  check(SPHERICAL_MISS_PASS_FRAGMENT.includes(required),`the proof and nominal ray use the same logical sample: ${required}`);
+for(const required of ['uint sampleId=0u;', 'sampleId=uint(tile.x)+2u*uint(tile.y);',
+  `outCertificate=uvec4(uint(gate+1),low,high,${SPHERICAL_MISS_CERTIFICATE_TAG}u+sampleId);`])
+  check(SPHERICAL_MISS_PASS_FRAGMENT.includes(required),`atlas tiles must carry explicit sample stamps: ${required}`);
+for(const required of ['(uDebug==0||uDebug==9||uDebug==10)&&uDiagnostics==0?4:1;',
+  'aaBySample[sampleIndex]=float(certificateUsed);', 'if(uDebug==10){frag=aaBySample/255.;return;}'])
+  check(CONNECTED_FRAGMENT.includes(required),`debug10 must expose four independent omission counts: ${required}`);
 check(CONNECTED_FRAGMENT.indexOf('certificateRegion=-1;certificateLow=0u;certificateHigh=0u;')
   <CONNECTED_FRAGMENT.indexOf('uMissPass==1'),'a crossing must retire the certificate before a new one is accepted');
 // Consumption is gated on the certificate's own region, and on a single-surface
@@ -91,7 +136,8 @@ for(let g=0;g<packed.counts[2];g++){const group=row(112+g);if(group[1]||group[2]
 check(carved>0,'fixture must contain a carved group, so the additive-only guard is exercised by real data');
 
 // ------------------------------------------------------- recording WebGL2 ---
-function createGL({colorBufferFloat=true,framebufferComplete=true,failAt=null}={}){
+function createGL({colorBufferFloat=true,framebufferComplete=true,failAt=null,
+  maxTextureSize=16384,maxViewportDims=[16384,16384],failAllocationOnce=false}={}){
   let next=1;const name=tag=>({tag,id:next++});
   const calls=[],uniforms=new Map(),locations=new Map();
   const E={TEXTURE_2D:3553,RGBA32F:34836,RGBA32UI:36208,RGBA:6408,RGBA_INTEGER:36249,FLOAT:5126,
@@ -99,7 +145,8 @@ function createGL({colorBufferFloat=true,framebufferComplete=true,failAt=null}={
     FRAMEBUFFER_COMPLETE:36053,COLOR:6144,BACK:1029,NO_ERROR:0,TRIANGLES:4,VERTEX_SHADER:35633,
     FRAGMENT_SHADER:35632,COMPILE_STATUS:35713,LINK_STATUS:35714,VIEWPORT:2978,DITHER:3024,
     DEPTH_TEST:2929,BLEND:3042,SCISSOR_TEST:3089,TEXTURE_MIN_FILTER:10241,TEXTURE_MAG_FILTER:10240,
-    TEXTURE_WRAP_S:10242,TEXTURE_WRAP_T:10243,NEAREST:9728,CLAMP_TO_EDGE:33071,RENDERER:7937};
+    TEXTURE_WRAP_S:10242,TEXTURE_WRAP_T:10243,NEAREST:9728,CLAMP_TO_EDGE:33071,RENDERER:7937,
+    MAX_TEXTURE_SIZE:3379,MAX_VIEWPORT_DIMS:3386};
   const state={framebuffer:null,program:null,viewport:[0,0,0,0],unit:E.TEXTURE0,bound:new Map(),errors:[]};
   const log=(op,detail)=>{calls.push({op,framebuffer:state.framebuffer,...detail});};
   const gl={...E,
@@ -111,7 +158,10 @@ function createGL({colorBufferFloat=true,framebufferComplete=true,failAt=null}={
     useProgram(p){state.program=p;log('useProgram',{program:p&&p.id});},
     bindTexture(target,texture){state.bound.set(state.unit,texture);log('bindTexture',{texture:texture&&texture.id,unit:state.unit});},
     activeTexture(unit){state.unit=unit;},
-    texParameteri(){},texImage2D(){},deleteTexture(){},
+    texParameteri(){},texImage2D(target,level,internal,width,height){
+      log('texImage2D',{internal,width,height});
+      if(failAllocationOnce&&state.framebuffer){state.errors.push(1285);failAllocationOnce=false;}
+    },deleteTexture(){},
     bindFramebuffer(target,fb){state.framebuffer=fb;log('bindFramebuffer',{fb:fb&&fb.id});},
     framebufferTexture2D(){},drawBuffers(list){log('drawBuffers',{count:list.length});},
     readBuffer(){},checkFramebufferStatus:()=>framebufferComplete?E.FRAMEBUFFER_COMPLETE:36054,
@@ -126,9 +176,10 @@ function createGL({colorBufferFloat=true,framebufferComplete=true,failAt=null}={
     uniform2f(l,a,b){if(l)uniforms.set(`${l.program}:${l.name}`,[a,b]);},
     uniform4fv(l,v){if(l)uniforms.set(`${l.program}:${l.name}`,[...v]);},
     uniform4iv(l,v){if(l)uniforms.set(`${l.program}:${l.name}`,[...v]);},
-    drawArrays(){log('drawArrays',{program:state.program&&state.program.id,viewport:[...state.viewport]});},
-    getError(){return failAt&&calls.filter(c=>c.op==='drawArrays').length===failAt?1282:E.NO_ERROR;},
-    getParameter(p){return p===E.VIEWPORT?[...state.viewport]:p===E.RENDERER?'recording-double':0;},
+    drawArrays(){log('drawArrays',{program:state.program&&state.program.id,viewport:[...state.viewport],uniforms:new Map(uniforms)});},
+    getError(){return state.errors.shift()??(failAt&&calls.filter(c=>c.op==='drawArrays').length===failAt?1282:E.NO_ERROR);},
+    getParameter(p){return p===E.VIEWPORT?[...state.viewport]:p===E.RENDERER?'recording-double'
+      :p===E.MAX_TEXTURE_SIZE?maxTextureSize:p===E.MAX_VIEWPORT_DIMS?[...maxViewportDims]:0;},
     readPixels(){},
     beginQuery(){},endQuery(){},getQueryParameter:()=>false};
   return {gl,calls,uniforms,state,
@@ -145,6 +196,20 @@ function renderer(options={}){
 }
 const state={regionId:'entry',position:[0,0,0],camera:{forward:[0,0,-1],right:[1,0,0],up:[0,1,0]}};
 const pose=extra=>({...state,...extra});
+// A packed E3 camera has primary.w=0, allowing xyz plus distance in one RGBA
+// witness. Reject other metrics and unknown regions before any diagnostic draw.
+{
+  const h=renderer(),s3=packed.ids.find((id,i)=>packed.texture[(128+i)*4]===1),before=h.drawCount();
+  check(!!s3,'witness refusal regression requires a non-E3 region');
+  for(const regionId of ['not-a-region',s3]){
+    assert.throws(()=>h.instance.readE3RayDistance({...state,regionId},7,5),/requires an E3 camera region/);checks++;
+  }
+  check(h.drawCount()===before,'invalid witness metric cannot submit a draw');
+  const unsupported=renderer({colorBufferFloat:false});
+  const result=unsupported.instance.readE3RayDistance(state,7,5);
+  check(result.status==='unsupported'&&result.values===null,'float witness support is explicitly reported');
+  check(unsupported.drawCount()===0,'unsupported witness does not submit a diagnostic draw');
+}
 
 // ------------------------------------------------------ default behaviour ---
 {
@@ -188,10 +253,96 @@ const pose=extra=>({...state,...extra});
 {
   const h=renderer();
   h.instance.draw(state,{width:8,height:6,sphericalMissPass:true,antialias:true});
-  check(h.instance.missPass.status==='antialias-refused','AA must refuse this optimisation for now');
+  check(h.instance.missPass.status==='antialias-refused','AA without aaRefinement retains its legacy refusal');
   check(h.missUniform()===0,'an AA draw must render through the existing path');
   check(h.drawCount()===1,'a refused pass costs no extra draw');
   check(h.calls.every(c=>c.framebuffer===null),'a refused pass touches no framebuffer');
+}
+// AA atlas -> centre diagnostics -> AA must reallocate and preserve logical resolution.
+{
+  const h=renderer(),options={width:7,height:5,sphericalMissPass:true,antialias:true,aaRefinement:true};
+  const run=(extra,grid)=>{
+    const start=h.calls.length;
+    h.instance.draw(state,{...options,...extra});
+    const calls=h.calls.slice(start),draws=calls.filter(c=>c.op==='drawArrays');
+    check(h.instance.missPass.status==='generated'&&h.missUniform()===1,'eligible sample layout enables consumption');
+    check(draws.length===2,'each atlas or centre generation is one extra draw');
+    const pass=draws[0],main=draws[1];
+    assert.deepEqual(pass.viewport,[0,0,7*grid,5*grid]);checks++;
+    assert.deepEqual(main.viewport,[0,0,7,5]);checks++;
+    assert.deepEqual(pass.uniforms.get(`${pass.program}:uResolution`),[7,5]);checks++;
+    check(pass.uniforms.get(`${pass.program}:uSampleGrid`)===grid,'pass receives the effective sample grid');
+    check(main.framebuffer===null,'main draw resumes on the default framebuffer');
+    check(h.state.unit===h.gl.TEXTURE0,'pass restores the packed-world texture unit');
+    const allocations=calls.filter(c=>c.op==='texImage2D');
+    check(allocations.length===3&&allocations.every(c=>c.width===7*grid&&c.height===5*grid),
+      'layout transition resizes all three attachments');
+    return h.instance.missPass.stats.lastAssociation;
+  };
+  const aaKey=run({},2),centreKey=run({debug:1},1),aaAgain=run({},2);
+  check(aaKey!==centreKey,'AA and centre certificates have distinct associations at identical logical size');
+  check(aaKey===aaAgain,'returning to the same AA request restores its association description');
+  run({diagnostics:true},1);
+  run({debug:9},2);
+  run({debug:8},1);
+  run({debug:10},2);
+  run({debug:10,diagnostics:true},1);
+  // Refinement alone does not opt a draw into the optimisation.
+  const before=h.drawCount();
+  h.instance.draw(state,{...options,sphericalMissPass:false});
+  check(h.drawCount()===before+1&&h.missUniform()===0,'refinement leaves the unrequested fallback untouched');
+}
+// The evidence helper performs independent four-sample debug9 and debug10 draws.
+{
+  const h=renderer();
+  const evidence=h.instance.readAAMissPass(state,7,5);
+  const draws=h.calls.filter(c=>c.op==='drawArrays'),mainDraws=draws.filter(c=>c.framebuffer===null);
+  check(draws.length===4&&mainDraws.length===2,'AA evidence draws one atlas per debug packet');
+  assert.deepEqual(mainDraws.map(c=>c.uniforms.get(`${h.main}:uDebug`)),[9,10]);checks++;
+  check(draws.filter(c=>c.framebuffer).every(c=>c.uniforms.get(`${c.program}:uSampleGrid`)===2),
+    'both evidence packets use the four-sample atlas');
+  check(evidence.status==='generated','AA evidence reports successful generation');
+}
+// The smallest framebuffer still contains four independent atlas texels.
+{
+  const h=renderer();
+  h.instance.draw(state,{width:1,height:1,sphericalMissPass:true,antialias:true,aaRefinement:true});
+  const pass=h.calls.find(c=>c.op==='drawArrays'&&c.framebuffer);
+  assert.deepEqual(pass.viewport,[0,0,2,2]);checks++;
+}
+// Refuse physical resource limits before allocation, then retain the ordinary AA draw.
+for(const [limits,size] of [
+  [{maxTextureSize:15},{width:8,height:6}],
+  [{maxViewportDims:[15,100]},{width:8,height:6}],
+  [{maxViewportDims:[100,11]},{width:8,height:6}],
+  [{},{width:600,height:600}], // 1200*1200*48 exceeds the 64 MiB cap.
+]){
+  const h=renderer(limits),start=h.calls.length;
+  h.instance.draw(state,{...size,sphericalMissPass:true,antialias:true,aaRefinement:true});
+  check(h.instance.missPass.status==='resource-limit','oversized physical atlas is refused');
+  check(h.missUniform()===0&&h.drawCount()===1,'resource refusal leaves one ordinary draw with consumption off');
+  check(h.instance.missPass.stats.lastAssociation===null,'resource refusal cannot retain an association');
+  check(!h.calls.slice(start).some(c=>c.op==='texImage2D'||c.framebuffer),'resource refusal does not allocate or bind a target');
+  check(h.uniformOf(h.main,'uAntialias')===1,'resource refusal retains requested AA');
+}
+for(const width of [0,-1,1.5,NaN,Infinity]){
+  const h=renderer();
+  h.instance.draw(state,{width,height:5,sphericalMissPass:true,antialias:true,aaRefinement:true});
+  check(h.instance.missPass.status==='invalid-size'&&h.missUniform()===0,'non-positive or non-integer dimensions cannot generate certificates');
+}
+// A partial texture allocation must not commit its size or poison recovery.
+{
+  const h=renderer({failAllocationOnce:true});
+  const options={width:7,height:5,sphericalMissPass:true,antialias:true,aaRefinement:true};
+  h.instance.draw(state,options);
+  check(h.instance.missPass.status==='allocation-failed'&&h.missUniform()===0,'failed allocation disables consumption');
+  check(h.instance.missPass.stats.lastAssociation===null,'failed allocation clears association');
+  check(h.drawCount()===1&&h.state.framebuffer===null,'failed allocation restores the framebuffer and draws fallback');
+  const start=h.calls.length;
+  h.instance.draw(state,options);
+  const allocations=h.calls.slice(start).filter(c=>c.op==='texImage2D');
+  check(allocations.length===3&&allocations.every(c=>c.width===14&&c.height===10),'same-size retry reallocates every attachment after failure');
+  check(h.instance.missPass.status==='generated'&&h.missUniform()===1,'a valid retry recovers generation and consumption');
 }
 {
   const h=renderer({colorBufferFloat:false});

@@ -6,40 +6,39 @@ wrong intersections. No new geometry or precision helper milestone meanwhile.
 
 ## Next implementation
 
-The separate exclusion pass is now integrated behind draw's
-`sphericalMissPass:true`, default false. Claude's candidate needed lead repairs
-to its acceptance pose and total GPU timing. See docs/qa/live-miss-pass-review.md.
-The editor now exposes an explicit refinement checkbox (default off), with
-visible refusal while Smooth edges is active. Non-E3 camera regions now skip
-the inapplicable pass on the host. A near-tangency scheduling experiment was
-REJECTED: little timing benefit and repeatable settled-distance change on the
-hardware backend; see live-miss-pass-review.md. Do not revive it as accepted.
-Fixed eligibility/group scanning is now precomputed per packed world and
-updated transactionally on edits. No measured frame-rate benefit claimed.
-E3 ray/sphere amplification corrected using closest approach, including the
-E3 region extent. See docs/qa/e3-ball-line-review.md and its evidence JSON.
-The tiny GPU probe reproduced both historical bad values with the legacy
-formula; new roots match independent brackets much more closely.
-Live real/software checks passed, but primary-ray variability itself remains
-OPEN. Keep strict guards and captured failure; no repeated blind resize runs.
-Active E3 sweep now passed both backends:158592 comparisons each;170/198
-uncertain observations recovered with CPU agreement and no settled changes.
-25 E3 GPU samples on hardware: p95 .087ms off / .247ms on at320x240.
-Software timings still incomplete. See docs/qa/e3-sweep-review.md.
-Next bounded task: per-AA-sample certificate identity and a smallest GPU
-prototype against supersampled reference rays. Preserve AA refusal until
-validated; never share centre-ray proofs with other samples. No default enable,
-new geometry or host migration. Primary-ray variability remains open.
-No external agents running. Do not redispatch the completed Claude manifest.
-Do not embed interval
-arithmetic in the main shader (prior300s/60s no-report failures).
+AA refinement integration and a correlated E3 diagnostic landed in this batch.
+Read docs/qa/aa-refinement-review.md and AA_REFINEMENT.md, not the full history.
+The editor can combine Smooth edges with optional spherical refinement up to
+its device/64 MiB payload limit (640x480 fits;960x720 refuses). Default is OFF.
+It still only covers eligible additive S3 balls after a first E3-to-S3 transfer.
+At160x120 AA,34/46 purple pixels recovered on hardware/software; numerical
+samples stay purple. Total hardware AA GPU median at320x240:1.292ms baseline,
+1.922ms refined (12 samples), not FPS. See JSON for full attribution.
 
-New raster experiment: at320x240, one portal/ball GPU pass p95~.023ms RTX5070Ti
-versus~45.9ms SwiftShader (12 samples each). This is not total frame cost.
-See docs/qa/render-loop-review.md. Actual GPU queries, not gl.finish call time.
-The live pass resolves34/52 gallery fringes on both tested backends;18 remain.
-Default play still uses the original path. Costs at playable resolutions and
-AA remain to be measured before default admission.
+IMPORTANT: an earlier integration run again failed the strict UNREFINED
+resize baseline at pixel6,43 (2.5942287445 ->2.5942289829). Preserved in the
+new evidence JSON. Do not call the drift fixed because the instrumented run
+passed. The joint replay then captured both input variants. readE3RayDistance captures
+primary XYZ and distance from one debug11 invocation; old readPrimaryRays
+combines four independent invocations. Joint captures are additional draws,
+not a reconstruction of preceding debug2. E3 primary W is zero.
+
+Shared explicit raw/sqrt(sum-of-squares) primary normalization now passes the
+captured sequence on both backends. H3 and transported directions are unchanged.
+This is sampled stabilization, NOT a cross-driver determinism proof. Hardware
+loses12 prototype recoveries to safe exact-identity refusals; report that honestly.
+
+Next difficult task: review REFINEMENT_ENCLOSURE_NEXT.md. The producer already
+proves a state band but exports only its nominal state. A consumer membership
+check against the actual proved enclosure could accept more useful proofs
+without a guessed epsilon. The proposal is not implemented. Keep exact matching
+until independent enclosure/conservative-membership checks and GPU cost pass.
+Then address remaining hit-side fringes. Do not blindly chase identical floats,
+embed interval arithmetic in the main shader, or weaken settled-pixel guards.
+
+Internal helper reviewed atlas ownership, timer isolation and joint capture.
+No external agents running; do not redispatch the completed Claude manifest.
+Muse is unavailable until its reported Sept14 UTC reset.
 
 Bind outputs to exact portal/object, packed world revision, pose, viewport and
 AA sample. Consume only at the matching eligible first crossing. Regenerate on

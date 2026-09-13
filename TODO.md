@@ -22,26 +22,21 @@ Next is scoped integration with measured cost, exact state/sample association,
 and before/after images. See docs/qa/render-loop-review.md. No new geometry or
 standalone precision API until this delivery is integrated or explicitly rejected.
 
-Claude's opt-in live exclusion pass reviewed with lead fixes:34/52 gallery
-fringes resolved on real/software GPU; default remains off. Editor opt-in now
-exposed with smoothing refusal explained;320x240 GPU costs measured. Next:
-isolate intermittent hardware settled-distance mismatch, then AA and sustained
-motion cost checks. Fixed eligibility is now precomputed per world; no measured
-speedup claimed, and default-off refinement remains experimental.
-E3 sphere/extent roots now use closest approach; the legacy GPU formula
-reproduced both captured bad distances and the correction reduced the errors
-against independent packed-surface brackets. See docs/qa/e3-ball-line-review.md.
-Primary-ray variability remains open; strict guards stay. Active E3 sweep now
-passed158592 comparisons on each backend, with170/198 CPU-checked recoveries.
-Hardware E3 p95 .087ms off / .247ms on (25 samples,320x240). Software timing
-remains incomplete. See docs/qa/e3-sweep-review.md. Next: per-sample AA
-certificate contract and smallest supersampled-reference prototype; retain
-current AA refusal and default-off policy until validated.
-Non-E3 camera regions skip the inapplicable pass. Near-tangent scheduling trial
-rejected (small timing benefit, hardware settled-distance regression); keep
-the diagnostic and do not weaken equality checks. See live-miss-pass-review.md
-under docs/qa. Muse paused until reported quota reset Sept14 UTC. Future Claude
-batches smaller, auto-compaction100k; no new agent run this turn.
+Optional portal refinement now works with Smooth edges through per-sample
+certificates; default remains off. A 64 MiB payload cap preserves ordinary
+rendering at unsupported resolutions and the UI explains the refusal. At
+160x120 AA, 34/46 purple pixels recovered on hardware/software; unresolved
+samples stay purple. See docs/qa/aa-refinement-review.md and its evidence.
+Hardware total AA GPU median at320x240:1.292ms off /1.922ms on (12 samples).
+Joint captures confirmed different represented primary rays. Shared explicit
+E3/S3 primary normalization passes the captured replay on both backends;
+cross-driver determinism is not proved. Strict guards and joint diagnostics stay.
+Next: review REFINEMENT_ENCLOSURE_NEXT.md, a bounded proposal to consume proved
+state enclosures instead of losing useful proofs to nominal float differences.
+Do not rerun blindly, enable refinement by default, or add another geometry
+while hit-side fringes and timing coverage remain unfinished.
+Muse remains paused until reported quota reset Sept14 UTC; no external agent
+run was started. The completed Claude manifest must not be redispatched.
 
 ## Current milestone: polished E3 / full-S3 / H3 editor
 

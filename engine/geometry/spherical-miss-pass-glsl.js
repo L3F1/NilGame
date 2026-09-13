@@ -1,3 +1,4 @@
+import {PRIMARY_NORMALIZATION_GLSL} from './primary-normalization.js';
 import {CONNECTED_FOCAL_SCALE} from './primary-ray-bounds.js';
 import {E3_S3_TRANSFER_GLSL} from './portal-transfer-gpu.js';
 // Interval exclusion helper, moved here from the app experiment so both the
@@ -93,6 +94,8 @@ uniform vec2 uResolution;
 uniform float uMaxDistance;
 uniform int uRegion;
 uniform int uEligibleOwners;
+uniform int uSampleGrid;
+${PRIMARY_NORMALIZATION_GLSL}
 layout(location=0) out uvec4 outCertificate;
 layout(location=1) out vec4 outPoint;
 layout(location=2) out vec4 outDirection;
@@ -112,8 +115,10 @@ void main(){
   // Source must be the E3 chart the camera is in; S3 and H3 starts are refused.
   vec4 r=D(128+uRegion);if(r.x>.5)return;
   vec4 p=uPosition;
-  vec2 uv=(2.*gl_FragCoord.xy-uResolution)/uResolution.y;
-  vec4 u=normalize(uForward*FOCAL_SCALE+uRight*uv.x+uUp*uv.y);
+  vec2 samplePixel=gl_FragCoord.xy;uint sampleId=0u;
+  if(uSampleGrid==2){vec2 tile=floor(gl_FragCoord.xy/uResolution);sampleId=uint(tile.x)+2u*uint(tile.y);samplePixel-=tile*uResolution;samplePixel+=tile*.5-.25;}
+  vec2 uv=(2.*samplePixel-uResolution)/uResolution.y;
+  vec4 u=euclideanPrimaryUnit(uForward*FOCAL_SCALE+uRight*uv.x+uUp*uv.y);
   if(length(p)>r.z+E)return;
   float b0=dot(p,u),c0=dot(p,p)-r.z*r.z;
   float end=min(uMaxDistance,-b0+sqrt(max(0.,b0*b0-c0)));
@@ -141,7 +146,7 @@ void main(){
   vec4 newP,newU;
   if(!e3S3TransferSelected(p.xyz,u.xyz,D(base+1).xyz,D(base+2).xyz,D(base+3).xyz,D(base+4).xyz,
     D(base+5),D(base+6),D(base+7),D(base+8),dest.y,end,newP,newU))return;
-  boundPixel=gl_FragCoord.xy;boundGate=gate;boundTried=false;boundOK=false;
+  boundPixel=samplePixel;boundGate=gate;boundTried=false;boundOK=false;
   boundDistance=end;boundPoint=newP;boundDirection=newU;
   if(!firstTransferBands())return;
   int region=int(info.y);uint low=0u,high=0u;
@@ -153,6 +158,6 @@ void main(){
     if(!sphericalMiss(-D(2*i),-m.z))continue;
     if(i<32)low|=1u<<uint(i);else high|=1u<<uint(i-32);
   }
-  outCertificate=uvec4(uint(gate+1),low,high,${SPHERICAL_MISS_CERTIFICATE_TAG}u);
+  outCertificate=uvec4(uint(gate+1),low,high,${SPHERICAL_MISS_CERTIFICATE_TAG}u+sampleId);
   outPoint=newP;outDirection=newU;
 }`;

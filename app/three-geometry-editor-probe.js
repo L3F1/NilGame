@@ -16,12 +16,18 @@ export async function checkThreeGeometryEditor({model,renderer,canvas,editor,dra
   assert(renderer.missPass.status==='generated','Refinement control did not reach live renderer');
   shots.push({name:'three-gallery-refinement',data:canvas.toDataURL()});
   smooth.checked=true;smooth.dispatchEvent(new Event('change'));
-  assert(renderer.missPass.status==='antialias-refused'&&/Paused/.test(document.querySelector('#refine-status').textContent),
-    'Smoothing must refuse centre-ray certificates and explain why');
+  assert(renderer.missPass.status==='generated'&&/On with Smooth edges/.test(document.querySelector('#refine-status').textContent),
+    'Smoothing must generate sample-specific certificates and explain active status');
+  const quality=document.querySelector('#quality'),initialQuality=quality.value;
+  quality.value='960';quality.dispatchEvent(new Event('change'));
+  assert(renderer.missPass.status==='resource-limit'&&/lower resolution/.test(document.querySelector('#refine-status').textContent),
+    'Oversized AA refinement must explain the resource refusal');
+  quality.value=initialQuality;quality.dispatchEvent(new Event('change'));
+  assert(renderer.missPass.status==='generated','Refinement did not recover after lowering resolution');
   refine.checked=false;refine.dispatchEvent(new Event('change'));
   assert(renderer.missPass.status==='disabled','Refinement toggle did not restore baseline');
   smooth.checked=initialSmooth;smooth.dispatchEvent(new Event('change'));
-  checks.push('Real refinement checkbox reaches renderer, refuses AA with explanation, and restores baseline');
+  checks.push('Real refinement checkbox reaches renderer, supports AA with explanation, and restores baseline');
   const route=['flat'];
   for(let i=0;i<400&&model.state.regionId!=='hyperbolic';i++){
     model.advance(.04,[0,1,0]);assert(!model.halted,'Forward route halted');

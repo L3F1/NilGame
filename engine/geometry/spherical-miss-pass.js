@@ -23,11 +23,11 @@ export function sphericalEligibleOwners(packed){
 // and the transfer result it recomputes match exactly.
 //
 // Association is the full draw description: packed world texture identity and
-// revision, camera pose, region, range, viewport and the centre sample offset.
+// revision, camera pose, region, range, viewport and the sample layout.
 // A certificate set is generated for exactly one draw and is never reused, so a
 // debug/readback draw at a different pose or size cannot consume it.
 export const SPHERICAL_MISS_PASS_OFFSET=Object.freeze([0,0]);
-const KEY_FIELDS=['revision','regionIndex','width','height','maxDistance','offsetX','offsetY'];
+const KEY_FIELDS=['revision','regionIndex','width','height','maxDistance','offsetX','offsetY','sampleAtlas'];
 function associationKey(request){
   const pose=[...request.position,...request.forward,...request.right,...request.up];
   return [...KEY_FIELDS.map(f=>request[f]),...pose].join('|');
@@ -47,6 +47,7 @@ export function createSphericalMissPass(gl){
     {texture:direction,internal:gl.RGBA32F,format:gl.RGBA,type:gl.FLOAT}];
   let sized=null,framebuffer=null,program=null,loc=null,disposed=false;
   function allocate(width,height){
+    sized=null; // Never retain a successful size after a partial allocation.
     for(const target of targets){
       gl.bindTexture(gl.TEXTURE_2D,target.texture);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
@@ -55,6 +56,7 @@ export function createSphericalMissPass(gl){
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
       gl.texImage2D(gl.TEXTURE_2D,0,target.internal,width,height,0,target.format,target.type,null);
     }
+    if(gl.getError()!==gl.NO_ERROR)throw Error('Certificate allocation failed');
     sized={width,height};
   }
   allocate(1,1);
@@ -69,7 +71,7 @@ export function createSphericalMissPass(gl){
     gl.linkProgram(created);
     if(!gl.getProgramParameter(created,gl.LINK_STATUS))throw Error(`Spherical miss pass link: ${gl.getProgramInfoLog(created)}`);
     program=created;
-    loc=Object.fromEntries(['uData','uCounts','uPosition','uForward','uRight','uUp','uResolution','uMaxDistance','uRegion','uEligibleOwners']
+    loc=Object.fromEntries(['uData','uCounts','uPosition','uForward','uRight','uUp','uResolution','uMaxDistance','uRegion','uEligibleOwners','uSampleGrid']
       .map(name=>[name,gl.getUniformLocation(program,name)]));
     framebuffer=gl.createFramebuffer();
     return program;
@@ -95,23 +97,27 @@ export function createSphericalMissPass(gl){
     stats.lastAssociation=null;
     if(!float)return note('unsupported');
     if(!dataTexture)return note('missing-world');
-    if(!(width>0&&height>0))return note('invalid-size');
+    if(!Number.isInteger(width)||!Number.isInteger(height)||width<=0||height<=0)return note('invalid-size');
     if(!(maxDistance>0))return note('invalid-range');
     if(!(regionIndex>=0))return note('unknown-region');
     if(request.offsetX!==0||request.offsetY!==0)return note('offset-samples');
-    // First delivery refuses antialiasing outright: these certificates are about
-    // the centre sample, and centre-sample data must never reach an AA sample.
-    if(request.antialias)return note('antialias-refused');
+    // AA requires the explicit four-tile layout. Centre-sample data must
+    // never reach an offset sample.
+    if(request.antialias&&!request.sampleAtlas)return note('antialias-refused');
+    const grid=request.sampleAtlas?2:1,physicalWidth=width*grid,physicalHeight=height*grid;
+    const limit=gl.getParameter(gl.MAX_TEXTURE_SIZE),viewportLimit=gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+    if(physicalWidth>limit||physicalHeight>limit||physicalWidth>viewportLimit[0]||physicalHeight>viewportLimit[1]
+      ||physicalWidth*physicalHeight*48>64*1024*1024)return note('resource-limit');
     try{build();}catch(error){stats.lastError=error.message;return note('program-failed');}
     const savedViewport=gl.getParameter(gl.VIEWPORT);
     gl.bindFramebuffer(gl.FRAMEBUFFER,framebuffer);
     try{
-      if(!sized||sized.width!==width||sized.height!==height){allocate(width,height);}
+      if(!sized||sized.width!==physicalWidth||sized.height!==physicalHeight){allocate(physicalWidth,physicalHeight);}
       targets.forEach((target,i)=>gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0+i,gl.TEXTURE_2D,target.texture,0));
       gl.drawBuffers(targets.map((_,i)=>gl.COLOR_ATTACHMENT0+i));
       if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE)return note('incomplete-framebuffer');
       gl.useProgram(program);
-      gl.viewport(0,0,width,height);
+      gl.viewport(0,0,physicalWidth,physicalHeight);
       gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.SCISSOR_TEST);
       // Clear first: a resized or partially drawn attachment must never leave a
       // pixel whose tag survives from an older pose.
@@ -123,7 +129,7 @@ export function createSphericalMissPass(gl){
       const pad=v=>[...v,...Array(4-v.length).fill(0)];
       gl.uniform4fv(loc.uPosition,pad(position));gl.uniform4fv(loc.uForward,pad(forward));
       gl.uniform4fv(loc.uRight,pad(right));gl.uniform4fv(loc.uUp,pad(up));
-      gl.uniform2f(loc.uResolution,width,height);
+      gl.uniform2f(loc.uResolution,width,height);gl.uniform1i(loc.uSampleGrid,grid);
       gl.uniform1f(loc.uMaxDistance,maxDistance);gl.uniform1i(loc.uRegion,regionIndex);
       gl.uniform1i(loc.uEligibleOwners,request.eligibleOwners??0);
       const query=timer&&timerExt&&pending.length<16?gl.createQuery():null;
@@ -132,7 +138,7 @@ export function createSphericalMissPass(gl){
       if(query){gl.endQuery(timerExt.TIME_ELAPSED_EXT);pending.push(query);}
       const error=gl.getError();
       if(error!==gl.NO_ERROR){stats.lastError=`GL error ${error}`;return note('gl-error');}
-    }finally{
+    }catch(error){stats.lastError=error.message;return note('allocation-failed');}finally{
       // Restore everything the main draw relies on BEFORE it runs.
       gl.bindFramebuffer(gl.FRAMEBUFFER,null);
       gl.drawBuffers([gl.BACK]);

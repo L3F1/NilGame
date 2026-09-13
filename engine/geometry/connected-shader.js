@@ -1,3 +1,4 @@
+import {PRIMARY_NORMALIZATION_GLSL} from './primary-normalization.js';
 import {E3_BALL_LINE_GLSL} from './e3-ball-line.js';
 import {CONNECTED_FOCAL_SCALE} from './primary-ray-bounds.js';
 import {E3_S3_TRANSFER_GLSL} from './portal-transfer-gpu.js';
@@ -105,6 +106,7 @@ int refusalKind=2;
 // proof was made in the separate pass and is accepted only on exact identity.
 uint certificateLow=0u,certificateHigh=0u;
 int certificateRegion=-1,certificateUsed=0;
+ivec2 certificateTexel;uint certificateSample=0u;
 vec4 hitPoint;
 // Range-reduced atan2: the shader compiler's native atan approximation caused
 // measurable drift through two portals. Half-angle reduction keeps the Taylor
@@ -392,14 +394,14 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
     // Any crossing retires the certificate: it was proved for the ray leaving
     // the FIRST transfer only. A second crossing is a different ray.
     certificateRegion=-1;certificateLow=0u;certificateHigh=0u;
-    if(uMissPass==1&&uAntialias==0&&crossing==0&&stable&&r.x<.5&&dest.x>.5&&!isH3(dest)){
-      ivec2 texel=ivec2(gl_FragCoord.xy);
+    if(uMissPass==1&&crossing==0&&stable&&r.x<.5&&dest.x>.5&&!isH3(dest)){
+      ivec2 texel=certificateTexel;
       uvec4 cert=texelFetch(uMissCertificate,texel,0);
       // Identity, not similarity: the tag proves the pixel was written by this
       // pass, the index proves it is about THIS portal, and bitwise equality of
       // the transferred point/direction proves it is about THIS ray. Anything
       // else -- missing texture, other pose, other size, other gate -- fails.
-      if(cert.w==${SPHERICAL_MISS_CERTIFICATE_TAG}u&&int(cert.x)==gate+1
+      if(cert.w==${SPHERICAL_MISS_CERTIFICATE_TAG}u+certificateSample&&int(cert.x)==gate+1
         &&texelFetch(uMissPoint,texel,0)==newP&&texelFetch(uMissDirection,texel,0)==newU){
         certificateLow=cert.y;certificateHigh=cert.z;certificateRegion=int(info.y);
       }
@@ -408,6 +410,7 @@ vec4 trace(vec4 p,vec4 u,int region,out vec4 normal,out vec4 tangent){
   }return vec4(2,region,-1,traveled);
 }
 ${CONNECTED_MATERIAL_GLSL}
+${PRIMARY_NORMALIZATION_GLSL}
 vec4 pixelRay(vec2 pixel){
   vec2 uv=(2.*pixel-uResolution)/uResolution.y;
   // Unitize in the REGION's own metric. The camera basis is orthonormal there,
@@ -415,7 +418,8 @@ vec4 pixelRay(vec2 pixel){
   // tangent has ambient length cosh(rho), so an ambient normalize would hand
   // the tracer a ray of the wrong physical speed -- and, away from the radial
   // direction, a differently tilted ray as well.
-  return unitize(uPosition,uForward*${CONNECTED_FOCAL_SCALE.toPrecision(17)}+uRight*uv.x+uUp*uv.y,D(128+uRegion));
+  vec4 raw=uForward*${CONNECTED_FOCAL_SCALE.toPrecision(17)}+uRight*uv.x+uUp*uv.y;
+  vec4 region=D(128+uRegion);return isH3(region)?h3Unit(uPosition,raw):euclideanPrimaryUnit(raw);
 }
 vec3 displayColor(vec4 result,vec4 n,vec4 t){
   vec3 color=result.x==2.?vec3(.69,.125,.82):result.x==0.?vec3(.086,.098,.118):result.y==0.?vec3(.33,.47,.75):result.y==1.?vec3(.30,.65,.44):vec3(.89,.71,.30);
@@ -436,16 +440,22 @@ void main(){
   // Four independent rays sample a pixel footprint; no hit epsilon changes.
   // Each follows its own portal chain and final-region material. Diagnostics
   // remain centre rays. No derivatives inside geometry-dependent control flow.
-  int sampleCount=uAntialias==1&&uDebug==0&&uDiagnostics==0?4:1;
-  vec3 sum=vec3(0);bool uncertain=false;
+  int sampleCount=uAntialias==1&&(uDebug==0||uDebug==9||uDebug==10)&&uDiagnostics==0?4:1;
+  vec3 sum=vec3(0);bool uncertain=false;int aaActive=0,aaOmitted=0,aaUnresolved=0;vec4 aaBySample=vec4(0);
   for(int sampleIndex=0;sampleIndex<4;sampleIndex++){
     if(sampleIndex>=sampleCount)break;
     vec2 offset=sampleCount==1?vec2(0):vec2(float(sampleIndex%2),float(sampleIndex/2))*.5-.25;
+    certificateSample=sampleCount==4?uint(sampleIndex):0u;
+    certificateTexel=ivec2(gl_FragCoord.xy);
+    if(sampleCount==4)certificateTexel+=ivec2(sampleIndex%2,sampleIndex/2)*ivec2(uResolution);
     vec4 n,t;refusalKind=2;
     certificateLow=0u;certificateHigh=0u;certificateRegion=-1;certificateUsed=0;
-    vec4 result=trace(uPosition,pixelRay(gl_FragCoord.xy+offset),uRegion,n,t);
-    // debug 8: exclusion-pass evidence for the centre ray. r = a certificate was
-    // accepted at the first transfer, g = how many primitives it omitted,
+    vec4 primary=pixelRay(gl_FragCoord.xy+offset);
+    vec4 result=trace(uPosition,primary,uRegion,n,t);
+    if(uDebug==11){frag=vec4(primary.xyz,result.w);return;}
+    if(uDebug==9||uDebug==10){aaBySample[sampleIndex]=float(certificateUsed);aaActive+=certificateRegion>=0?1:0;aaOmitted+=certificateUsed;aaUnresolved+=(result.x==2.&&refusalKind==2)?1:0;continue;}
+    // debug 8: centre-ray evidence. r = certificate still active at trace end,
+    // g = cumulative primitive omissions (also across later crossings),
     // b = traced status. Never consumed by display.
     if(uDebug==8){frag=vec4(certificateRegion>=0?1.:0.,float(certificateUsed),result.x,255.)/255.;return;}
     if(uDebug==1){frag=vec4(result.x,result.y+1.,result.z+1.,result.x==2.?float(refusalKind):0.)/255.;return;}
@@ -464,6 +474,8 @@ void main(){
     if(sampleCount==1){frag=vec4(color,1);return;}
     uncertain=uncertain||(result.x==2.&&refusalKind==2);sum+=color*color;
   }
+  if(uDebug==10){frag=aaBySample/255.;return;}
+  if(uDebug==9){frag=vec4(float(aaActive),float(aaOmitted),float(aaUnresolved),255.)/255.;return;}
   // Unknown coverage is not a confident averaged surface. Preserve the
   // numerical marker if even one sample is unknown, rather than dilute it.
   frag=vec4(uncertain?vec3(.69,.125,.82):sqrt(sum*.25),1);

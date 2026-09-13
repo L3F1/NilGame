@@ -42,13 +42,14 @@ try {
   const smoothing=()=>document.querySelector('#smooth').checked&&!document.querySelector('#diagnostics').checked;
   function draw(){
     const refining=document.querySelector('#refine-spherical').checked;
-    renderer.draw(model.state,{...dimensions(),...appearance(),antialias:smoothing(),sphericalMissPass:refining,diagnostics:document.querySelector('#diagnostics').checked});
+    renderer.draw(model.state,{...dimensions(),...appearance(),antialias:smoothing(),sphericalMissPass:refining,aaRefinement:true,diagnostics:document.querySelector('#diagnostics').checked});
     const passStatus=renderer.missPass.status;
     document.querySelector('#refine-status').textContent=!refining
       ? 'Off. Resolves some uncertain edges; other purple pixels remain.'
       :passStatus==='antialias-refused'?'Paused: turn off Smooth edges to use spherical refinement.'
       :passStatus==='outside-scope'?'Waiting for a flat-region view through a spherical portal.'
-      :passStatus==='generated'?'On for eligible portal views. Other uncertain pixels remain purple.'
+      :passStatus==='resource-limit'?'Paused: refinement exceeds the memory or device limit. Choose a lower resolution (640 x 480 or below with Smooth edges).'
+      :passStatus==='generated'?(smoothing()?'On with Smooth edges for eligible portal views. Other uncertain pixels remain purple.':'On for eligible portal views. Other uncertain pixels remain purple.')
       :`Unavailable (${passStatus}). The original rendering is still in use.`;
     status.textContent=model.status();
     const guide=model.renderGuide(),near=guide.nearest,aim=guide.aimed;
@@ -432,7 +433,9 @@ try {
           const packet=renderer.read(state,width,height,options);
           const primary=renderer.readPrimaryRays(state,width,height,options).map(v=>v[index]);
           const debug=renderer.readMissPass(state,width,height,{...options,certificatePixel:index});
-          rows.push({sphericalMissPass,status:[...packet.pixels.slice(4*index,4*index+4)],
+          const joint=renderer.readE3RayDistance(state,width,height,options);
+          const jointRayDistance=joint.status==='read'?[...joint.values.slice(4*index,4*index+4)]:joint.status;
+          rows.push({jointRayDistance,sphericalMissPass,status:[...packet.pixels.slice(4*index,4*index+4)],
             distance:packet.distances[index],primary,finalActive:debug.bytes[4*index],
             cumulativeOmissions:debug.bytes[4*index+1],debugStatus:debug.bytes[4*index+2],
             passStatus:debug.status,candidate: sphericalMissPass?debug.candidates.sample:null});
@@ -445,7 +448,7 @@ try {
           mainShader:await hash(CONNECTED_FRAGMENT),passShader:await hash(SPHERICAL_MISS_PASS_FRAGMENT),
           packedWorld:await hash(JSON.stringify(Array.from(renderer.packed.texture))),
           sequence:'before160 -> timing320 -> baselineAgain160 -> refined160 -> timing320 (unless baseline failed) -> eight alternating160 reads; packet(debug1,2,3), primary(debug4..7), evidence(debug8)',
-          separateInvocations:true,rows};
+          separateInvocations:true,jointScope:'Each jointRayDistance is xyz primary plus traced distance from ONE additional debug11 invocation; E3 primary w is zero. It does not reconstruct preceding debug2.',rows};
       };
       const before=renderer.read(state,width,height);
       const beforeShot=(renderer.draw(state,{width,height}),canvas.toDataURL());
@@ -496,10 +499,13 @@ try {
       checks.push(`live exclusion pass ${record.status} (${record.certificatePixels.certified}/${width*height} certified pixels, ${record.acceptedPixels} accepted, ${record.certificateOmissions} omissions): ${record.recoveredPixels} previously unresolved pixels resolved, ${record.cpuDisagreements} CPU disagreements, no settled pixel changed; frame cost ${JSON.stringify(record.baselineCost.gpuMs)} -> ${JSON.stringify(record.passCost.gpuMs)} (${record.passCost.gpuStatus})`);
       return record;
     })();
+    const {checkAARefinement}=await import('./aa-refinement-probe.js');
+    const aaRefinement=await checkAARefinement({model,renderer,canvas,shots,state:{...model.state,regionId:census.pose.regionId,position:census.pose.position,camera:{forward:census.pose.forward,right:census.pose.right,up:census.pose.up}}});
+    checks.push('AA refinement atlas: independent supersampled reference, consumption and centre-debug parity');
     const {checkRefinementMotion}=await import('./refinement-motion-probe.js');
     const motion=await checkRefinementMotion(model,renderer);
     checks.push('Refinement motion: E3/S3/H3 round trip, strict settled parity; GPU timing status '+motion.arms.map(a=>a.timingStatus).join('/'));
-    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,e3Line,ordering,census,exclusion,livePass,motion]});
+    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,e3Line,ordering,census,exclusion,livePass,aaRefinement,motion]});
   } else {
     const records=[],poses=[];
     if(!/no gravity/i.test(document.body.textContent)||!/COMPLETE S3/.test(document.body.textContent))throw Error('Page lost its complete-S3/no-gravity label');

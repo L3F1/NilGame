@@ -28,7 +28,7 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
   // The exclusion pass is constructed with the renderer but never runs until a
   // draw opts in. Its (initially 1x1, all-zero) textures stay bound so the main
   // program never samples a unit left pointing at unrelated data.
-  let revision=0,missStatus='disabled',missConsumingDraws=0;
+  let revision=0,missStatus='disabled',missConsumingDraws=0,diagnosticTarget=null;
   const missPass=createSphericalMissPass(gl);
   gl.uniform1i(loc.uMissPass,0);
   [['uMissCertificate',missPass.textures.certificate],['uMissPoint',missPass.textures.point],['uMissDirection',missPass.textures.direction]]
@@ -65,13 +65,14 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
   // sphericalMissPass opts THIS draw into the separately drawn first-transfer
   // exclusion pass. Default false; there is no automatic admission, and a
   // refusal always renders through the existing path unchanged.
-  function draw(state,{width=320,height=240,debug=0,timer=false,diagnostics=false,polished=true,ao=true,antialias=false,range,sphericalMissPass=false}={}) {
+  function draw(state,{width=320,height=240,debug=0,timer=false,diagnostics=false,polished=true,ao=true,antialias=false,range,sphericalMissPass=false,aaRefinement=false}={}) {
     if(range!==undefined&&(!(range>0)||range>packed.maxDistance))
       throw Error('Draw range must be positive and within the packed budget');
     const resized=canvas.width!==width||canvas.height!==height;
     if(resized){canvas.width=width;canvas.height=height;missPass.invalidate('resized');}
     const maxDistance=range===undefined?packed.maxDistance:range;
     const regionIndex=packed.ids.indexOf(state.regionId);
+    const effectiveAA=antialias&&(debug===0||debug===9||debug===10)&&!diagnostics;
     // One GPU query covers BOTH passes; nested elapsed queries are forbidden.
     const query=timer&&ext&&pending.length<16?gl.createQuery():null;
     if(query)gl.beginQuery(ext.TIME_ELAPSED_EXT,query);
@@ -81,8 +82,11 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
       :regionIndex>=0&&packed.texture[(128+regionIndex)*4]!==0?'outside-scope'
       :missPass.generate({dataTexture:texture,counts:packed.counts,eligibleOwners,
         position:state.position,forward:state.camera.forward,right:state.camera.right,up:state.camera.up,
-        width,height,maxDistance,regionIndex,revision,offsetX:0,offsetY:0,antialias,timer:false});
+        width,height,maxDistance,regionIndex,revision,offsetX:0,offsetY:0,antialias:effectiveAA,sampleAtlas:effectiveAA&&aaRefinement,timer:false});
     if(missStatus==='generated')missConsumingDraws++;
+    // Private float readback target is selected after the exclusion pass, which
+    // restores the default framebuffer on exit. Ordinary draws never use it.
+    if(diagnosticTarget){gl.bindFramebuffer(gl.FRAMEBUFFER,diagnosticTarget);gl.drawBuffers([gl.COLOR_ATTACHMENT0]);}
     gl.viewport(0,0,width,height);gl.useProgram(program);
     gl.uniform1i(loc.uMissPass,missStatus==='generated'?1:0);
     gl.uniform1f(loc.uMaxDistance,maxDistance);
@@ -120,6 +124,56 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
       return Float32Array.from({length:width*height},(_,i)=>view.getFloat32(4*i,true));
     });
   }
+  // Correlated E3 witness: xyz is the actual primary passed to trace, w its
+  // returned distance, all from one invocation. E3 primary.w is identically 0.
+  function readE3RayDistance(state,width=16,height=12,options={}){
+    const region=packed.ids.indexOf(state.regionId);
+    if(region<0||packed.texture[(128+region)*4]!==0)throw Error('Ray/distance witness requires an E3 camera region');
+    if(!Number.isInteger(width)||!Number.isInteger(height)||width<=0||height<=0)
+      throw Error('Ray/distance witness requires positive integer dimensions');
+    const metadata={width,height,hardware:info?gl.getParameter(info.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER)};
+    if(!gl.getExtension('EXT_color_buffer_float'))return {...metadata,status:'unsupported',values:null};
+    const viewportLimit=gl.getParameter(gl.MAX_VIEWPORT_DIMS),textureLimit=gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    if(width>textureLimit||height>textureLimit||width>viewportLimit[0]||height>viewportLimit[1])
+      throw Error('Ray/distance witness exceeds framebuffer limits');
+    const saved={draw:gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING),read:gl.getParameter(gl.READ_FRAMEBUFFER_BINDING),
+      viewport:gl.getParameter(gl.VIEWPORT),unit:gl.getParameter(gl.ACTIVE_TEXTURE),target:diagnosticTarget,
+      buffers:Array.from({length:gl.getParameter(gl.MAX_DRAW_BUFFERS)},(_,i)=>gl.getParameter(gl.DRAW_BUFFER0+i))};
+    gl.activeTexture(gl.TEXTURE0);saved.texture=gl.getParameter(gl.TEXTURE_BINDING_2D);
+    let targetTexture=null,targetFramebuffer=null;
+    try{
+      targetTexture=gl.createTexture();targetFramebuffer=gl.createFramebuffer();
+      if(!targetTexture||!targetFramebuffer)throw Error('Cannot allocate ray/distance witness target');
+      gl.bindTexture(gl.TEXTURE_2D,targetTexture);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,width,height,0,gl.RGBA,gl.FLOAT,null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER,targetFramebuffer);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,targetTexture,0);
+      gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+      if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE||gl.getError()!==gl.NO_ERROR)
+        throw Error('Ray/distance witness framebuffer unavailable');
+      gl.bindTexture(gl.TEXTURE_2D,texture);
+      diagnosticTarget=targetFramebuffer;
+      draw(state,{...options,width,height,debug:11,timer:false});
+      const data=new Float32Array(width*height*4);
+      gl.readBuffer(gl.COLOR_ATTACHMENT0);
+      gl.readPixels(0,0,width,height,gl.RGBA,gl.FLOAT,data);
+      const error=gl.getError();if(error!==gl.NO_ERROR)throw Error(`Ray/distance witness readback GL error ${error}`);
+      return {...metadata,status:'read',values:data};
+    }finally{
+      diagnosticTarget=saved.target;
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,saved.draw);
+      gl.drawBuffers(saved.draw?saved.buffers:[saved.buffers[0]]);
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER,saved.read);
+      gl.viewport(...saved.viewport);
+      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,saved.texture);gl.activeTexture(saved.unit);
+      if(targetFramebuffer)gl.deleteFramebuffer(targetFramebuffer);
+      if(targetTexture)gl.deleteTexture(targetTexture);
+    }
+  }
   function readColor(state,width=80,height=60,options={}){
     draw(state,{...options,width,height,debug:0});const pixels=new Uint8Array(width*height*4);
     gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);return pixels;
@@ -138,9 +192,17 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
     for(let i=0;i<width*height;i++){accepted+=bytes[4*i]?1:0;omissions+=bytes[4*i+1];pixels++;}
     return {status:missStatus,accepted,omissions,pixels,candidates:missPass.readCertificates(width,height,options.certificatePixel),bytes};
   }
+  function readAAMissPass(state,width=16,height=12){
+    draw(state,{width,height,debug:9,antialias:true,sphericalMissPass:true,aaRefinement:true});
+    const bytes=new Uint8Array(width*height*4);gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,bytes);
+    draw(state,{width,height,debug:10,antialias:true,sphericalMissPass:true,aaRefinement:true});
+    const bySample=new Uint8Array(width*height*4);gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,bySample);
+    return {status:missStatus,bytes,bySample};
+  }
   const info=gl.getExtension('WEBGL_debug_renderer_info');
-  return {draw,read,readPrimaryRays,readColor,replaceWorld,readMissPass,
+  return {draw,read,readPrimaryRays,readE3RayDistance,readColor,replaceWorld,readMissPass,readAAMissPass,
     get packed(){return packed;},times,finish:()=>gl.finish(),
+    get pendingTimerCount(){return pending.length;},
     missPass:{get status(){return missStatus;},get supported(){return missPass.supported;},
       get consumingDraws(){return missConsumingDraws;},get revision(){return revision;},
       get stats(){const s=missPass.stats;return {...s,reasons:{...s.reasons},gpuMs:[...s.gpuMs]};},

@@ -118,7 +118,8 @@ assert.ok(CONNECTED_FRAGMENT.includes('start==1&&(r.w>.5||isH3(r))'));
 
 // Finding 1: pixelRay unitizes in the region metric, and the ambient normalize
 // of the camera combination is gone.
-assert.ok(CONNECTED_FRAGMENT.includes(`return unitize(uPosition,uForward*${CONNECTED_FOCAL_SCALE.toPrecision(17)}+uRight*uv.x+uUp*uv.y,D(128+uRegion))`),
+assert.ok(CONNECTED_FRAGMENT.includes(`vec4 raw=uForward*${CONNECTED_FOCAL_SCALE.toPrecision(17)}+uRight*uv.x+uUp*uv.y;`)
+  &&CONNECTED_FRAGMENT.includes('vec4 region=D(128+uRegion);return isH3(region)?h3Unit(uPosition,raw):euclideanPrimaryUnit(raw);'),
   'pixelRay must unitize with the region metric');
 const pixelBody=CONNECTED_FRAGMENT.slice(CONNECTED_FRAGMENT.indexOf('vec4 pixelRay('),CONNECTED_FRAGMENT.indexOf('vec3 displayColor('));
 assert.ok(!/return normalize\(/.test(pixelBody),'no ambient normalize left in pixelRay');

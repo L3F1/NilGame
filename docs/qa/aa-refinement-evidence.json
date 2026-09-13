@@ -1,0 +1,2284 @@
+{
+  "date": "2026-09-12",
+  "base": "e45aec5",
+  "scope": "working-tree AA integration; see accompanying review for final commit",
+  "shaderHashes": {
+    "engine/geometry/connected-shader.js": "17d8f96f3c8a2bf560c4200f9730e452e61d26ca16fcc976b24c9e6c3ae4cc5d",
+    "engine/geometry/spherical-miss-pass-glsl.js": "965a201b22e71e52a0d4c52fac29ff977e1cbc9ddbae8abf2b095e192587f0d4",
+    "engine/geometry/primary-normalization.js": "740697d114cf307c4adb0a509bce90eb77cd940bed8c99b2c7a7482b244cd3a1"
+  },
+  "real": {
+    "label": "aa-refinement",
+    "records": [
+      {
+        "width": 65,
+        "height": 49,
+        "active": 2840,
+        "omissions": 20954,
+        "bySample": [
+          5241,
+          5236,
+          5241,
+          5236
+        ],
+        "compared": 922,
+        "maxError": 0.7742719088001593,
+        "recovered": 11,
+        "remainingNumeric": 22,
+        "inconclusive": 0,
+        "domainDecorations": 2241
+      },
+      {
+        "width": 160,
+        "height": 120,
+        "active": 17288,
+        "omissions": 127602,
+        "bySample": [
+          31900,
+          31903,
+          31898,
+          31901
+        ],
+        "compared": 5878,
+        "maxError": 0.8255702809270815,
+        "recovered": 46,
+        "remainingNumeric": 88,
+        "inconclusive": 0,
+        "domainDecorations": 13234
+      }
+    ],
+    "frameCosts": {
+      "width": 320,
+      "height": 240,
+      "requestedSamples": 12,
+      "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "revision": 5,
+      "gpuScope": "total renderer draw: exclusion pass plus main draw when enabled",
+      "wallScope": "synchronous renderer.draw plus gl.finish; excludes waits and drain draws",
+      "baseline": {
+        "drawFinishCallMs": {
+          "samples": 12,
+          "p50": 0.30000000074505806,
+          "max": 0.4000000022351742
+        },
+        "gpuMs": {
+          "samples": 12,
+          "p50": 1.41968,
+          "max": 1.66688
+        },
+        "gpuStatus": "measured",
+        "collectedSamples": 12,
+        "pendingSamples": 0,
+        "passStatuses": [
+          "disabled"
+        ],
+        "isolated": true
+      },
+      "refined": {
+        "drawFinishCallMs": {
+          "samples": 12,
+          "p50": 0.5999999977648258,
+          "max": 0.6999999992549419
+        },
+        "gpuMs": {
+          "samples": 12,
+          "p50": 1.828352,
+          "max": 2.156224
+        },
+        "gpuStatus": "measured",
+        "collectedSamples": 12,
+        "pendingSamples": 0,
+        "passStatuses": [
+          "generated"
+        ],
+        "isolated": true
+      },
+      "status": "measured"
+    },
+    "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "scope": "independent 2x centre-ray reference; domain decoration excluded; numerical reference refusals explicitly inconclusive"
+  },
+  "softwarePrototype": {
+    "label": "aa-refinement",
+    "records": [
+      {
+        "width": 65,
+        "height": 49,
+        "active": 2904,
+        "omissions": 21398,
+        "bySample": [
+          5351,
+          5347,
+          5352,
+          5348
+        ],
+        "compared": 922,
+        "maxError": 0.7711309515254854,
+        "recovered": 11,
+        "remainingNumeric": 22,
+        "inconclusive": 0,
+        "domainDecorations": 2241
+      },
+      {
+        "width": 160,
+        "height": 120,
+        "active": 17500,
+        "omissions": 129064,
+        "bySample": [
+          32265,
+          32267,
+          32265,
+          32267
+        ],
+        "compared": 5878,
+        "maxError": 0.8784037701707916,
+        "recovered": 46,
+        "remainingNumeric": 88,
+        "inconclusive": 0,
+        "domainDecorations": 13234
+      }
+    ],
+    "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "scope": "independent 2x centre-ray reference; domain decoration excluded; numerical reference refusals explicitly inconclusive"
+  },
+  "jointWitness": {
+    "reason": "standing-witness",
+    "pixel": [
+      6,
+      43
+    ],
+    "width": 160,
+    "height": 120,
+    "range": 64,
+    "state": {
+      "regionId": "flat",
+      "radius": 0.25,
+      "camera": {
+        "forward": [
+          0,
+          1,
+          0
+        ],
+        "right": [
+          1,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "position": [
+        0,
+        -2,
+        0
+      ],
+      "velocity": [
+        -3.8081180088451366e-17,
+        -4,
+        4.328614462555115e-30
+      ]
+    },
+    "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "revision": 5,
+    "mainShader": "1c300102f2c36d0a6bfe60e53e52b3729de44476f3c88e6f10f59069d453a927",
+    "passShader": "84ba7eb2c7360a293669d3c15177853aa95940343f4c1a2cdf8b60f5d9ba45ab",
+    "packedWorld": "aaafb2a7c70d9a914812894ce719eb288fcc90502a80115d79b324191e4b408f",
+    "sequence": "before160 -> timing320 -> baselineAgain160 -> refined160 -> timing320 (unless baseline failed) -> eight alternating160 reads; packet(debug1,2,3), primary(debug4..7), evidence(debug8)",
+    "separateInvocations": true,
+    "jointScope": "Each jointRayDistance is xyz primary plus traced distance from ONE additional debug11 invocation; E3 primary w is zero. It does not reconstruct preceding debug2.",
+    "rows": [
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null,
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null,
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null,
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null,
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      }
+    ]
+  },
+  "earlierBaselineFailure": {
+    "reason": "baseline-drift",
+    "pixel": [
+      6,
+      43
+    ],
+    "width": 160,
+    "height": 120,
+    "range": 64,
+    "state": {
+      "regionId": "flat",
+      "radius": 0.25,
+      "camera": {
+        "forward": [
+          0,
+          1,
+          0
+        ],
+        "right": [
+          1,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "position": [
+        0,
+        -2,
+        0
+      ],
+      "velocity": [
+        -3.8081180088451366e-17,
+        -4,
+        4.328614462555115e-30
+      ]
+    },
+    "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "revision": 5,
+    "mainShader": "da0b2536ac8aa62c5983c488d0fbb120e2d946476195d754ab26b3ece307448b",
+    "passShader": "84ba7eb2c7360a293669d3c15177853aa95940343f4c1a2cdf8b60f5d9ba45ab",
+    "packedWorld": "aaafb2a7c70d9a914812894ce719eb288fcc90502a80115d79b324191e4b408f",
+    "sequence": "before160 -> timing320 -> baselineAgain160 -> refined160 -> timing320 (unless baseline failed) -> eight alternating160 reads; packet(debug1,2,3), primary(debug4..7), evidence(debug8)",
+    "separateInvocations": true,
+    "rows": [
+      {
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228982925415,
+        "primary": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null
+      },
+      {
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null
+      },
+      {
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null
+      },
+      {
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null
+      },
+      {
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "mutation": {
+    "change": "consumer upper tiles mapped to lower row",
+    "result": "AA refused a resolved supersampled pixel (65x49,32,12)",
+    "exit": 1,
+    "sourceRestored": true
+  },
+  "softwareFinal": {
+    "label": "aa-refinement",
+    "records": [
+      {
+        "width": 65,
+        "height": 49,
+        "active": 2904,
+        "omissions": 21398,
+        "bySample": [
+          5351,
+          5347,
+          5352,
+          5348
+        ],
+        "compared": 922,
+        "maxError": 0.7711309515254854,
+        "recovered": 11,
+        "remainingNumeric": 22,
+        "inconclusive": 0,
+        "domainDecorations": 2241
+      },
+      {
+        "width": 160,
+        "height": 120,
+        "active": 17500,
+        "omissions": 129064,
+        "bySample": [
+          32265,
+          32267,
+          32265,
+          32267
+        ],
+        "compared": 5878,
+        "maxError": 0.8784037701707916,
+        "recovered": 46,
+        "remainingNumeric": 88,
+        "inconclusive": 0,
+        "domainDecorations": 13234
+      }
+    ],
+    "frameCosts": {
+      "width": 320,
+      "height": 240,
+      "requestedSamples": 12,
+      "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "revision": 5,
+      "gpuScope": "total renderer draw: exclusion pass plus main draw when enabled",
+      "wallScope": "synchronous renderer.draw plus gl.finish; excludes waits and drain draws",
+      "baseline": {
+        "drawFinishCallMs": {
+          "samples": 12,
+          "p50": 0.29999999701976776,
+          "max": 1
+        },
+        "gpuMs": {
+          "samples": 5,
+          "p50": 422.2763,
+          "max": 446.2862
+        },
+        "gpuStatus": "incomplete",
+        "collectedSamples": 5,
+        "pendingSamples": 7,
+        "passStatuses": [
+          "disabled"
+        ],
+        "isolated": false,
+        "reason": "GPU queries did not drain before the deadline; partial timings are not a complete case."
+      },
+      "refined": null,
+      "status": "incomplete",
+      "reason": "Refined case skipped to avoid attributing delayed baseline queries to it."
+    },
+    "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "scope": "independent 2x centre-ray reference; domain decoration excluded; numerical reference refusals explicitly inconclusive"
+  },
+  "softwareJointWitness": {
+    "reason": "standing-witness",
+    "pixel": [
+      6,
+      43
+    ],
+    "width": 160,
+    "height": 120,
+    "range": 64,
+    "state": {
+      "regionId": "flat",
+      "radius": 0.25,
+      "camera": {
+        "forward": [
+          0,
+          1,
+          0
+        ],
+        "right": [
+          1,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "position": [
+        0,
+        -2,
+        0
+      ],
+      "velocity": [
+        -3.8081180088451366e-17,
+        -4,
+        4.328614462555115e-30
+      ]
+    },
+    "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "revision": 5,
+    "mainShader": "1c300102f2c36d0a6bfe60e53e52b3729de44476f3c88e6f10f59069d453a927",
+    "passShader": "84ba7eb2c7360a293669d3c15177853aa95940343f4c1a2cdf8b60f5d9ba45ab",
+    "packedWorld": "aaafb2a7c70d9a914812894ce719eb288fcc90502a80115d79b324191e4b408f",
+    "sequence": "before160 -> timing320 -> baselineAgain160 -> refined160 -> timing320 (unless baseline failed) -> eight alternating160 reads; packet(debug1,2,3), primary(debug4..7), evidence(debug8)",
+    "separateInvocations": true,
+    "jointScope": "Each jointRayDistance is xyz primary plus traced distance from ONE additional debug11 invocation; E3 primary w is zero. It does not reconstruct preceding debug2.",
+    "rows": [
+      {
+        "jointRayDistance": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          2.594228982925415
+        ],
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228982925415,
+        "primary": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null
+      },
+      {
+        "jointRayDistance": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          2.594228982925415
+        ],
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228982925415,
+        "primary": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "jointRayDistance": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          2.594228982925415
+        ],
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228982925415,
+        "primary": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null
+      },
+      {
+        "jointRayDistance": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          2.594228982925415
+        ],
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228982925415,
+        "primary": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "jointRayDistance": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          2.594228982925415
+        ],
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228982925415,
+        "primary": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null
+      },
+      {
+        "jointRayDistance": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          2.594228982925415
+        ],
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228982925415,
+        "primary": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "jointRayDistance": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          2.594228982925415
+        ],
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228982925415,
+        "primary": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null
+      },
+      {
+        "jointRayDistance": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          2.594228982925415
+        ],
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228982925415,
+        "primary": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "checks": {
+    "nodeSuites": "137/137, aa-accepted-suite.log",
+    "focusedPass": "290 checks",
+    "focusedTiming": "34 checks",
+    "hardwareFinal": "passed,40.6s,cold RTX5070Ti/ANGLE",
+    "softwareFinal": "passed,102.8s,cold SwiftShader",
+    "shaderCompilation": "passed,aa-shaders.log",
+    "worldInput": "346/346,aa-worlds.log",
+    "diffCheck": "passed"
+  },
+  "jointBaselineFailure": {
+    "reason": "baseline-drift",
+    "pixel": [
+      6,
+      43
+    ],
+    "width": 160,
+    "height": 120,
+    "range": 64,
+    "state": {
+      "regionId": "flat",
+      "radius": 0.25,
+      "camera": {
+        "forward": [
+          0,
+          1,
+          0
+        ],
+        "right": [
+          1,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "position": [
+        0,
+        -2,
+        0
+      ],
+      "velocity": [
+        -3.8081180088451366e-17,
+        -4,
+        4.328614462555115e-30
+      ]
+    },
+    "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "revision": 5,
+    "mainShader": "1c300102f2c36d0a6bfe60e53e52b3729de44476f3c88e6f10f59069d453a927",
+    "passShader": "84ba7eb2c7360a293669d3c15177853aa95940343f4c1a2cdf8b60f5d9ba45ab",
+    "packedWorld": "aaafb2a7c70d9a914812894ce719eb288fcc90502a80115d79b324191e4b408f",
+    "sequence": "before160 -> timing320 -> baselineAgain160 -> refined160 -> timing320 (unless baseline failed) -> eight alternating160 reads; packet(debug1,2,3), primary(debug4..7), evidence(debug8)",
+    "separateInvocations": true,
+    "jointScope": "Each jointRayDistance is xyz primary plus traced distance from ONE additional debug11 invocation; E3 primary w is zero. It does not reconstruct preceding debug2.",
+    "rows": [
+      {
+        "jointRayDistance": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          2.594228982925415
+        ],
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228982925415,
+        "primary": [
+          -0.6442144513130188,
+          0.7510478496551514,
+          -0.14461956918239594,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null,
+        "independentRootBracket": [
+          2.5942289324473293,
+          2.5942289324473298
+        ],
+        "rootError": 5.0478085711347376e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null,
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null,
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": false,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "disabled",
+        "candidate": null,
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      },
+      {
+        "jointRayDistance": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          2.594228744506836
+        ],
+        "sphericalMissPass": true,
+        "status": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "distance": 2.594228744506836,
+        "primary": [
+          -0.6442145109176636,
+          0.7510479092597961,
+          -0.14461958408355713,
+          0
+        ],
+        "finalActive": 0,
+        "cumulativeOmissions": 0,
+        "debugStatus": 1,
+        "passStatus": "generated",
+        "candidate": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "independentRootBracket": [
+          2.594228733981525,
+          2.5942287339815255
+        ],
+        "rootError": 1.052531040102167e-8
+      }
+    ]
+  },
+  "explicitNormalizationReal": {
+    "aa": {
+      "label": "aa-refinement",
+      "records": [
+        {
+          "width": 65,
+          "height": 49,
+          "active": 1692,
+          "omissions": 12540,
+          "bySample": [
+            3140,
+            3138,
+            3132,
+            3130
+          ],
+          "compared": 921,
+          "maxError": 0.7742719088001593,
+          "recovered": 10,
+          "remainingNumeric": 23,
+          "inconclusive": 0,
+          "domainDecorations": 2241
+        },
+        {
+          "width": 160,
+          "height": 120,
+          "active": 10456,
+          "omissions": 77190,
+          "bySample": [
+            19292,
+            19292,
+            19303,
+            19303
+          ],
+          "compared": 5866,
+          "maxError": 0.8255702809270815,
+          "recovered": 34,
+          "remainingNumeric": 100,
+          "inconclusive": 0,
+          "domainDecorations": 13234
+        }
+      ],
+      "frameCosts": {
+        "width": 320,
+        "height": 240,
+        "requestedSamples": 12,
+        "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "revision": 5,
+        "gpuScope": "total renderer draw: exclusion pass plus main draw when enabled",
+        "wallScope": "synchronous renderer.draw plus gl.finish; excludes waits and drain draws",
+        "baseline": {
+          "drawFinishCallMs": {
+            "samples": 12,
+            "p50": 0.29999999701976776,
+            "max": 0.4000000022351742
+          },
+          "gpuMs": {
+            "samples": 12,
+            "p50": 1.292192,
+            "max": 2.19488
+          },
+          "gpuStatus": "measured",
+          "collectedSamples": 12,
+          "pendingSamples": 0,
+          "passStatuses": [
+            "disabled"
+          ],
+          "isolated": true
+        },
+        "refined": {
+          "drawFinishCallMs": {
+            "samples": 12,
+            "p50": 0.6999999992549419,
+            "max": 0.8000000007450581
+          },
+          "gpuMs": {
+            "samples": 12,
+            "p50": 1.922432,
+            "max": 2.031456
+          },
+          "gpuStatus": "measured",
+          "collectedSamples": 12,
+          "pendingSamples": 0,
+          "passStatuses": [
+            "generated"
+          ],
+          "isolated": true
+        },
+        "status": "measured"
+      },
+      "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "scope": "independent 2x centre-ray reference; domain decoration excluded; numerical reference refusals explicitly inconclusive"
+    },
+    "live": {
+      "label": "live-miss-pass",
+      "regionId": "flat",
+      "width": 160,
+      "height": 120,
+      "range": 64,
+      "status": "generated",
+      "supported": true,
+      "counters": {
+        "draws": 23,
+        "generated": 22,
+        "refused": 1,
+        "reasons": {
+          "generated": 22,
+          "resource-limit": 1
+        },
+        "lastStatus": "generated",
+        "lastAssociation": "5|0|320|240|64|0|0|false|0|-2|0|0|1|0|1|0|0|0|0|1",
+        "gpuStatus": "unknown",
+        "gpuMs": []
+      },
+      "certificatePixels": {
+        "pixels": 19200,
+        "certified": 4668,
+        "surfaces": 32266,
+        "status": "read"
+      },
+      "acceptedPixels": 2612,
+      "certificateOmissions": 19334,
+      "recoveredPixels": 16,
+      "cpuDisagreements": 0,
+      "changedStatus": 16,
+      "baselineCost": {
+        "width": 320,
+        "height": 240,
+        "drawFinishCallMs": {
+          "samples": 12,
+          "p50": 0.3999999985098839,
+          "max": 0.4000000022351742
+        },
+        "gpuMs": {
+          "samples": 12,
+          "p50": 1.069952,
+          "max": 1.303456
+        },
+        "gpuStatus": "measured"
+      },
+      "passCost": {
+        "width": 320,
+        "height": 240,
+        "drawFinishCallMs": {
+          "samples": 12,
+          "p50": 0.6000000014901161,
+          "max": 0.8000000007450581
+        },
+        "gpuMs": {
+          "samples": 12,
+          "p50": 1.32528,
+          "max": 1.434752
+        },
+        "gpuStatus": "measured"
+      },
+      "driftCapture": {
+        "reason": "standing-witness",
+        "pixel": [
+          6,
+          43
+        ],
+        "width": 160,
+        "height": 120,
+        "range": 64,
+        "state": {
+          "regionId": "flat",
+          "radius": 0.25,
+          "camera": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "right": [
+              1,
+              0,
+              0
+            ],
+            "up": [
+              0,
+              0,
+              1
+            ]
+          },
+          "position": [
+            0,
+            -2,
+            0
+          ],
+          "velocity": [
+            -3.8081180088451366e-17,
+            -4,
+            4.328614462555115e-30
+          ]
+        },
+        "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "revision": 5,
+        "mainShader": "0edc277b191629260ca97b89d2820dba56053a3ce9ab83c4f81c4a42b830fe7e",
+        "passShader": "c1956c867597767932ce38c4e22fff25d1efd7c3b8ac9c4418d01d5057732ad3",
+        "packedWorld": "aaafb2a7c70d9a914812894ce719eb288fcc90502a80115d79b324191e4b408f",
+        "sequence": "before160 -> timing320 -> baselineAgain160 -> refined160 -> timing320 (unless baseline failed) -> eight alternating160 reads; packet(debug1,2,3), primary(debug4..7), evidence(debug8)",
+        "separateInvocations": true,
+        "jointScope": "Each jointRayDistance is xyz primary plus traced distance from ONE additional debug11 invocation; E3 primary w is zero. It does not reconstruct preceding debug2.",
+        "rows": [
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": false,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "disabled",
+            "candidate": null
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": true,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "generated",
+            "candidate": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": false,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "disabled",
+            "candidate": null
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": true,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "generated",
+            "candidate": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": false,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "disabled",
+            "candidate": null
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": true,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "generated",
+            "candidate": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": false,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "disabled",
+            "candidate": null
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": true,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510479092597961,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "generated",
+            "candidate": [
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "explicitNormalizationSoftware": {
+    "aa": {
+      "label": "aa-refinement",
+      "records": [
+        {
+          "width": 65,
+          "height": 49,
+          "active": 2904,
+          "omissions": 21398,
+          "bySample": [
+            5351,
+            5347,
+            5352,
+            5348
+          ],
+          "compared": 922,
+          "maxError": 0.7711309515254854,
+          "recovered": 11,
+          "remainingNumeric": 22,
+          "inconclusive": 0,
+          "domainDecorations": 2241
+        },
+        {
+          "width": 160,
+          "height": 120,
+          "active": 17500,
+          "omissions": 129064,
+          "bySample": [
+            32265,
+            32267,
+            32265,
+            32267
+          ],
+          "compared": 5878,
+          "maxError": 0.8784037701707916,
+          "recovered": 46,
+          "remainingNumeric": 88,
+          "inconclusive": 0,
+          "domainDecorations": 13234
+        }
+      ],
+      "frameCosts": {
+        "width": 320,
+        "height": 240,
+        "requestedSamples": 12,
+        "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "revision": 5,
+        "gpuScope": "total renderer draw: exclusion pass plus main draw when enabled",
+        "wallScope": "synchronous renderer.draw plus gl.finish; excludes waits and drain draws",
+        "baseline": {
+          "drawFinishCallMs": {
+            "samples": 12,
+            "p50": 0.20000000298023224,
+            "max": 0.30000000074505806
+          },
+          "gpuMs": {
+            "samples": 4,
+            "p50": 403.1588,
+            "max": 424.8518
+          },
+          "gpuStatus": "incomplete",
+          "collectedSamples": 4,
+          "pendingSamples": 8,
+          "passStatuses": [
+            "disabled"
+          ],
+          "isolated": false,
+          "reason": "GPU queries did not drain before the deadline; partial timings are not a complete case."
+        },
+        "refined": null,
+        "status": "incomplete",
+        "reason": "Refined case skipped to avoid attributing delayed baseline queries to it."
+      },
+      "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "scope": "independent 2x centre-ray reference; domain decoration excluded; numerical reference refusals explicitly inconclusive"
+    },
+    "live": {
+      "label": "live-miss-pass",
+      "regionId": "flat",
+      "width": 160,
+      "height": 120,
+      "range": 64,
+      "status": "generated",
+      "supported": true,
+      "counters": {
+        "draws": 68,
+        "generated": 67,
+        "refused": 1,
+        "reasons": {
+          "generated": 67,
+          "resource-limit": 1
+        },
+        "lastStatus": "generated",
+        "lastAssociation": "5|0|320|240|64|0|0|false|0|-2|0|0|1|0|1|0|0|0|0|1",
+        "gpuStatus": "unknown",
+        "gpuMs": []
+      },
+      "certificatePixels": {
+        "pixels": 19200,
+        "certified": 4668,
+        "surfaces": 32266,
+        "status": "read"
+      },
+      "acceptedPixels": 4368,
+      "certificateOmissions": 32266,
+      "recoveredPixels": 34,
+      "cpuDisagreements": 0,
+      "changedStatus": 34,
+      "baselineCost": {
+        "width": 320,
+        "height": 240,
+        "drawFinishCallMs": {
+          "samples": 12,
+          "p50": 0.19999999925494194,
+          "max": 0.30000000074505806
+        },
+        "gpuMs": {
+          "samples": 12,
+          "p50": 98.0166,
+          "max": 100.3653
+        },
+        "gpuStatus": "measured"
+      },
+      "passCost": {
+        "width": 320,
+        "height": 240,
+        "drawFinishCallMs": {
+          "samples": 12,
+          "p50": 0.6999999992549419,
+          "max": 146.30000000074506
+        },
+        "gpuMs": {
+          "samples": 12,
+          "p50": 155.8566,
+          "max": 163.5376
+        },
+        "gpuStatus": "measured"
+      },
+      "driftCapture": {
+        "reason": "standing-witness",
+        "pixel": [
+          6,
+          43
+        ],
+        "width": 160,
+        "height": 120,
+        "range": 64,
+        "state": {
+          "regionId": "flat",
+          "radius": 0.25,
+          "camera": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "right": [
+              1,
+              0,
+              0
+            ],
+            "up": [
+              0,
+              0,
+              1
+            ]
+          },
+          "position": [
+            0,
+            -2,
+            0
+          ],
+          "velocity": [
+            -3.8081180088451366e-17,
+            -4,
+            4.328614462555115e-30
+          ]
+        },
+        "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "revision": 5,
+        "mainShader": "0edc277b191629260ca97b89d2820dba56053a3ce9ab83c4f81c4a42b830fe7e",
+        "passShader": "c1956c867597767932ce38c4e22fff25d1efd7c3b8ac9c4418d01d5057732ad3",
+        "packedWorld": "aaafb2a7c70d9a914812894ce719eb288fcc90502a80115d79b324191e4b408f",
+        "sequence": "before160 -> timing320 -> baselineAgain160 -> refined160 -> timing320 (unless baseline failed) -> eight alternating160 reads; packet(debug1,2,3), primary(debug4..7), evidence(debug8)",
+        "separateInvocations": true,
+        "jointScope": "Each jointRayDistance is xyz primary plus traced distance from ONE additional debug11 invocation; E3 primary w is zero. It does not reconstruct preceding debug2.",
+        "rows": [
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": false,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "disabled",
+            "candidate": null
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": true,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "generated",
+            "candidate": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": false,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "disabled",
+            "candidate": null
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": true,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "generated",
+            "candidate": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": false,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "disabled",
+            "candidate": null
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": true,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "generated",
+            "candidate": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": false,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "disabled",
+            "candidate": null
+          },
+          {
+            "jointRayDistance": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              2.594228744506836
+            ],
+            "sphericalMissPass": true,
+            "status": [
+              1,
+              1,
+              2,
+              0
+            ],
+            "distance": 2.594228744506836,
+            "primary": [
+              -0.6442145109176636,
+              0.7510478496551514,
+              -0.14461958408355713,
+              0
+            ],
+            "finalActive": 0,
+            "cumulativeOmissions": 0,
+            "debugStatus": 1,
+            "passStatus": "generated",
+            "candidate": [
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

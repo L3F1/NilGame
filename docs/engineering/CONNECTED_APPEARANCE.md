@@ -63,3 +63,8 @@ sampling/resolve boundary without new geometry-specific smoothing code.
 The four rays are more work. Keep the toggle and report GPU/CPU times separately;
 do not infer input latency from GPU timings. Reference checks compare with an
 independent 2x-resolution centre-ray image and keep uncertainty markers explicit.
+
+Optional first-transfer spherical refinement also supports these four samples,
+using separately stamped atlas tiles. It remains default-off and may refuse
+large viewports without changing the ordinary display. See
+[AA_REFINEMENT.md](AA_REFINEMENT.md) for identity, memory and evidence policy.
