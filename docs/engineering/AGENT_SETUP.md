@@ -81,3 +81,33 @@ session ID/base hash/allowed files/checks, serialize integration and browser
 checks, collect result plus exit status, and stop for lead review. Do not resume
 `--last` in concurrent jobs or launch recursive agent-to-agent loops. Use the
 existing handoff files as task inputs; avoid pasting entire conversations.
+
+## Seeing what Muse has spent
+
+There is no way to ask the client how much subscription quota is left. `muse`
+has no usage or quota subcommand, its bridge JSONL carries no token counts
+(unlike Claude's, which the bridge already parses), and the provider states the
+limit only when refusing: `Subscription quota exhausted. Your usage window
+resets at <ISO time>`. That refusal is the single authoritative signal, and it
+arrives too late to plan around.
+
+The spend side IS readable. Every session log under
+`~/.local/share/muse/sessions/<year>/<month>/<day>/<id>/session.jsonl` records
+per-call usage - input, output, reasoning, cached, cache read and cache write
+tokens - plus the client's own accounting stream tagged by `usage_family`
+(provider, tool, reminder, compaction) with a `reported` flag.
+
+`node tools/muse-usage.js [--days N] [--since <ISO>] [--root <path>]` reads those
+over the WSL share and prints a per-UTC-day ledger, the reported accounting by
+family, the largest sessions, and every quota refusal recorded under
+`.agent-bridge/runs`. It is a PROXY: it counts what the client recorded, not
+what the subscription meters, and the two can differ on model weighting and on
+how cached reads are billed. Note that cached reads dominate - in the measured
+span they were 94% of all input tokens - so the ledger reports fresh input
+separately, since that is the figure most likely to be metered.
+
+To calibrate a ceiling, which is the only way to get one: note the totals when a
+refusal lands, and compare across windows. The one refusal observed so far came
+at 2026-09-12T08:25Z and named a reset of 2026-09-14T00:00Z, so the window is
+NOT daily - a second observation is needed before its length is known.
+

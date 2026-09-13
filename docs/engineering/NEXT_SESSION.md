@@ -51,6 +51,13 @@ guarded subsamples are undecidable TODAY, and all 10 are decided by a tighter ra
 guarded, so antialiasing bounds whatever survives to one Nth of the spread. The
 suite fails if any guarded sample resists every precision in the series.
 
+Muse spend is now readable locally: node tools/muse-usage.js prints a per-UTC-day
+token ledger from the session logs, since the client exposes no quota query and
+the provider only states the window when refusing. See AGENT_SETUP.md. It counts
+spend, never remaining, and the window is not daily - the one observed refusal
+came 2026-09-12T08:25Z naming a 2026-09-14T00:00Z reset, so a second observation
+is needed to learn its length.
+
 Muse: muse77-compensated-float is STAGED in tools/agent-bridge-tasks.json and
 NOT dispatched - quota resets 2026-09-14T00:00:00Z, run the bridge after that.
 muse78-hit-band-pose-corpus is queued behind it in MUSE_TASKS.md.
