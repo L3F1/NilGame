@@ -68,6 +68,14 @@ for(const record of census.records){
     }
     assert.ok(ordered.length>1&&ordered.at(-1).colourSteps<ordered[0].colourSteps/2,
       `A ${1/ordered.at(-1).factor}x tighter ray bought nothing at ${where}`);
+    // Once the ray stops being the limit something else must be, and naming it
+    // decides whether a tighter ray is worth paying for at all.
+    assert.ok(record.floor.packedGeometry>0&&record.floor.packedGeometry<record.bandWidth,
+      `Geometry floor not below the measured band at ${where}`);
+    assert.ok(record.floor.exactGeometry<record.floor.packedGeometry/100,
+      `Packed geometry is not what sets the floor at ${where}`);
+    assert.ok(record.floor.exactCentre<record.floor.exactRadius,
+      `The packed centre should dominate the packed radius at ${where}`);
   }else assert.equal(record.tightening[0].status,record.entry.status,
     `Tightening series disagrees with the measured answer at ${where}`);
   // Separation is finite: every pixel loses its answer at some wider input box,

@@ -1,11 +1,11 @@
 {
  "date": "2026-09-13",
- "base": "af99e67",
+ "base": "3529451",
  "host": "win32/Node 24.20.0",
  "command": "node tools/spherical-hit-band-evidence.js",
  "checked": "node spherical-hit-band.test.js",
  "fixture": "levels/fixtures/connected-three-geometries.nil.json",
- "wallMs": 244,
+ "wallMs": 249,
  "census": {
   "label": "spherical-hit-band",
   "width": 160,
@@ -112,6 +112,12 @@
       2.108006715774536,
       2.1080172061920166
      ]
+    },
+    "floor": {
+     "packedGeometry": 0.00007543212974781,
+     "exactCentre": 9.385328567645956e-7,
+     "exactRadius": 0.00007449399694792191,
+     "exactGeometry": 4.0022740677159163e-10
     },
     "binary32": {
      "status": "entry",
@@ -273,6 +279,12 @@
       2.1080172061920166
      ]
     },
+    "floor": {
+     "packedGeometry": 0.00007543212974781,
+     "exactCentre": 9.385328567645956e-7,
+     "exactRadius": 0.00007449399694792191,
+     "exactGeometry": 4.0022740677159163e-10
+    },
     "binary32": {
      "status": "entry",
      "reason": null,
@@ -433,6 +445,7 @@
       2.0793960094451904
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -533,6 +546,7 @@
       2.0793960094451904
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -632,6 +646,12 @@
       2.0733511447906494,
       2.073361873626709
      ]
+    },
+    "floor": {
+     "packedGeometry": 0.0000737210453465309,
+     "exactCentre": 9.16683795537665e-7,
+     "exactRadius": 0.00007280477143467579,
+     "exactGeometry": 4.100968453712994e-10
     },
     "binary32": {
      "status": "entry",
@@ -793,6 +813,12 @@
       2.073361873626709
      ]
     },
+    "floor": {
+     "packedGeometry": 0.0000737210453465309,
+     "exactCentre": 9.16683795537665e-7,
+     "exactRadius": 0.00007280477143467579,
+     "exactGeometry": 4.100968453712994e-10
+    },
     "binary32": {
      "status": "entry",
      "reason": null,
@@ -952,6 +978,12 @@
       2.0675625801086426,
       2.067573070526123
      ]
+    },
+    "floor": {
+     "packedGeometry": 0.00007181121925015077,
+     "exactCentre": 8.925500338818892e-7,
+     "exactRadius": 0.0000709190522627523,
+     "exactGeometry": 3.8318148654070683e-10
     },
     "binary32": {
      "status": "entry",
@@ -1113,6 +1145,12 @@
       2.067573070526123
      ]
     },
+    "floor": {
+     "packedGeometry": 0.00007181121925015077,
+     "exactCentre": 8.925500338818892e-7,
+     "exactRadius": 0.0000709190522627523,
+     "exactGeometry": 3.8318148654070683e-10
+    },
     "binary32": {
      "status": "entry",
      "reason": null,
@@ -1273,6 +1311,7 @@
       2.062032461166382
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -1373,6 +1412,7 @@
       2.062032461166382
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -1473,6 +1513,7 @@
       2.0332999229431152
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -1573,6 +1614,7 @@
       2.0332999229431152
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -1673,6 +1715,7 @@
       2.190397024154663
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -1772,6 +1815,12 @@
       2.1786646842956543,
       2.1786766052246094
      ]
+    },
+    "floor": {
+     "packedGeometry": 0.00007482376836209781,
+     "exactCentre": 8.82285169812036e-7,
+     "exactRadius": 0.00007394173990915576,
+     "exactGeometry": 2.5685453763912847e-10
     },
     "binary32": {
      "status": "entry",
@@ -1933,6 +1982,7 @@
       2.158832311630249
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -2033,6 +2083,7 @@
       2.1482081413269043
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -2132,6 +2183,12 @@
       2.136244058609009,
       2.1362557411193848
      ]
+    },
+    "floor": {
+     "packedGeometry": 0.00009442931885894623,
+     "exactCentre": 0.0000011229540111123981,
+     "exactRadius": 0.00009330667147589011,
+     "exactGeometry": 3.0708280363000995e-10
     },
     "binary32": {
      "status": "entry",
@@ -2293,6 +2350,7 @@
       2.1267995834350586
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -2392,6 +2450,12 @@
       2.12550687789917,
       2.125518321990967
      ]
+    },
+    "floor": {
+     "packedGeometry": 0.00008929867707863082,
+     "exactCentre": 0.000001062768379966883,
+     "exactRadius": 0.00008823619163589314,
+     "exactGeometry": 2.831308520967468e-10
     },
     "binary32": {
      "status": "entry",
@@ -2553,6 +2617,7 @@
       2.116013765335083
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -2653,6 +2718,7 @@
       2.1154985427856445
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -2752,6 +2818,12 @@
       2.115230083465576,
       2.115241050720215
      ]
+    },
+    "floor": {
+     "packedGeometry": 0.0001980808867214634,
+     "exactCentre": 0.0000023757030045423733,
+     "exactRadius": 0.0001957057820733965,
+     "exactGeometry": 6.173381805751887e-10
     },
     "binary32": {
      "status": "entry",
@@ -2913,6 +2985,12 @@
       2.115241050720215
      ]
     },
+    "floor": {
+     "packedGeometry": 0.0001980808867214634,
+     "exactCentre": 0.0000023757030045423733,
+     "exactRadius": 0.0001957057820733965,
+     "exactGeometry": 6.173381805751887e-10
+    },
     "binary32": {
      "status": "entry",
      "reason": null,
@@ -3073,6 +3151,7 @@
       2.1154985427856445
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -3173,6 +3252,7 @@
       2.116013765335083
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -3272,6 +3352,12 @@
       2.12550687789917,
       2.125518321990967
      ]
+    },
+    "floor": {
+     "packedGeometry": 0.00008930181501964896,
+     "exactCentre": 0.0000010628079762931009,
+     "exactRadius": 0.0000882392916663477,
+     "exactGeometry": 2.84966716890267e-10
     },
     "binary32": {
      "status": "entry",
@@ -3433,6 +3519,7 @@
       2.1267995834350586
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -3532,6 +3619,12 @@
       2.136244058609009,
       2.1362557411193848
      ]
+    },
+    "floor": {
+     "packedGeometry": 0.00009443006142317856,
+     "exactCentre": 0.0000011229632574938364,
+     "exactRadius": 0.000093307405196974,
+     "exactGeometry": 3.0740654466399064e-10
     },
     "binary32": {
      "status": "entry",
@@ -3693,6 +3786,7 @@
       2.1482081413269043
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -3793,6 +3887,7 @@
       2.158832550048828
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -3892,6 +3987,12 @@
       2.1786646842956543,
       2.1786766052246094
      ]
+    },
+    "floor": {
+     "packedGeometry": 0.00007482526929880606,
+     "exactCentre": 8.823050716699754e-7,
+     "exactRadius": 0.00007394322291265354,
+     "exactGeometry": 2.5876056852780494e-10
     },
     "binary32": {
      "status": "entry",
@@ -4053,6 +4154,7 @@
       2.190397024154663
      ]
     },
+    "floor": null,
     "binary32": {
      "status": "miss",
      "reason": null,
@@ -4164,6 +4266,11 @@
     "maxDegrees": 2.114481792311716,
     "maxColourSteps": 9.410156628767929,
     "unresolved": 0
+   },
+   "floor": {
+    "packedGeometry": 0.0001980808867214634,
+    "exactGeometry": 6.173381805751887e-10,
+    "negligibleRay": 5.960464477539063e-8
    },
    "binary32": {
     "entry": {

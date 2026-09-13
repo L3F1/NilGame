@@ -152,6 +152,29 @@ function shadingSpread(transfer,band,center,curvatureRadius,source='both'){
     return {status:'unresolved',reason:error.message};
   }
 }
+// What still limits the band once the RAY is no longer the limit. The ray box is
+// the one input a port can realistically improve; the packed ball centre and
+// radius are not, so measure what they leave behind. NEGLIGIBLE_RAY is a probe
+// value for that question, not a precision any implementation is claimed to reach.
+const NEGLIGIBLE_RAY=2**-24;
+function geometryFloor(transfer,ball,curvatureRadius,remaining){
+  const packed=ball.center.map(v=>interval(v)),radiusBand=interval(ball.radius);
+  const centerError=halfWidth(packed);
+  const radiusError=Math.max(ball.radius-radiusBand[0],radiusBand[1]-ball.radius);
+  const band=(centre,radius)=>{
+    const root=sphericalBallRootBounds({position:mid(transfer.position),
+      positionError:scale(halfWidth(transfer.position),NEGLIGIBLE_RAY),
+      direction:mid(transfer.direction),
+      directionError:scale(halfWidth(transfer.direction),NEGLIGIBLE_RAY),
+      center:mid(packed),centerError:centre,radius:ball.radius,radiusError:radius,
+      curvatureRadius,maxDistance:remaining});
+    const entry=root.events?.find(event=>event.kind==='entry');
+    return entry?entry.upper-entry.lower:null;
+  };
+  return {packedGeometry:band(centerError,radiusError),
+    exactCentre:band([0,0,0,0],radiusError),exactRadius:band(centerError,0),
+    exactGeometry:band([0,0,0,0],0)};
+}
 export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60,
   inflations=[1,2,4,8,16,32,64,128,256,512,1024],
   deflations=[1,1/2,1/4,1/8,1/16,1/32,1/64,1/128],
@@ -168,6 +191,7 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
   const records=[],summary={flagged:0,cpu:{},entry:{},exteriorRefused:0,
     bandWidth:{min:Infinity,max:0},containsTracedRoot:0,missingTracedRoot:0,inflation:{},
     shading:{maxDiameter:0,maxDegrees:0,maxColourSteps:0,unresolved:0},
+    floor:{packedGeometry:0,exactGeometry:0,negligibleRay:NEGLIGIBLE_RAY},
     binary32:{entry:{},bandWidth:{min:Infinity,max:0},widening:{max:0},allowance:{}}};
   for(let y=0;y<height;y++)for(let x=0;x<width;x++){
     const direction=pixelDirection(source.space,pose.position,pose.camera,width,height,x,y);
@@ -291,7 +315,14 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
       }
       summary.binary32.allowance[allowanceLimit]=(summary.binary32.allowance[allowanceLimit]??0)+1;
     }
-    records.push({x,y,guard,cpu,transfer:{status:'bounded',distance:transfer.distance},
+    const floor=measured.entry.status==='entry'
+      ?geometryFloor(transfer,destination.balls.find(b=>b.id===measured.entry.owner),
+        curvatureRadius,remaining):null;
+    if(floor?.packedGeometry){
+      summary.floor.packedGeometry=Math.max(summary.floor.packedGeometry,floor.packedGeometry);
+      summary.floor.exactGeometry=Math.max(summary.floor.exactGeometry,floor.exactGeometry??0);
+    }
+    records.push({x,y,guard,cpu,transfer:{status:'bounded',distance:transfer.distance},floor,
       binary32:{status:binary32.entry.status,reason:binary32.entry.reason??null,
         owner:binary32.entry.owner??null,certified:binary32.certified,
         bandWidth:binary32Band,widening,allowanceLimit,allowanceFailure,

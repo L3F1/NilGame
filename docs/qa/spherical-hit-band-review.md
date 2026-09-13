@@ -223,24 +223,75 @@ operations each, and the existing transfer bound would report the improvement
 without any new proof obligation. Whether to spend that is the lead's call; this
 is the measurement it needs, not a decision.
 
-## Next
+## Where the error lives, end to end
 
-The route decision now has evidence, and it changes the recommendation. Using
-`atan`/`acos` in a GLSL envelope is viable on both backends measured here, so
-the choice is no longer forced. But a sampled result on one machine's ANGLE
-paths is not a portable guarantee, so a port that uses them must carry an
-admitted allowance constant in the shape this module already accepts - a
-conditional binary32 contract like the ones in SPHERICAL_CURVE_ERROR.md, not a
-silent assumption. Measured worst case 6.8e-5 rad leaves room for something
-around 2^-12; admitting the constant, and on what evidence, is the lead's call
-and no constant is baked into any code by this work.
+Every stage is now measured, so the budget can be written down instead of argued
+about. All figures are the worst ordered pixel at the recorded pose.
 
-The alternative remains open and needs no admission: produce the band from
-certified sign brackets on the curve value, reusing the shared-sincos contract,
-so neither built-in appears in the proof. It costs iterations where the closed
-form costs an assumption.
+| Stage | Contribution | Improvable? |
+| --- | --- | --- |
+| Primary ray direction, binary32 | 60-63% of the transfer box | yes, inside a producer program |
+| Portal transfer arithmetic, binary32 | 37-40% of the transfer box | yes, same place |
+| Transfer box -> band, via arccosine sensitivity near tangency | x75 amplifier | no, this is the geometry |
+| Packed ball CENTRE, binary32 in the data texture | sets a 1.98e-4 floor | yes, at a format cost |
+| Packed ball radius, binary32 | 1.96e-4 with an exact centre, so nearly nothing | not worth it |
+| Everything else exact | 6.17e-10 | - |
 
-Either way the shading question in the audit's section 3 is still open, so the
-current colours stand until a hit position and normal tolerance is derived, and
-a second machine or a non-ANGLE backend would strengthen the transcendental
-evidence considerably.
+Reading the table: today's 6.58e-3 band is ray-limited. Remove the ray as a limit
+and the band lands at 1.98e-4, which is the packed centre, and that is already
+0.32 of an 8-bit colour step. The radius packing barely matters; the centre
+packing is 83x more of the residual.
+
+## The plan
+
+Four stages, each with a gate that can stop the next one.
+
+1. **Tighten the ray inside the producer.** Compensated (double-float) arithmetic
+   over the primary ray and the portal transfer in the SEPARATE band program,
+   not the main shader. It buys about 24 bits where 4 are needed, and the main
+   shader keeps its binary32 path untouched. Gate: the existing transfer bound
+   reports the narrower box, and this census reports the worst pixel under one
+   colour step.
+2. **Produce the band on the GPU.** A separate program in the shape of the miss
+   pass: certified outside start, one root query per ball, ordering, emitting the
+   band and the normal. Gate: per-pixel agreement with this CPU census.
+3. **Consume it.** The main shader accepts a certificate only at exact
+   association. Note a trap: once the producer's proof box is tighter than the
+   main shader's own binary32 error, the current `enclosureMember` association
+   check would REJECT its own certificates. The producer must therefore export
+   two boxes - a tight proof box and a wider association box that contains what
+   the main shader computes - or export the shaded answer outright.
+4. **Shade.** With the worst pixel under one colour step, the band midpoint plus
+   its certified normal names a colour no more than one step from any other
+   answer the band admits. That is a derived tolerance rather than a fitted one,
+   and it is what finally lets a pixel stop being purple.
+
+## Viable options, with what each costs
+
+- **A. Compensated ray + the existing closed-form solver (recommended).** Smallest
+  change, entirely inside a separate program, measured end to end above. Costs a
+  handful of extra operations per ray. Still needs an admitted allowance for
+  `atan`/`acos`, though the margin is 14x on both backends measured.
+- **B. Certified sign brackets instead of the closed form.** Avoids `atan` and
+  `acos` entirely by bracketing the curve value with the shared-sincos contract,
+  so no transcendental accuracy has to be admitted. Costs iterations per ray and
+  a new producer, and it does NOT fix the ray-precision problem, which dominates.
+  Best combined with A rather than instead of it.
+- **C. Admit a transcendental allowance and ship the closed form as is.**
+  Cheapest, but leaves the band ray-limited at 9.4 colour steps, which is what
+  makes the pixels purple in the first place. It resolves ordering, not shading.
+- **D. Pack the ball centre at higher precision.** Only worth doing after A, and
+  only if 0.32 of a colour step is somehow not enough. Costs a scene format
+  change, which is a far larger commitment than A.
+- **E. Supersampling.** Already shipped as an option and already recovers some
+  fringe pixels. It reduces how MANY pixels are uncertain without making any
+  individual answer decidable, so it is a mitigation, not a fix.
+- **F. Keep the refusal.** Always available and currently correct. Purple is a
+  visible, honest statement that the arithmetic is exhausted, and it is a better
+  default than a guessed silhouette.
+
+What this does NOT need: binary64, which GLSL ES does not provide; a different
+host, since every renderer draws this scene in binary32; or a different language,
+since the constraint is in the shader. A second machine or a non-ANGLE backend
+would strengthen the transcendental evidence considerably, and that remains the
+weakest link in option A.

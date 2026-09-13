@@ -41,8 +41,17 @@ GLSL ES), nor a different host or language - it needs a few more bits in one
 place, which compensated double-float dot products in the transfer would supply
 with room to spare. Spending that is the lead's call.
 
-Next: the LEAD decides the envelope route, since both are now open, and whether
-a normal pinned to about two degrees is enough to call a pixel decided. Using
+The floor once the ray is fixed is the PACKED BALL CENTRE, not the radius and not
+the solver: 1.98e-4 band, 0.32 colour steps, versus 6.17e-10 with exact geometry.
+So a tighter ray is sufficient on its own and a scene format change is not needed.
+
+Next: the four-stage plan and the six options are written up in the review's
+"The plan" section. Stage 1 is compensated double-float over the primary ray and
+transfer INSIDE the separate producer program, never the main shader. Note the
+trap recorded there: a proof box tighter than the main shader's own binary32
+error makes enclosureMember reject its own certificates, so the producer must
+export a tight proof box AND a wider association box. The lead still owns the
+envelope route and whether to admit a transcendental constant. Using
 atan/acos is viable but must carry an admitted allowance constant (measured
 worst 6.8e-5 leaves room around 2^-12) as a conditional binary32 contract like
 SPHERICAL_CURVE_ERROR.md; no constant is baked in by this work. The alternative
