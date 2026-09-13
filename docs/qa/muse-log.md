@@ -2974,3 +2974,16 @@ Curved Spaces source/license verified, also GPLv2-or-later. Bruneton's exact
 shader files and BSD terms inspected. PLM/WLU copying permission unverified.
 Corrected durable index: docs/research/geometry-implementation-sources.md.
 No code imported. Historical READY/unknown-source notes above are superseded.
+
+
+## claude-s3-hit-contract-audit - ACCEPTED, 2026-09-13
+
+Bounded read-only review of what must be proved before S3 tangency refusals can
+become ordered entry bands. Delivered at base 57bcce5, harvested from its bridge
+run and landed as docs/qa/claude-s3-hit-contract-audit.md. Its three answers
+held up against the CPU measurement that followed: amplitude-only certificates
+give no time bound, firstAdditiveEntry is reusable only with a certified outside
+start and a portal/edge band, and a band midpoint certifies no shaded point.
+Its float32 gap list is now the next task. Host probe was blocked in that
+non-interactive session; no checks were run there.
+

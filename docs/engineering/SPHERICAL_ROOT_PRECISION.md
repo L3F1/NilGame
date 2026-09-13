@@ -120,3 +120,25 @@ ordering. Measure whether phase/coefficient bounds leave usable separated bands
 before adding a production packet format or widening the main shader. The
 existing main-program compilation cliff is a reason to keep that experiment
 small. Do not start another general-purpose interval helper family.
+
+### CPU feasibility gate result (2026-09-13)
+
+The smallest experiment ran on the CPU reference model first, because a GPU
+program is not worth writing if the bands do not separate at all. At the
+recorded 160x120 gallery pose, over every pixel whose transported first-transfer
+ray trips the live tangency guard: 14 of 14 traced hits receive a definite
+ordered entry naming the traced owner and bracketing the traced root, 18 of 18
+traced misses certify as misses, and every leg start is certified strictly
+outside all balls in the region. Band widths are 0.0029 to 0.0066 world units.
+Evidence and limits: docs/qa/spherical-hit-band-review.md, guarded by
+spherical-hit-band.test.js. sphericalBallExterior is the certified outside start
+this ordering requires; it proves a strict exterior only, and refuses otherwise.
+
+The headroom is thin. Inflating only the transfer box costs the answer at 2x on
+the narrowest pixels and at 32x on the widest, and every failure degrades to
+unresolved rather than naming a different owner. So the next question is exactly
+the float32 one: derive operation bounds for a GLSL port of the coefficient and
+root envelope and re-measure separation under those bounds in a small separate
+program. Widths beyond roughly that 2x margin mean ordering cannot carry these
+pixels, and the current refusal stands. Nothing here licenses a recolour, a
+midpoint hit position or a normal.

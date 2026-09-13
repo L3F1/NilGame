@@ -1,0 +1,2161 @@
+{
+ "date": "2026-09-13",
+ "base": "3a0543a",
+ "host": "win32/Node 24.20.0",
+ "command": "node tools/spherical-hit-band-evidence.js",
+ "checked": "node spherical-hit-band.test.js",
+ "fixture": "levels/fixtures/connected-three-geometries.nil.json",
+ "wallMs": 236,
+ "census": {
+  "label": "spherical-hit-band",
+  "width": 160,
+  "height": 120,
+  "range": 60,
+  "pose": {
+   "regionId": "flat",
+   "position": [
+    0,
+    -2,
+    0
+   ],
+   "camera": {
+    "space": {
+     "kind": "e3",
+     "curvatureRadius": 1,
+     "maxDistance": 12,
+     "dimension": 3,
+     "origin": [
+      0,
+      0,
+      0
+     ]
+    },
+    "position": [
+     0,
+     -2,
+     0
+    ],
+    "forward": [
+     0,
+     1,
+     0
+    ],
+    "up": [
+     0,
+     0,
+     1
+    ],
+    "right": [
+     1,
+     0,
+     0
+    ]
+   }
+  },
+  "guard": 0.00012,
+  "balls": [
+   "north-landmark",
+   "south-landmark",
+   "return-landmark"
+  ],
+  "inflations": [
+   1,
+   2,
+   4,
+   8,
+   16,
+   32,
+   64,
+   128,
+   256,
+   512,
+   1024
+  ],
+  "records": [
+   {
+    "x": 78,
+    "y": 31,
+    "guard": [
+     "return-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "return-landmark",
+     "distance": 39.53536140242926,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.108006715774536,
+      2.1080172061920166
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.06336032562849392,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "roots",
+      "",
+      2
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "return-landmark",
+     "lower": 37.424736762579215,
+     "upper": 37.429997106784924
+    },
+    "bandWidth": 0.005260344205709089,
+    "tracedRoot": [
+     37.42734419623724,
+     37.42735468665472
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 16,
+    "inflationFailure": {
+     "factor": 32,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.891993284225464
+   },
+   {
+    "x": 81,
+    "y": 31,
+    "guard": [
+     "return-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "return-landmark",
+     "distance": 39.53536140242926,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.108006715774536,
+      2.1080172061920166
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.06121995432829086,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "roots",
+      "",
+      2
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "return-landmark",
+     "lower": 37.424736762579215,
+     "upper": 37.429997106784924
+    },
+    "bandWidth": 0.005260344205709089,
+    "tracedRoot": [
+     37.42734419623724,
+     37.42735468665472
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 16,
+    "inflationFailure": {
+     "factor": 32,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.891993284225464
+   },
+   {
+    "x": 73,
+    "y": 36,
+    "guard": [
+     "return-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.079385280609131,
+      2.0793960094451904
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.06605151623159278,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.92060399055481,
+     57.92061471939087
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 4,
+    "inflationFailure": {
+     "factor": 8,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.92061471939087
+   },
+   {
+    "x": 86,
+    "y": 36,
+    "guard": [
+     "return-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.079385280609131,
+      2.0793960094451904
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.05677367622463059,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.92060399055481,
+     57.92061471939087
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 4,
+    "inflationFailure": {
+     "factor": 8,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.92061471939087
+   },
+   {
+    "x": 73,
+    "y": 37,
+    "guard": [
+     "return-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "return-landmark",
+     "distance": 39.53279314982754,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.0733511447906494,
+      2.073361873626709
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.06586829660624616,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "roots",
+      "",
+      2
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "return-landmark",
+     "lower": 37.45674628138005,
+     "upper": 37.46220661167521
+    },
+    "bandWidth": 0.005460330295157689,
+    "tracedRoot": [
+     37.45943127620083,
+     37.45944200503689
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 16,
+    "inflationFailure": {
+     "factor": 32,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.92664885520935
+   },
+   {
+    "x": 86,
+    "y": 37,
+    "guard": [
+     "return-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "return-landmark",
+     "distance": 39.53279314982754,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.0733511447906494,
+      2.073361873626709
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.056589850548077414,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "roots",
+      "",
+      2
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "return-landmark",
+     "lower": 37.45674628138005,
+     "upper": 37.46220661167521
+    },
+    "bandWidth": 0.005460330295157689,
+    "tracedRoot": [
+     37.45943127620083,
+     37.45944200503689
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 16,
+    "inflationFailure": {
+     "factor": 32,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.92664885520935
+   },
+   {
+    "x": 73,
+    "y": 38,
+    "guard": [
+     "return-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "return-landmark",
+     "distance": 39.52983409722258,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.0675625801086426,
+      2.067573070526123
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.06569306003043485,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "roots",
+      "",
+      2
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "return-landmark",
+     "lower": 37.459769703237136,
+     "upper": 37.4648147007643
+    },
+    "bandWidth": 0.005044997527164696,
+    "tracedRoot": [
+     37.46226102669646,
+     37.46227151711394
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 16,
+    "inflationFailure": {
+     "factor": 32,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.93243741989136
+   },
+   {
+    "x": 86,
+    "y": 38,
+    "guard": [
+     "return-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "return-landmark",
+     "distance": 39.52983409722258,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.0675625801086426,
+      2.067573070526123
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.056414035282287944,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "roots",
+      "",
+      2
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "return-landmark",
+     "lower": 37.459769703237136,
+     "upper": 37.4648147007643
+    },
+    "bandWidth": 0.005044997527164696,
+    "tracedRoot": [
+     37.46226102669646,
+     37.46227151711394
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 16,
+    "inflationFailure": {
+     "factor": 32,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.93243741989136
+   },
+   {
+    "x": 73,
+    "y": 39,
+    "guard": [
+     "return-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.0620219707489014,
+      2.062032461166382
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.06552575058615784,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.93796753883362,
+     57.9379780292511
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 2,
+    "inflationFailure": {
+     "factor": 4,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.9379780292511
+   },
+   {
+    "x": 86,
+    "y": 39,
+    "guard": [
+     "return-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.0620219707489014,
+      2.062032461166382
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.056246172685179174,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.93796753883362,
+     57.9379780292511
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 2,
+    "inflationFailure": {
+     "factor": 4,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.9379780292511
+   },
+   {
+    "x": 77,
+    "y": 44,
+    "guard": [
+     "return-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.0332894325256348,
+      2.0332999229431152
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.061809084915150136,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.966700077056885,
+     57.966710567474365
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 16,
+    "inflationFailure": {
+     "factor": 32,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.966710567474365
+   },
+   {
+    "x": 82,
+    "y": 44,
+    "guard": [
+     "return-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.0332894325256348,
+      2.0332999229431152
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.05823892196363889,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.966700077056885,
+     57.966710567474365
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 16,
+    "inflationFailure": {
+     "factor": 32,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.966710567474365
+   },
+   {
+    "x": 116,
+    "y": 48,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.190385341644287,
+      2.190397024154663
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.03886387970184557,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.80960297584534,
+     57.80961465835571
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 8,
+    "inflationFailure": {
+     "factor": 16,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.80961465835571
+   },
+   {
+    "x": 115,
+    "y": 49,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "north-landmark",
+     "distance": 4.3183217488547445,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.1786646842956543,
+      2.1786766052246094
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.039198705159861125,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "roots",
+      "",
+      4
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "north-landmark",
+     "lower": 2.1381859889612724,
+     "upper": 2.1410594631318896
+    },
+    "bandWidth": 0.0028734741706171185,
+    "tracedRoot": [
+     2.139645143630135,
+     2.13965706455909
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 32,
+    "inflationFailure": {
+     "factor": 64,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.821335315704346
+   },
+   {
+    "x": 113,
+    "y": 50,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.158820867538452,
+      2.158832311630249
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.03998945621188266,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.84116768836975,
+     57.84117913246155
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 32,
+    "inflationFailure": {
+     "factor": 64,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.84117913246155
+   },
+   {
+    "x": 112,
+    "y": 51,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.148196220397949,
+      2.1482081413269043
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.040364905807483864,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.851791858673096,
+     57.85180377960205
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 32,
+    "inflationFailure": {
+     "factor": 64,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.85180377960205
+   },
+   {
+    "x": 111,
+    "y": 53,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "north-landmark",
+     "distance": 4.342164538869849,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.136244058609009,
+      2.1362557411193848
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.04070035271046024,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "roots",
+      "",
+      4
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "north-landmark",
+     "lower": 2.204225092519147,
+     "upper": 2.2075603461837767
+    },
+    "bandWidth": 0.0033352536646296116,
+    "tracedRoot": [
+     2.205908797750464,
+     2.20592048026084
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 16,
+    "inflationFailure": {
+     "factor": 32,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.86375594139099
+   },
+   {
+    "x": 110,
+    "y": 54,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.1267881393432617,
+      2.1267995834350586
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.041116283536710374,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.87320041656494,
+     57.87321186065674
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 32,
+    "inflationFailure": {
+     "factor": 64,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.87321186065674
+   },
+   {
+    "x": 110,
+    "y": 55,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "north-landmark",
+     "distance": 4.337172776070545,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.12550687789917,
+      2.125518321990967
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.041076105732213875,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "roots",
+      "",
+      4
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "north-landmark",
+     "lower": 2.2101402407399178,
+     "upper": 2.2131670988653553
+    },
+    "bandWidth": 0.0030268581254375704,
+    "tracedRoot": [
+     2.2116544540795786,
+     2.2116658981713755
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 32,
+    "inflationFailure": {
+     "factor": 64,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.87449312210083
+   },
+   {
+    "x": 109,
+    "y": 57,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.1160025596618652,
+      2.116013765335083
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.0414921466319248,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.88398623466492,
+     57.883997440338135
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 32,
+    "inflationFailure": {
+     "factor": 64,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.883997440338135
+   },
+   {
+    "x": 109,
+    "y": 58,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.115487575531006,
+      2.1154985427856445
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.04147603551833867,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.884501457214355,
+     57.884512424468994
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 8,
+    "inflationFailure": {
+     "factor": 16,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.884512424468994
+   },
+   {
+    "x": 109,
+    "y": 59,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "north-landmark",
+     "distance": 4.3886307627523395,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.115230083465576,
+      2.115241050720215
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.04146803496750551,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "roots",
+      "",
+      4
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "north-landmark",
+     "lower": 2.270197917850387,
+     "upper": 2.276774243677456
+    },
+    "bandWidth": 0.00657632582706924,
+    "tracedRoot": [
+     2.2733897120321247,
+     2.2734006792867634
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 4,
+    "inflationFailure": {
+     "factor": 8,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.884769916534424
+   },
+   {
+    "x": 109,
+    "y": 60,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "north-landmark",
+     "distance": 4.3886307627523395,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.115230083465576,
+      2.115241050720215
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.04146803496750551,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "roots",
+      "",
+      4
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "north-landmark",
+     "lower": 2.270197917850387,
+     "upper": 2.276774243677456
+    },
+    "bandWidth": 0.00657632582706924,
+    "tracedRoot": [
+     2.2733897120321247,
+     2.2734006792867634
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 4,
+    "inflationFailure": {
+     "factor": 8,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.884769916534424
+   },
+   {
+    "x": 109,
+    "y": 61,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.115487575531006,
+      2.1154985427856445
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.04147603551833867,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.884501457214355,
+     57.884512424468994
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 8,
+    "inflationFailure": {
+     "factor": 16,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.884512424468994
+   },
+   {
+    "x": 109,
+    "y": 62,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.1160025596618652,
+      2.116013765335083
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.0414921466319248,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.88398623466492,
+     57.883997440338135
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 32,
+    "inflationFailure": {
+     "factor": 64,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.883997440338135
+   },
+   {
+    "x": 110,
+    "y": 64,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "north-landmark",
+     "distance": 4.337172776070545,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.12550687789917,
+      2.125518321990967
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.041076105732213875,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "roots",
+      "",
+      4
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "north-landmark",
+     "lower": 2.2101288202851865,
+     "upper": 2.2131854326587486
+    },
+    "bandWidth": 0.0030566123735620288,
+    "tracedRoot": [
+     2.2116544540795786,
+     2.2116658981713755
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 16,
+    "inflationFailure": {
+     "factor": 32,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.87449312210083
+   },
+   {
+    "x": 110,
+    "y": 65,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.1267879009246826,
+      2.1267995834350586
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.04111628171262838,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.87320041656494,
+     57.87321209907532
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 32,
+    "inflationFailure": {
+     "factor": 64,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.87321209907532
+   },
+   {
+    "x": 111,
+    "y": 66,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "north-landmark",
+     "distance": 4.342164538869849,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.136244058609009,
+      2.1362557411193848
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.04070035271046024,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "roots",
+      "",
+      4
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "north-landmark",
+     "lower": 2.2042233806930938,
+     "upper": 2.207563514139561
+    },
+    "bandWidth": 0.0033401334464673305,
+    "tracedRoot": [
+     2.205908797750464,
+     2.20592048026084
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 16,
+    "inflationFailure": {
+     "factor": 32,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.86375594139099
+   },
+   {
+    "x": 112,
+    "y": 68,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.148196220397949,
+      2.1482081413269043
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.040364905807483864,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.851791858673096,
+     57.85180377960205
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 32,
+    "inflationFailure": {
+     "factor": 64,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.85180377960205
+   },
+   {
+    "x": 113,
+    "y": 69,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.158820867538452,
+      2.158832550048828
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.039989452563718664,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.84116744995117,
+     57.84117913246155
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 32,
+    "inflationFailure": {
+     "factor": 64,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.84117913246155
+   },
+   {
+    "x": 115,
+    "y": 70,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "hit",
+     "owner": "north-landmark",
+     "distance": 4.3183217488547445,
+     "reason": null
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.1786646842956543,
+      2.1786766052246094
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.039198705159861125,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "roots",
+      "",
+      4
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "entry",
+     "owner": "north-landmark",
+     "lower": 2.138172598484816,
+     "upper": 2.14107764184714
+    },
+    "bandWidth": 0.002905043362324111,
+    "tracedRoot": [
+     2.139645143630135,
+     2.13965706455909
+    ],
+    "containsTracedRoot": true,
+    "inflationLimit": 32,
+    "inflationFailure": {
+     "factor": 64,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.821335315704346
+   },
+   {
+    "x": 116,
+    "y": 71,
+    "guard": [
+     "north-landmark"
+    ],
+    "cpu": {
+     "status": "miss",
+     "owner": null,
+     "distance": 60,
+     "reason": "range"
+    },
+    "transfer": {
+     "status": "bounded",
+     "distance": [
+      2.190385341644287,
+      2.190397024154663
+     ]
+    },
+    "exterior": {
+     "certified": true,
+     "minMargin": 0.03886387970184557,
+     "refused": []
+    },
+    "queries": [
+     [
+      "north-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "south-landmark",
+      "miss",
+      "",
+      0
+     ],
+     [
+      "return-landmark",
+      "miss",
+      "",
+      0
+     ]
+    ],
+    "entry": {
+     "status": "miss"
+    },
+    "bandWidth": null,
+    "tracedRoot": [
+     57.80960297584534,
+     57.80961465835571
+    ],
+    "containsTracedRoot": null,
+    "inflationLimit": 8,
+    "inflationFailure": {
+     "factor": 16,
+     "certified": true,
+     "status": "unresolved",
+     "reason": "first-event-uncertain",
+     "owner": null
+    },
+    "remaining": 57.80961465835571
+   }
+  ],
+  "summary": {
+   "flagged": 32,
+   "cpu": {
+    "hit": 14,
+    "miss": 18
+   },
+   "entry": {
+    "entry|": 14,
+    "miss|": 18
+   },
+   "exteriorRefused": 0,
+   "bandWidth": {
+    "min": 0.0028734741706171185,
+    "max": 0.00657632582706924
+   },
+   "containsTracedRoot": 14,
+   "missingTracedRoot": 0,
+   "inflation": {
+    "2": 2,
+    "4": 4,
+    "8": 4,
+    "16": 11,
+    "32": 11
+   }
+  },
+  "scope": "binary64 reference model over one recorded pose; ordering and owner only, no shading position, normal, float32 operation bound or live rendering claim"
+ }
+}

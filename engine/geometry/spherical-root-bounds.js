@@ -6,6 +6,22 @@
 const TAU=2*Math.PI;
 const rounding=(...values)=>64*Number.EPSILON*Math.max(1,...values.map(Math.abs));
 
+// Shared 4D dot bound and surface constant. Both entry points use these, so an
+// exterior certificate and its root bands are always about the same surface.
+function product(v,ev,center,centerError){
+  let value=0,error=0,absolute=0;
+  for(let i=0;i<4;i++){
+    value+=v[i]*center[i];absolute+=Math.abs(v[i]*center[i]);
+    error+=Math.abs(v[i])*centerError[i]+Math.abs(center[i])*ev[i]+ev[i]*centerError[i];
+  }
+  return {value,error:error+rounding(absolute,error)};
+}
+function surfaceConstant(radius,radiusError,curvatureRadius){
+  const angle=radius/curvatureRadius,delta=radiusError/curvatureRadius+rounding(angle);
+  const c=Math.cos(angle);
+  return {c,errorC:Math.abs(Math.sin(angle))*delta+.5*delta*delta+rounding(c)};
+}
+
 // Map a metric ball to the shared coefficient problem. Component errors are
 // mandatory; zero means the caller explicitly treats those inputs as exact.
 // R is the declared physical unit scale, not an uncertain measured parameter.
@@ -18,17 +34,8 @@ export function sphericalBallRootBounds({position,direction,center,positionError
     ||radiusError<0||curvatureRadius<=0||radius<=radiusError
     ||radius+radiusError>=Math.PI*curvatureRadius/2)
     throw Error('Invalid spherical ball or missing input-error bounds');
-  const product=(v,ev)=>{
-    let value=0,error=0,absolute=0;
-    for(let i=0;i<4;i++){
-      value+=v[i]*center[i];absolute+=Math.abs(v[i]*center[i]);
-      error+=Math.abs(v[i])*centerError[i]+Math.abs(center[i])*ev[i]+ev[i]*centerError[i];
-    }
-    return {value,error:error+rounding(absolute,error)};
-  };
-  const a=product(position,positionError),b=product(direction,directionError);
-  const angle=radius/curvatureRadius,delta=radiusError/curvatureRadius+rounding(angle);
-  const c=Math.cos(angle),errorC=Math.abs(Math.sin(angle))*delta+.5*delta*delta+rounding(c);
+  const a=product(position,positionError,center,centerError),b=product(direction,directionError,center,centerError);
+  const {c,errorC}=surfaceConstant(radius,radiusError,curvatureRadius);
   return sphericalRootBounds({a:a.value,b:b.value,c,errorA:a.error,errorB:b.error,errorC,
     curvatureRadius,maxDistance,maxEvents});
 }
@@ -84,4 +91,28 @@ export function sphericalRootBounds({a,b,c,errorA,errorB,errorC,curvatureRadius,
   return {status:ambiguous||overlap||events.some(e=>e.boundary)?'unresolved':'roots',
     reason:ambiguous?'tangency-band':overlap?'overlapping-root-bands':events.some(e=>e.boundary)?'range-boundary':undefined,
     events};
+}
+
+// Certified EXTERIOR of one metric ball at one point. Additive event ordering
+// requires this at the start of every leg: a ray that may already be inside a
+// ball has no first entry to order. Refusal is 'unresolved', never 'inside':
+// this proves a strict outside, and proves nothing else.
+export function sphericalBallExterior({point,pointError,center,centerError,
+  radius,radiusError,curvatureRadius}){
+  const vectors=[point,center,pointError,centerError];
+  if(vectors.some(v=>!Array.isArray(v)||v.length!==4||!v.every(Number.isFinite))
+    ||[pointError,centerError].some(v=>v.some(x=>x<0))
+    ||![radius,radiusError,curvatureRadius].every(Number.isFinite)
+    ||radiusError<0||curvatureRadius<=0||radius<=radiusError
+    ||radius+radiusError>=Math.PI*curvatureRadius/2)
+    throw Error('Invalid spherical ball or missing input-error bounds');
+  const a=product(point,pointError,center,centerError);
+  const {c,errorC}=surfaceConstant(radius,radiusError,curvatureRadius);
+  // Same widened constant the root bands use, so the two cannot disagree about
+  // which surface was certified.
+  const cLow=c-errorC-rounding(c);
+  if(cLow<=0)return {status:'unresolved',reason:'unsupported-coefficient-domain'};
+  const upper=a.value+a.error;
+  return upper<cLow?{status:'outside',margin:cLow-upper}
+    :{status:'unresolved',reason:'start-not-certified-outside',margin:cLow-upper};
 }

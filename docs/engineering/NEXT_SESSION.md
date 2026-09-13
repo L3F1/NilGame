@@ -6,12 +6,21 @@ wrong intersections. No new geometry or precision helper milestone meanwhile.
 
 ## Next implementation
 
-Hit-side decision: read the final section of SPHERICAL_ROOT_PRECISION.md. The
-miss amplitude proof cannot locate a root; a quarter-turn counterexample now
-pins that boundary. Reuse additive interval ordering, certify outside starts
-and portal precedence, and keep hit-location/normal certification separate.
-Next: smallest GPU hit-band experiment with a justified phase error, not a
-smaller global E or midpoint promotion.
+Hit-side decision: read the final section of SPHERICAL_ROOT_PRECISION.md, then
+docs/qa/spherical-hit-band-review.md. The CPU feasibility gate is now PASSED:
+at the recorded gallery pose all 14 guard-tripping traced hits get a definite
+ordered entry naming the traced owner and bracketing the traced root (band
+0.0029-0.0066), all 18 traced misses certify as misses, and every leg start is
+certified outside. Headroom is thin: the narrowest pixels tolerate only about a
+2x wider transfer box before the first event stops being provably first.
+
+Next: derive float32 operation bounds for a GLSL sphericalBallRootBounds port
+and re-measure separation under them in a small separate program, colours
+unchanged. If derived float32 widths exceed that ~2x headroom, ordering cannot
+carry these pixels and the refusal stands. Read the independent audit
+docs/qa/claude-s3-hit-contract-audit.md for the remaining missing assumptions
+(a/b/c float32 error, a2/ac error, portal/edge band, shading tolerance).
+Do not promote a band midpoint to a root and do not recolour on this evidence.
 
 
 Current readiness: see docs/qa/enclosure-interactive-review.md. Hardware480x360 AA cost is measured and screenshots inspected; purple hit-side fringes remain. Stop expanding the miss-only acceptance corpus. Optional candidate exposure is now implemented; see docs/qa/enclosure-ui-review.md. Next delivery: fix remaining hit-side artifacts. Software performance remains qualified by actual timing status.
@@ -86,7 +95,9 @@ Then address remaining hit-side fringes. Do not blindly chase identical floats,
 embed interval arithmetic in the main shader, or weaken settled-pixel guards.
 
 Internal helper reviewed atlas ownership, timer isolation and joint capture.
-No external agents running; the current Claude manifest is completed/accepted.
+No external agents running. claude-s3-hit-contract-audit was delivered, harvested
+and landed as docs/qa/claude-s3-hit-contract-audit.md; do not redispatch it. The
+bridge task file now holds no open assignment.
 Muse is unavailable until its reported Sept14 UTC reset.
 
 Bind outputs to exact portal/object, packed world revision, pose, viewport and
