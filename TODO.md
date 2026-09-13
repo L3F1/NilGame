@@ -31,8 +31,11 @@ Hardware total AA GPU median at320x240:1.292ms off /1.922ms on (12 samples).
 Joint captures confirmed different represented primary rays. Shared explicit
 E3/S3 primary normalization passes the captured replay on both backends;
 cross-driver determinism is not proved. Strict guards and joint diagnostics stay.
-Next: review REFINEMENT_ENCLOSURE_NEXT.md, a bounded proposal to consume proved
-state enclosures instead of losing useful proofs to nominal float differences.
+Standalone enclosure arithmetic now passes exact dyadic references, 138/138 Node
+suites and both GPU backends; live certificate consumption is unchanged. See
+docs/qa/refinement-enclosure-review.md. Next: verify actual transfer-band encoding
+(including tiny endpoints), audit the rounded ray-curve assumptions, then test
+serialized producer/consumer membership under REFINEMENT_ENCLOSURE_NEXT.md.
 Do not rerun blindly, enable refinement by default, or add another geometry
 while hit-side fringes and timing coverage remain unfinished.
 Muse remains paused until reported quota reset Sept14 UTC; no external agent

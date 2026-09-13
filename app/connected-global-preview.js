@@ -395,6 +395,9 @@ try {
     const census=await checkThreeGeometryEditor({model,renderer,canvas,editor,draw,checks,shots,loadDone:()=>loading});
     const {checkSphericalMissExperiment}=await import('./spherical-miss-experiment.js');
     const exclusion=await checkSphericalMissExperiment(census);
+    const {checkRefinementEnclosure}=await import('./refinement-enclosure-probe.js');
+    const enclosure=await checkRefinementEnclosure();
+    checks.push('Standalone enclosure export/member prototype: exact dyadic references and unsafe-shortcut mutations');
     // Live opt-in exclusion pass, through the ACTUAL renderer: the same pose is
     // drawn with the pass off and on. The baseline is preserved -- the off pass
     // is the existing path, and anything other than an unresolved pixel turning
@@ -505,7 +508,7 @@ try {
     const {checkRefinementMotion}=await import('./refinement-motion-probe.js');
     const motion=await checkRefinementMotion(model,renderer);
     checks.push('Refinement motion: E3/S3/H3 round trip, strict settled parity; GPU timing status '+motion.arms.map(a=>a.timingStatus).join('/'));
-    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,e3Line,ordering,census,exclusion,livePass,aaRefinement,motion]});
+    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,e3Line,ordering,census,exclusion,enclosure,livePass,aaRefinement,motion]});
   } else {
     const records=[],poses=[];
     if(!/no gravity/i.test(document.body.textContent)||!/COMPLETE S3/.test(document.body.textContent))throw Error('Page lost its complete-S3/no-gravity label');

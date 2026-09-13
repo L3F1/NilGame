@@ -1,0 +1,75 @@
+{
+  "date": "2026-09-12",
+  "base": "9c3a3ed",
+  "hardware": {
+    "label": "refinement-enclosure-experiment",
+    "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "memberships": 517,
+    "accepted": 185,
+    "rejectedInside": 89,
+    "domainRefusals": 8,
+    "boxes": 257,
+    "contained": 514,
+    "certified": 73,
+    "differentStateAccepted": 73,
+    "roundedDifferenceMutation": true,
+    "unreprovedBoxMutation": true,
+    "invalidFieldRefusals": 4,
+    "times": {
+      "vertexCompileMs": 0.5,
+      "fragmentCompileMs": 1.5999999977648258,
+      "linkMs": 909.5,
+      "firstDrawReadMs": 0.7000000029802322
+    },
+    "draws": 863,
+    "totalWallMs": 1177.699999999255,
+    "scope": "single-pixel arithmetic prototype; exact dyadic oracle; not live rendering, full-frame cost, serialized MRT transport, or rounded trig/occupancy proof"
+  },
+  "software": {
+    "label": "refinement-enclosure-experiment",
+    "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "memberships": 517,
+    "accepted": 185,
+    "rejectedInside": 89,
+    "domainRefusals": 8,
+    "boxes": 257,
+    "contained": 514,
+    "certified": 73,
+    "differentStateAccepted": 73,
+    "roundedDifferenceMutation": true,
+    "unreprovedBoxMutation": true,
+    "invalidFieldRefusals": 4,
+    "times": {
+      "vertexCompileMs": 0.10000000149011612,
+      "fragmentCompileMs": 1.5999999977648258,
+      "linkMs": 0.30000000074505806,
+      "firstDrawReadMs": 331
+    },
+    "draws": 863,
+    "totalWallMs": 592.7000000029802,
+    "scope": "single-pixel arithmetic prototype; exact dyadic oracle; not live rendering, full-frame cost, serialized MRT transport, or rounded trig/occupancy proof"
+  },
+  "productionProofHashes": {
+    "before": [
+      "999aaf524f3afa5700ccc2f6b2ec5f53bbbbedea733931ef5100aecdcb000bbc",
+      "c1956c867597767932ce38c4e22fff25d1efd7c3b8ac9c4418d01d5057732ad3"
+    ],
+    "after": [
+      "999aaf524f3afa5700ccc2f6b2ec5f53bbbbedea733931ef5100aecdcb000bbc",
+      "c1956c867597767932ce38c4e22fff25d1efd7c3b8ac9c4418d01d5057732ad3"
+    ]
+  },
+  "subnormalBeforeFailure": "page error        : Error: Enclosure domain refusal failed {\"qp\":[0,0,0,0],\"vp\":[1.401298464324817e-45,0,0,0],\"radii\":[0,0]}",
+  "scope": "standalone arithmetic only; live rendering unchanged",
+  "verification": {
+    "nodeSuites": "138/138",
+    "exactReferenceChecks": 56,
+    "existingSphericalMissChecks": 290,
+    "hardwareCommand": "node tools/check-queue.js page-check --three-geometry --timeout=150",
+    "softwareCommand": "node tools/check-queue.js page-check --three-geometry --sw --timeout=240",
+    "browserExitCodes": [
+      0,
+      0
+    ]
+  }
+}

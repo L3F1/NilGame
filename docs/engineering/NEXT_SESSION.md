@@ -28,11 +28,20 @@ captured sequence on both backends. H3 and transported directions are unchanged.
 This is sampled stabilization, NOT a cross-driver determinism proof. Hardware
 loses12 prototype recoveries to safe exact-identity refusals; report that honestly.
 
-Next difficult task: review REFINEMENT_ENCLOSURE_NEXT.md. The producer already
-proves a state band but exports only its nominal state. A consumer membership
-check against the actual proved enclosure could accept more useful proofs
-without a guessed epsilon. The proposal is not implemented. Keep exact matching
-until independent enclosure/conservative-membership checks and GPU cost pass.
+Standalone enclosure arithmetic now passes 138/138 Node suites and both GPU
+backends. Read docs/qa/refinement-enclosure-review.md and its small evidence JSON.
+It catches rounded-subtraction and unreproved-box mutations; a real subnormal
+false acceptance was repaired with bitwise domain classification. Live rendering
+is unchanged; production proof GLSL extraction is byte-identical.
+
+Next difficult task: actual transfer-band encoding and the rounded ray-curve
+contract in REFINEMENT_ENCLOSURE_NEXT.md. The exporter currently refuses tiny
+original band endpoints (such as 2^-126 padding around zero): outward-widen and
+reprove or verify a wider encoding, never clamp actual states. Use real transfer
+payloads rather than extending the fixed-basis synthetic corpus. Audit how the
+ideal sinusoid bound covers rounded trigonometry/occupancy before live admission.
+Then test separate serialized producer/consumer programs, ownership and cost.
+Keep exact matching until those checks pass.
 Then address remaining hit-side fringes. Do not blindly chase identical floats,
 embed interval arithmetic in the main shader, or weaken settled-pixel guards.
 

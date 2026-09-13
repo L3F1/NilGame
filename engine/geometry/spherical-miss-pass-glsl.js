@@ -7,7 +7,7 @@ import {E3_S3_TRANSFER_GLSL} from './portal-transfer-gpu.js';
 // this interval arithmetic and never gains a root, hit point or ordering change.
 // Outward binary32 endpoints, with a minimum-normal pad to survive FTZ.
 // A miss requires the entire amplitude interval below the positive constant.
-export const SPHERICAL_MISS_GLSL=`
+export const FLOAT_BANDS_GLSL=`
 struct BI { vec4 lo; vec4 hi; };
 float bdown(float x){if(abs(x)<1.17549436e-38)return -1.17549436e-38;uint b=floatBitsToUint(x);return uintBitsToFloat(x>0.?b-1u:b+1u);}
 float bup(float x){if(abs(x)<1.17549436e-38)return 1.17549436e-38;uint b=floatBitsToUint(x);return uintBitsToFloat(x>0.?b+1u:b-1u);}
@@ -23,7 +23,8 @@ BI broot(BI a){return bw(sqrt(max(vec4(0),a.lo)),sqrt(max(vec4(0),a.hi)));}
 BI bnorm(BI a){return broot(bdot(a,a));}
 bool bfinite(BI a){return !any(isnan(a.lo))&&!any(isnan(a.hi))&&!any(isinf(a.lo))&&!any(isinf(a.hi))&&all(lessThanEqual(a.lo,a.hi));}
 bool bcontains(BI a,vec4 v){return bfinite(a)&&all(lessThanEqual(a.lo,v))&&all(greaterThanEqual(a.hi,v));}
-vec2 boundPixel;
+`;
+export const SPHERICAL_MISS_GLSL=`${FLOAT_BANDS_GLSL}vec2 boundPixel;
 int boundGate=-1;bool boundTried=false,boundOK=false;
 vec4 boundPoint,boundDirection;float boundDistance;
 BI rayPointBand,rayDirectionBand;

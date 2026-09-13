@@ -1,7 +1,9 @@
 # Next experiment: consume the state enclosure that was proved
 
-Design proposal, not implemented or admitted. Keep today's exact-identity
-consumer until this experiment passes independent checks.
+The standalone arithmetic prototype is implemented and independently checked;
+see [the review](../qa/refinement-enclosure-review.md). Serialized producer/consumer
+integration is NOT implemented or admitted. Keep today's exact-identity consumer
+until the remaining checks pass.
 
 The exclusion pass proves a miss over point/tangent intervals, but exports only
 one nominal point/tangent and accepts only an exact match. Small valid shader
@@ -40,6 +42,14 @@ this intended curve relates to the renderer's polynomial/native trigonometry
 and rounded position/occupancy evaluation; the ideal amplitude bound alone
 does not automatically enclose those implementation errors. This is an inherited
 assumption to audit, not a new guarantee supplied by storing radii.
+
+The prototype restricts nonzero state/radius AND original band endpoint magnitudes
+to [2^-100,2^100]. Real transfer bands can contain tiny normal endpoints around a
+zero component (the existing interval pad is 2^-126). Before consuming actual
+payloads, outward-widen those bounds into the encoding domain and reprove, or
+establish a safe wider-domain exporter. Never clamp the actual state. Consumer
+classification uses bits: hardware admitted a subnormal into a zero-radius box
+before that repair.
 
 This uses one extra RGBA32F attachment for the two radii (four attachments
 total), not interval evaluation per object in the main shader. The main work is
