@@ -7,6 +7,7 @@
 //   node tools/page-check.js --ball-lab editable scene-v1 E3 primitive
 //   node tools/page-check.js --region-lab the single-region S3 viewport
 //   node tools/page-check.js --spherical-cover whole-S3 ball sight and loop
+//   node tools/page-check.js --transcendental measured atan/acos accuracy
 //
 // Serves the project over HTTP and loads index.html as a REAL ES module graph,
 // the way Live Server does, then lets the page run twenty frames and report on
@@ -52,9 +53,10 @@ const regionLab = process.argv.includes('--region-lab');
 const threeGeometry = process.argv.includes('--three-geometry');
 const connectedGlobal = process.argv.includes('--connected-global') || threeGeometry;
 const h3Gpu = process.argv.includes('--h3-gpu');
+const transcendental = process.argv.includes('--transcendental');
 const connectedPreview = process.argv.includes('--connected-preview') || connectedGlobal;
 const sphericalCover = process.argv.includes('--spherical-cover');
-const lab = ballLab || regionLab || connectedPreview || sphericalCover || h3Gpu;
+const lab = ballLab || regionLab || connectedPreview || sphericalCover || h3Gpu || transcendental;
 let timeoutMs;
 try {
   timeoutMs = parseReportTimeoutMs(process.argv);
@@ -111,6 +113,7 @@ const srv = createServer((req, res) => {
   if (url === '/' || url === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     if (h3Gpu) { res.end(readFileSync(join(ROOT,'tools/h3-gpu-probe.html'),'utf8')); return; }
+    if (transcendental) { res.end(readFileSync(join(ROOT,'tools/glsl-transcendental-probe.html'),'utf8')); return; }
     if (ballLab) { res.end(readFileSync(join(ROOT, 'tools/ball-lab.html'), 'utf8')); return; }
     if (regionLab) { res.end(readFileSync(join(ROOT, 'tools/region-lab.html'), 'utf8')); return; }
     if (connectedPreview) { res.end(readFileSync(join(ROOT, connectedGlobal?'tools/connected-global-preview.html':'tools/connected-preview.html'), 'utf8')); return; }
@@ -219,6 +222,11 @@ const first = (report.hud || '').split('\n')[0].trim();
 if(h3Gpu&&report.h3Evidence){
   mkdirSync(join(ROOT,'.agent-bridge'),{recursive:true});
   writeFileSync(join(ROOT,'.agent-bridge',sw?'h3-gpu-sw.json':'h3-gpu-real.json'),JSON.stringify(report.h3Evidence,null,2));
+}
+if(transcendental&&report.transcendentalEvidence){
+  mkdirSync(join(ROOT,'.agent-bridge'),{recursive:true});
+  writeFileSync(join(ROOT,'.agent-bridge',sw?'transcendental-sw.json':'transcendental-real.json'),
+    JSON.stringify(report.transcendentalEvidence,null,2));
 }
 const label = sphericalCover ? 'whole-S3 GPU check' : connectedPreview ? 'connected GPU preview check' : ballLab ? 'ball editor checks' : regionLab ? 'S3 viewport checks' : worlds ? 'world suite time' : `time to ${FRAMES} frames`;
 console.log(`${label} : ${((Date.now() - t0) / 1000).toFixed(1)} s`);

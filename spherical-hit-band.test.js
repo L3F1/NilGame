@@ -5,6 +5,7 @@ import {sphericalBallExterior} from './engine/geometry/spherical-root-bounds.js'
 import {sphericalRootBounds} from './engine/geometry/spherical-root-bounds.js';
 import {selectAdditiveEntry} from './engine/geometry/additive-event-order.js';
 import {sphericalHitBandCensus} from './app/spherical-hit-band-census.js';
+import {buildSamples} from './tools/glsl-transcendental-probe.js';
 // Measurement guard for the hit-side decision in SPHERICAL_ROOT_PRECISION.md.
 // It checks the ORDERING contract on the pixels the live shader refuses: a
 // named first entry must be the traced owner and must bracket the traced root,
@@ -102,6 +103,29 @@ for(const allowance of ['phaseAllowance','angleAllowance']){
   assert.ok(loose.events[0].lower<tight.events[0].lower-5e-4
     &&loose.events[0].upper>tight.events[0].upper+5e-4,`${allowance} did not widen the bands`);
 }
+
+// The backend accuracy probe is browser-only, but the plumbing that aims it at
+// the right numbers is checkable here: it must carry the census coefficients,
+// not just its own sweep, or the measurement answers a different question.
+const samples=buildSamples(census);
+const fromCensus=samples.filter(s=>s.kind.startsWith('census:'));
+// A ball the ray misses has amplitude below the constant, so its ratio leaves
+// the arccosine domain and carries no accuracy question. Every ORDERED pixel
+// must still reach the probe with the coefficients it was ordered by.
+for(const record of census.records.filter(r=>r.binary32?.status==='entry'))
+  assert.ok(fromCensus.some(s=>s.kind===`census:${record.x},${record.y}:${record.binary32.owner}`),
+    `Ordered pixel ${record.x},${record.y} never reaches the accuracy probe`);
+assert.ok(fromCensus.length>=entries&&fromCensus.every(s=>Math.abs(s.ratio)<=1),
+  'Probe census samples must stay inside the arccosine domain');
+assert.ok(samples.length>fromCensus.length+500,'The sweep must not collapse to the census points');
+for(const sample of samples){
+  assert.ok(Number.isFinite(sample.a)&&Number.isFinite(sample.b)&&Math.abs(sample.ratio)<=1,
+    `Unusable probe sample ${JSON.stringify(sample)}`);
+  assert.ok(Math.fround(sample.a)===sample.a&&Math.fround(sample.ratio)===sample.ratio,
+    'Probe samples must be binary32 so the oracle sees the same input');
+}
+assert.ok(fromCensus.some(s=>Math.abs(1-s.ratio)<1e-3),
+  'The tangency-grazing ratios the guard fires on must reach the probe');
 
 console.log(`spherical hit band: ${census.summary.flagged} guarded pixels, ${entries} ordered entries `
   +`(band width ${census.summary.bandWidth.min.toPrecision(3)}..${census.summary.bandWidth.max.toPrecision(3)}), `

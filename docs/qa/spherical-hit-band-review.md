@@ -76,6 +76,9 @@ Each mutation below was applied to the working copy, run, and reverted:
   `outside` where the suite requires `unresolved`.
 - Binary32 coefficients computed without the binary32 dot:
   `Binary32 band narrower than the binary64 band at 78,31`.
+- The census no longer carrying its envelope inputs, which would leave the
+  accuracy probe measuring only its own sweep:
+  `Ordered pixel 78,31 never reaches the accuracy probe`.
 - `phaseAllowance` dropped before the phase band, then `angleAllowance` dropped
   before the angular spread: `phaseAllowance did not widen the bands` and
   `angleAllowance did not widen the bands`. The first version of that check used
@@ -127,18 +130,49 @@ shared-sincos curve-error contract in SPHERICAL_CURVE_ERROR.md certifies the
 VALUE of the curve at a time, which is what a sign-bracketed root band needs,
 and `spherical-root-bounds.test.js` already brackets its 241 roots that way.
 
+## What the backends actually deliver (same day)
+
+The requirement above was measured without knowing what a driver gives, so the
+next step was to measure that too rather than argue about a specification.
+`tools/glsl-transcendental-probe.js`, run through
+`node tools/page-check.js --transcendental [--sw]`, evaluates `atan(y,x)` and
+`acos(x)` in a highp fragment shader over 1615 binary32 samples - the envelope
+inputs this census actually produces, plus a sweep over phase, amplitude and
+ratios pressed against 1 - and compares each against binary64 `Math.atan2` /
+`Math.acos` on the same binary32 input. Evidence:
+[glsl-transcendental-evidence.json](glsl-transcendental-evidence.json).
+
+| Backend | max abs atan error | max abs acos error | at the census coefficients |
+| --- | --- | --- | --- |
+| ANGLE / NVIDIA RTX 5070 Ti, D3D11 | 1.147e-5 rad | 6.755e-5 rad | atan 4.20e-6, acos 6.77e-7 |
+| ANGLE / SwiftShader, Vulkan 1.3 | 2.533e-7 rad | 6.755e-5 rad | atan 6.10e-8, acos 7.34e-7 |
+
+No sample was lost on either run. Both clear the 2^-10 rad requirement by 14.5x
+overall, and by three orders at the coefficients the guarded pixels actually
+produce, where the ratios sit within 1e-3 of 1. The worst `acos` error is
+identical on both backends and falls at ratio 0, mid-range rather than near the
+tangency the guard fires on - the two ANGLE paths plausibly share that
+implementation, which is a reason to treat the pair as ONE data point about
+ANGLE, not two independent backends.
+
 ## Next
 
-Decide the envelope route before writing GLSL, because the two routes need
-different evidence:
+The route decision now has evidence, and it changes the recommendation. Using
+`atan`/`acos` in a GLSL envelope is viable on both backends measured here, so
+the choice is no longer forced. But a sampled result on one machine's ANGLE
+paths is not a portable guarantee, so a port that uses them must carry an
+admitted allowance constant in the shape this module already accepts - a
+conditional binary32 contract like the ones in SPHERICAL_CURVE_ERROR.md, not a
+silent assumption. Measured worst case 6.8e-5 rad leaves room for something
+around 2^-12; admitting the constant, and on what evidence, is the lead's call
+and no constant is baked into any code by this work.
 
-1. **Admit transcendental accuracy.** Measure `atan`/`acos` absolute error on
-   both backends against a binary64 oracle over the actual coefficient range,
-   and admit a constant only if it clears 2^-10 rad with margin. A driver
-   measurement is sampled evidence, not a portable guarantee.
-2. **Avoid them.** Produce the entry band by certified sign brackets on the
-   curve value, reusing the shared-sincos contract and the existing binary32
-   interval GLSL, so no arctangent or arccosine appears in the proof.
+The alternative remains open and needs no admission: produce the band from
+certified sign brackets on the curve value, reusing the shared-sincos contract,
+so neither built-in appears in the proof. It costs iterations where the closed
+form costs an assumption.
 
 Either way the shading question in the audit's section 3 is still open, so the
-current colours stand until a hit position and normal tolerance is derived.
+current colours stand until a hit position and normal tolerance is derived, and
+a second machine or a non-ANGLE backend would strengthen the transcendental
+evidence considerably.

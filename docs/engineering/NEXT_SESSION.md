@@ -20,15 +20,22 @@ envelope's atan/acos carry the whole risk - a GLSL port must be accurate to
 better than 2^-10 rad absolute to keep every pixel, 2^-8 to keep all but two,
 which is the same order as the minimum commonly quoted for those built-ins.
 
-Next: DECIDE the envelope route before writing GLSL. Either measure atan/acos
-absolute error on both backends against a binary64 oracle over the actual
-coefficient range and admit a constant only with margin over 2^-10 rad, or avoid
-both transcendentals by producing the band from certified sign brackets on the
-curve value, reusing the shared-sincos contract in SPHERICAL_CURVE_ERROR.md.
-The second route needs no new precision assumption and is the recommendation.
-Read the independent audit docs/qa/claude-s3-hit-contract-audit.md for what is
-still missing either way (portal/edge band, shading tolerance, FMA/backend
-model). Do not promote a band midpoint to a root and do not recolour.
+That accuracy is now measured, not assumed. node tools/page-check.js
+--transcendental [--sw] evaluates both built-ins over 1615 binary32 samples
+against a binary64 oracle: hardware max atan 1.147e-5 / acos 6.755e-5 rad,
+SwiftShader 2.533e-7 / 6.755e-5, nothing lost, both clearing 2^-10 by 14.5x and
+by three orders at the coefficients the guarded pixels produce. Treat the pair
+as ONE ANGLE data point: the worst acos value is identical on both.
+
+Next: the LEAD decides the envelope route, since both are now open. Using
+atan/acos is viable but must carry an admitted allowance constant (measured
+worst 6.8e-5 leaves room around 2^-12) as a conditional binary32 contract like
+SPHERICAL_CURVE_ERROR.md; no constant is baked in by this work. The alternative
+needs no admission: certified sign brackets on the curve value, reusing the
+shared-sincos contract, so neither built-in appears in the proof. After that,
+the audit docs/qa/claude-s3-hit-contract-audit.md still lists the portal/edge
+band, shading tolerance and FMA/backend model. Do not promote a band midpoint
+to a root and do not recolour.
 
 
 Current readiness: see docs/qa/enclosure-interactive-review.md. Hardware480x360 AA cost is measured and screenshots inspected; purple hit-side fringes remain. Stop expanding the miss-only acceptance corpus. Optional candidate exposure is now implemented; see docs/qa/enclosure-ui-review.md. Next delivery: fix remaining hit-side artifacts. Software performance remains qualified by actual timing status.

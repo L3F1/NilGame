@@ -76,14 +76,19 @@ function orderEntry(balls,transfer,curvatureRadius,remaining,
     if(outside.status!=='outside')certified=false;
     if(Number.isFinite(outside.margin))minMargin=Math.min(minMargin,outside.margin);
     exterior.push({owner:ball.id,status:outside.status,reason:outside.reason,margin:outside.margin});
-    const root=coefficients==='binary32'
-      ?sphericalRootBounds({...binary32Coefficients(position,positionError,direction,
-        directionError,center,ball.radius,curvatureRadius),
-        curvatureRadius,maxDistance:remaining,phaseAllowance,angleAllowance})
+    const model=coefficients==='binary32'
+      ?binary32Coefficients(position,positionError,direction,directionError,center,
+        ball.radius,curvatureRadius):null;
+    const root=model
+      ?sphericalRootBounds({...model,curvatureRadius,maxDistance:remaining,
+        phaseAllowance,angleAllowance})
       :sphericalBallRootBounds({position,positionError,direction,directionError,
         center,centerError,radius:ball.radius,radiusError,curvatureRadius,
         maxDistance:remaining,phaseAllowance,angleAllowance});
-    queries.push({owner:ball.id,status:root.status,reason:root.reason,events:root.events});
+    queries.push({owner:ball.id,status:root.status,reason:root.reason,events:root.events,
+      // The envelope inputs a consumer would hand its arctangent and arccosine,
+      // so an accuracy measurement can be taken at the values that actually occur.
+      ...(model?{coefficients:{a:model.a,b:model.b,c:model.c}}:{})});
   }
   // An uncertified start is a refusal of the whole ordering, not of one ball.
   if(!certified)return {exterior,certified,minMargin,queries,
@@ -204,7 +209,8 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
     records.push({x,y,guard,cpu,transfer:{status:'bounded',distance:transfer.distance},
       binary32:{status:binary32.entry.status,reason:binary32.entry.reason??null,
         owner:binary32.entry.owner??null,certified:binary32.certified,
-        bandWidth:binary32Band,widening,allowanceLimit,allowanceFailure},
+        bandWidth:binary32Band,widening,allowanceLimit,allowanceFailure,
+        coefficients:binary32.queries.map(q=>({owner:q.owner,...q.coefficients}))},
       exterior:{certified:measured.certified,minMargin:measured.minMargin,
         refused:measured.exterior.filter(e=>e.status!=='outside').map(e=>e.owner)},
       queries:measured.queries.map(q=>[q.owner,q.status,q.reason??'',q.events.length]),

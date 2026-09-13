@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NilGame · GLSL transcendental accuracy probe</title>
+<style>
+body{margin:24px auto;padding:0 18px;max-width:900px;background:#101a27;color:#e0edf0;font:15px system-ui}
+button{padding:12px;margin:4px;background:#22384b;color:inherit;border:1px solid #829aaf;border-radius:6px}
+pre{white-space:pre-wrap;background:#0b131d;padding:10px;border-radius:6px;max-height:60vh;overflow:auto}
+table{border-collapse:collapse;font-size:13px;width:100%}th,td{border:1px solid #2e4a60;padding:3px 6px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+.bad{color:#ff9bb0}.ok{color:#9be6b4}
+</style>
+<h1>GLSL transcendental accuracy probe</h1>
+<p>One decision: may a GLSL spherical root envelope use <code>atan</code> and <code>acos</code> at all?
+<a href="../docs/qa/spherical-hit-band-review.md">The hit-band review</a> measured the requirement -
+better than <strong>2<sup>-10</sup> rad absolute</strong> to keep every guarded pixel, 2<sup>-8</sup> to keep all
+but two - without knowing what a backend delivers. This page measures the delivered accuracy.</p>
+<p>Every GPU number comes from a WebGL2 fragment shader evaluating the two built-ins in <code>highp float</code>
+and read back with <code>gl.readPixels</code>. The oracle is binary64 <code>Math.atan2</code>/<code>Math.acos</code> on
+the same binary32 inputs. Samples are the coefficients the census actually produces at the recorded pose,
+plus a sweep over phase, amplitude and ratios pressed against 1 where <code>acos</code> is most sensitive.</p>
+<p>Run the real driver and SwiftShader <strong>sequentially</strong> and record the hardware string with each
+run. A sampled measurement on two backends of one machine is evidence, never a portable guarantee, and
+admitting a constant from it is the lead's call.</p>
+<p><button id="run">Run probe</button> <span id="status" role="status">idle</span></p>
+<table id="summary"></table>
+<pre id="report">No run yet.</pre>
+<script type="module">
+import {runProbe} from '../tools/glsl-transcendental-probe.js';
+const checking=new URLSearchParams(location.search).has('check');
+const send=data=>fetch('/__report',{method:'POST',body:JSON.stringify(data)});
+const status=document.getElementById('status'),report=document.getElementById('report');
+const cell=(row,text,header)=>{const c=document.createElement(header?'th':'td');c.textContent=text;row.append(c);};
+document.getElementById('run').addEventListener('click',async()=>{
+  status.textContent='running…';report.textContent='';
+  try{
+    const result=await runProbe({onProgress:text=>{status.textContent=text;}});
+    const table=document.getElementById('summary');table.textContent='';
+    const head=table.insertRow();for(const key of ['samples','max |atan| error (rad)','max |acos| error (rad)'])cell(head,key,true);
+    for(const [kind,bucket] of Object.entries(result.kinds)){
+      const row=table.insertRow();
+      cell(row,`${kind} (${bucket.samples})`);
+      cell(row,bucket.atan.toExponential(3));cell(row,bucket.acos.toExponential(3));
+      if(Math.max(bucket.atan,bucket.acos)>=result.requiredAllowance)row.className='bad';
+    }
+    // Refused readbacks are a blocked measurement, not a passing one.
+    const failed=result.lost>0;
+    status.textContent=failed?'MEASUREMENT BLOCKED'
+      :result.clearsRequirement?`clears 2^-10 with ${result.margin.toPrecision(3)}x margin`
+      :result.clearsRelaxed?'clears 2^-8 only':'does NOT clear the requirement';
+    status.className=failed||!result.clearsRequirement?'bad':'ok';
+    report.textContent=JSON.stringify(result,null,2);
+    if(checking)await send({err:failed?`Transcendental probe lost ${result.lost} samples`:'',
+      hud:`atan ${result.maxAtan.toExponential(3)} rad, acos ${result.maxAcos.toExponential(3)} rad`,
+      transcendentalEvidence:result});
+  }catch(error){
+    status.textContent='BLOCKED';status.className='bad';
+    report.textContent=`probe failed: ${error.message}\n${error.stack??''}`;
+    if(checking)await send({err:String(error.stack||error),hud:'Transcendental probe failed'});
+  }
+});
+if(checking)document.getElementById('run').click();
+</script>
+</html>
