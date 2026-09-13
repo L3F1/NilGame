@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {summarizeUsage,freshInput,findQuotaRefusals} from './tools/muse-usage.js';
+import {summarizeUsage,freshInput,findQuotaRefusals,bridgeCost} from './tools/muse-usage.js';
 // The ledger is read on a machine with a Muse install, so the aggregation is
 // checked here on synthetic records instead. It counts spend and must never
 // imply a remaining balance, which no local source reports.
@@ -36,6 +36,19 @@ assert.equal(guarded.total.input_tokens,1507);
 assert.deepEqual(summarizeUsage([]),{total:{...summarizeUsage([]).total},days:[],sessions:[],
   families:[],span:null});
 assert.equal(summarizeUsage([]).total.calls,0);
+// An agent run pays for its whole context on every turn, so the floor share is
+// what makes "fewer turns" and "read less" measurable rather than folklore.
+const run=bridgeCost({name:'x',calls:10,firstContext:27500,lastContext:60000,
+  freshInput:100000,cacheRead:400000,output:5000});
+assert.equal(run.totalInput,500000);
+assert.equal(run.floorShare,27500*10/500000);
+assert.ok(run.floorShare>.5,'A short-context run must show the startup floor dominating');
+assert.equal(run.marginalTurn,60000);
+assert.ok(run.growth>2);
+// A run with no model call must not report a share of nothing.
+assert.equal(bridgeCost({calls:0,firstContext:0,lastContext:0,freshInput:0,cacheRead:0,output:0})
+  .floorShare,null);
+
 // The refusal scan must tolerate a missing bridge directory rather than throw.
 assert.deepEqual(findQuotaRefusals('no/such/directory'),[]);
 console.log(`muse usage: ${summary.total.calls} calls aggregated over `

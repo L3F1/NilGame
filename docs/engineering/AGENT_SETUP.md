@@ -111,3 +111,48 @@ refusal lands, and compare across windows. The one refusal observed so far came
 at 2026-09-12T08:25Z and named a reset of 2026-09-14T00:00Z, so the window is
 NOT daily - a second observation is needed before its length is known.
 
+## Spending Muse tokens well, measured
+
+`node tools/muse-usage.js --bridge` prints what each assignment actually cost.
+Measured over twelve bridge runs:
+
+| Assignment | Turns | Total input | Startup floor re-sent |
+| --- | --- | --- | --- |
+| muse67-h3-balls-revision | 17 | 0.68M | 68% |
+| muse71-h3-sight | 39 | 2.38M | 45% |
+| muse69-aperture-motion | 48 | 3.46M | 38% |
+
+Three facts fall out, and they change how an assignment should be written.
+
+**Turns are the price.** Input runs about 70k tokens per turn on average, because
+every turn re-sends the whole conversation. Cutting ten turns saves roughly 700k
+tokens - a third of a heavy assignment. Nothing else on this list comes close.
+
+**The startup floor is paid per turn, not per run.** Every session begins at
+about 27.5k tokens of client preamble, and it is 38-68% of each assignment's
+entire cost. That part is the client's, not ours, so the only control is turn
+count: short assignments are disproportionately cheap and long ones
+disproportionately expensive.
+
+**Reading a file costs its size times the turns that follow.** A file of T
+tokens read at turn k of N adds about T*(N-k) input tokens. docs/qa/muse-log.md
+is 47k tokens; read at turn 3 of 30 it would add about 1.3M - more than a whole
+typical assignment, for one file. "Read only your task contract" is a cost rule
+before it is a focus rule.
+
+So, when writing an assignment:
+
+- Name the exact files to read and the exact commands to run. A 600-token
+  instruction that prevents five exploratory turns pays for itself 500 times.
+- Say what NOT to read, by name. The archive, the roadmap and the log are the
+  expensive mistakes.
+- Keep one task per session. A follow-up in the same session starts at the
+  accumulated context, not at the floor.
+- Keep the tool-output cap. The bridge already passes
+  `--max-tool-output-bytes 12000`; a single unbounded suite dump would ride
+  along in every later turn.
+- Do not ask for a full suite twice. The bridge prompt says so; the reason is
+  that its output re-enters context for the rest of the run.
+- Prefer several small assignments over one large one, and accept the extra
+  27.5k floor each time: at 70k per turn, one avoided turn already pays for it.
+

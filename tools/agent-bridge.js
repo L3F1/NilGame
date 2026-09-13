@@ -127,6 +127,9 @@ async function taskRun(task, ctx) {
       'Do not commit, push, merge, change settings, launch other agents or modify another checkout.\n' +
       'Use current default model/account. Preserve tests. Read only the task contract and affected code, not the whole archive.\n' +
       'Keep tool output focused; print full failure details only when needed. Do not repeat successful full suites without new changes.\n' +
+      // Measured: about 70k input tokens per turn, and a file read at turn k of
+      // N costs its size times (N-k). See AGENT_SETUP.md "Spending Muse tokens".
+      'Every turn re-sends the whole context, so a file you read early is paid for again on every later turn. Read the named files only.\n' +
       'Write a short checkpoint before long validation, so a quota stop preserves your reasoning.\n' +
       'Run host-probe once; if browser checks are unavailable, report that and continue Node work.\n' +
       'Do not use the root browser queue from this clone: it tests the wrong checkout. No browser run is required for this Node-only task.\n' +

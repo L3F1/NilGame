@@ -58,6 +58,14 @@ spend, never remaining, and the window is not daily - the one observed refusal
 came 2026-09-12T08:25Z naming a 2026-09-14T00:00Z reset, so a second observation
 is needed to learn its length.
 
+Assignment cost is now measured, not guessed: node tools/muse-usage.js --bridge
+shows twelve past runs at 0.68M-3.46M input tokens, about 70k per TURN, with the
+27.5k startup context re-sent every turn and accounting for 38-68% of each run.
+A file read at turn k of N costs its size times (N-k), so muse-log.md at 47k
+tokens would add ~1.3M if read early. Write assignments that name their files
+and forbid the archive by name; AGENT_SETUP.md has the rules and the table, and
+the bridge prompt now states the re-send rule to the agent itself.
+
 Muse: muse77-compensated-float is STAGED in tools/agent-bridge-tasks.json and
 NOT dispatched - quota resets 2026-09-14T00:00:00Z, run the bridge after that.
 muse78-hit-band-pose-corpus is queued behind it in MUSE_TASKS.md.

@@ -52,6 +52,21 @@ export function summarizeUsage(records){
       to:new Date(latest/1000).toISOString()}};
 }
 
+
+// Per-assignment view. The cost of an agent run is dominated by re-sending its
+// context: every turn pays for the whole conversation so far, so the startup
+// floor is paid once per TURN, not once per run. Reporting that share is what
+// makes "fewer turns" and "read less" measurable instead of folklore.
+export function bridgeCost(session){
+  const {calls,firstContext,lastContext,freshInput,cacheRead,output}=session;
+  const totalInput=freshInput+cacheRead;
+  return {...session,totalInput,
+    floorShare:calls&&totalInput?firstContext*calls/totalInput:null,
+    growth:firstContext?lastContext/firstContext:null,
+    // What one more turn would cost at the context this run ended with.
+    marginalTurn:lastContext};
+}
+
 // The refusal is the only place the provider states the window, so keep every
 // one that has been observed: two of them bound the window length.
 export function findQuotaRefusals(runsRoot){
@@ -73,6 +88,26 @@ export function findQuotaRefusals(runsRoot){
 
 // Session logs are tens of megabytes, so stream them and parse only the lines
 // that can carry usage at all.
+// Per-session context curve, for the bridge view: the first and last prompt
+// sizes say how much a run accumulated, which is what later turns pay for.
+export async function readSessionCurve(file){
+  const out={calls:0,freshInput:0,cacheRead:0,output:0,firstContext:null,lastContext:null};
+  const reader=createInterface({input:createReadStream(file,{encoding:'utf8'}),crlfDelay:Infinity});
+  for await(const line of reader){
+    if(!line.includes('"usage":{'))continue;
+    let event;try{event=JSON.parse(line);}catch{continue;}
+    const usage=event.payload?.event?.usage;
+    if(!usage||!('input_tokens' in usage))continue;
+    out.calls++;
+    out.freshInput+=usage.input_tokens-usage.cache_read_tokens;
+    out.cacheRead+=usage.cache_read_tokens;
+    out.output+=usage.output_tokens;
+    out.firstContext=out.firstContext??usage.input_tokens;
+    out.lastContext=usage.input_tokens;
+  }
+  return out;
+}
+
 async function readSessionUsage(file,session,since){
   const records=[];
   const reader=createInterface({input:createReadStream(file,{encoding:'utf8'}),crlfDelay:Infinity});
@@ -138,6 +173,19 @@ if(import.meta.url===pathToFileURL(process.argv[1]).href){
     console.log(`No Muse session logs at ${root??'(unknown root)'}. Pass --root <path>.`);
     process.exit(0);
   }
+  // Join a bridge assignment to its session log through the session id the run
+  // stream announces, so no database and no path convention is relied on.
+  const bridgeSessions=new Map();
+  const runsRoot=join(ROOT,'.agent-bridge','runs');
+  if(existsSync(runsRoot))for(const run of readdirSync(runsRoot)){
+    for(const task of readdirSync(join(runsRoot,run))){
+      const log=join(runsRoot,run,task,'agent.stdout.jsonl');
+      if(!existsSync(log))continue;
+      const head=readFileSync(log,'latin1').slice(0,200000);
+      const id=/"stream":\{"kind":"session","id":"([0-9a-f-]+)"/.exec(head)?.[1];
+      if(id)bridgeSessions.set(id,task);
+    }
+  }
   const since=(Date.now()-windowDays*86400000)*1000;
   const records=[];
   for(const log of sessionLogs(root)){
@@ -169,6 +217,25 @@ if(import.meta.url===pathToFileURL(process.argv[1]).href){
   for(const [session,bucket] of summary.sessions.slice(0,8))
     console.log(`  ${session.slice(0,8)}  ${String(bucket.calls).padStart(5)} calls  ${thousands(bucket.input_tokens).padStart(12)} input  `
       +`${thousands(bucket.output_tokens).padStart(8)} output  ${new Date(bucket.first/1000).toISOString()}`);
+  if(args.includes('--bridge')){
+    console.log('\nbridge assignments, newest first');
+    console.log('  '+'assignment'.padEnd(30)+'turns'.padStart(6)+'total input'.padStart(13)
+      +'output'.padStart(8)+'ctx first'.padStart(11)+'ctx last'.padStart(10)+'floor share'.padStart(13));
+    const seen=sessionLogs(root)
+      .map(log=>({log,name:bridgeSessions.get(log.split(/[\\/]/).at(-2))}))
+      .filter(entry=>entry.name)
+      .sort((a,b)=>statSync(b.log).mtimeMs-statSync(a.log).mtimeMs);
+    for(const {log,name} of seen.slice(0,12)){
+      const curve=bridgeCost({...await readSessionCurve(log),name});
+      if(!curve.calls)continue;
+      console.log('  '+String(curve.name).slice(0,29).padEnd(30)+String(curve.calls).padStart(6)
+        +thousands(curve.totalInput).padStart(13)+thousands(curve.output).padStart(8)
+        +thousands(curve.firstContext).padStart(11)+thousands(curve.lastContext).padStart(10)
+        +`${Math.round(curve.floorShare*100)}%`.padStart(13));
+    }
+    console.log('  floor share = startup context re-sent every turn, as a fraction of all input.');
+    console.log('  A file of T tokens read at turn k of N adds about T*(N-k) input tokens.');
+  }
   const refusals=findQuotaRefusals(join(ROOT,'.agent-bridge','runs'));
   // Totals since a stated reset are the closest thing to "used this window".
   const sinceArg=args.indexOf('--since');
