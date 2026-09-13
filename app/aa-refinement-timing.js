@@ -1,12 +1,14 @@
 // Renderer-owned elapsed queries include BOTH the exclusion and display draws.
 // Call while the preview render loop is paused: concurrent timed draws cannot
 // be attributed through the renderer's shared result queue.
-export async function measureAARefinement(renderer,state){
-  const width=320,height=240,samples=12,drainMs=2000;
+export async function measureAARefinement(renderer,state,{width=320,height=240}={}){
+  if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||width>4096||height>4096)
+    throw Error('Invalid AA timing viewport');
+  const samples=12,drainMs=2000;
   const pause=()=>new Promise(resolve=>setTimeout(resolve,20));
   const quantiles=values=>{
     const sorted=[...values].sort((a,b)=>a-b);
-    return sorted.length?{samples:sorted.length,p50:sorted[Math.floor(sorted.length*.5)],max:sorted.at(-1)}:null;
+    return sorted.length?{samples:sorted.length,p50:sorted[Math.floor(sorted.length*.5)],p90:sorted[Math.floor(sorted.length*.9)],max:sorted.at(-1)}:null;
   };
   const report={width,height,requestedSamples:samples,hardware:renderer.hardware,
     revision:renderer.missPass.revision,

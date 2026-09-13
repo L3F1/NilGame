@@ -6,6 +6,9 @@ wrong intersections. No new geometry or precision helper milestone meanwhile.
 
 ## Next implementation
 
+Current readiness: see docs/qa/enclosure-interactive-review.md. Hardware480x360 AA cost is measured and screenshots inspected; purple hit-side fringes remain. Stop expanding the miss-only acceptance corpus. Next delivery: optional candidate exposure with truthful startup/memory behavior, then fix remaining hit-side artifacts. Software performance remains qualified by actual timing status.
+
+
 AA refinement integration and a correlated E3 diagnostic landed in this batch.
 Read docs/qa/aa-refinement-review.md and AA_REFINEMENT.md, not the full history.
 The editor can combine Smooth edges with optional spherical refinement up to

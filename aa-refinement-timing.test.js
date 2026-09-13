@@ -30,6 +30,12 @@ try{
   Object.defineProperty(globalThis,'performance',{configurable:true,value:{now:()=>now}});
   Object.defineProperty(globalThis,'setTimeout',{configurable:true,value:(callback,ms)=>{now+=ms;callback();return 0;}});
   {
+    const h=renderer(),result=await measureAARefinement(h.instance,{},{width:480,height:360});
+    check(h.calls.every(c=>c.options.width===480&&c.options.height===360),'custom viewport reaches every measured and drain draw');
+    check(result.width===480&&result.height===360&&result.refined.gpuMs.p90===22,'report attributes viewport and p90');
+    await assert.rejects(()=>measureAARefinement(h.instance,{},{width:0}),/Invalid AA timing viewport/);checks++;
+  }
+  {
     const h=renderer({delay:500,seed:true}),result=await measureAARefinement(h.instance,{});
     check(result.status==='measured','delayed but drained cases are measured');
     check(result.baseline.gpuMs.samples===12&&result.refined.gpuMs.samples===12,'each case owns exactly twelve queries');

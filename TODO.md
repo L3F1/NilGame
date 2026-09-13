@@ -16,6 +16,9 @@ Detailed sequencing, Godot trial gate and scoped effort estimates:
 
 ## Active delivery
 
+Current readiness: see docs/qa/enclosure-interactive-review.md. Hardware480x360 AA cost is measured and screenshots inspected; purple hit-side fringes remain. Stop expanding the miss-only acceptance corpus. Next delivery: optional candidate exposure with truthful startup/memory behavior, then fix remaining hit-side artifacts. Software performance remains qualified by actual timing status.
+
+
 Reduce false purple fringes in the existing editor. Separate-pass cost measured:
 fast on tested hardware GPU, too expensive as a default on SwiftShader.
 Next is scoped integration with measured cost, exact state/sample association,
