@@ -6,6 +6,14 @@ wrong intersections. No new geometry or precision helper milestone meanwhile.
 
 ## Next implementation
 
+Hit-side decision: read the final section of SPHERICAL_ROOT_PRECISION.md. The
+miss amplitude proof cannot locate a root; a quarter-turn counterexample now
+pins that boundary. Reuse additive interval ordering, certify outside starts
+and portal precedence, and keep hit-location/normal certification separate.
+Next: smallest GPU hit-band experiment with a justified phase error, not a
+smaller global E or midpoint promotion.
+
+
 Current readiness: see docs/qa/enclosure-interactive-review.md. Hardware480x360 AA cost is measured and screenshots inspected; purple hit-side fringes remain. Stop expanding the miss-only acceptance corpus. Optional candidate exposure is now implemented; see docs/qa/enclosure-ui-review.md. Next delivery: fix remaining hit-side artifacts. Software performance remains qualified by actual timing status.
 
 

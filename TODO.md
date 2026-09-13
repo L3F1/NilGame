@@ -16,7 +16,7 @@ Detailed sequencing, Godot trial gate and scoped effort estimates:
 
 ## Active delivery
 
-Current readiness: see docs/qa/enclosure-interactive-review.md. Hardware480x360 AA cost is measured and screenshots inspected; purple hit-side fringes remain. Stop expanding the miss-only acceptance corpus. Optional candidate exposure is now implemented; see docs/qa/enclosure-ui-review.md. Next delivery: fix remaining hit-side artifacts. Software performance remains qualified by actual timing status.
+Current readiness: see docs/qa/enclosure-interactive-review.md. Hardware480x360 AA cost is measured and screenshots inspected; purple hit-side fringes remain. Stop expanding the miss-only acceptance corpus. Optional candidate exposure is now implemented; see docs/qa/enclosure-ui-review.md. Next delivery: fix remaining hit-side artifacts. SPHERICAL_ROOT_PRECISION.md now specifies the hit-band integration boundary: amplitude-only miss certificates cannot locate hits; reuse interval ordering with certified outside starts and a justified phase bound. Software performance remains qualified by actual timing status.
 
 
 Reduce false purple fringes in the existing editor. Separate-pass cost measured:

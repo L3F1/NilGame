@@ -2,15 +2,13 @@
   "version": 1,
   "tasks": [
     {
-      "id": "claude-enclosure-aa-acceptance",
+      "id": "claude-s3-hit-contract-audit",
       "agent": "claude",
       "allowedFiles": [
-        "app/aa-refinement-probe.js",
-        "app/enclosure-aa-probe.js",
-        "docs/qa/claude-enclosure-aa-acceptance.md"
+        "docs/qa/claude-s3-hit-contract-audit.md"
       ],
-      "report": "docs/qa/claude-enclosure-aa-acceptance.md",
-      "instruction": "Implement ONE bounded acceptance slice. Read AGENTS.md and WORKING_RULES, docs/qa/enclosure-integration-review.md only, then app/aa-refinement-probe.js and app/enclosure-integration-probe.js as needed. Add independent AA/supersample acceptance for the experimental enclosureRefinement:true renderer. Reuse existing checkAARefinement by adding an optional reference-constructor-options argument (default behavior MUST stay unchanged), so both target and independent 2x reference use enclosureRefinement:true. Add app/enclosure-aa-probe.js exporting checkEnclosureAA(model,census,shots): create experimental renderer and census pose, call that shared AA checker with explicit candidate reference options, clean up GL context in finally, label result enclosure-aa. Do not wire into main app; lead will wire and run GPU acceptance. Keep existing strict numeric/refusal/color guards and memory fallback checks. Do not change geometry/shader/renderer or historical expectations to make checks pass. Only three allowed files. Run node --check on changed JS; no browser or full suite here (isolated checkout cannot use main queue), no commits/pushes/agents. Report unrun GPU checks explicitly and explain any integration caveat in under300 words. Aim <=20 targeted tool calls, no broad research/archives. Fresh bounded session; no automatic follow-up."
+      "report": "docs/qa/claude-s3-hit-contract-audit.md",
+      "instruction": "Read AGENTS.md/WORKING_RULES then only SPHERICAL_CURVE_ERROR.md, SPHERICAL_ROOT_PRECISION.md, engine/geometry/connected-shader.js solve/sweep, additive-event-order.js. Bounded independent review, no code fixes: identify what must be proved to replace S3 ball tangency refusals with ordered entry bands. Specifically audit whether amplitude-only shared-sincos error supplies phase/time bounds (it does not generally), whether firstAdditiveEntry can be reused given certified outside starts and portal-horizon events, and whether selecting a root-band midpoint alone certifies the shaded hit point/normal. Propose the smallest safe integration reusing existing H3 event-band machinery; list exact missing assumptions and do not claim new numerical constants proven. Output <=600 words in sole allowed report. <=15 targeted tool calls; no full suites/browser, broad archives, commits, subagents or followups. If quota blocks stop. This is review for lead, not implementation or authorization to recolor unresolved pixels."
     }
   ]
 }
