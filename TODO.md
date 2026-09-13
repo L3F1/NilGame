@@ -41,7 +41,7 @@ docs/engineering/SPHERICAL_CURVE_ERROR.md. Serialized producer/consumer candidat
 now runs via enclosureRefinement:true; see docs/qa/enclosure-integration-review.md.
 Default UI unchanged. Payload corruption/expiry and independent AA reference now
 pass on both backends; see docs/qa/enclosure-acceptance-review.md. Software AA
-timing remains incomplete. Short local motion poses now have strict packet coverage; see docs/qa/enclosure-motion-review.md. Next: edit poses and intended-resolution
+timing remains incomplete. Short local motion poses now have strict packet coverage; see docs/qa/enclosure-motion-review.md. Edit/undo/redo/JSON-load lifecycle now has fixed-pose coverage; see docs/qa/enclosure-edit-review.md. Next: intended-resolution
 image/startup/frame-cost acceptance
 under REFINEMENT_ENCLOSURE_NEXT.md before exposing the candidate.
 Do not rerun blindly, enable refinement by default, or add another geometry

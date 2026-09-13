@@ -4,7 +4,8 @@ The arithmetic prototype and experimental serialized producer/consumer are now
 implemented; see [integration evidence](../qa/enclosure-integration-review.md).
 The candidate uses the constructor option enclosureRefinement and is NOT exposed
 in the UI. Keep today's default consumer until the remaining acceptance checks
-pass: broader poses and measured interactive cost. Payload rejection/expiry and
+pass: measured interactive cost and startup. Short motion and one edited-ball
+lifecycle now have sampled coverage; see ../qa/enclosure-edit-review.md. Payload rejection/expiry and
 independent AA comparison now pass; see ../qa/enclosure-acceptance-review.md.
 Software AA timing is still incomplete. The steps below remain its design contract.
 
@@ -55,8 +56,7 @@ admitted a subnormal into a zero-radius box before that repair.
 
 The conditional curve-error predicate is now implemented and checked; see
 SPHERICAL_CURVE_ERROR.md. Use enclosureCurveExterior with an outward angle bound
-and a single shared sincos pair in the consumer. This still needs serialized
-integration and image/cost acceptance. The ideal-only predicate is not a
+and a single shared sincos pair in the consumer. Serialized integration is implemented; broader image/cost acceptance remains. The ideal-only predicate is not a
 substitute for the evaluated-curve predicate. Strict computed exterior can
 refine UNKNOWN; old occupancy classification equivalence would require >E.
 

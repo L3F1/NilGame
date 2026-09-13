@@ -1,5 +1,6 @@
 import {createConnectedRenderer} from '../engine/geometry/connected-renderer.js';
 import {createConnectedGlobalPreview} from './connected-global-model.js';
+import {checkEnclosureEdits} from './enclosure-edit-probe.js';
 // Opt-in candidate only. No default UI admission follows merely from passing.
 export async function checkEnclosureIntegration(model,census,reference,shots){
   const canvas=document.createElement('canvas'),start=performance.now();
@@ -88,8 +89,9 @@ export async function checkEnclosureIntegration(model,census,reference,shots){
       while(renderer.pendingTimerCount&&performance.now()<deadline){renderer.draw(state,{width:160,height:120,sphericalMissPass:enabled});await new Promise(r=>setTimeout(r,20));}
       costs.push({enabled,wallMs:wall,gpuMs:[...renderer.times]});
     }
-    return {label:'enclosure-integration',hardware:renderer.hardware,coldBuildMs,records,costs,
+    const edits=checkEnclosureEdits(model,renderer,reference);
+    return {label:'enclosure-integration',hardware:renderer.hardware,coldBuildMs,records,costs,edits,
       faults,expiredAcrossPortal,memoryRefusal:true,resizeRecovery:true,readyForFurtherAcceptance:records.every(r=>!r.offChanged&&!r.settledChanged)&&records.some(r=>r.recovered>0),
-      scope:'experimental separate programs; sampled real-host motion, payload rejection and separate AA checks; no UI admission; edit and interactive-resolution acceptance still required'};
+      scope:'experimental separate programs; sampled host motion/edit lifecycle, payload rejection and separate AA checks; no UI admission; interactive-resolution/startup acceptance still required'};
   }finally{canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();}
 }

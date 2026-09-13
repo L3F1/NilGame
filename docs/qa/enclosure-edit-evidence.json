@@ -1,0 +1,125 @@
+{
+  "base": "70032dc",
+  "hardware": {
+    "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "edits": {
+      "records": [
+        {
+          "name": "baseline",
+          "revision": 0,
+          "recovered": 1,
+          "settledChanged": 0,
+          "offChanged": 0
+        },
+        {
+          "name": "resize-s3-ball",
+          "revision": 1,
+          "recovered": 0,
+          "settledChanged": 0,
+          "offChanged": 0
+        },
+        {
+          "name": "undo",
+          "revision": 2,
+          "recovered": 1,
+          "settledChanged": 0,
+          "offChanged": 0
+        },
+        {
+          "name": "redo",
+          "revision": 3,
+          "recovered": 0,
+          "settledChanged": 0,
+          "offChanged": 0
+        },
+        {
+          "name": "undo-before-load",
+          "revision": 4,
+          "recovered": 1,
+          "settledChanged": 0,
+          "offChanged": 0
+        },
+        {
+          "name": "json-load",
+          "revision": 5,
+          "recovered": 0,
+          "settledChanged": 0,
+          "offChanged": 0
+        },
+        {
+          "name": "refused-edit",
+          "revision": 5,
+          "recovered": 0,
+          "settledChanged": 0,
+          "offChanged": 0
+        }
+      ],
+      "visibleEdit": true,
+      "posePreserved": true,
+      "undoRedoLoadIdentical": true,
+      "refusalAtomic": true,
+      "scope": "one S3 ball resize, fixed E3 camera, 65x49; packet comparisons, not general edit proof"
+    }
+  },
+  "software": {
+    "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "edits": {
+      "records": [
+        {
+          "name": "baseline",
+          "revision": 0,
+          "recovered": 1,
+          "settledChanged": 0,
+          "offChanged": 0
+        },
+        {
+          "name": "resize-s3-ball",
+          "revision": 1,
+          "recovered": 0,
+          "settledChanged": 0,
+          "offChanged": 0
+        },
+        {
+          "name": "undo",
+          "revision": 2,
+          "recovered": 1,
+          "settledChanged": 0,
+          "offChanged": 0
+        },
+        {
+          "name": "redo",
+          "revision": 3,
+          "recovered": 0,
+          "settledChanged": 0,
+          "offChanged": 0
+        },
+        {
+          "name": "undo-before-load",
+          "revision": 4,
+          "recovered": 1,
+          "settledChanged": 0,
+          "offChanged": 0
+        },
+        {
+          "name": "json-load",
+          "revision": 5,
+          "recovered": 0,
+          "settledChanged": 0,
+          "offChanged": 0
+        },
+        {
+          "name": "refused-edit",
+          "revision": 5,
+          "recovered": 0,
+          "settledChanged": 0,
+          "offChanged": 0
+        }
+      ],
+      "visibleEdit": true,
+      "posePreserved": true,
+      "undoRedoLoadIdentical": true,
+      "refusalAtomic": true,
+      "scope": "one S3 ball resize, fixed E3 camera, 65x49; packet comparisons, not general edit proof"
+    }
+  }
+}
