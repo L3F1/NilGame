@@ -29,10 +29,17 @@ as ONE ANGLE data point: the worst acos value is identical on both.
 
 The shading question is measured too. Enclosing the normal over the band AND
 the transfer box pins it to 2.11 degrees worst case - 9.4 of 255 colour steps,
-4 to 6 typically - and the ROOT BAND causes essentially all of it: the transfer
-box contributes 80x less, so tightening the transfer buys nothing here. About a
-third of that is enclosure slack; the two band-end normals are 0.0086 apart
-where the enclosure says 0.0292.
+4 to 6 typically. About a third of that is enclosure slack; the two band-end
+normals are 0.0086 apart where the enclosure says 0.0292.
+
+The transfer box drives all of it, through coefficient error times the arccosine
+sensitivity near tangency. Measured by rerunning the ordering with the box
+scaled down: each halving halves the shading spread, FOUR EXTRA BITS in the
+transfer put the worst pixel inside one 8-bit colour step, and the series
+flattens near 0.36 steps by 1/32. So this needs neither binary64 (absent from
+GLSL ES), nor a different host or language - it needs a few more bits in one
+place, which compensated double-float dot products in the transfer would supply
+with room to spare. Spending that is the lead's call.
 
 Next: the LEAD decides the envelope route, since both are now open, and whether
 a normal pinned to about two degrees is enough to call a pixel decided. Using

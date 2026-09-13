@@ -179,10 +179,11 @@ EVERY unit light direction: it is a lighting-independent number.
 | From the transfer box alone | 3.69e-4 |
 
 So a certified hit would settle the pixel's shading to within about nine colour
-steps in the worst case and four to six typically. The root band, not the ray
-that reached it, is responsible for essentially all of that: the transfer box
-contributes eighty times less. Tightening the transfer would buy nothing here,
-which is the opposite of what the band-width measurement alone suggests.
+steps in the worst case and four to six typically. The table splits the DIRECT
+effect of each input at the other one held fixed, and read that way the band
+dominates. It does not say the transfer box is harmless: the box is what makes
+the band, through coefficient error multiplied by the arccosine sensitivity near
+tangency. The next section measures that path instead of inferring it.
 
 Part of the nine steps is enclosure slack rather than real uncertainty. The two
 band-end normals, evaluated directly as an independent witness, are 0.0086 apart
@@ -190,6 +191,37 @@ where the enclosure reports 0.0292, so a sharper trigonometric enclosure could
 recover roughly a factor of three. The remaining question is a policy one and
 belongs to the lead: is a normal pinned to about two degrees enough to call a
 pixel decided, or must the band tighten first? Nothing here recolours anything.
+
+## What a tighter ray would buy (same day)
+
+The decomposition above is a partial-derivative view and invites a wrong
+conclusion, so the dependency was measured directly: rerun the whole ordering
+with the transfer box scaled down and watch the band and the shading follow.
+
+| Transfer box | Ordered pixels | Worst band | Worst colour steps |
+| --- | --- | --- | --- |
+| 1x (today) | 14 | 6.58e-3 | 9.41 |
+| 1/2 | 14 | 3.34e-3 | 4.80 |
+| 1/4 | 14 | 1.73e-3 | 2.50 |
+| 1/8 | 14 | 9.34e-4 | 1.37 |
+| 1/16 | 14 | 5.42e-4 | 0.81 |
+| 1/32 | 14 | 3.55e-4 | 0.54 |
+| 1/128 | 14 | 2.31e-4 | 0.36 |
+
+The transfer box drives everything, roughly linearly at first: each halving
+halves the shading spread. **Four extra bits in the transfer put the worst pixel
+inside a single 8-bit colour step**, and the series then flattens against a floor
+near 0.36 steps set by the coefficient and rounding terms the box does not
+control. Nothing beyond about 1/32 is worth paying for.
+
+That reframes the precision question. This does not need binary64 - which GLSL ES
+does not have anyway - and it does not need a different host or language, since
+every renderer that draws this scene draws it in binary32. It needs about four
+more bits in ONE place. Compensated (double-float) arithmetic over the handful of
+dot products in the transfer supplies roughly twenty-four, at a few extra
+operations each, and the existing transfer bound would report the improvement
+without any new proof obligation. Whether to spend that is the lead's call; this
+is the measurement it needs, not a decision.
 
 ## Next
 

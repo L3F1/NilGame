@@ -154,6 +154,7 @@ function shadingSpread(transfer,band,center,curvatureRadius,source='both'){
 }
 export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60,
   inflations=[1,2,4,8,16,32,64,128,256,512,1024],
+  deflations=[1,1/2,1/4,1/8,1/16,1/32,1/64,1/128],
   allowances=[0,2**-24,2**-20,2**-16,2**-14,2**-12,2**-11,2**-10,2**-8,2**-6]}){
   const source=world.regions.get(pose.regionId);
   if(!source||source.space.kind!=='e3')throw Error('Hit-band census requires an E3 entry region');
@@ -161,6 +162,8 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
     throw Error('Inflation factors must start at the measured box and increase');
   if(!allowances.length||allowances[0]!==0||allowances.some((x,i)=>i&&x<=allowances[i-1]))
     throw Error('Transcendental allowances must start at zero and increase');
+  if(!deflations.length||deflations[0]!==1||deflations.some((x,i)=>i&&(x<=0||x>=deflations[i-1])))
+    throw Error('Deflation factors must start at the measured box and decrease');
   const cameraError={forward:[0,0,0],right:[0,0,0],up:[0,0,0]};
   const records=[],summary={flagged:0,cpu:{},entry:{},exteriorRefused:0,
     bandWidth:{min:Infinity,max:0},containsTracedRoot:0,missingTracedRoot:0,inflation:{},
@@ -245,6 +248,19 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
       inflationLimit=factor;
     }
     summary.inflation[inflationLimit]=(summary.inflation[inflationLimit]??0)+1;
+    // What a TIGHTER ray would buy. The transfer box is the only input a port
+    // could realistically improve - by carrying the transfer in compensated
+    // arithmetic, say - so measure the return before anyone pays for it.
+    const tightening=[];
+    for(const factor of deflations){
+      const attempt=factor===1?measured
+        :orderEntry(destination.balls,transfer,curvatureRadius,remaining,{factor});
+      if(attempt.entry.status!=='entry'){tightening.push({factor,status:attempt.entry.status});break;}
+      const spread=shadingSpread(transfer,attempt.entry,
+        destination.balls.find(b=>b.id===attempt.entry.owner).center,curvatureRadius);
+      tightening.push({factor,status:'entry',band:attempt.entry.upper-attempt.entry.lower,
+        colourSteps:spread.status==='bounded'?spread.colourSteps:null});
+    }
     // The same ordering under the coefficient arithmetic a GPU consumer would
     // execute, then swept over an absolute-radian model of ITS arctangent and
     // arccosine. The sweep result is a requirement on that implementation, not
@@ -284,13 +300,13 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
         refused:measured.exterior.filter(e=>e.status!=='outside').map(e=>e.owner)},
       queries:measured.queries.map(q=>[q.owner,q.status,q.reason??'',q.events.length]),
       entry:measured.entry,bandWidth,shading,tracedRoot,containsTracedRoot,
-      inflationLimit,inflationFailure,remaining});
+      inflationLimit,inflationFailure,tightening,remaining});
   }
   if(summary.bandWidth.min===Infinity)summary.bandWidth.min=null;
   if(summary.binary32.bandWidth.min===Infinity)summary.binary32.bandWidth.min=null;
   return {label:'spherical-hit-band',width,height,range,pose,guard:TANGENCY_GUARD,
     balls:[...world.regions.values()].filter(r=>r.space.kind==='s3').flatMap(r=>r.balls?.map(b=>b.id)??[]),
-    inflations,allowances,records,summary,
+    inflations,allowances,deflations,records,summary,
     scope:'one recorded pose; ordering and owner only. The binary32 columns model a GPU '
       +'consumer coefficient arithmetic and a supplied transcendental allowance; they are '
       +'not an executed GLSL measurement, a shading position, a normal or a rendering claim'};

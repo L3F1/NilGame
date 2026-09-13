@@ -55,6 +55,21 @@ for(const record of census.records){
     // A traced miss must never be promoted to an entry by this ordering.
     assert.equal(record.entry.status,'miss',`Traced miss ordered as ${record.entry.status} at ${where}`);
   }
+  // A tighter ray can only help. If a smaller box ever widened a band, the
+  // measurement would be reporting noise rather than a dependency.
+  assert.equal(record.tightening[0].factor,1,`Tightening series must start at the measured box at ${where}`);
+  if(record.entry.status==='entry'){
+    const ordered=record.tightening.filter(t=>t.status==='entry');
+    assert.equal(ordered.length,record.tightening.length,`A tighter box lost an entry at ${where}`);
+    for(let i=1;i<ordered.length;i++){
+      assert.ok(ordered[i].band<=ordered[i-1].band,`Tightening the box widened the band at ${where}`);
+      assert.ok(ordered[i].colourSteps<=ordered[i-1].colourSteps,
+        `Tightening the box widened the shading spread at ${where}`);
+    }
+    assert.ok(ordered.length>1&&ordered.at(-1).colourSteps<ordered[0].colourSteps/2,
+      `A ${1/ordered.at(-1).factor}x tighter ray bought nothing at ${where}`);
+  }else assert.equal(record.tightening[0].status,record.entry.status,
+    `Tightening series disagrees with the measured answer at ${where}`);
   // Separation is finite: every pixel loses its answer at some wider input box,
   // so a passing census is a measurement and not a vacuous success.
   assert.ok(record.inflationLimit>=1&&record.inflationFailure,`No measured separation limit at ${where}`);
@@ -106,6 +121,7 @@ assert.throws(()=>selectAdditiveEntry([],{maxDistance:1}),/certified outside sta
 assert.throws(()=>sphericalHitBandCensus({world,pose:{...pose,regionId:'sphere'}}),/E3 entry region/);
 assert.throws(()=>sphericalHitBandCensus({world,pose,inflations:[2,4]}),/Inflation factors/);
 assert.throws(()=>sphericalHitBandCensus({world,pose,allowances:[2**-11]}),/Transcendental allowances/);
+assert.throws(()=>sphericalHitBandCensus({world,pose,deflations:[1,2]}),/Deflation factors/);
 // A consumer allowance is an input to the contract, and an invalid one refuses.
 for(const bad of [-1,2,NaN,Infinity])assert.throws(()=>sphericalRootBounds({a:1,b:0,c:.5,
   errorA:0,errorB:0,errorC:0,curvatureRadius:1,maxDistance:1,phaseAllowance:bad}),/Invalid spherical/);
@@ -143,10 +159,14 @@ for(const sample of samples){
 assert.ok(fromCensus.some(s=>Math.abs(1-s.ratio)<1e-3),
   'The tangency-grazing ratios the guard fires on must reach the probe');
 
+const tightest=Math.max(...census.records.filter(r=>r.entry?.status==='entry')
+  .map(r=>r.tightening.at(-1).colourSteps));
+
 console.log(`spherical hit band: ${census.summary.flagged} guarded pixels, ${entries} ordered entries `
   +`(band width ${census.summary.bandWidth.min.toPrecision(3)}..${census.summary.bandWidth.max.toPrecision(3)}), `
   +`${misses} certified misses, box separation limits ${JSON.stringify(census.summary.inflation)}, `
   +`binary32 coefficients agree with widening <=${census.summary.binary32.widening.max.toPrecision(3)}x, `
   +`transcendental allowance limits ${JSON.stringify(census.summary.binary32.allowance)} rad, `
   +`normal pinned to ${census.summary.shading.maxDegrees.toPrecision(3)} deg `
-  +`(${census.summary.shading.maxColourSteps.toPrecision(3)} of 255 colour steps)`);
+  +`(${census.summary.shading.maxColourSteps.toPrecision(3)} of 255 colour steps, `
+  +`${tightest.toPrecision(3)} at a ${1/census.deflations.at(-1)}x tighter ray)`);
