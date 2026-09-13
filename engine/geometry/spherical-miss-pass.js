@@ -76,6 +76,7 @@ export function createSphericalMissPass(gl,{enclosure=false}={}){
     program=created;
     loc=Object.fromEntries(['uData','uCounts','uPosition','uForward','uRight','uUp','uResolution','uMaxDistance','uRegion','uEligibleOwners','uSampleGrid']
       .map(name=>[name,gl.getUniformLocation(program,name)]));
+    if(enclosure)loc.uCertificateFault=gl.getUniformLocation(program,'uCertificateFault');
     framebuffer=gl.createFramebuffer();
     return program;
   }
@@ -138,6 +139,7 @@ export function createSphericalMissPass(gl,{enclosure=false}={}){
       gl.uniform2f(loc.uResolution,width,height);gl.uniform1i(loc.uSampleGrid,grid);
       gl.uniform1f(loc.uMaxDistance,maxDistance);gl.uniform1i(loc.uRegion,regionIndex);
       gl.uniform1i(loc.uEligibleOwners,request.eligibleOwners??0);
+      if(enclosure)gl.uniform1i(loc.uCertificateFault,request.certificateFault??0);
       const query=timer&&timerExt&&pending.length<16?gl.createQuery():null;
       if(query)gl.beginQuery(timerExt.TIME_ELAPSED_EXT,query);
       gl.drawArrays(gl.TRIANGLES,0,3);

@@ -8,6 +8,7 @@ function replaceOnce(source,from,to){
 }
 export function enclosureProducer(){
   let s=SPHERICAL_MISS_PASS_FRAGMENT;
+  s=replaceOnce(s,'uniform int uSampleGrid;','uniform int uSampleGrid;\nuniform int uCertificateFault;');
   s=replaceOnce(s,'layout(location=2) out vec4 outDirection;','layout(location=2) out vec4 outDirection;\nlayout(location=3) out vec4 outRadii;');
   s=replaceOnce(s,'bool additiveBallOwner(int owner){',ENCLOSURE_MEMBER_GLSL+ENCLOSURE_EXPORT_GLSL+'\nbool additiveBallOwner(int owner){');
   s=replaceOnce(s,'outCertificate=uvec4(0u);outPoint=vec4(0);outDirection=vec4(0);','outCertificate=uvec4(0u);outPoint=vec4(0);outDirection=vec4(0);outRadii=vec4(0);');
@@ -15,7 +16,14 @@ export function enclosureProducer(){
     'if(!firstTransferBands())return;\n  float rp,ru;BI pb,ub;\n  if(!exportEnclosure(rayPointBand,newP,rp,pb)||!exportEnclosure(rayDirectionBand,newU,ru,ub))return;\n  BI angle=bd(ba(bs(uMaxDistance),bs(8.*E)),bs(dest.y));\n  if(!bfinite(angle)||angle.lo.x<0.||angle.hi.x>64.)return;');
   s=replaceOnce(s,'if(!sphericalMiss(-D(2*i),-m.z))continue;','if(!enclosureCurveExterior(pb,ub,-D(2*i),-m.z,angle.hi.x))continue;');
   s=replaceOnce(s,SPHERICAL_MISS_CERTIFICATE_TAG+'u+sampleId',ENCLOSURE_CERTIFICATE_TAG+'u+sampleId');
-  return replaceOnce(s,'outPoint=newP;outDirection=newU;','outPoint=newP;outDirection=newU;outRadii=vec4(rp,ru,angle.hi.x,0.);');
+  return replaceOnce(s,'outPoint=newP;outDirection=newU;',`outPoint=newP;outDirection=newU;outRadii=vec4(rp,ru,angle.hi.x,0.);
+  // Test-only corruption. A production caller must leave this at zero.
+  if(uCertificateFault==1)outCertificate.w=${SPHERICAL_MISS_CERTIFICATE_TAG}u+sampleId;
+  if(uCertificateFault==2)outCertificate.w=${ENCLOSURE_CERTIFICATE_TAG}u+((sampleId+1u)%4u);
+  if(uCertificateFault==3)outCertificate.x=0u;
+  if(uCertificateFault==4)outRadii.x=-1.;
+  if(uCertificateFault==5)outPoint.x+=1.;
+  if(uCertificateFault==6)outDirection.x+=1.;`);
 }
 export function enclosureConsumer(source){
   let s=replaceOnce(source,'uniform highp sampler2D uMissPoint,uMissDirection;',

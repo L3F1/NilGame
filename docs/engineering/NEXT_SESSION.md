@@ -54,9 +54,16 @@ angle bound and shared-pair at(). Read docs/qa/enclosure-integration-review.md
 and its evidence. Default renderer/UI unchanged. Candidate images now show real
 fringe recovery; initial hardware160x120 recovered30 with zero settled changes.
 
-Next: finish acceptance, not another math helper. Add ownership mutations for
-wrong tag/sample/gate, outside-radius states and expiry; independent AA reference;
-additional motion/edit poses. Keep current strict packet guards. Follow
+Payload rejection and independent AA comparison now pass on hardware/software:
+read docs/qa/enclosure-acceptance-review.md. Six deliberately corrupt payloads
+fall back identically;45 sampled H3 expiry witnesses;34 AA pixels recovered
+at160x120. Claude wrote the shared-checker wrapper (8 turns/4469 output tokens),
+lead integrated and tested it. Do not redispatch claude-enclosure-aa-acceptance.
+Software AA timings are INCOMPLETE; the refined case was skipped after baseline
+queries did not drain. Do not report the partial sample as full performance.
+
+Next: additional motion/edit poses and startup/interactive-resolution review.
+Keep current strict packet guards. Follow
 REFINEMENT_ENCLOSURE_NEXT.md for memory/association and measure intended-resolution
 cost and startup before UI exposure. Current fallback within the candidate uses
 shared-pair at(); default-source parity is checked separately.
@@ -68,7 +75,7 @@ Then address remaining hit-side fringes. Do not blindly chase identical floats,
 embed interval arithmetic in the main shader, or weaken settled-pixel guards.
 
 Internal helper reviewed atlas ownership, timer isolation and joint capture.
-No external agents running; do not redispatch the completed Claude manifest.
+No external agents running; the current Claude manifest is completed/accepted.
 Muse is unavailable until its reported Sept14 UTC reset.
 
 Bind outputs to exact portal/object, packed world revision, pose, viewport and

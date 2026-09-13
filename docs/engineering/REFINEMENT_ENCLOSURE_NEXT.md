@@ -4,8 +4,9 @@ The arithmetic prototype and experimental serialized producer/consumer are now
 implemented; see [integration evidence](../qa/enclosure-integration-review.md).
 The candidate uses the constructor option enclosureRefinement and is NOT exposed
 in the UI. Keep today's default consumer until the remaining acceptance checks
-pass: ownership mutations, independent AA reference, broader poses and measured
-interactive cost. The steps below remain its design contract.
+pass: broader poses and measured interactive cost. Payload rejection/expiry and
+independent AA comparison now pass; see ../qa/enclosure-acceptance-review.md.
+Software AA timing is still incomplete. The steps below remain its design contract.
 
 The exclusion pass proves a miss over point/tangent intervals, but exports only
 one nominal point/tangent and accepts only an exact match. Small valid shader

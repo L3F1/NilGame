@@ -536,4 +536,16 @@ check(SPHERICAL_MISS_CERTIFICATE_TAG>0&&Number.isInteger(SPHERICAL_MISS_CERTIFIC
     check(k.instance.missPass.status==='unsupported-enclosure-resources'&&k.missUniform()===0,'enclosure refuses missing attachment/sampler capability');
   }
 }
+{
+  const h=renderer({enclosure:true});
+  h.instance.draw(state,{sphericalMissPass:true,certificateFault:4});
+  const pass=h.calls.filter(c=>c.op==='drawArrays'&&c.framebuffer).at(-1).program;
+  check(h.uniformOf(pass,'uCertificateFault')===4,'diagnostic fault reaches producer');
+  h.instance.draw(state,{sphericalMissPass:true});
+  check(h.uniformOf(pass,'uCertificateFault')===0,'normal draw clears prior diagnostic fault');
+  for(const certificateFault of [-1,7,NaN]){
+    assert.throws(()=>h.instance.draw(state,{certificateFault}),/supported fault ID/);checks++;
+  }
+  const ordinary=renderer();assert.throws(()=>ordinary.instance.draw(state,{certificateFault:1}),/experimental enclosure/);checks++;
+}
 console.log(`spherical-miss-pass: ${checks} checks passed`);

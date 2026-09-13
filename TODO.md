@@ -39,8 +39,10 @@ docs/qa/refinement-transfer-enclosure-review.md. The conditional polynomial
 curve-error bound and exterior predicate are implemented; see
 docs/engineering/SPHERICAL_CURVE_ERROR.md. Serialized producer/consumer candidate
 now runs via enclosureRefinement:true; see docs/qa/enclosure-integration-review.md.
-Default UI unchanged. Next: ownership mutations, independent AA reference,
-motion/edit poses and intended-resolution image/startup/frame-cost acceptance
+Default UI unchanged. Payload corruption/expiry and independent AA reference now
+pass on both backends; see docs/qa/enclosure-acceptance-review.md. Software AA
+timing remains incomplete. Next: motion/edit poses and intended-resolution
+image/startup/frame-cost acceptance
 under REFINEMENT_ENCLOSURE_NEXT.md before exposing the candidate.
 Do not rerun blindly, enable refinement by default, or add another geometry
 while hit-side fringes and timing coverage remain unfinished.

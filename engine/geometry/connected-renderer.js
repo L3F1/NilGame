@@ -68,7 +68,9 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false,enclo
   // sphericalMissPass opts THIS draw into the separately drawn first-transfer
   // exclusion pass. Default false; there is no automatic admission, and a
   // refusal always renders through the existing path unchanged.
-  function draw(state,{width=320,height=240,debug=0,timer=false,diagnostics=false,polished=true,ao=true,antialias=false,range,sphericalMissPass=false,aaRefinement=false}={}) {
+  function draw(state,{width=320,height=240,debug=0,timer=false,diagnostics=false,polished=true,ao=true,antialias=false,range,sphericalMissPass=false,aaRefinement=false,certificateFault=0}={}) {
+    if(!Number.isInteger(certificateFault)||certificateFault<0||certificateFault>6||certificateFault&&!enclosureRefinement)
+      throw Error('Certificate faults require the experimental enclosure renderer and a supported fault ID');
     if(range!==undefined&&(!(range>0)||range>packed.maxDistance))
       throw Error('Draw range must be positive and within the packed budget');
     const resized=canvas.width!==width||canvas.height!==height;
@@ -85,7 +87,7 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false,enclo
       :regionIndex>=0&&packed.texture[(128+regionIndex)*4]!==0?'outside-scope'
       :missPass.generate({dataTexture:texture,counts:packed.counts,eligibleOwners,
         position:state.position,forward:state.camera.forward,right:state.camera.right,up:state.camera.up,
-        width,height,maxDistance,regionIndex,revision,offsetX:0,offsetY:0,antialias:effectiveAA,sampleAtlas:effectiveAA&&aaRefinement,timer:false});
+        width,height,maxDistance,regionIndex,revision,offsetX:0,offsetY:0,antialias:effectiveAA,sampleAtlas:effectiveAA&&aaRefinement,timer:false,certificateFault});
     if(missStatus==='generated')missConsumingDraws++;
     // Private float readback target is selected after the exclusion pass, which
     // restores the default framebuffer on exit. Ordinary draws never use it.

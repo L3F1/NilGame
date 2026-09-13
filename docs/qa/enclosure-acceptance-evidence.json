@@ -1,0 +1,458 @@
+{
+  "date": "2026-09-12",
+  "base": "52b907f",
+  "hardware": {
+    "integration": {
+      "label": "enclosure-integration",
+      "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "coldBuildMs": 17824.5,
+      "records": [
+        {
+          "width": 65,
+          "height": 49,
+          "recovered": 1,
+          "cpuChecked": 1,
+          "settledChanged": 0,
+          "offChanged": 0,
+          "examples": [],
+          "accepted": 732,
+          "omissions": 5375
+        },
+        {
+          "width": 160,
+          "height": 120,
+          "recovered": 30,
+          "cpuChecked": 30,
+          "settledChanged": 0,
+          "offChanged": 0,
+          "examples": [],
+          "accepted": 4368,
+          "omissions": 32262
+        }
+      ],
+      "costs": [
+        {
+          "enabled": false,
+          "wallMs": [
+            1.199999999254942,
+            0.19999999925494194,
+            0.10000000149011612,
+            0.30000000074505806,
+            0.19999999925494194,
+            0.30000000074505806,
+            0.19999999925494194,
+            0.19999999925494194,
+            0.19999999925494194,
+            0.19999999925494194,
+            0.19999999925494194,
+            0.19999999925494194
+          ],
+          "gpuMs": [
+            0.068448,
+            0.07456,
+            0.080416,
+            0.0792,
+            0.076384,
+            0.079872,
+            0.080416,
+            0.07872,
+            0.078848,
+            0.078592,
+            0.078464,
+            0.079136
+          ]
+        },
+        {
+          "enabled": true,
+          "wallMs": [
+            1.1000000014901161,
+            0.30000000074505806,
+            0.5,
+            0.3999999985098839,
+            0.5,
+            0.6000000014901161,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5999999977648258,
+            0.5
+          ],
+          "gpuMs": [
+            0.114368,
+            0.12496,
+            0.141792,
+            0.117664,
+            0.115936,
+            0.11968,
+            0.114464,
+            0.10832,
+            0.10864,
+            0.108352,
+            0.118176,
+            0.110688
+          ]
+        }
+      ],
+      "faults": [
+        {
+          "id": 1,
+          "rejected": true,
+          "fallbackIdentical": true
+        },
+        {
+          "id": 2,
+          "rejected": true,
+          "fallbackIdentical": true
+        },
+        {
+          "id": 3,
+          "rejected": true,
+          "fallbackIdentical": true
+        },
+        {
+          "id": 4,
+          "rejected": true,
+          "fallbackIdentical": true
+        },
+        {
+          "id": 5,
+          "rejected": true,
+          "fallbackIdentical": true
+        },
+        {
+          "id": 6,
+          "rejected": true,
+          "fallbackIdentical": true
+        }
+      ],
+      "expiredAcrossPortal": 45,
+      "memoryRefusal": true,
+      "resizeRecovery": true,
+      "readyForFurtherAcceptance": true,
+      "scope": "experimental separate programs; no UI admission; ownership mutations, AA reference and broader pose checks still required"
+    },
+    "aa": {
+      "label": "enclosure-aa",
+      "records": [
+        {
+          "width": 65,
+          "height": 49,
+          "active": 2904,
+          "omissions": 21394,
+          "bySample": [
+            5351,
+            5346,
+            5351,
+            5346
+          ],
+          "compared": 921,
+          "maxError": 0.7742719088001593,
+          "recovered": 10,
+          "remainingNumeric": 23,
+          "inconclusive": 0,
+          "domainDecorations": 2241
+        },
+        {
+          "width": 160,
+          "height": 120,
+          "active": 17500,
+          "omissions": 129050,
+          "bySample": [
+            32261,
+            32262,
+            32263,
+            32264
+          ],
+          "compared": 5866,
+          "maxError": 0.8255702809270815,
+          "recovered": 34,
+          "remainingNumeric": 100,
+          "inconclusive": 0,
+          "domainDecorations": 13234
+        }
+      ],
+      "frameCosts": {
+        "width": 320,
+        "height": 240,
+        "requestedSamples": 12,
+        "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "revision": 0,
+        "gpuScope": "total renderer draw: exclusion pass plus main draw when enabled",
+        "wallScope": "synchronous renderer.draw plus gl.finish; excludes waits and drain draws",
+        "baseline": {
+          "drawFinishCallMs": {
+            "samples": 12,
+            "p50": 0.19999999925494194,
+            "max": 0.4000000022351742
+          },
+          "gpuMs": {
+            "samples": 12,
+            "p50": 0.488736,
+            "max": 0.507872
+          },
+          "gpuStatus": "measured",
+          "collectedSamples": 12,
+          "pendingSamples": 0,
+          "passStatuses": [
+            "disabled"
+          ],
+          "isolated": true
+        },
+        "refined": {
+          "drawFinishCallMs": {
+            "samples": 12,
+            "p50": 0.5,
+            "max": 0.8000000007450581
+          },
+          "gpuMs": {
+            "samples": 12,
+            "p50": 0.772128,
+            "max": 0.78528
+          },
+          "gpuStatus": "measured",
+          "collectedSamples": 12,
+          "pendingSamples": 0,
+          "passStatuses": [
+            "generated"
+          ],
+          "isolated": true
+        },
+        "status": "measured"
+      },
+      "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "scope": "enclosureRefinement target and independent 2x enclosureRefinement centre-ray reference; independent 2x centre-ray reference; domain decoration excluded; numerical reference refusals explicitly inconclusive; no UI admission",
+      "referenceOptions": {
+        "experimentalH3": true,
+        "enclosureRefinement": true
+      }
+    }
+  },
+  "software": {
+    "integration": {
+      "label": "enclosure-integration",
+      "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "coldBuildMs": 14.900000002235174,
+      "records": [
+        {
+          "width": 65,
+          "height": 49,
+          "recovered": 1,
+          "cpuChecked": 1,
+          "settledChanged": 0,
+          "offChanged": 0,
+          "examples": [],
+          "accepted": 732,
+          "omissions": 5375
+        },
+        {
+          "width": 160,
+          "height": 120,
+          "recovered": 30,
+          "cpuChecked": 30,
+          "settledChanged": 0,
+          "offChanged": 0,
+          "examples": [],
+          "accepted": 4368,
+          "omissions": 32262
+        }
+      ],
+      "costs": [
+        {
+          "enabled": false,
+          "wallMs": [
+            1.699999999254942,
+            0.29999999701976776,
+            0.19999999925494194,
+            0.19999999925494194,
+            0.30000000074505806,
+            0.4000000022351742,
+            0.30000000074505806,
+            0.30000000074505806,
+            0.19999999925494194,
+            0.29999999701976776,
+            0.5,
+            0.4000000022351742
+          ],
+          "gpuMs": [
+            26.0114,
+            26.4259,
+            27.2319,
+            26.2305,
+            26.024,
+            24.9228,
+            26.2441,
+            26.0727,
+            25.5415,
+            26.0586,
+            24.784,
+            24.7775
+          ]
+        },
+        {
+          "enabled": true,
+          "wallMs": [
+            1,
+            0.8000000007450581,
+            1,
+            0.7000000029802322,
+            0.6000000014901161,
+            0.5,
+            0.3999999985098839,
+            0.6999999992549419,
+            0.5999999977648258,
+            0.5,
+            0.5999999977648258,
+            0.9000000022351742
+          ],
+          "gpuMs": [
+            53.2216,
+            50.1928,
+            51.0317,
+            41.9528,
+            50.2254,
+            43.3511,
+            34.6379,
+            34.0121,
+            50.7187,
+            42.8233,
+            34.2245,
+            42.9292
+          ]
+        }
+      ],
+      "faults": [
+        {
+          "id": 1,
+          "rejected": true,
+          "fallbackIdentical": true
+        },
+        {
+          "id": 2,
+          "rejected": true,
+          "fallbackIdentical": true
+        },
+        {
+          "id": 3,
+          "rejected": true,
+          "fallbackIdentical": true
+        },
+        {
+          "id": 4,
+          "rejected": true,
+          "fallbackIdentical": true
+        },
+        {
+          "id": 5,
+          "rejected": true,
+          "fallbackIdentical": true
+        },
+        {
+          "id": 6,
+          "rejected": true,
+          "fallbackIdentical": true
+        }
+      ],
+      "expiredAcrossPortal": 45,
+      "memoryRefusal": true,
+      "resizeRecovery": true,
+      "readyForFurtherAcceptance": true,
+      "scope": "experimental separate programs; no UI admission; ownership mutations, AA reference and broader pose checks still required"
+    },
+    "aa": {
+      "label": "enclosure-aa",
+      "records": [
+        {
+          "width": 65,
+          "height": 49,
+          "active": 2904,
+          "omissions": 21394,
+          "bySample": [
+            5351,
+            5346,
+            5351,
+            5346
+          ],
+          "compared": 921,
+          "maxError": 0.7711309515254854,
+          "recovered": 10,
+          "remainingNumeric": 23,
+          "inconclusive": 0,
+          "domainDecorations": 2241
+        },
+        {
+          "width": 160,
+          "height": 120,
+          "active": 17500,
+          "omissions": 129050,
+          "bySample": [
+            32261,
+            32262,
+            32263,
+            32264
+          ],
+          "compared": 5866,
+          "maxError": 0.8784037701707916,
+          "recovered": 34,
+          "remainingNumeric": 100,
+          "inconclusive": 0,
+          "domainDecorations": 13234
+        }
+      ],
+      "frameCosts": {
+        "width": 320,
+        "height": 240,
+        "requestedSamples": 12,
+        "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "revision": 0,
+        "gpuScope": "total renderer draw: exclusion pass plus main draw when enabled",
+        "wallScope": "synchronous renderer.draw plus gl.finish; excludes waits and drain draws",
+        "baseline": {
+          "drawFinishCallMs": {
+            "samples": 12,
+            "p50": 0.30000000074505806,
+            "max": 0.6999999992549419
+          },
+          "gpuMs": {
+            "samples": 4,
+            "p50": 439.5076,
+            "max": 448.8959
+          },
+          "gpuStatus": "incomplete",
+          "collectedSamples": 4,
+          "pendingSamples": 8,
+          "passStatuses": [
+            "disabled"
+          ],
+          "isolated": false,
+          "reason": "GPU queries did not drain before the deadline; partial timings are not a complete case."
+        },
+        "refined": null,
+        "status": "incomplete",
+        "reason": "Refined case skipped to avoid attributing delayed baseline queries to it."
+      },
+      "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "scope": "enclosureRefinement target and independent 2x enclosureRefinement centre-ray reference; independent 2x centre-ray reference; domain decoration excluded; numerical reference refusals explicitly inconclusive; no UI admission",
+      "referenceOptions": {
+        "experimentalH3": true,
+        "enclosureRefinement": true
+      }
+    }
+  },
+  "commands": [
+    "node tools/check-queue.js page-check --three-geometry --timeout=300",
+    "node tools/check-queue.js page-check --three-geometry --sw --timeout=300"
+  ],
+  "claude": {
+    "task": "claude-enclosure-aa-acceptance",
+    "turns": 8,
+    "outputTokens": 4469,
+    "automaticReview": false
+  },
+  "scope": "Candidate only; software AA timing incomplete, not a complete performance case.",
+  "node": {
+    "command": "node tools/test.js",
+    "suites": "139/139",
+    "sphericalMissPassChecks": 304
+  }
+}

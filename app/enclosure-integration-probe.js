@@ -39,6 +39,28 @@ export async function checkEnclosureIntegration(model,census,reference,shots){
     if(renderer.missPass.status!=='resource-limit'||!off.every((v,k)=>v===limited[k]))throw Error('Enclosure memory refusal changed fallback');
     renderer.draw(state,{width:65,height:49,sphericalMissPass:true});
     if(renderer.missPass.status!=='generated')throw Error('Enclosure failed to recover after memory refusal');
+    const faults=[],w=65,h=49,ordinary=renderer.read(state,w,h);
+    const valid=renderer.readMissPass(state,w,h);
+    if(!valid.omissions)throw Error('Certificate fault test lacks valid consumption');
+    for(let certificateFault=1;certificateFault<=6;certificateFault++){
+      const packet=renderer.read(state,w,h,{sphericalMissPass:true,certificateFault});
+      const diagnostic=renderer.readMissPass(state,w,h,{certificateFault});
+      if(diagnostic.accepted||diagnostic.omissions)throw Error('Corrupted certificate consumed '+certificateFault);
+      if(!ordinary.pixels.every((v,k)=>v===packet.pixels[k])||!ordinary.distances.every((v,k)=>v===packet.distances[k]))
+        throw Error('Corrupted certificate changed fallback '+certificateFault);
+      faults.push({id:certificateFault,rejected:true,fallbackIdentical:true});
+    }
+    const restored=renderer.readMissPass(state,w,h);
+    if(!restored.omissions)throw Error('Valid certificates did not recover after faults');
+    const packet=renderer.read(state,w,h,{sphericalMissPass:true});let expiredAcrossPortal=0;
+    for(let i=0;i<w*h;i++)if(restored.bytes[4*i+1]>0&&renderer.packed.ids[packet.pixels[4*i+1]-1]==='hyperbolic'){
+      if(restored.bytes[4*i])throw Error('S3 certificate active after exit to H3');expiredAcrossPortal++;
+    }
+    // Scene uses a named H3 region; require a real post-transfer witness.
+    if(!expiredAcrossPortal)throw Error('No used certificate observed expiring at the H3 portal');
+    renderer.missPass.invalidate('test-stale');
+    renderer.draw(state,{width:w,height:h,sphericalMissPass:false});
+    if(renderer.missPass.status!=='disabled')throw Error('Invalidated certificate did not disable consumption');
     const costs=[];
     for(const enabled of [false,true]){
       renderer.times.length=0;const wall=[];
@@ -48,7 +70,7 @@ export async function checkEnclosureIntegration(model,census,reference,shots){
       costs.push({enabled,wallMs:wall,gpuMs:[...renderer.times]});
     }
     return {label:'enclosure-integration',hardware:renderer.hardware,coldBuildMs,records,costs,
-      memoryRefusal:true,resizeRecovery:true,readyForFurtherAcceptance:records.every(r=>!r.offChanged&&!r.settledChanged)&&records.some(r=>r.recovered>0),
+      faults,expiredAcrossPortal,memoryRefusal:true,resizeRecovery:true,readyForFurtherAcceptance:records.every(r=>!r.offChanged&&!r.settledChanged)&&records.some(r=>r.recovered>0),
       scope:'experimental separate programs; no UI admission; ownership mutations, AA reference and broader pose checks still required'};
   }finally{canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();}
 }

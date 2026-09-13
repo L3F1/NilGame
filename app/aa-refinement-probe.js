@@ -1,7 +1,9 @@
 import {measureAARefinement} from './aa-refinement-timing.js';
 import {createConnectedRenderer} from '../engine/geometry/connected-renderer.js';
-export async function checkAARefinement({model,renderer,state,canvas,shots}){
-  const refCanvas=document.createElement('canvas'),reference=createConnectedRenderer(refCanvas,model.world,{experimentalH3:true});
+// referenceOptions selects the independent 2x reference renderer's constructor
+// options; callers testing an opt-in variant pass the same options as the target.
+export async function checkAARefinement({model,renderer,state,canvas,shots},referenceOptions={experimentalH3:true}){
+  const refCanvas=document.createElement('canvas'),reference=createConnectedRenderer(refCanvas,model.world,referenceOptions);
   const records=[];
   try{
     for(const [width,height] of [[65,49],[160,120]]){

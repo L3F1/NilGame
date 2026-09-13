@@ -1,14 +1,16 @@
 {
-    "version":  1,
-    "tasks":  [
-                  {
-                      "instruction":  "READ-ONLY diagnosis, no implementation. Read AGENTS.md and working rules, then only the Fixed eligibility precomputation and Scheduling follow-up sections in docs/qa/live-miss-pass-review.md. Investigate why a settled E3 sphere hit at pixel6,43 of160x120 changed distance2.594223976135254 to2.594233274459839 in some real ANGLE/D3D11 runs with refinement enabled; same hit/region/owner, later reruns pass. Main CONNECTED_FRAGMENT source was unchanged by both failed optimization trials. Inspect targeted sections: engine/geometry/connected-renderer.js draw/read/replaceWorld, engine/geometry/spherical-miss-pass.js GL state restore, engine/geometry/connected-shader.js E3 solve/trace/debug output, app/connected-global-preview.js livePass read/timing sequence. Current lead added an off/off baseline check before refinement; two real runs passed (one with extra primary reads, one without). Do not infer a fix from that. Identify at most3 specific hypotheses with supporting/contradicting code evidence and ONE smallest experiment to discriminate them. Distinguish driver speculation from observed facts. Do not read whole archives/logs or research broadly. Aim at at most12 targeted tool calls, then write report under400 words. No code edits, browser runs, full suite, commits, pushes or subagents. Only allowed report write.",
-                      "agent":  "claude",
-                      "id":  "claude-distance-drift-review",
-                      "allowedFiles":  [
-                                           "docs/qa/claude-distance-drift-review.md"
-                                       ],
-                      "report":  "docs/qa/claude-distance-drift-review.md"
-                  }
-              ]
+  "version": 1,
+  "tasks": [
+    {
+      "id": "claude-enclosure-aa-acceptance",
+      "agent": "claude",
+      "allowedFiles": [
+        "app/aa-refinement-probe.js",
+        "app/enclosure-aa-probe.js",
+        "docs/qa/claude-enclosure-aa-acceptance.md"
+      ],
+      "report": "docs/qa/claude-enclosure-aa-acceptance.md",
+      "instruction": "Implement ONE bounded acceptance slice. Read AGENTS.md and WORKING_RULES, docs/qa/enclosure-integration-review.md only, then app/aa-refinement-probe.js and app/enclosure-integration-probe.js as needed. Add independent AA/supersample acceptance for the experimental enclosureRefinement:true renderer. Reuse existing checkAARefinement by adding an optional reference-constructor-options argument (default behavior MUST stay unchanged), so both target and independent 2x reference use enclosureRefinement:true. Add app/enclosure-aa-probe.js exporting checkEnclosureAA(model,census,shots): create experimental renderer and census pose, call that shared AA checker with explicit candidate reference options, clean up GL context in finally, label result enclosure-aa. Do not wire into main app; lead will wire and run GPU acceptance. Keep existing strict numeric/refusal/color guards and memory fallback checks. Do not change geometry/shader/renderer or historical expectations to make checks pass. Only three allowed files. Run node --check on changed JS; no browser or full suite here (isolated checkout cannot use main queue), no commits/pushes/agents. Report unrun GPU checks explicitly and explain any integration caveat in under300 words. Aim <=20 targeted tool calls, no broad research/archives. Fresh bounded session; no automatic follow-up."
+    }
+  ]
 }
