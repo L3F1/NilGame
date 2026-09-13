@@ -1,0 +1,81 @@
+{
+  "date": "2026-09-12",
+  "base": "25df792",
+  "hardware": {
+    "label": "refinement-enclosure-experiment",
+    "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "memberships": 517,
+    "accepted": 185,
+    "rejectedInside": 89,
+    "domainRefusals": 8,
+    "boxes": 257,
+    "contained": 514,
+    "certified": 73,
+    "differentStateAccepted": 73,
+    "roundedDifferenceMutation": true,
+    "unreprovedBoxMutation": true,
+    "invalidFieldRefusals": 4,
+    "endpointRefusals": 7,
+    "tinyBoxes": 3,
+    "transfer": {
+      "captured": 304,
+      "captureRefused": 8,
+      "exported": 304,
+      "tinyEndpointRecords": 152,
+      "unsupportedNominal": 0
+    },
+    "times": {
+      "vertexCompileMs": 0.30000000074505806,
+      "fragmentCompileMs": 2,
+      "linkMs": 1206.0999999977648,
+      "firstDrawReadMs": 1.0999999977648258
+    },
+    "draws": 1177,
+    "totalWallMs": 1691.5,
+    "scope": "single-pixel arithmetic prototype; exact dyadic oracle; not live rendering, full-frame cost, serialized MRT transport, or rounded trig/occupancy proof"
+  },
+  "software": {
+    "label": "refinement-enclosure-experiment",
+    "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "memberships": 517,
+    "accepted": 185,
+    "rejectedInside": 89,
+    "domainRefusals": 8,
+    "boxes": 257,
+    "contained": 514,
+    "certified": 73,
+    "differentStateAccepted": 73,
+    "roundedDifferenceMutation": true,
+    "unreprovedBoxMutation": true,
+    "invalidFieldRefusals": 4,
+    "endpointRefusals": 7,
+    "tinyBoxes": 3,
+    "transfer": {
+      "captured": 304,
+      "captureRefused": 8,
+      "exported": 304,
+      "tinyEndpointRecords": 152,
+      "unsupportedNominal": 0
+    },
+    "times": {
+      "vertexCompileMs": 0.09999999776482582,
+      "fragmentCompileMs": 1.7000000029802322,
+      "linkMs": 0.29999999701976776,
+      "firstDrawReadMs": 324.8999999985099
+    },
+    "draws": 1177,
+    "totalWallMs": 699,
+    "scope": "single-pixel arithmetic prototype; exact dyadic oracle; not live rendering, full-frame cost, serialized MRT transport, or rounded trig/occupancy proof"
+  },
+  "beforeFailure": "page error        : Error: Actual transfer band export refused {\"q\":[-0.004371242597699165,0,-0.0830536037683487,0.9965354800224304],\"lo\":[-0.004371358081698418,-2.350988981904268e-38,-0.08305411040782928,0.9965351223945618],\"hi\":[-0.004371126648038626,2.350988981904268e-38,-0.0830531120300293,0.9965360164642334],\"band\":0,\"yaw\":0,\"pixel\":[78,31],\"gate\":0}",
+  "commands": [
+    "node tools/check-queue.js page-check --three-geometry --timeout=150",
+    "node tools/check-queue.js page-check --three-geometry --sw --timeout=240"
+  ],
+  "scope": "One gallery, three camera yaws. Each nominal/endpoints record is one GPU invocation. Point and direction records are independent; no joint live certificate or additional image recovery.",
+  "node": {
+    "command": "node tools/test.js",
+    "suites": "138/138",
+    "log": ".agent-bridge/enclosure-transfer-suite.log"
+  }
+}

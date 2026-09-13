@@ -43,13 +43,17 @@ and rounded position/occupancy evaluation; the ideal amplitude bound alone
 does not automatically enclose those implementation errors. This is an inherited
 assumption to audit, not a new guarantee supplied by storing radii.
 
-The prototype restricts nonzero state/radius AND original band endpoint magnitudes
-to [2^-100,2^100]. Real transfer bands can contain tiny normal endpoints around a
-zero component (the existing interval pad is 2^-126). Before consuming actual
-payloads, outward-widen those bounds into the encoding domain and reprove, or
-establish a safe wider-domain exporter. Never clamp the actual state. Consumer
-classification uses bits: hardware admitted a subnormal into a zero-radius box
-before that repair.
+The prototype restricts nonzero state/radius magnitudes to [2^-100,2^100]. Tiny
+NORMAL original endpoints now widen outward into that domain after validating
+the original interval. Subnormal endpoints still refuse. Actual gallery transfer
+bands exercise this encoding; see ../qa/refinement-transfer-enclosure-review.md.
+Never clamp the actual state. Consumer classification uses bits: hardware
+admitted a subnormal into a zero-radius box before that repair.
+
+The next admission gate is the curve error above: connected-shader.js sincos()
+uses range reduction and polynomials, while the amplitude proof assumes exact
+sin^2+cos^2=1. Bound that discrepancy and rounded position/surface-dot evaluation
+over the supported parameter range before admitting a new live consumer.
 
 This uses one extra RGBA32F attachment for the two radii (four attachments
 total), not interval evaluation per object in the main shader. The main work is

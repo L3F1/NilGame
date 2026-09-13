@@ -34,12 +34,19 @@ It catches rounded-subtraction and unreproved-box mutations; a real subnormal
 false acceptance was repaired with bitwise domain classification. Live rendering
 is unchanged; production proof GLSL extraction is byte-identical.
 
-Next difficult task: actual transfer-band encoding and the rounded ray-curve
-contract in REFINEMENT_ENCLOSURE_NEXT.md. The exporter currently refuses tiny
-original band endpoints (such as 2^-126 padding around zero): outward-widen and
-reprove or verify a wider encoding, never clamp actual states. Use real transfer
-payloads rather than extending the fixed-basis synthetic corpus. Audit how the
-ideal sinusoid bound covers rounded trigonometry/occupancy before live admission.
+Actual gallery GPU transfer bands now exercise the exporter: tiny NORMAL
+endpoints widen outward AFTER original order/containment validation; states
+remain unchanged and subnormal endpoints refuse. See
+docs/qa/refinement-transfer-enclosure-review.md for current evidence. Captured
+point/direction records are independent single-invocation bands, not joint rays.
+
+Next difficult task: the rounded ray-curve contract in REFINEMENT_ENCLOSURE_NEXT.md.
+The ideal amplitude bound uses sin^2+cos^2=1; live sincos() uses range reduction
+and polynomials, followed by rounded position and surface-dot operations. Bound
+those errors over the admitted parameter range (and account for occupancy E
+when promising classification equivalence) before adding a live consumer.
+This is an inherited assumption in the earlier exclusion path, not a defect
+introduced or resolved by the enclosure exporter. Keep the audit tightly scoped.
 Then test separate serialized producer/consumer programs, ownership and cost.
 Keep exact matching until those checks pass.
 Then address remaining hit-side fringes. Do not blindly chase identical floats,

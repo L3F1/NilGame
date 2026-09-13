@@ -1,6 +1,8 @@
 # Enclosure arithmetic prototype (2026-09-12)
 
 Base 9c3a3ed. This is a standalone experiment, not a new live rendering path.
+Follow-up: [actual transfer encoding](refinement-transfer-enclosure-review.md)
+supersedes the original endpoint-domain limitation below.
 The existing exact-identity consumer and its three attachments are unchanged.
 Factoring out FLOAT_BANDS_GLSL preserves both expanded production proof strings
 byte for byte; it does not alter their arithmetic or compiler input.

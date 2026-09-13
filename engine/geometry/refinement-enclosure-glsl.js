@@ -31,10 +31,25 @@ bool enclosureMember(vec4 value,vec4 center,float radius){
 // Include FLOAT_BANDS_GLSL and ENCLOSURE_MEMBER_GLSL first. Radius and centre
 // are binary32 values; the proof must be recomputed over the returned box.
 export const ENCLOSURE_EXPORT_GLSL=`
+bool enclosureEndpoint(vec4 v){
+  uvec4 m=floatBitsToUint(v)&uvec4(0x7fffffffu);
+  // Tiny NORMAL bounds can be widened. Subnormals still refuse: floating
+  // ordering/containment on those values may flush them to zero.
+  for(int k=0;k<4;k++)if(m[k]!=0u&&(m[k]<0x00800000u||m[k]>0x71800000u))return false;
+  return true;
+}
 bool exportEnclosure(BI original,vec4 center,out float radius,out BI box){
   radius=0.;box=original;
-  if(!bfinite(original)||!enclosureValue(center)||!enclosureValue(original.lo)
-    ||!enclosureValue(original.hi)||!bcontains(original,center))return false;
+  if(!enclosureValue(center)||!enclosureEndpoint(original.lo)||!enclosureEndpoint(original.hi)
+    ||!bfinite(original)||!bcontains(original,center))return false;
+  // Validate ORIGINAL order/containment first. Widen only endpoints, never the
+  // nominal state. The exported symmetric box must still be reproved below.
+  uvec4 lo=floatBitsToUint(original.lo)&uvec4(0x7fffffffu);
+  uvec4 hi=floatBitsToUint(original.hi)&uvec4(0x7fffffffu);
+  for(int k=0;k<4;k++){
+    if(lo[k]!=0u&&lo[k]<0x0d800000u)original.lo[k]=-ENC_MIN;
+    if(hi[k]!=0u&&hi[k]<0x0d800000u)original.hi[k]=ENC_MIN;
+  }
   for(int k=0;k<4;k++)radius=max(radius,max(enclosureDifference(center[k],original.lo[k]),
     enclosureDifference(original.hi[k],center[k])));
   if(!enclosureValue(vec4(radius)))return false;

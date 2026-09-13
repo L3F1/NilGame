@@ -396,7 +396,8 @@ try {
     const {checkSphericalMissExperiment}=await import('./spherical-miss-experiment.js');
     const exclusion=await checkSphericalMissExperiment(census);
     const {checkRefinementEnclosure}=await import('./refinement-enclosure-probe.js');
-    const enclosure=await checkRefinementEnclosure();
+    const {captureTransferEnclosureBands}=await import('./refinement-transfer-capture.js');
+    const enclosure=await checkRefinementEnclosure(captureTransferEnclosureBands(census));
     checks.push('Standalone enclosure export/member prototype: exact dyadic references and unsafe-shortcut mutations');
     // Live opt-in exclusion pass, through the ACTUAL renderer: the same pose is
     // drawn with the pass off and on. The baseline is preserved -- the off pass

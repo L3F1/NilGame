@@ -4,7 +4,7 @@ import {exactFloatUnits,exactMember,exactSphereBoxMiss} from '../tools/refinemen
 import {CONNECTED_VERTEX} from '../engine/geometry/connected-shader.js';
 
 // Standalone arithmetic experiment. No certificate is consumed by live rendering.
-export async function checkRefinementEnclosure(){
+export async function checkRefinementEnclosure(captured={records:[],refused:0}){
   const canvas=document.createElement('canvas'),gl=canvas.getContext('webgl2',{antialias:false});
   if(!gl||!gl.getExtension('EXT_color_buffer_float'))throw Error('Enclosure probe requires float render targets');
   gl.disable(gl.DITHER);canvas.width=canvas.height=1;
@@ -133,10 +133,44 @@ void main(){
       }
     }
     if(!certified||!differentStateAccepted)throw Error('No certified box accepted a distinct state');
+    let endpointRefusals=0;
+    for(const [lo,hi] of [[2**-149,2**-126],[-(2**-126),2**-149],
+      [2**-126,-(2**-126)],[2**-126,2**-125],[-(2**-125),-(2**-126)],
+      [-Infinity,1],[-1,NaN]]){
+      const result=read({mode:0,qp:zero,plo:[lo,0,0,0],phi:[hi,0,0,0],qu:zero,ulo:zero,uhi:zero});
+      if(result[0]!==-1)throw Error('Invalid original interval was repaired by widening');endpointRefusals++;
+    }
+    let tinyBoxes=0;
+    for(const width of [2**-126,2**-110,2**-100]){
+      const result=read({mode:0,qp:zero,plo:zero.map(()=>-width),phi:zero.map(()=>width),qu:zero,ulo:zero,uhi:zero,vp:zero,vu:zero});
+      if(!(result[0]>=2**-100)||result[3]!==1||exactFloatUnits(result[0])<exactFloatUnits(width))
+        throw Error('Tiny whole-box export lost its enclosure');
+      if(result[2]===1&&!exactSphereBoxMiss(zero,zero,result[0],result[1],base.center,base.constant))
+        throw Error('Tiny box exclusion failed exact oracle');
+      tinyBoxes++;
+    }
+    let transferExported=0,transferTinyEndpoints=0,transferRefusedState=0;
+    for(const record of captured.records){
+      const {q,lo,hi}=record;
+      const supported=v=>v===0||(Number.isFinite(v)&&Math.abs(v)>=2**-100&&Math.abs(v)<=2**100);
+      if(!q.every(supported)){transferRefusedState++;continue;}
+      if([...lo,...hi].some(v=>v!==0&&Math.abs(v)<2**-100))transferTinyEndpoints++;
+      const out=read({mode:0,qp:q,plo:lo,phi:hi,qu:zero,ulo:zero,uhi:zero,vp:q,vu:zero});
+      if(!(out[0]>=0)||out[3]!==1)throw Error('Actual transfer band export refused '+JSON.stringify(record));
+      for(let k=0;k<4;k++){
+        const n=exactFloatUnits(q[k]),r=exactFloatUnits(out[0]);
+        if(n-r>exactFloatUnits(lo[k])||n+r<exactFloatUnits(hi[k]))throw Error('Actual transfer radius lost an endpoint');
+      }
+      transferExported++;
+    }
+    if(captured.records.length&&(!transferExported||!transferTinyEndpoints))throw Error('Actual transfer corpus missed tiny endpoints');
     const info=gl.getExtension('WEBGL_debug_renderer_info');
     return {label:'refinement-enclosure-experiment',hardware:info?gl.getParameter(info.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),
       memberships:memberships.length,accepted,rejectedInside,domainRefusals,boxes:boxes.length,contained,certified,differentStateAccepted,
-      roundedDifferenceMutation,unreprovedBoxMutation:true,invalidFieldRefusals,times,draws,totalWallMs:performance.now()-start,
+      roundedDifferenceMutation,unreprovedBoxMutation:true,invalidFieldRefusals,
+      endpointRefusals,tinyBoxes,
+      transfer:{captured:captured.records.length,captureRefused:captured.refused,exported:transferExported,tinyEndpointRecords:transferTinyEndpoints,unsupportedNominal:transferRefusedState},
+      times,draws,totalWallMs:performance.now()-start,
       scope:'single-pixel arithmetic prototype; exact dyadic oracle; not live rendering, full-frame cost, serialized MRT transport, or rounded trig/occupancy proof'};
   }finally{gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(framebuffer);gl.deleteTexture(texture);gl.deleteProgram(program);gl.getExtension('WEBGL_lose_context')?.loseContext();}
 }
