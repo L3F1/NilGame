@@ -122,3 +122,52 @@ export function sphericalBallExterior({point,pointError,center,centerError,
   return upper<cLow?{status:'outside',margin:cLow-upper}
     :{status:'unresolved',reason:'start-not-certified-outside',margin:cLow-upper};
 }
+
+// Where a geodesic meets the great sphere dot(q,normal)=0. Same coefficient
+// problem as a ball with c=0, and the BEST conditioned case of it: the zeros
+// sit a quarter turn from the amplitude peak, where the derivative is largest,
+// so no arccosine sensitivity appears and the bands stay narrow.
+//
+// This bounds the PLANE, not the finite aperture disc cut out of it. A caller
+// using these as competing events therefore refuses more often than the real
+// geometry demands, never less, which is the safe direction for ordering.
+export function sphericalPlaneCrossingBounds({point,pointError,direction,directionError,
+  normal,normalError,curvatureRadius,maxDistance,maxEvents=32,phaseAllowance=0}){
+  const vectors=[point,direction,normal,pointError,directionError,normalError];
+  if(vectors.some(v=>!Array.isArray(v)||v.length!==4||!v.every(Number.isFinite))
+    ||[pointError,directionError,normalError].some(v=>v.some(x=>x<0))
+    ||!Number.isFinite(curvatureRadius)||curvatureRadius<=0
+    ||!Number.isFinite(maxDistance)||maxDistance<0
+    ||!Number.isInteger(maxEvents)||maxEvents<1||maxEvents>1024
+    ||!Number.isFinite(phaseAllowance)||phaseAllowance<0||phaseAllowance>1)
+    throw Error('Invalid spherical plane query or missing input-error bounds');
+  const a=product(point,pointError,normal,normalError);
+  const b=product(direction,directionError,normal,normalError);
+  const h=Math.hypot(a.value,b.value),dh=Math.hypot(a.error,b.error)+rounding(h);
+  // A coefficient rectangle straddling the origin has no determined phase, so
+  // the crossing times are not located at all.
+  if(h-dh<=0)return {status:'unresolved',reason:'phase-indeterminate',events:[]};
+  const phase=Math.atan2(b.value,a.value);
+  const spread=Math.asin(Math.min(1,dh/h))+rounding(phase)+phaseAllowance;
+  if(spread>=Math.PI/2)return {status:'unresolved',reason:'phase-indeterminate',events:[]};
+  const horizon=maxDistance/curvatureRadius;
+  if(!Number.isFinite(horizon))return {status:'unresolved',reason:'range-overflow',events:[]};
+  const quarter=Math.PI/2,events=[];
+  const first=Math.floor((-quarter-phase-spread)/Math.PI)-1;
+  const last=Math.ceil((horizon-quarter-phase+spread)/Math.PI)+1;
+  if(last-first>maxEvents+4)return {status:'unresolved',reason:'event-budget',events:[]};
+  for(let k=first;k<=last;k++){
+    const centre=phase+quarter+k*Math.PI;
+    const pad=rounding(centre-spread,centre+spread)*curvatureRadius+rounding(maxDistance);
+    const lower=(centre-spread)*curvatureRadius-pad,upper=(centre+spread)*curvatureRadius+pad;
+    if(upper<0||lower>maxDistance)continue;
+    // Reported as ambiguous on purpose: this proves WHEN the great sphere is
+    // met, never that the ray leaves through the aperture cut out of it.
+    events.push({kind:'ambiguous',lower:Math.max(0,lower),upper:Math.min(maxDistance,upper),
+      boundary:lower<=0||upper>=maxDistance});
+  }
+  events.sort((x,y)=>x.lower-y.lower);
+  if(events.length>maxEvents)return {status:'unresolved',reason:'event-budget',events:[]};
+  return {status:events.length?'crossings':'miss',events};
+}
+

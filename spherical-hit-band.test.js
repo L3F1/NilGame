@@ -15,6 +15,8 @@ const doc=JSON.parse(readFileSync('levels/fixtures/connected-three-geometries.ni
 const world=compileConnectedCoverWorld(doc,{experimentalH3:true});
 const start=world.spawn('flat');
 const pose={regionId:start.regionId,position:start.position,camera:start.camera};
+const apertureCount=world.portals.filter(gate=>gate.fromRegionId==='sphere').length;
+assert.ok(apertureCount>1,'This fixture must exercise more than one aperture');
 const census=sphericalHitBandCensus({world,pose});
 assert.equal(census.label,'spherical-hit-band');
 assert.ok(census.summary.flagged>0,'No pixel reaches the tangency guard this census exists to measure');
@@ -54,6 +56,18 @@ for(const record of census.records){
     misses++;
     // A traced miss must never be promoted to an entry by this ordering.
     assert.equal(record.entry.status,'miss',`Traced miss ordered as ${record.entry.status} at ${where}`);
+  }
+  // A ball entry is only FIRST if the ray cannot leave the region before it, so
+  // every aperture of the region must appear as a competitor and every band it
+  // contributes must be disposed of for a stated reason.
+  assert.equal(record.apertureBands.length,apertureCount,
+    `Region apertures missing from the ordering at ${where}`);
+  for(const tally of record.apertureBands){
+    assert.equal(tally.found,tally.arrival+tally.direction+tally.disc+tally.kept,
+      `Aperture band accounting does not close at ${where}`);
+    assert.ok(tally.found>0,`Aperture ${tally.id} contributed no band at ${where}`);
+    if(tally.kept)assert.ok(record.queries.some(q=>q[0]===`aperture:${tally.id}`&&q[3]===tally.kept),
+      `A kept aperture band never reached the ordering at ${where}`);
   }
   // A tighter ray can only help. If a smaller box ever widened a band, the
   // measurement would be reporting noise rather than a dependency.
@@ -113,6 +127,12 @@ assert.ok(entries>0&&misses>0,'Census must cover traced hits and traced misses')
 assert.equal(census.summary.missingTracedRoot,0);
 assert.equal(census.summary.shading.unresolved,0);
 assert.equal(census.summary.undecidableAtAnyPrecision,0);
+// All three disposal rules must fire somewhere, or the ones that do not are
+// untested claims rather than checked ones.
+const apertures=census.summary.apertures;
+assert.equal(apertures.found,apertures.arrival+apertures.direction+apertures.disc+apertures.kept);
+for(const rule of ['arrival','direction','disc'])
+  assert.ok(apertures[rule]>0,`The ${rule} rule never fired, so it is unchecked`);
 assert.ok(census.summary.shading.maxColourSteps>0,'Shading spread was never measured');
 assert.equal(census.summary.exteriorRefused,0);
 

@@ -58,6 +58,14 @@ spend, never remaining, and the window is not daily - the one observed refusal
 came 2026-09-12T08:25Z naming a 2026-09-14T00:00Z reset, so a second observation
 is needed to learn its length.
 
+Apertures now compete in the ordering, closing the audit's portal/edge gap. The
+plane is the same coefficient problem with c=0 (best conditioned case, bands
+~1e-4). Three certified disposals are each load-bearing: the arrival plane at
+t=0, the far-side approach that the closed geodesic produces at 2*pi*R, and the
+rim test that discards a great-sphere crossing missing the disc - one of which
+sits at 12.36, before the 37.42 ball entry. Same 14 entries and 18 misses come
+back, now actually justified. Do not reintroduce a ball-only ordering.
+
 Assignment cost is now measured, not guessed: node tools/muse-usage.js --bridge
 shows twelve past runs at 0.68M-3.46M input tokens, about 70k per TURN, with the
 27.5k startup context re-sent every turn and accounting for 38-68% of each run.

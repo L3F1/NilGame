@@ -1,6 +1,7 @@
 import {e3PrimaryRayBounds} from '../engine/geometry/primary-ray-bounds.js';
 import {e3S3TransferBounds} from '../engine/geometry/portal-transfer-bounds.js';
-import {sphericalBallRootBounds,sphericalRootBounds,sphericalBallExterior} from '../engine/geometry/spherical-root-bounds.js';
+import {sphericalBallRootBounds,sphericalRootBounds,sphericalBallExterior,
+  sphericalPlaneCrossingBounds} from '../engine/geometry/spherical-root-bounds.js';
 import {selectAdditiveEntry} from '../engine/geometry/additive-event-order.js';
 import {interval,enclose,dot as float32Dot,add,sub,mul,div,scale as scaleBand,plus,minus,
   normalize,norm} from '../engine/geometry/float32-interval.js';
@@ -60,11 +61,12 @@ function binary32Exterior(point,pointError,center,radius,curvatureRadius){
 // flag: an ordering that only looked at the suspected surface would prove
 // nothing about the first one.
 function orderEntry(balls,transfer,curvatureRadius,remaining,
-  {factor=1,coefficients='binary64',phaseAllowance=0,angleAllowance=0}={}){
+  {factor=1,coefficients='binary64',phaseAllowance=0,angleAllowance=0,apertures=[],
+   arrivedThrough=null}={}){
   const position=mid(transfer.position),direction=mid(transfer.direction);
   const positionError=scale(halfWidth(transfer.position),factor);
   const directionError=scale(halfWidth(transfer.direction),factor);
-  const queries=[],exterior=[];
+  const queries=[],exterior=[],apertureBands=[];
   let certified=true,minMargin=Infinity;
   for(const ball of balls){
     const centerBands=ball.center.map(v=>interval(v)),radiusBand=interval(ball.radius);
@@ -91,12 +93,40 @@ function orderEntry(balls,transfer,curvatureRadius,remaining,
       // so an accuracy measurement can be taken at the values that actually occur.
       ...(model?{coefficients:{a:model.a,b:model.b,c:model.c}}:{})});
   }
+  // The region's own apertures compete too. A ball entry is only FIRST if the
+  // ray cannot leave through an aperture before it, and the aperture plane is
+  // the same coefficient problem with c=0. Bounding the plane rather than the
+  // finite disc refuses more often than the geometry demands, never less.
+  for(const aperture of apertures){
+    const box=aperture.normal.map(v=>interval(v));
+    const crossing=sphericalPlaneCrossingBounds({position,pointError:positionError,
+      point:position,direction,directionError,normal:mid(box),normalError:halfWidth(box),
+      curvatureRadius,maxDistance:remaining,phaseAllowance});
+    // Two bands are discarded, each for a stated reason. The one containing the
+    // start is the aperture the ray arrived through: the transfer target lies on
+    // that plane by construction, and a determined phase makes the crossing
+    // transversal, so it is a departure and not a competing exit. A band proved
+    // outside the disc is a crossing of the great sphere that misses the
+    // aperture entirely. Everything else stays a competitor.
+    const tally={id:aperture.id,found:crossing.events.length,arrival:0,direction:0,disc:0};
+    const events=crossing.events.filter(event=>{
+      if(event.lower<=0&&aperture.id===arrivedThrough){tally.arrival++;return false;}
+      if(leavingWrongWay(transfer,event,aperture.normal,curvatureRadius)){tally.direction++;return false;}
+      if(outsideAperture(transfer,event,aperture,curvatureRadius)){tally.disc++;return false;}
+      return true;
+    });
+    tally.kept=events.length;
+    apertureBands.push(tally);
+    queries.push({owner:`aperture:${aperture.id}`,
+      status:crossing.status==='miss'||!events.length?'miss':'unresolved',
+      reason:crossing.reason,events});
+  }
   // An uncertified start is a refusal of the whole ordering, not of one ball.
-  if(!certified)return {exterior,certified,minMargin,queries,
+  if(!certified)return {exterior,certified,minMargin,queries,apertureBands,
     entry:{status:'unresolved',reason:'start-not-certified-outside'}};
   const entry=selectAdditiveEntry(queries.map(({owner,status,events})=>({owner,status,events})),
     {maxDistance:remaining,outsideCertified:true});
-  return {exterior,certified,minMargin,queries,entry};
+  return {exterior,certified,minMargin,queries,apertureBands,entry};
 }
 
 // How much of the SHADING an ordered band actually settles. The band certifies
@@ -109,17 +139,59 @@ function orderEntry(balls,transfer,curvatureRadius,remaining,
 // enclosure over an interval this narrow. The reported diameter bounds
 // |n1 - n2| for any two normals in the box, and therefore bounds the change in
 // n . L for EVERY unit light direction, so it is a lighting-independent bound.
+// Every point the geodesic can occupy while t stays inside a band. |cos a -
+// cos b| <= |a - b| and the same for sine make the midpoint plus the half-width
+// a sound enclosure, so no interval trigonometry helper is needed.
+function pointOverBand(transfer,band,curvatureRadius){
+  const half=(band.upper-band.lower)/2,middle=(band.upper+band.lower)/2;
+  const angle=middle/curvatureRadius,reach=half/curvatureRadius;
+  const cosine=interval(Math.cos(angle)-reach,Math.cos(angle)+reach);
+  const sine=interval(Math.sin(angle)-reach,Math.sin(angle)+reach);
+  return plus(scaleBand(transfer.position,cosine),scaleBand(transfer.direction,sine));
+}
+// An aperture is one-sided: the live crossing test admits a crossing only while
+// d/dt dot(q,normal) is strictly negative, so a ray meeting the plane from the
+// far side passes through it. On a closed geodesic that matters - at 2*pi*R the
+// ray returns to its own start, which lies in the aperture it arrived through,
+// and would otherwise look like an exit.
+function leavingWrongWay(transfer,band,normal,curvatureRadius){
+  try{
+    const half=(band.upper-band.lower)/2,middle=(band.upper+band.lower)/2;
+    const angle=middle/curvatureRadius,reach=half/curvatureRadius;
+    const cosine=interval(Math.cos(angle)-reach,Math.cos(angle)+reach);
+    const sine=interval(Math.sin(angle)-reach,Math.sin(angle)+reach);
+    const box=normal.map(v=>interval(v));
+    const a=float32Dot(transfer.position,box),b=float32Dot(transfer.direction,box);
+    // The derivative of a*cos+b*sin, enclosed over the same band.
+    const slope=sub(mul(b,cosine),mul(a,sine));
+    return slope[0]>0;
+  }catch(error){
+    if(!/^interval-/.test(error.message))throw error;
+    return false;
+  }
+}
+// Does this crossing of the great sphere miss the finite disc cut out of it?
+// Same exterior predicate a ball start uses, at the aperture's own radius.
+function outsideAperture(transfer,band,aperture,curvatureRadius){
+  try{
+    const point=pointOverBand(transfer,band,curvatureRadius);
+    const centre=aperture.center.map(v=>interval(v));
+    const along=float32Dot(centre,point);
+    const angle=aperture.radius/curvatureRadius;
+    const low=Math.cos(angle)-Math.abs(Math.sin(angle))*2**-24-2**-24;
+    return low>0&&along[1]<low;
+  }catch(error){
+    if(!/^interval-/.test(error.message))throw error;
+    return false;
+  }
+}
 function shadingSpread(transfer,band,center,curvatureRadius,source='both'){
   try{
     const collapse=box=>box.map(([lo,hi])=>interval((lo+hi)/2));
     if(source==='ray')band={lower:(band.lower+band.upper)/2,upper:(band.lower+band.upper)/2};
     if(source==='band')transfer={position:collapse(transfer.position),
       direction:collapse(transfer.direction)};
-    const half=(band.upper-band.lower)/2,middle=(band.upper+band.lower)/2;
-    const angle=middle/curvatureRadius,reach=half/curvatureRadius;
-    const cosine=interval(Math.cos(angle)-reach,Math.cos(angle)+reach);
-    const sine=interval(Math.sin(angle)-reach,Math.sin(angle)+reach);
-    const point=plus(scaleBand(transfer.position,cosine),scaleBand(transfer.direction,sine));
+    const point=pointOverBand(transfer,band,curvatureRadius);
     const centerBox=center.map(v=>interval(v));
     const radial=minus(centerBox,scaleBand(point,float32Dot(centerBox,point)));
     const length=norm(radial);
@@ -198,6 +270,7 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
   const records=[],summary={flagged:0,cpu:{},entry:{},exteriorRefused:0,
     bandWidth:{min:Infinity,max:0},containsTracedRoot:0,missingTracedRoot:0,inflation:{},
     shading:{maxDiameter:0,maxDegrees:0,maxColourSteps:0,unresolved:0},
+    apertures:{found:0,arrival:0,direction:0,disc:0,kept:0},
     decidedAt:{},undecidableAtAnyPrecision:0,
     floor:{packedGeometry:0,exactGeometry:0,negligibleRay:NEGLIGIBLE_RAY},
     binary32:{entry:{},bandWidth:{min:Infinity,max:0},widening:{max:0},allowance:{}}};
@@ -237,7 +310,14 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
     // The remaining budget is measured from the EARLIEST possible crossing, so
     // no competing event inside the original range is excluded by arithmetic.
     const remaining=range-transfer.distance[0];
-    const measured=orderEntry(destination.balls,transfer,curvatureRadius,remaining);
+    const apertures=world.portals.filter(gate=>gate.fromRegionId===destination.id)
+      .map(gate=>{const data=gate.renderData();
+        return {id:gate.fromId,normal:data.normal,center:data.center,radius:data.radius};});
+    // The far side of the gate this ray came through: its plane holds the start.
+    const arrivedThrough=world.portals.find(g=>g.fromId===gate.renderData().toId
+      ||g.toRegionId===pose.regionId&&g.fromRegionId===destination.id)?.fromId??null;
+    const common={apertures,arrivedThrough};
+    const measured=orderEntry(destination.balls,transfer,curvatureRadius,remaining,common);
     if(!measured.certified)summary.exteriorRefused++;
     const key=[measured.entry.status,measured.entry.reason??''].join('|');
     summary.entry[key]=(summary.entry[key]??0)+1;
@@ -272,7 +352,7 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
     // says whether any headroom exists for one.
     let inflationLimit=0,inflationFailure=null;
     for(const factor of inflations){
-      const attempt=factor===1?measured:orderEntry(destination.balls,transfer,curvatureRadius,remaining,{factor});
+      const attempt=factor===1?measured:orderEntry(destination.balls,transfer,curvatureRadius,remaining,{factor,...common});
       const same=attempt.certified&&attempt.entry.status===measured.entry.status
         &&attempt.entry.owner===measured.entry.owner;
       // How a widened box degrades matters more than when. A wider box must
@@ -288,7 +368,7 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
     const tightening=[];let decidedAt=null;
     for(const factor of deflations){
       const attempt=factor===1?measured
-        :orderEntry(destination.balls,transfer,curvatureRadius,remaining,{factor});
+        :orderEntry(destination.balls,transfer,curvatureRadius,remaining,{factor,...common});
       const status=attempt.certified?attempt.entry.status:'start-uncertain';
       const row={factor,status,reason:attempt.entry.reason??null};
       if(status==='entry'){
@@ -308,7 +388,7 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
     // arccosine. The sweep result is a requirement on that implementation, not
     // a measurement of any driver: nothing here executes GLSL.
     const binary32=orderEntry(destination.balls,transfer,curvatureRadius,remaining,
-      {coefficients:'binary32'});
+      {coefficients:'binary32',...common});
     const binary32Key=[binary32.entry.status,binary32.entry.reason??''].join('|');
     summary.binary32.entry[binary32Key]=(summary.binary32.entry[binary32Key]??0)+1;
     let binary32Band=null,widening=null,allowanceLimit=null,allowanceFailure=null;
@@ -324,7 +404,7 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
       allowanceLimit=0;
       for(const allowance of allowances){
         const attempt=allowance===0?binary32:orderEntry(destination.balls,transfer,curvatureRadius,
-          remaining,{coefficients:'binary32',phaseAllowance:allowance,angleAllowance:allowance});
+          remaining,{coefficients:'binary32',phaseAllowance:allowance,angleAllowance:allowance,...common});
         const same=attempt.certified&&attempt.entry.status===binary32.entry.status
           &&attempt.entry.owner===binary32.entry.owner;
         if(!same){allowanceFailure={allowance,status:attempt.entry.status,
@@ -333,6 +413,8 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
       }
       summary.binary32.allowance[allowanceLimit]=(summary.binary32.allowance[allowanceLimit]??0)+1;
     }
+    for(const tally of measured.apertureBands)
+      for(const key of ['found','arrival','direction','disc','kept'])summary.apertures[key]+=tally[key];
     summary.decidedAt[decidedAt??'never']=(summary.decidedAt[decidedAt??'never']??0)+1;
     if(decidedAt===null)summary.undecidableAtAnyPrecision++;
     const floor=measured.entry.status==='entry'
@@ -350,6 +432,7 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
       exterior:{certified:measured.certified,minMargin:measured.minMargin,
         refused:measured.exterior.filter(e=>e.status!=='outside').map(e=>e.owner)},
       queries:measured.queries.map(q=>[q.owner,q.status,q.reason??'',q.events.length]),
+      apertureBands:measured.apertureBands,
       entry:measured.entry,bandWidth,shading,tracedRoot,containsTracedRoot,
       inflationLimit,inflationFailure,tightening,decidedAt,remaining});
   }

@@ -79,6 +79,10 @@ Each mutation below was applied to the working copy, run, and reverted:
 - The census no longer carrying its envelope inputs, which would leave the
   accuracy probe measuring only its own sweep:
   `Ordered pixel 78,31 never reaches the accuracy probe`.
+- The aperture rim rule removed: `Traced hit left unordered at 78,31`. The
+  one-sided crossing rule removed: `Traced miss ordered as unresolved at 73,36`.
+  The apertures dropped from the ordering entirely: `Region apertures missing
+  from the ordering at 78,31`.
 - The shading enclosure ignoring the band it is about, and then keeping the band
   but dropping its trigonometric reach: `No independent normal witness at 78,31`
   and `Shading enclosure 0.00036884662982047457 excludes its own band ends
@@ -222,6 +226,42 @@ dot products in the transfer supplies roughly twenty-four, at a few extra
 operations each, and the existing transfer bound would report the improvement
 without any new proof obligation. Whether to spend that is the lead's call; this
 is the measurement it needs, not a decision.
+
+## The apertures had a vote and were not counted
+
+The ordering above competed the region's BALLS and nothing else, which made the
+"first entry" claim incomplete: a ball entry is only first if the ray cannot
+leave the region before reaching it, and the sphere region has two apertures.
+The audit named this gap ("portal/edge time as a band", "the portal rim band has
+no derivation"); it is now closed, and closing it turned out to need three
+separate certificates rather than one.
+
+The aperture plane is the same coefficient problem as a ball with c = 0, and the
+best conditioned case of it: the zeros sit a quarter turn from the amplitude
+peak where the derivative is largest, so no arccosine sensitivity appears and
+the bands come out about 1e-4 wide. `sphericalPlaneCrossingBounds` bounds them.
+Bounding the PLANE rather than the finite disc refuses more often than the
+geometry demands, never less.
+
+Competing those bands raw refused every pixel, and each refusal was real:
+
+- **The arrival plane.** The ray starts ON the aperture it came through, so
+  there is a crossing band at t = 0. It is a departure, not a competing exit.
+- **The far side.** At t = 2*pi*R the geodesic closes and the ray returns to its
+  own start, which lies inside that same aperture. The live crossing test admits
+  a crossing only while d/dt dot(q,normal) is strictly negative, so this one is
+  approached from the non-traversable side and passes through.
+- **The rim.** A crossing at 12.36 sits well before the ball entry at 37.42, and
+  it is a crossing of the great sphere that misses the 0.9-radius disc entirely.
+  Proving that is the same exterior predicate a ball start uses, at the
+  aperture's radius, applied to the point enclosed over the crossing band.
+
+With all three certified, the same 14 entries and 18 misses come back - now with
+the apertures actually accounted for. Across the 32 pixels: 160 aperture bands
+found, 32 discarded as the arrival plane, 64 by direction, 64 by rim, none kept,
+and the accounting is checked to close. Each rule is load-bearing: removing the
+rim rule loses the traced hits, removing the direction rule loses the traced
+misses, and removing the apertures entirely fails the structural check.
 
 ## Are any of these pixels unavoidable?
 

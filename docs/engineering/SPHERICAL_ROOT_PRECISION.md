@@ -168,3 +168,21 @@ machinery: the shared-sincos contract in SPHERICAL_CURVE_ERROR.md certifies the
 VALUE of the curve at a time, which is exactly what a sign-bracketed entry band
 needs, and no phase or arccosine appears in such a proof.
 
+### Apertures compete, under three certificates (2026-09-13)
+
+An ordered ball entry is first only against the region's apertures as well as its
+balls. sphericalPlaneCrossingBounds bounds where a geodesic meets the great
+sphere dot(q,normal)=0 - the same coefficient problem with c=0, and its best
+conditioned case, since the zeros sit a quarter turn from the amplitude peak.
+It bounds the plane, not the disc cut from it, so a caller refuses more often
+than the geometry demands and never less.
+
+Three disposals are certified rather than assumed, and all three are needed:
+the band at t=0 is the arrival plane the transfer target lies on; a band whose
+enclosed d/dt dot(q,normal) is strictly positive is approached from the side the
+live crossing test does not admit, which is what the return at 2*pi*R looks like
+on a closed geodesic; and a band whose enclosed point is proved outside the disc
+by the aperture-radius exterior predicate misses the aperture altogether.
+Anything left competes. Evidence and the failure demonstrations for each rule:
+docs/qa/spherical-hit-band-review.md.
+
