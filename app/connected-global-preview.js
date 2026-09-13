@@ -5,20 +5,42 @@ import {createCameraFrame,rollAgainst} from '../engine/world/camera-frame.js';
 const canvas=document.querySelector('#view'),status=document.querySelector('#status'),details=document.querySelector('#details');
 const params=new URLSearchParams(location.search);
 const checking=params.has('check'),threeGeometry=params.get('preset')==='three';
+const improvedRefinement=threeGeometry&&params.get('refinement')==='enclosure';
 const checks=[],shots=[];
 async function report(err='',extra={}){await fetch('/__report',{method:'POST',body:JSON.stringify({err,hud:status.textContent,checks,shots,...extra})});}
-function failure(error){status.textContent=`Preview stopped: ${error.message||error}`;if(checking)report(String(error.stack||error));}
+function failure(error){status.textContent=`Preview stopped: ${error.message||error}`;
+  const banner=document.querySelector('#renderer-loading');if(banner&&!banner.hidden)banner.textContent=status.textContent;
+  if(checking)report(String(error.stack||error));}
 try {
   const response=await fetch(threeGeometry?'../levels/fixtures/connected-three-geometries-gallery.nil.json':'../levels/fixtures/connected-global.nil.json');if(!response.ok)throw Error(`Scene HTTP ${response.status}`);
   const scene=await response.json();
   // The model calls installWorld only for edits, never for its initial compile.
   let renderer;
   const model=createConnectedGlobalPreview(scene,{experimentalH3:threeGeometry,installWorld:nextWorld=>renderer.replaceWorld(nextWorld)}),coldStart=performance.now();
-  renderer=createConnectedRenderer(canvas,model.world,{experimentalH3:threeGeometry});
+  if(improvedRefinement){
+    status.textContent='Loading improved refinement. This may take several seconds; the page may pause during setup.';
+    const banner=document.querySelector('#renderer-loading');banner.hidden=false;banner.textContent=status.textContent;
+    // Present the message before synchronous driver compilation. This does not
+    // make compilation asynchronous or promise a responsive loading animation.
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  }
+  renderer=createConnectedRenderer(canvas,model.world,{experimentalH3:threeGeometry,enclosureRefinement:improvedRefinement});
+  const improvedControl=document.querySelector('#improved-refinement');
+  improvedControl.checked=improvedRefinement;improvedControl.disabled=!threeGeometry;
+  document.querySelector('#world-preset').onchange=()=>{
+    improvedControl.disabled=document.querySelector('#world-preset').value!=='three';
+    if(improvedControl.disabled)improvedControl.checked=false;
+  };
+  if(improvedRefinement){
+    document.querySelector('#refine-spherical').checked=true;
+    document.querySelector('#refine-help').textContent='Improved refinement loaded. With Smooth edges, use 480 x 360 or below, subject to device limits. Larger sizes retain ordinary rendering. May be slow on software rendering; uncertain pixels remain purple.';
+  }
   document.querySelector('#world-preset').value=threeGeometry?'three':'classic';
   document.querySelector('#open-preset').onclick=()=>{
     const url=new URL(location.href);url.searchParams.delete('check');
     url.searchParams.set('preset',document.querySelector('#world-preset').value);
+    if(improvedControl.checked&&!improvedControl.disabled)url.searchParams.set('refinement','enclosure');
+    else url.searchParams.delete('refinement');
     location.assign(url.href);
   };
   if(threeGeometry){
@@ -48,7 +70,7 @@ try {
       ? 'Off. Resolves some uncertain edges; other purple pixels remain.'
       :passStatus==='antialias-refused'?'Paused: turn off Smooth edges to use spherical refinement.'
       :passStatus==='outside-scope'?'Waiting for a flat-region view through a spherical portal.'
-      :passStatus==='resource-limit'?'Paused: refinement exceeds the memory or device limit. Choose a lower resolution (640 x 480 or below with Smooth edges).'
+      :passStatus==='resource-limit'?`Paused: refinement exceeds the memory or device limit. Choose a lower resolution (${improvedRefinement?'480 x 360':'640 x 480'} or below with Smooth edges).`
       :passStatus==='generated'?(smoothing()?'On with Smooth edges for eligible portal views. Other uncertain pixels remain purple.':'On for eligible portal views. Other uncertain pixels remain purple.')
       :`Unavailable (${passStatus}). The original rendering is still in use.`;
     status.textContent=model.status();
@@ -378,6 +400,8 @@ try {
     requestAnimationFrame(frame);
   }catch(e){stop();failure(e);}}
   draw();
+  document.documentElement.dataset.rendererReady=improvedRefinement?'enclosure':'standard';
+  document.querySelector('#renderer-loading').hidden=true;
   if(checking)renderer.finish();
   const coldReadyWallMs=performance.now()-coldStart;
   if(!checking)requestAnimationFrame(frame);
@@ -513,7 +537,10 @@ try {
     const {checkRefinementMotion}=await import('./refinement-motion-probe.js');
     const motion=await checkRefinementMotion(model,renderer);
     checks.push('Refinement motion: E3/S3/H3 round trip, strict settled parity; GPU timing status '+motion.arms.map(a=>a.timingStatus).join('/'));
-    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,e3Line,ordering,census,exclusion,enclosure,enclosureIntegration,enclosureAA,livePass,aaRefinement,motion]});
+    const {checkEnclosureUI}=await import('./enclosure-ui-probe.js');
+    const enclosureUI=await checkEnclosureUI(shots);
+    checks.push('Improved renderer real-page opt-in, AA limit, resize recovery and toggle-off');
+    await report('',{connectedGlobalEvidence:[{label:'three-geometry-editor',hardware:renderer.hardware,coldReadyWallMs},transfer,e3Line,ordering,census,exclusion,enclosure,enclosureIntegration,enclosureAA,livePass,aaRefinement,motion,enclosureUI]});
   } else {
     const records=[],poses=[];
     if(!/no gravity/i.test(document.body.textContent)||!/COMPLETE S3/.test(document.body.textContent))throw Error('Page lost its complete-S3/no-gravity label');

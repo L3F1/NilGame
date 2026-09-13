@@ -64,3 +64,10 @@ portal removal API deletes a saved pair and its two anchors, not draft row choic
 its browser controls name both saved endpoints. Existing-anchor orientation fields
 edit only that anchor's forward/up vectors, preserving its partner and the player.
 Global surfaces/cells, new charts and visual manipulation remain follow-up work.
+
+The three-geometry preset optionally opens improved spherical refinement using
+refinement=enclosure. Choose it beside Open preset and restart; download unsaved
+edits before restarting. It starts enabled, remains toggleable, and supports
+Smooth edges through480x360 subject to device limits. Ordinary URLs retain the
+standard path. Setup may pause during shader compilation; a visible message
+precedes it. Remaining uncertain rays stay purple. See ../qa/enclosure-ui-review.md.

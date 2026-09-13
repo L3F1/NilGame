@@ -1,0 +1,21 @@
+{
+  "base": "ee1f1a1",
+  "hardware": {
+    "label": "enclosure-ui",
+    "startupWallMs": 119.10000000149012,
+    "optIn": true,
+    "resourceFallback": true,
+    "resizeRecovery": true,
+    "toggleOff": true,
+    "scope": "real page startup and controls; startup includes iframe fetch and first draw, not cold-cache proof"
+  },
+  "software": {
+    "label": "enclosure-ui",
+    "startupWallMs": 5132.5,
+    "optIn": true,
+    "resourceFallback": true,
+    "resizeRecovery": true,
+    "toggleOff": true,
+    "scope": "real page startup and controls; startup includes iframe fetch and first draw, not cold-cache proof"
+  }
+}
