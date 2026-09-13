@@ -2,7 +2,9 @@
 
 Implemented in spherical-curve-error.js and the TEST-ONLY
 refinement-enclosure-glsl.js predicate enclosureCurveExterior. Production
-rendering/certificate consumption is unchanged. This closes the mathematical
+default rendering/certificate consumption is unchanged. The explicit enclosure
+renderer variant now consumes this predicate; see ../qa/enclosure-integration-review.md.
+This closes the mathematical
 policy decision for the next integration, not unconditional WebGL accuracy.
 
 ## Claim and domain

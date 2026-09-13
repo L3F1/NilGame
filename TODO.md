@@ -37,9 +37,11 @@ docs/qa/refinement-enclosure-review.md. Actual GPU transfer-band encoding now
 widens tiny normal endpoints without changing states; see
 docs/qa/refinement-transfer-enclosure-review.md. The conditional polynomial
 curve-error bound and exterior predicate are implemented; see
-docs/engineering/SPHERICAL_CURVE_ERROR.md. Next: serialized producer/consumer
-integration with a shared sincos pair, bounded range/R, ownership and measured
-image/cost payoff under REFINEMENT_ENCLOSURE_NEXT.md. No new live consumer yet.
+docs/engineering/SPHERICAL_CURVE_ERROR.md. Serialized producer/consumer candidate
+now runs via enclosureRefinement:true; see docs/qa/enclosure-integration-review.md.
+Default UI unchanged. Next: ownership mutations, independent AA reference,
+motion/edit poses and intended-resolution image/startup/frame-cost acceptance
+under REFINEMENT_ENCLOSURE_NEXT.md before exposing the candidate.
 Do not rerun blindly, enable refinement by default, or add another geometry
 while hit-side fringes and timing coverage remain unfinished.
 Muse remains paused until reported quota reset Sept14 UTC; no external agent

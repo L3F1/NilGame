@@ -1,5 +1,6 @@
 import {CONNECTED_VERTEX} from './connected-shader.js';
 import {SPHERICAL_MISS_PASS_FRAGMENT,SPHERICAL_MISS_CERTIFICATE_TAG} from './spherical-miss-pass-glsl.js';
+import {enclosureProducer,ENCLOSURE_CERTIFICATE_TAG} from './enclosure-renderer-variant.js';
 export {SPHERICAL_MISS_CERTIFICATE_TAG};
 // Scene topology only: compute once per packed-world revision, not per ray.
 // An owner used as any modifier, or as a modified base, is never eligible.
@@ -32,7 +33,7 @@ function associationKey(request){
   const pose=[...request.position,...request.forward,...request.right,...request.up];
   return [...KEY_FIELDS.map(f=>request[f]),...pose].join('|');
 }
-export function createSphericalMissPass(gl){
+export function createSphericalMissPass(gl,{enclosure=false}={}){
   const float=gl.getExtension('EXT_color_buffer_float');
   const stats={draws:0,generated:0,refused:0,reasons:Object.create(null),lastStatus:'never-run',
     lastAssociation:null,gpuStatus:'unknown',gpuMs:[]};
@@ -45,6 +46,8 @@ export function createSphericalMissPass(gl){
   const targets=[{texture:certificate,internal:gl.RGBA32UI,format:gl.RGBA_INTEGER,type:gl.UNSIGNED_INT},
     {texture:point,internal:gl.RGBA32F,format:gl.RGBA,type:gl.FLOAT},
     {texture:direction,internal:gl.RGBA32F,format:gl.RGBA,type:gl.FLOAT}];
+  const radii=enclosure?gl.createTexture():null;
+  if(enclosure)targets.push({texture:radii,internal:gl.RGBA32F,format:gl.RGBA,type:gl.FLOAT});
   let sized=null,framebuffer=null,program=null,loc=null,disposed=false;
   function allocate(width,height){
     sized=null; // Never retain a successful size after a partial allocation.
@@ -63,7 +66,7 @@ export function createSphericalMissPass(gl){
   function build(){
     if(program)return program;
     const created=gl.createProgram();
-    for(const [type,source,label] of [[gl.VERTEX_SHADER,CONNECTED_VERTEX,'vertex'],[gl.FRAGMENT_SHADER,SPHERICAL_MISS_PASS_FRAGMENT,'fragment']]){
+    for(const [type,source,label] of [[gl.VERTEX_SHADER,CONNECTED_VERTEX,'vertex'],[gl.FRAGMENT_SHADER,enclosure?enclosureProducer():SPHERICAL_MISS_PASS_FRAGMENT,'fragment']]){
       const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);
       if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw Error(`Spherical miss pass ${label}: ${gl.getShaderInfoLog(shader)}`);
       gl.attachShader(created,shader);gl.deleteShader(shader);
@@ -96,6 +99,8 @@ export function createSphericalMissPass(gl){
     const {dataTexture,counts,position,forward,right,up,width,height,maxDistance,regionIndex,timer=false}=request;
     stats.lastAssociation=null;
     if(!float)return note('unsupported');
+    if(enclosure&&(gl.getParameter(gl.MAX_DRAW_BUFFERS)<4||gl.getParameter(gl.MAX_COLOR_ATTACHMENTS)<4
+      ||gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS)<5))return note('unsupported-enclosure-resources');
     if(!dataTexture)return note('missing-world');
     if(!Number.isInteger(width)||!Number.isInteger(height)||width<=0||height<=0)return note('invalid-size');
     if(!(maxDistance>0))return note('invalid-range');
@@ -107,7 +112,7 @@ export function createSphericalMissPass(gl){
     const grid=request.sampleAtlas?2:1,physicalWidth=width*grid,physicalHeight=height*grid;
     const limit=gl.getParameter(gl.MAX_TEXTURE_SIZE),viewportLimit=gl.getParameter(gl.MAX_VIEWPORT_DIMS);
     if(physicalWidth>limit||physicalHeight>limit||physicalWidth>viewportLimit[0]||physicalHeight>viewportLimit[1]
-      ||physicalWidth*physicalHeight*48>64*1024*1024)return note('resource-limit');
+      ||physicalWidth*physicalHeight*(enclosure?64:48)>64*1024*1024)return note('resource-limit');
     try{build();}catch(error){stats.lastError=error.message;return note('program-failed');}
     const savedViewport=gl.getParameter(gl.VIEWPORT);
     gl.bindFramebuffer(gl.FRAMEBUFFER,framebuffer);
@@ -124,6 +129,7 @@ export function createSphericalMissPass(gl){
       gl.clearBufferuiv(gl.COLOR,0,new Uint32Array(4));
       gl.clearBufferfv(gl.COLOR,1,new Float32Array(4));
       gl.clearBufferfv(gl.COLOR,2,new Float32Array(4));
+      if(enclosure)gl.clearBufferfv(gl.COLOR,3,new Float32Array(4));
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,dataTexture);
       gl.uniform1i(loc.uData,0);gl.uniform4iv(loc.uCounts,counts);
       const pad=v=>[...v,...Array(4-v.length).fill(0)];
@@ -176,7 +182,7 @@ export function createSphericalMissPass(gl){
     let certified=0,surfaces=0;
     const bits=v=>{let n=0;for(let b=0;b<32;b++)if(v&(1<<b))n++;return n;};
     for(let i=0;i<width*height;i++){
-      if(data[4*i+3]!==SPHERICAL_MISS_CERTIFICATE_TAG||data[4*i]===0)continue;
+      if(data[4*i+3]!== (enclosure?ENCLOSURE_CERTIFICATE_TAG:SPHERICAL_MISS_CERTIFICATE_TAG)||data[4*i]===0)continue;
       certified++;surfaces+=bits(data[4*i+1])+bits(data[4*i+2]);
     }
     return {pixels:width*height,certified,surfaces,status:'read',
@@ -191,5 +197,5 @@ export function createSphericalMissPass(gl){
   return {generate,invalidate,dispose,stats,associationKey,readCertificates,
     get supported(){return !!float;},
     get size(){return sized&&{...sized};},
-    textures:{certificate,point,direction}};
+    textures:{certificate,point,direction,radii}};
 }

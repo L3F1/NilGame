@@ -48,11 +48,18 @@ amplitude bound. State/centre component magnitudes <=2 and angle upper bound<=64
 are required. Computed exterior may refine UNKNOWN; preserving old occupancy E
 classification is a separate stronger promise, not required here.
 
-Next: bounded serialized producer/consumer integration using
-enclosureCurveExterior, an outward range/R angle bound, and one shared pair in
-the consumer's spherical at() path. The current separate cs/sn calls are not
-silently admitted by this contract. Follow REFINEMENT_ENCLOSURE_NEXT.md for
-attachments, memory cap, association, expiry, parity and full-frame cost.
+Serialized producer/consumer candidate is implemented behind constructor option
+enclosureRefinement:true, with a unique tag, fourth radii texture, outward
+angle bound and shared-pair at(). Read docs/qa/enclosure-integration-review.md
+and its evidence. Default renderer/UI unchanged. Candidate images now show real
+fringe recovery; initial hardware160x120 recovered30 with zero settled changes.
+
+Next: finish acceptance, not another math helper. Add ownership mutations for
+wrong tag/sample/gate, outside-radius states and expiry; independent AA reference;
+additional motion/edit poses. Keep current strict packet guards. Follow
+REFINEMENT_ENCLOSURE_NEXT.md for memory/association and measure intended-resolution
+cost and startup before UI exposure. Current fallback within the candidate uses
+shared-pair at(); default-source parity is checked separately.
 If the stricter predicate plus extra storage fails to improve the actual image,
 retain default-off refinement and move to hit-side root intervals; do not spend
 another turn fitting a tolerance to recover a historical pixel count.

@@ -1,8 +1,9 @@
 import {packConnectedWorld,CONNECTED_VERTEX,CONNECTED_FRAGMENT} from './connected-shader.js';
 import {createSphericalMissPass,sphericalEligibleOwners} from './spherical-miss-pass.js';
+import {enclosureConsumer} from './enclosure-renderer-variant.js';
 // experimentalH3 opts this renderer into the bounded H3 experiment. Default
 // callers keep the existing E3/S3 admission, including its H3 refusal.
-export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) {
+export function createConnectedRenderer(canvas,world,{experimentalH3=false,enclosureRefinement=false}={}) {
   const packOptions={experimentalH3};
   let packed=packConnectedWorld(world,packOptions);
   let eligibleOwners=sphericalEligibleOwners(packed);
@@ -10,7 +11,7 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
   if(!gl)throw Error('Connected preview requires WebGL2');
   gl.disable(gl.DITHER); // Debug packets are bytes, not display colors.
   const program=gl.createProgram();
-  for(const [type,source] of [[gl.VERTEX_SHADER,CONNECTED_VERTEX],[gl.FRAGMENT_SHADER,CONNECTED_FRAGMENT]]) {
+  for(const [type,source] of [[gl.VERTEX_SHADER,CONNECTED_VERTEX],[gl.FRAGMENT_SHADER,enclosureRefinement?enclosureConsumer(CONNECTED_FRAGMENT):CONNECTED_FRAGMENT]]) {
     const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);
     if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(shader));
     gl.attachShader(program,shader);gl.deleteShader(shader);
@@ -22,6 +23,7 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,224,1,0,gl.RGBA,gl.FLOAT,packed.texture);
   const names=['uData','uCounts','uPosition','uForward','uRight','uUp','uResolution','uRegion','uDebug','uDiagnostics','uMaxDistance','uPolished','uAO','uAntialias',
     'uMissCertificate','uMissPoint','uMissDirection','uMissPass'];
+  if(enclosureRefinement)names.push('uMissRadii');
   const loc=Object.fromEntries(names.map(n=>[n,gl.getUniformLocation(program,n)]));
   gl.uniform1i(loc.uData,0);gl.uniform4iv(loc.uCounts,packed.counts);
   gl.uniform1f(loc.uMaxDistance,packed.maxDistance);
@@ -29,9 +31,10 @@ export function createConnectedRenderer(canvas,world,{experimentalH3=false}={}) 
   // draw opts in. Its (initially 1x1, all-zero) textures stay bound so the main
   // program never samples a unit left pointing at unrelated data.
   let revision=0,missStatus='disabled',missConsumingDraws=0,diagnosticTarget=null;
-  const missPass=createSphericalMissPass(gl);
+  const missPass=createSphericalMissPass(gl,{enclosure:enclosureRefinement});
   gl.uniform1i(loc.uMissPass,0);
-  [['uMissCertificate',missPass.textures.certificate],['uMissPoint',missPass.textures.point],['uMissDirection',missPass.textures.direction]]
+  [['uMissCertificate',missPass.textures.certificate],['uMissPoint',missPass.textures.point],['uMissDirection',missPass.textures.direction],
+    ...(enclosureRefinement?[['uMissRadii',missPass.textures.radii]]:[])]
     .forEach(([name,texture],i)=>{
       gl.activeTexture(gl.TEXTURE1+i);gl.bindTexture(gl.TEXTURE_2D,texture);gl.uniform1i(loc[name],1+i);
     });

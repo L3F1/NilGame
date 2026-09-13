@@ -137,7 +137,7 @@ check(carved>0,'fixture must contain a carved group, so the additive-only guard 
 
 // ------------------------------------------------------- recording WebGL2 ---
 function createGL({colorBufferFloat=true,framebufferComplete=true,failAt=null,
-  maxTextureSize=16384,maxViewportDims=[16384,16384],failAllocationOnce=false}={}){
+  maxTextureSize=16384,maxViewportDims=[16384,16384],maxDrawBuffers=4,maxAttachments=4,maxSamplers=16,failAllocationOnce=false}={}){
   let next=1;const name=tag=>({tag,id:next++});
   const calls=[],uniforms=new Map(),locations=new Map();
   const E={TEXTURE_2D:3553,RGBA32F:34836,RGBA32UI:36208,RGBA:6408,RGBA_INTEGER:36249,FLOAT:5126,
@@ -146,7 +146,7 @@ function createGL({colorBufferFloat=true,framebufferComplete=true,failAt=null,
     FRAGMENT_SHADER:35632,COMPILE_STATUS:35713,LINK_STATUS:35714,VIEWPORT:2978,DITHER:3024,
     DEPTH_TEST:2929,BLEND:3042,SCISSOR_TEST:3089,TEXTURE_MIN_FILTER:10241,TEXTURE_MAG_FILTER:10240,
     TEXTURE_WRAP_S:10242,TEXTURE_WRAP_T:10243,NEAREST:9728,CLAMP_TO_EDGE:33071,RENDERER:7937,
-    MAX_TEXTURE_SIZE:3379,MAX_VIEWPORT_DIMS:3386};
+    MAX_TEXTURE_SIZE:3379,MAX_VIEWPORT_DIMS:3386,MAX_DRAW_BUFFERS:34852,MAX_COLOR_ATTACHMENTS:36063,MAX_TEXTURE_IMAGE_UNITS:34930};
   const state={framebuffer:null,program:null,viewport:[0,0,0,0],unit:E.TEXTURE0,bound:new Map(),errors:[]};
   const log=(op,detail)=>{calls.push({op,framebuffer:state.framebuffer,...detail});};
   const gl={...E,
@@ -179,7 +179,7 @@ function createGL({colorBufferFloat=true,framebufferComplete=true,failAt=null,
     drawArrays(){log('drawArrays',{program:state.program&&state.program.id,viewport:[...state.viewport],uniforms:new Map(uniforms)});},
     getError(){return state.errors.shift()??(failAt&&calls.filter(c=>c.op==='drawArrays').length===failAt?1282:E.NO_ERROR);},
     getParameter(p){return p===E.VIEWPORT?[...state.viewport]:p===E.RENDERER?'recording-double'
-      :p===E.MAX_TEXTURE_SIZE?maxTextureSize:p===E.MAX_VIEWPORT_DIMS?[...maxViewportDims]:0;},
+      :p===E.MAX_DRAW_BUFFERS?maxDrawBuffers:p===E.MAX_COLOR_ATTACHMENTS?maxAttachments:p===E.MAX_TEXTURE_IMAGE_UNITS?maxSamplers:p===E.MAX_TEXTURE_SIZE?maxTextureSize:p===E.MAX_VIEWPORT_DIMS?[...maxViewportDims]:0;},
     readPixels(){},
     beginQuery(){},endQuery(){},getQueryParameter:()=>false};
   return {gl,calls,uniforms,state,
@@ -189,7 +189,7 @@ function createGL({colorBufferFloat=true,framebufferComplete=true,failAt=null,
 function renderer(options={}){
   const harness=createGL(options);
   const canvas={width:0,height:0,getContext:()=>harness.gl};
-  const instance=createConnectedRenderer(canvas,world);
+  const instance=createConnectedRenderer(canvas,world,{enclosureRefinement:!!options.enclosure});
   // The main program is the first one created; the pass builds its own later.
   const main=harness.calls.find(c=>c.op==='useProgram').program;
   return {...harness,instance,canvas,main,missUniform:()=>harness.uniformOf(main,'uMissPass')};
@@ -518,4 +518,22 @@ for(const width of [0,-1,1.5,NaN,Infinity]){
 check(SPHERICAL_MISS_PASS_FRAGMENT.includes('outCertificate=uvec4(0u);'),'refused pixels write no certificate');
 check(SPHERICAL_MISS_PASS_FRAGMENT.includes('uvec4(uint(gate+1)'),'the portal index is stored offset by one');
 check(SPHERICAL_MISS_CERTIFICATE_TAG>0&&Number.isInteger(SPHERICAL_MISS_CERTIFICATE_TAG),'the tag must be a positive integer');
+
+// Fourth-attachment variant must enforce its OWN resource cost, restore ordinary
+// drawing on refusal, then recover. These are lifecycle checks, not GPU proofs.
+{
+  const h=renderer({enclosure:true});
+  h.instance.draw(state,{width:480,height:360,antialias:true,sphericalMissPass:true,aaRefinement:true});
+  check(h.instance.missPass.status==='generated','enclosure AA480 fits cap');
+  check(h.calls.some(c=>c.op==='drawBuffers'&&c.count===4),'enclosure writes four attachments');
+  check(h.uniformOf(h.main,'uMissRadii')===4,'radii uses distinct sampler4');
+  h.instance.draw(state,{width:640,height:480,antialias:true,sphericalMissPass:true,aaRefinement:true});
+  check(h.instance.missPass.status==='resource-limit'&&h.missUniform()===0,'enclosure AA640 refuses and disables consumption');
+  h.instance.draw(state,{width:65,height:49,sphericalMissPass:true});
+  check(h.instance.missPass.status==='generated'&&h.missUniform()===1,'enclosure recovers at small size');
+  for(const limits of [{maxDrawBuffers:3},{maxAttachments:3},{maxSamplers:4}]){
+    const k=renderer({enclosure:true,...limits});k.instance.draw(state,{sphericalMissPass:true});
+    check(k.instance.missPass.status==='unsupported-enclosure-resources'&&k.missUniform()===0,'enclosure refuses missing attachment/sampler capability');
+  }
+}
 console.log(`spherical-miss-pass: ${checks} checks passed`);

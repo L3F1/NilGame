@@ -1,5 +1,5 @@
 import {CURVE_DOT_FACTOR,CURVE_FTZ_ALLOWANCE} from './spherical-curve-error.js';
-// Experimental only: not included in the live connected renderer.
+// Experimental only: included by the explicit enclosure renderer variant.
 // Domain restriction makes binary32 subtraction normal (or exactly zero):
 // adjacent permitted values differ by at least 2^-123. Extreme/subnormal inputs
 // refuse this certificate, not rendering. See REFINEMENT_ENCLOSURE_NEXT.md.
