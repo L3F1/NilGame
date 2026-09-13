@@ -1,11 +1,11 @@
 {
  "date": "2026-09-13",
- "base": "3529451",
+ "base": "c1ab225",
  "host": "win32/Node 24.20.0",
  "command": "node tools/spherical-hit-band-evidence.js",
  "checked": "node spherical-hit-band.test.js",
  "fixture": "levels/fixtures/connected-three-geometries.nil.json",
- "wallMs": 249,
+ "wallMs": 251,
  "census": {
   "label": "spherical-hit-band",
   "width": 160,
@@ -52,6 +52,10 @@
     ]
    }
   },
+  "sampleOffset": [
+   0,
+   0
+  ],
   "guard": 0.00012,
   "balls": [
    "north-landmark",
@@ -212,52 +216,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.005260344205709089,
       "colourSteps": 7.45848916367676
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0026673214896462127,
       "colourSteps": 3.827654797436326
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0013713030292805684,
       "colourSteps": 2.011215448533366
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0007233569165876474,
       "colourSteps": 1.1039042864406186
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00039939224352991687,
       "colourSteps": 0.6496650358961364
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00023741122187459496,
       "colourSteps": 0.42358492355156
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0001564210956459533,
       "colourSteps": 0.3102508250462868
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00011592624998257861,
       "colourSteps": 0.25423783272820516
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.891993284225464
    },
    {
@@ -378,52 +399,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.005260344205709089,
       "colourSteps": 7.45848916367676
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0026673214896462127,
       "colourSteps": 3.827654797436326
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0013713030292805684,
       "colourSteps": 2.011215448533366
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0007233569165876474,
       "colourSteps": 1.1039042864406186
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00039939224352991687,
       "colourSteps": 0.6496650358961364
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00023741122187459496,
       "colourSteps": 0.42358492355156
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0001564210956459533,
       "colourSteps": 0.3102508250462868
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00011592624998257861,
       "colourSteps": 0.25423783272820516
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.891993284225464
    },
    {
@@ -522,9 +560,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.92061471939087
    },
    {
@@ -623,9 +698,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.92061471939087
    },
    {
@@ -746,52 +858,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.005460330295157689,
       "colourSteps": 5.818945644882365
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0027664210866760186,
       "colourSteps": 2.981824202818899
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0014199924720870172,
       "colourSteps": 1.5637084902115745
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0007468454217871567,
       "colourSteps": 0.8546359728055959
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00041028080240579357,
       "colourSteps": 0.5005842405132139
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00024199988121154092,
       "colourSteps": 0.32339630329577734
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0001578598282492294,
       "colourSteps": 0.23532073937307926
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00011579003879802485,
       "colourSteps": 0.191625694816638
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.92664885520935
    },
    {
@@ -912,52 +1041,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.005460330295157689,
       "colourSteps": 5.818945644882365
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0027664210866760186,
       "colourSteps": 2.981824202818899
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0014199924720870172,
       "colourSteps": 1.5637084902115745
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0007468454217871567,
       "colourSteps": 0.8546359728055959
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00041028080240579357,
       "colourSteps": 0.5005842405132139
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00024199988121154092,
       "colourSteps": 0.32339630329577734
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0001578598282492294,
       "colourSteps": 0.23532073937307926
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00011579003879802485,
       "colourSteps": 0.191625694816638
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.92664885520935
    },
    {
@@ -1078,52 +1224,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.005044997527164696,
       "colourSteps": 5.270560344304914
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.002557952838955657,
       "colourSteps": 2.703234636139187
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0013148229829980096,
       "colourSteps": 1.420450867755486
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0006933083342630653,
       "colourSteps": 0.7781905214755981
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00038255771823969553,
       "colourSteps": 0.45785760242327417
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00022718350717099156,
       "colourSteps": 0.29772133126758976
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00014949676726416783,
       "colourSteps": 0.21869802200241478
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00011065362288320557,
       "colourSteps": 0.1786348041599805
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.93243741989136
    },
    {
@@ -1244,52 +1407,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.005044997527164696,
       "colourSteps": 5.270560344304914
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.002557952838955657,
       "colourSteps": 2.703234636139187
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0013148229829980096,
       "colourSteps": 1.420450867755486
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.0006933083342630653,
       "colourSteps": 0.7781905214755981
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00038255771823969553,
       "colourSteps": 0.45785760242327417
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00022718350717099156,
       "colourSteps": 0.29772133126758976
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00014949676726416783,
       "colourSteps": 0.21869802200241478
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "return-landmark",
       "band": 0.00011065362288320557,
       "colourSteps": 0.1786348041599805
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.93243741989136
    },
    {
@@ -1388,9 +1568,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.9379780292511
    },
    {
@@ -1489,9 +1706,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.9379780292511
    },
    {
@@ -1590,9 +1844,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.966710567474365
    },
    {
@@ -1691,9 +1982,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.966710567474365
    },
    {
@@ -1792,9 +2120,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.80961465835571
    },
    {
@@ -1915,52 +2280,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0028734741706171185,
       "colourSteps": 3.8258847283111366
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0014593796451323193,
       "colourSteps": 1.958649404935427
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0007532711314919283,
       "colourSteps": 1.026152898204516
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00040178336777163537,
       "colourSteps": 0.5621785389422536
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00022854611827094473,
       "colourSteps": 0.3331749033308622
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00014521934243605372,
       "colourSteps": 0.22332628295351986
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00010669479916858293,
       "colourSteps": 0.17236251662260363
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00008944478520689358,
       "colourSteps": 0.14948689274107696
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.821335315704346
    },
    {
@@ -2059,9 +2441,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.84117913246155
    },
    {
@@ -2160,9 +2579,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.85180377960205
    },
    {
@@ -2283,52 +2739,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0033352536646296116,
       "colourSteps": 4.618155589400789
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0016959672726541974,
       "colourSteps": 2.364048631511475
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0008776973947357547,
       "colourSteps": 1.239496318684804
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0004707068137284054,
       "colourSteps": 0.6797463097836983
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0002705667781315313,
       "colourSteps": 0.40499797517039626
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.000174764021617424,
       "colourSteps": 0.27285187646620046
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00013075010276031307,
       "colourSteps": 0.21258577487468927
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00011111508042427332,
       "colourSteps": 0.18508165134792287
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.86375594139099
    },
    {
@@ -2427,9 +2900,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.87321186065674
    },
    {
@@ -2550,52 +3060,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0030268581254375704,
       "colourSteps": 4.248333783714528
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0015405585152667989,
       "colourSteps": 2.1776671174968456
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0007986879793864254,
       "colourSteps": 1.1453962070089758
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0004298166576051088,
       "colourSteps": 0.6311688673160183
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00024858458446352927,
       "colourSteps": 0.3784582770753751
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00016197016912933293,
       "colourSteps": 0.25823982144652463
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00012222217409618708,
       "colourSteps": 0.20342451032411046
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0001044691842486678,
       "colourSteps": 0.1784416982011686
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.87449312210083
    },
    {
@@ -2694,9 +3221,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.883997440338135
    },
    {
@@ -2795,9 +3359,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.884512424468994
    },
    {
@@ -2918,52 +3519,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00657632582706924,
       "colourSteps": 9.410156596494655
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.003341466238105717,
       "colourSteps": 4.797507801124471
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0017329817238991296,
       "colourSteps": 2.504292238820683
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0009341700595286717,
       "colourSteps": 1.3652363493117126
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0005420580703590083,
       "colourSteps": 0.8063721931597457
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00035491176226232213,
       "colourSteps": 0.5393632427839443
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0002691476623644107,
       "colourSteps": 0.4166803661185654
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00023085536301703513,
       "colourSteps": 0.3625553662840355
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.884769916534424
    },
    {
@@ -3084,52 +3702,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00657632582706924,
       "colourSteps": 9.410156628767929
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.003341466238105717,
       "colourSteps": 4.797507817346541
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0017329817238991296,
       "colourSteps": 2.504292238820683
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0009341700595286717,
       "colourSteps": 1.3652269389267708
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0005420580703590083,
       "colourSteps": 0.8063721760885852
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00035491176226232213,
       "colourSteps": 0.5393632427839443
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0002691476623644107,
       "colourSteps": 0.4166803841512357
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00023085536301703513,
       "colourSteps": 0.3625553662840355
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.884769916534424
    },
    {
@@ -3228,9 +3863,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.884512424468994
    },
    {
@@ -3329,9 +4001,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.883997440338135
    },
    {
@@ -3452,52 +4161,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0030566123735620288,
       "colourSteps": 4.289346676364534
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0015553206453366997,
       "colourSteps": 2.199089541341614
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0008059528580899311,
       "colourSteps": 1.1555297992822904
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00043332811804042137,
       "colourSteps": 0.6371846484854811
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0002502205570817928,
       "colourSteps": 0.38119542232905335
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00016268853128309502,
       "colourSteps": 0.2594529199397433
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0001225206282464697,
       "colourSteps": 0.20373671318128306
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00010459266799278666,
       "colourSteps": 0.1791208910886454
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.87449312210083
    },
    {
@@ -3596,9 +4322,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.87321209907532
    },
    {
@@ -3719,52 +4482,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0033401334464673305,
       "colourSteps": 4.624484840139327
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.001698389294709557,
       "colourSteps": 2.3678054598557354
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0008788905582925999,
       "colourSteps": 1.2416856991945084
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0004712847437366996,
       "colourSteps": 0.6812036544559642
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0002708370839203944,
       "colourSteps": 0.40537922483775807
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00017488338533011571,
       "colourSteps": 0.273595415127148
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00013079998665954662,
       "colourSteps": 0.21322998566006204
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00011113585223609945,
       "colourSteps": 0.1852874462173235
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.86375594139099
    },
    {
@@ -3863,9 +4643,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.85180377960205
    },
    {
@@ -3964,9 +4781,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.84117913246155
    },
    {
@@ -4087,52 +4941,69 @@
      {
       "factor": 1,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.002905043362324111,
       "colourSteps": 3.868123792038793
      },
      {
       "factor": 0.5,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0014750633592091056,
       "colourSteps": 1.979916566735905
      },
      {
       "factor": 0.25,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0007610100064212588,
       "colourSteps": 1.0365823984352465
      },
      {
       "factor": 0.125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0004055445183515083,
       "colourSteps": 0.5673399932579981
      },
      {
       "factor": 0.0625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.000230316719204815,
       "colourSteps": 0.3358540429916981
      },
      {
       "factor": 0.03125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.0001460082435547072,
       "colourSteps": 0.22511194888304176
      },
      {
       "factor": 0.015625,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00010702592525690946,
       "colourSteps": 0.17353984498494546
      },
      {
       "factor": 0.0078125,
       "status": "entry",
+      "reason": null,
+      "owner": "north-landmark",
       "band": 0.00008958117492996465,
       "colourSteps": 0.15016530728557648
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.821335315704346
    },
    {
@@ -4231,9 +5102,46 @@
     "tightening": [
      {
       "factor": 1,
-      "status": "miss"
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.5,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.25,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.03125,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.015625,
+      "status": "miss",
+      "reason": null
+     },
+     {
+      "factor": 0.0078125,
+      "status": "miss",
+      "reason": null
      }
     ],
+    "decidedAt": 1,
     "remaining": 57.80961465835571
    }
   ],
@@ -4267,6 +5175,10 @@
     "maxColourSteps": 9.410156628767929,
     "unresolved": 0
    },
+   "decidedAt": {
+    "1": 32
+   },
+   "undecidableAtAnyPrecision": 0,
    "floor": {
     "packedGeometry": 0.0001980808867214634,
     "exactGeometry": 6.173381805751887e-10,

@@ -223,6 +223,40 @@ operations each, and the existing transfer bound would report the improvement
 without any new proof obligation. Whether to spend that is the lead's call; this
 is the measurement it needs, not a decision.
 
+## Are any of these pixels unavoidable?
+
+The pixel centre is not where the hard cases live. Running the same census at the
+renderer's four antialiasing offsets reaches 116 guarded subsamples, and **10 of
+them are genuinely undecidable at today's precision** - the centre-only census
+resolved all 32 of its samples and made the problem look solved. Two facts about
+those ten:
+
+- Every one of them is decided by a tighter ray: 4 at 1/4, 6 at 1/16, 8 at 1/64,
+  and all 10 by 1/1024. None is undecidable in principle at this pose. The suite
+  now fails if any guarded sample resists every precision in the series.
+- No pixel has all four subsamples guarded; the worst has three. So even the
+  undecidable ones are outvoted. A pixel's colour is an area integral, and an
+  undecidable subsample can only spoil its own share of it: with N samples the
+  pixel is still determined to within one Nth of the spread between the two
+  answers. That is a bound, not a hope, and the antialiasing path that provides
+  it already ships.
+
+There will always be SOME precision at which some sample is undecidable - exact
+tangency is a curve through the image, and a sample can land arbitrarily close to
+it. The honest claim is not that the set is empty but that it shrinks with
+precision, that it is currently reachable, and that antialiasing bounds whatever
+survives. Nothing here needs a guess.
+
+A learned reconstruction in the DLSS family is the wrong instrument for this,
+for three separate reasons. It costs orders of magnitude more than the fix: the
+exact answer is a handful of extra operations per ray, against a network per
+frame. It cannot be checked, so it would replace a bounded error with an
+unbounded one and remove the only signal that finds bugs like this one. And the
+cheap version of the same idea needs no training at all - interpolating a
+refused pixel from its certified neighbours is a few lines - so if a presentation
+fill is ever wanted, it should be that, clearly labelled as a fill and never
+mistaken for a rendered answer.
+
 ## Where the error lives, end to end
 
 Every stage is now measured, so the budget can be written down instead of argued

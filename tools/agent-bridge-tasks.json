@@ -1,4 +1,16 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "muse77-compensated-float",
+      "agent": "muse",
+      "allowedFiles": [
+        "engine/geometry/compensated-float.js",
+        "compensated-float.test.js",
+        "docs/qa/muse77-compensated-float.md"
+      ],
+      "report": "docs/qa/muse77-compensated-float.md",
+      "instruction": "Read AGENTS.md, MUSE.md, docs/engineering/WORKING_RULES.md, then ONLY engine/geometry/spherical-curve-error.js and docs/engineering/SPHERICAL_CURVE_ERROR.md as the style precedent, plus engine/geometry/float32-interval.js for the existing rounding model. Do not read the roadmap, archives or renderer. Deliver ONE host-free module engine/geometry/compensated-float.js: binary32 double-float (unevaluated-pair) primitives twoSum, twoDifference, split, twoProduct, pair add, pair multiply, and a 4-component compensated dot, plus a derived error contract in the shape of deriveCurveErrorBudget - exact BigInt rational arithmetic proving each stated bound, with NO reliance on measured agreement, on Math functions, or on an FMA. Assume round-to-nearest binary32 and NO fused contraction, because GLSL ES 3.0 guarantees neither; state that assumption in the module header as a condition of the contract, exactly as SPHERICAL_CURVE_ERROR.md states its own. Refuse inputs where the Dekker split can overflow or lose normality, and return an explicit refusal rather than a silent result; classify by bits, not by a floating comparison, because a subnormal can flush. Ship compensated-float.test.js comparing every primitive against an EXACT dyadic BigInt oracle over a deterministic corpus that includes powers of two, near-cancellation pairs, subnormal and near-overflow refusals, and the magnitudes this project actually uses (unit 4-vectors and centres within magnitude 2). Demonstrate meaningful failure: break the split constant and the pair-normalisation step in your own copy, paste the failing output in the report, restore, paste the passing output. Run node compensated-float.test.js and node tools/test.js; paste both. No shader, renderer, transfer, GPU or rendering claim of any kind - this is arithmetic and its proof only, and the lead will decide where it is used. Three allowed files. No commits, pushes, subagents or follow-ups. Report under 500 words: the contract, its conditions, the oracle, the fail-demo, and anything you could NOT prove."
+    }
+  ]
 }

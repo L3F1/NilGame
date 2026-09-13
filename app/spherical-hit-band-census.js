@@ -175,7 +175,11 @@ function geometryFloor(transfer,ball,curvatureRadius,remaining){
     exactCentre:band([0,0,0,0],radiusError),exactRadius:band(centerError,0),
     exactGeometry:band([0,0,0,0],0)};
 }
+// sampleOffset moves the sample inside the pixel, so the same census can be run
+// at the renderer's four antialiasing positions. A pixel's colour is an area
+// integral: a subsample nobody can decide costs at most its own share of it.
 export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60,
+  sampleOffset=[0,0],
   inflations=[1,2,4,8,16,32,64,128,256,512,1024],
   deflations=[1,1/2,1/4,1/8,1/16,1/32,1/64,1/128],
   allowances=[0,2**-24,2**-20,2**-16,2**-14,2**-12,2**-11,2**-10,2**-8,2**-6]}){
@@ -187,14 +191,19 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
     throw Error('Transcendental allowances must start at zero and increase');
   if(!deflations.length||deflations[0]!==1||deflations.some((x,i)=>i&&(x<=0||x>=deflations[i-1])))
     throw Error('Deflation factors must start at the measured box and decrease');
+  if(!Array.isArray(sampleOffset)||sampleOffset.length!==2
+    ||!sampleOffset.every(v=>Number.isFinite(v)&&Math.abs(v)<=.5))
+    throw Error('Sample offset must stay inside its pixel');
   const cameraError={forward:[0,0,0],right:[0,0,0],up:[0,0,0]};
   const records=[],summary={flagged:0,cpu:{},entry:{},exteriorRefused:0,
     bandWidth:{min:Infinity,max:0},containsTracedRoot:0,missingTracedRoot:0,inflation:{},
     shading:{maxDiameter:0,maxDegrees:0,maxColourSteps:0,unresolved:0},
+    decidedAt:{},undecidableAtAnyPrecision:0,
     floor:{packedGeometry:0,exactGeometry:0,negligibleRay:NEGLIGIBLE_RAY},
     binary32:{entry:{},bandWidth:{min:Infinity,max:0},widening:{max:0},allowance:{}}};
   for(let y=0;y<height;y++)for(let x=0;x<width;x++){
-    const direction=pixelDirection(source.space,pose.position,pose.camera,width,height,x,y);
+    const direction=pixelDirection(source.space,pose.position,pose.camera,width,height,
+      x+sampleOffset[0],y+sampleOffset[1]);
     const sight=traceRegionSight(world,{regionId:pose.regionId,position:pose.position,direction},
       {maxDistance:range});
     const first=sight.crossings?.[0];
@@ -214,7 +223,8 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
     const cpu={status:sight.status,owner:sight.query?.owner??null,distance:sight.distance??null,
       reason:sight.reason??null};
     summary.cpu[cpu.status]=(summary.cpu[cpu.status]??0)+1;
-    const bounds=e3PrimaryRayBounds({camera:pose.camera,cameraError,width,height,pixel:[x+.5,y+.5]});
+    const bounds=e3PrimaryRayBounds({camera:pose.camera,cameraError,width,height,
+      pixel:[x+.5+sampleOffset[0],y+.5+sampleOffset[1]]});
     const transfer=e3S3TransferBounds({position:pose.position,positionError:[0,0,0],
       direction:mid(bounds),directionError:halfWidth(bounds),frame:gate.renderData(),frameError:0,
       curvatureRadius,maxDistance:range});
@@ -275,15 +285,23 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
     // What a TIGHTER ray would buy. The transfer box is the only input a port
     // could realistically improve - by carrying the transfer in compensated
     // arithmetic, say - so measure the return before anyone pays for it.
-    const tightening=[];
+    const tightening=[];let decidedAt=null;
     for(const factor of deflations){
       const attempt=factor===1?measured
         :orderEntry(destination.balls,transfer,curvatureRadius,remaining,{factor});
-      if(attempt.entry.status!=='entry'){tightening.push({factor,status:attempt.entry.status});break;}
-      const spread=shadingSpread(transfer,attempt.entry,
-        destination.balls.find(b=>b.id===attempt.entry.owner).center,curvatureRadius);
-      tightening.push({factor,status:'entry',band:attempt.entry.upper-attempt.entry.lower,
-        colourSteps:spread.status==='bounded'?spread.colourSteps:null});
+      const status=attempt.certified?attempt.entry.status:'start-uncertain';
+      const row={factor,status,reason:attempt.entry.reason??null};
+      if(status==='entry'){
+        const spread=shadingSpread(transfer,attempt.entry,
+          destination.balls.find(b=>b.id===attempt.entry.owner).center,curvatureRadius);
+        Object.assign(row,{owner:attempt.entry.owner,band:attempt.entry.upper-attempt.entry.lower,
+          colourSteps:spread.status==='bounded'?spread.colourSteps:null});
+      }
+      tightening.push(row);
+      // The loosest ray that already decides this sample. A sample that is
+      // undecidable at every factor is undecidable for a reason precision
+      // cannot reach, and that is the only kind that has to stay purple.
+      if(['entry','miss'].includes(status))decidedAt=Math.max(decidedAt??0,factor);
     }
     // The same ordering under the coefficient arithmetic a GPU consumer would
     // execute, then swept over an absolute-radian model of ITS arctangent and
@@ -315,6 +333,8 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
       }
       summary.binary32.allowance[allowanceLimit]=(summary.binary32.allowance[allowanceLimit]??0)+1;
     }
+    summary.decidedAt[decidedAt??'never']=(summary.decidedAt[decidedAt??'never']??0)+1;
+    if(decidedAt===null)summary.undecidableAtAnyPrecision++;
     const floor=measured.entry.status==='entry'
       ?geometryFloor(transfer,destination.balls.find(b=>b.id===measured.entry.owner),
         curvatureRadius,remaining):null;
@@ -331,11 +351,11 @@ export function sphericalHitBandCensus({world,pose,width=160,height=120,range=60
         refused:measured.exterior.filter(e=>e.status!=='outside').map(e=>e.owner)},
       queries:measured.queries.map(q=>[q.owner,q.status,q.reason??'',q.events.length]),
       entry:measured.entry,bandWidth,shading,tracedRoot,containsTracedRoot,
-      inflationLimit,inflationFailure,tightening,remaining});
+      inflationLimit,inflationFailure,tightening,decidedAt,remaining});
   }
   if(summary.bandWidth.min===Infinity)summary.bandWidth.min=null;
   if(summary.binary32.bandWidth.min===Infinity)summary.binary32.bandWidth.min=null;
-  return {label:'spherical-hit-band',width,height,range,pose,guard:TANGENCY_GUARD,
+  return {label:'spherical-hit-band',width,height,range,pose,sampleOffset,guard:TANGENCY_GUARD,
     balls:[...world.regions.values()].filter(r=>r.space.kind==='s3').flatMap(r=>r.balls?.map(b=>b.id)??[]),
     inflations,allowances,deflations,records,summary,
     scope:'one recorded pose; ordering and owner only. The binary32 columns model a GPU '

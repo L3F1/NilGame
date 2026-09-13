@@ -45,6 +45,16 @@ The floor once the ray is fixed is the PACKED BALL CENTRE, not the radius and no
 the solver: 1.98e-4 band, 0.32 colour steps, versus 6.17e-10 with exact geometry.
 So a tighter ray is sufficient on its own and a scene format change is not needed.
 
+The pixel centre hid the hard cases. At the four antialiasing offsets 10 of 116
+guarded subsamples are undecidable TODAY, and all 10 are decided by a tighter ray
+(4 at 1/4, 6 at 1/16, 8 at 1/64, 10 at 1/1024). No pixel has all four subsamples
+guarded, so antialiasing bounds whatever survives to one Nth of the spread. The
+suite fails if any guarded sample resists every precision in the series.
+
+Muse: muse77-compensated-float is STAGED in tools/agent-bridge-tasks.json and
+NOT dispatched - quota resets 2026-09-14T00:00:00Z, run the bridge after that.
+muse78-hit-band-pose-corpus is queued behind it in MUSE_TASKS.md.
+
 Next: the four-stage plan and the six options are written up in the review's
 "The plan" section. Stage 1 is compensated double-float over the primary ray and
 transfer INSIDE the separate producer program, never the main shader. Note the

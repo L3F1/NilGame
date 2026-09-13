@@ -78,6 +78,10 @@ for(const record of census.records){
       `The packed centre should dominate the packed radius at ${where}`);
   }else assert.equal(record.tightening[0].status,record.entry.status,
     `Tightening series disagrees with the measured answer at ${where}`);
+  // Every guarded sample at this pose is decided by SOME ray precision. A
+  // sample that stayed undecidable at every factor would be the genuinely
+  // unavoidable kind, and there is none here to hide.
+  assert.ok(record.decidedAt!==null,`Undecidable at every ray precision at ${where}`);
   // Separation is finite: every pixel loses its answer at some wider input box,
   // so a passing census is a measurement and not a vacuous success.
   assert.ok(record.inflationLimit>=1&&record.inflationFailure,`No measured separation limit at ${where}`);
@@ -108,6 +112,7 @@ for(const record of census.records){
 assert.ok(entries>0&&misses>0,'Census must cover traced hits and traced misses');
 assert.equal(census.summary.missingTracedRoot,0);
 assert.equal(census.summary.shading.unresolved,0);
+assert.equal(census.summary.undecidableAtAnyPrecision,0);
 assert.ok(census.summary.shading.maxColourSteps>0,'Shading spread was never measured');
 assert.equal(census.summary.exteriorRefused,0);
 
@@ -144,6 +149,31 @@ for(const allowance of ['phaseAllowance','angleAllowance']){
     &&loose.events[0].upper>tight.events[0].upper+5e-4,`${allowance} did not widen the bands`);
 }
 
+// The pixel CENTRE is not the whole story: the renderer also samples four
+// antialiasing positions, and the guard fires on samples the centre misses.
+// Those are where genuinely undecidable samples turn up, so the claim that
+// precision reaches them all is checked where they live.
+const AA_OFFSETS=[[-.25,-.25],[.25,-.25],[-.25,.25],[.25,.25]];
+let guardedSubsamples=0,undecidedAtFullPrecision=0,decidedByTightening=0;
+for(const sampleOffset of AA_OFFSETS){
+  const sweep=sphericalHitBandCensus({world,pose,sampleOffset,
+    inflations:[1,2],allowances:[0],deflations:[1,1/16,1/64,1/1024]});
+  for(const record of sweep.records){
+    guardedSubsamples++;
+    assert.ok(record.decidedAt!==null,
+      `Subsample ${record.x},${record.y} at ${sampleOffset} is undecidable at every precision`);
+    if(record.entry.status==='entry'||record.entry.status==='miss')continue;
+    undecidedAtFullPrecision++;
+    if(record.decidedAt<1)decidedByTightening++;
+  }
+}
+assert.ok(guardedSubsamples>100,'The antialiasing sweep must actually reach the guard');
+assert.ok(undecidedAtFullPrecision>0,
+  'This sweep exists to exhibit undecidable subsamples; finding none means it stopped looking');
+assert.equal(decidedByTightening,undecidedAtFullPrecision,
+  'Every undecidable subsample at this pose must be reachable by a tighter ray');
+assert.throws(()=>sphericalHitBandCensus({world,pose,sampleOffset:[1,0]}),/inside its pixel/);
+
 // The backend accuracy probe is browser-only, but the plumbing that aims it at
 // the right numbers is checkable here: it must carry the census coefficients,
 // not just its own sweep, or the measurement answers a different question.
@@ -177,4 +207,6 @@ console.log(`spherical hit band: ${census.summary.flagged} guarded pixels, ${ent
   +`transcendental allowance limits ${JSON.stringify(census.summary.binary32.allowance)} rad, `
   +`normal pinned to ${census.summary.shading.maxDegrees.toPrecision(3)} deg `
   +`(${census.summary.shading.maxColourSteps.toPrecision(3)} of 255 colour steps, `
-  +`${tightest.toPrecision(3)} at a ${1/census.deflations.at(-1)}x tighter ray)`);
+  +`${tightest.toPrecision(3)} at a ${1/census.deflations.at(-1)}x tighter ray); `
+  +`${undecidedAtFullPrecision} of ${guardedSubsamples} antialiasing subsamples undecidable today, `
+  +`all reached by a tighter ray`);

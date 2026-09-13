@@ -81,3 +81,39 @@ A stage is diagnostic evidence, never a final report or proof of stall cause.
 Preserve all timeouts, rendering and lifecycle behavior. Exact allowed paths and
 validation requirements are in the bridge assignment. Node checks plus isolated
 fail-demo; browser may remain unrun for lead review. No shader/math changes.
+
+## MUSE-77: compensated binary32 arithmetic and its proof
+
+Status: STAGED in tools/agent-bridge-tasks.json, 2026-09-13. Not dispatched:
+provider quota resets 2026-09-14T00:00:00Z. Start it with
+`node tools/agent-bridge.js start` after that, not before.
+
+Why this exists: the purple silhouette pixels are ray-precision-limited, not
+solver-limited. Measured in docs/qa/spherical-hit-band-review.md - four extra
+bits in the portal transfer put the worst pixel inside one 8-bit colour step,
+and all ten currently undecidable antialiasing subsamples become decidable.
+Double-float arithmetic supplies about twenty-four bits for a few operations
+each. This task is the arithmetic and its error contract, nothing downstream.
+
+Deliver engine/geometry/compensated-float.js (host-free double-float primitives
+with an exact BigInt-rational error derivation in the shape of
+deriveCurveErrorBudget), compensated-float.test.js (exact dyadic oracle, refusal
+cases, fail-demo) and the report. Assume round-to-nearest binary32 with NO fused
+contraction and say so as a condition, since GLSL ES guarantees neither. Exact
+allowed paths, checks and the fail-demo requirement are in the bridge assignment.
+No shader, renderer or GPU claim: the lead decides where it gets used.
+
+## MUSE-78: hit-band pose corpus
+
+Status: QUEUED behind MUSE-77. Do not start both.
+
+One pose has been measured to death; nobody knows how the numbers move. Run
+sphericalHitBandCensus over a reproducible corpus of poses and viewport sizes
+across the E3 entry region - including the four antialiasing sample offsets it
+already accepts - and report how the guarded-sample count, the band widths, the
+shading spread and the decidedAt precision vary. The interesting question is
+whether ANY sample is undecidable at every ray precision in the series; at the
+gallery pose there is none, and one would be the first genuinely unavoidable
+pixel found. Report distributions and the worst cases, not an average. Do not
+change the census, the solver or any renderer: this is a corpus and a check.
+
