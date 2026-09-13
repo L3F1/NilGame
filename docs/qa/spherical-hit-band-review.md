@@ -92,11 +92,16 @@ Each mutation below was applied to the working copy, run, and reverted:
   `angleAllowance did not widen the bands`. The first version of that check used
   both allowances at once and missed each of them individually.
 
-Coverage gap found while doing this, reported and not fixed: replacing the
-coefficient-rectangle phase term `asin(dh/h)` with the rounding allowance alone
-is caught by neither `spherical-root-bounds.test.js` (241 roots) nor this suite.
-The bands narrow only slightly at this scene's coefficients. That check needs a
-case whose direction error dominates its amplitude.
+That coverage gap is now closed. Replacing the coefficient-rectangle phase term
+`asin(dh/h)` with the rounding allowance alone used to pass both suites, because
+every case in them had dh/h near 1e-7, where the term is invisible. A shallow
+case - amplitude 0.054 against a coefficient box of 0.004, so the rectangle
+subtends about 0.1 rad - makes it load-bearing, and the same deletion now fails
+as `A rotated shallow corner escaped its band at 9.935`. The plane crossings
+carry the term too, and deleting it there fails as `Missing bracketed plane
+crossing 0.0000013`. `spherical-root-bounds.test.js` went from 241 to 305
+independent sign-bracketed roots and now covers the plane and exterior entry
+points directly rather than only through this census.
 
 ## Binary32 coefficients and the consumer transcendental requirement (same day)
 
