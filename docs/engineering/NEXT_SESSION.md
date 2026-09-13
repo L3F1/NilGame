@@ -40,14 +40,22 @@ remain unchanged and subnormal endpoints refuse. See
 docs/qa/refinement-transfer-enclosure-review.md for current evidence. Captured
 point/direction records are independent single-invocation bands, not joint rays.
 
-Next difficult task: the rounded ray-curve contract in REFINEMENT_ENCLOSURE_NEXT.md.
-The ideal amplitude bound uses sin^2+cos^2=1; live sincos() uses range reduction
-and polynomials, followed by rounded position and surface-dot operations. Bound
-those errors over the admitted parameter range (and account for occupancy E
-when promising classification equivalence) before adding a live consumer.
-This is an inherited assumption in the earlier exclusion path, not a defect
-introduced or resolved by the enclosure exporter. Keep the audit tightly scoped.
-Then test separate serialized producer/consumer programs, ownership and cost.
+The conditional curve-error contract and prototype predicate are now implemented:
+read SPHERICAL_CURVE_ERROR.md and docs/qa/spherical-curve-error-review.md.
+Exact rational budgets and exact GPU integer comparisons replace the zero-error
+assumption. One shared sincos pair avoids needing phase accuracy for a global
+amplitude bound. State/centre component magnitudes <=2 and angle upper bound<=64
+are required. Computed exterior may refine UNKNOWN; preserving old occupancy E
+classification is a separate stronger promise, not required here.
+
+Next: bounded serialized producer/consumer integration using
+enclosureCurveExterior, an outward range/R angle bound, and one shared pair in
+the consumer's spherical at() path. The current separate cs/sn calls are not
+silently admitted by this contract. Follow REFINEMENT_ENCLOSURE_NEXT.md for
+attachments, memory cap, association, expiry, parity and full-frame cost.
+If the stricter predicate plus extra storage fails to improve the actual image,
+retain default-off refinement and move to hit-side root intervals; do not spend
+another turn fitting a tolerance to recover a historical pixel count.
 Keep exact matching until those checks pass.
 Then address remaining hit-side fringes. Do not blindly chase identical floats,
 embed interval arithmetic in the main shader, or weaken settled-pixel guards.

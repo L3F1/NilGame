@@ -50,10 +50,12 @@ bands exercise this encoding; see ../qa/refinement-transfer-enclosure-review.md.
 Never clamp the actual state. Consumer classification uses bits: hardware
 admitted a subnormal into a zero-radius box before that repair.
 
-The next admission gate is the curve error above: connected-shader.js sincos()
-uses range reduction and polynomials, while the amplitude proof assumes exact
-sin^2+cos^2=1. Bound that discrepancy and rounded position/surface-dot evaluation
-over the supported parameter range before admitting a new live consumer.
+The conditional curve-error predicate is now implemented and checked; see
+SPHERICAL_CURVE_ERROR.md. Use enclosureCurveExterior with an outward angle bound
+and a single shared sincos pair in the consumer. This still needs serialized
+integration and image/cost acceptance. The ideal-only predicate is not a
+substitute for the evaluated-curve predicate. Strict computed exterior can
+refine UNKNOWN; old occupancy classification equivalence would require >E.
 
 This uses one extra RGBA32F attachment for the two radii (four attachments
 total), not interval evaluation per object in the main shader. The main work is

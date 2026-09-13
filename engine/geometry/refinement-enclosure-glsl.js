@@ -1,3 +1,4 @@
+import {CURVE_DOT_FACTOR,CURVE_FTZ_ALLOWANCE} from './spherical-curve-error.js';
 // Experimental only: not included in the live connected renderer.
 // Domain restriction makes binary32 subtraction normal (or exactly zero):
 // adjacent permitted values differ by at least 2^-123. Extreme/subnormal inputs
@@ -65,5 +66,23 @@ bool enclosureSphereMiss(BI pointBox,BI directionBox,vec4 center,float constant)
   BI sum=ba(aa,bb);if(!bfinite(sum))return false;
   BI amplitude=broot(sum),c=bs(constant);
   return bfinite(amplitude)&&c.lo.x>0.&&amplitude.hi.x<c.lo.x;
+}
+// Conditional computed-exterior certificate, NOT occupancy-equivalence (>E).
+// maxAngle must be an upper bound for every evaluated |t/R| on the leg.
+// Consumer must evaluate ONE shared sincos pair; see SPHERICAL_CURVE_ERROR.md.
+bool enclosureCurveExterior(BI pointBox,BI directionBox,vec4 center,float constant,float maxAngle){
+  if(!bfinite(pointBox)||!bfinite(directionBox)||isnan(maxAngle)||isinf(maxAngle)
+    ||maxAngle<0.||maxAngle>64.||any(isnan(center))||any(isinf(center))
+    ||isnan(constant)||isinf(constant)||abs(constant)>2.)return false;
+  vec4 pm=max(abs(pointBox.lo),abs(pointBox.hi)),um=max(abs(directionBox.lo),abs(directionBox.hi));
+  if(any(greaterThan(pm,vec4(2)))||any(greaterThan(um,vec4(2)))||any(greaterThan(abs(center),vec4(2))))return false;
+  BI a=bdot(pointBox,bv(center)),b=bdot(directionBox,bv(center));
+  if(!bfinite(a)||!bfinite(b))return false;
+  BI sum=ba(bm(a,a),bm(b,b));if(!bfinite(sum))return false;
+  BI amplitude=broot(sum),weight=bdot(bv(abs(center)),ba(bv(pm),bv(um)));
+  BI error=ba(bm(bs(${CURVE_DOT_FACTOR.toPrecision(17)}),weight),bs(${CURVE_FTZ_ALLOWANCE.toPrecision(17)}));
+  // Outward subtraction includes rounding/FTZ of the final surface value.
+  BI gap=ba(bs(constant),bn(ba(amplitude,error)));
+  return bfinite(amplitude)&&bfinite(weight)&&bfinite(error)&&bfinite(gap)&&gap.lo.x>0.;
 }
 `;

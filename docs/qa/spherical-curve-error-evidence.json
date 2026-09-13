@@ -1,0 +1,133 @@
+{
+  "date": "2026-09-12",
+  "base": "a33e3e8",
+  "hardware": {
+    "label": "refinement-enclosure-experiment",
+    "hardware": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "memberships": 517,
+    "accepted": 185,
+    "rejectedInside": 89,
+    "domainRefusals": 8,
+    "boxes": 257,
+    "contained": 514,
+    "certified": 73,
+    "differentStateAccepted": 73,
+    "roundedDifferenceMutation": true,
+    "unreprovedBoxMutation": true,
+    "invalidFieldRefusals": 4,
+    "endpointRefusals": 7,
+    "tinyBoxes": 3,
+    "curve": {
+      "samples": 1150,
+      "unitCircleFailures": 604,
+      "idealDotFailures": 205,
+      "maxPairNorm": 1.0000001192107835,
+      "maxReduced": 1.5707963705062866,
+      "certifiedBoxes": 61,
+      "refusedIdealBoxes": 12,
+      "budget": {
+        "sine": {
+          "holds": true,
+          "upper": 0.0000044102409928024995
+        },
+        "cosine": {
+          "holds": true,
+          "upper": 0.000004804449688380578
+        },
+        "dot": {
+          "holds": true,
+          "upper": 0.000008165840714726831
+        },
+        "componentError": 0.00000762939453125,
+        "dotFactor": 0.0000152587890625,
+        "reducedLimit": 1.575,
+        "ftzAllowance": 3.009265538105056e-36
+      }
+    },
+    "transfer": {
+      "captured": 304,
+      "captureRefused": 8,
+      "exported": 304,
+      "tinyEndpointRecords": 152,
+      "unsupportedNominal": 0
+    },
+    "times": {
+      "vertexCompileMs": 0.5,
+      "fragmentCompileMs": 2.699999999254942,
+      "linkMs": 1812.3999999985099,
+      "firstDrawReadMs": 1.3999999985098839
+    },
+    "draws": 2645,
+    "totalWallMs": 2570,
+    "scope": "conditional shared-pair arithmetic prototype; not live rendering, an unconditional backend proof, full-frame cost, serialized MRT transport or occupancy equivalence"
+  },
+  "software": {
+    "label": "refinement-enclosure-experiment",
+    "hardware": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "memberships": 517,
+    "accepted": 185,
+    "rejectedInside": 89,
+    "domainRefusals": 8,
+    "boxes": 257,
+    "contained": 514,
+    "certified": 73,
+    "differentStateAccepted": 73,
+    "roundedDifferenceMutation": true,
+    "unreprovedBoxMutation": true,
+    "invalidFieldRefusals": 4,
+    "endpointRefusals": 7,
+    "tinyBoxes": 3,
+    "curve": {
+      "samples": 1150,
+      "unitCircleFailures": 604,
+      "idealDotFailures": 215,
+      "maxPairNorm": 1.0000001192107835,
+      "maxReduced": 1.5707963705062866,
+      "certifiedBoxes": 61,
+      "refusedIdealBoxes": 12,
+      "budget": {
+        "sine": {
+          "holds": true,
+          "upper": 0.0000044102409928024995
+        },
+        "cosine": {
+          "holds": true,
+          "upper": 0.000004804449688380578
+        },
+        "dot": {
+          "holds": true,
+          "upper": 0.000008165840714726831
+        },
+        "componentError": 0.00000762939453125,
+        "dotFactor": 0.0000152587890625,
+        "reducedLimit": 1.575,
+        "ftzAllowance": 3.009265538105056e-36
+      }
+    },
+    "transfer": {
+      "captured": 304,
+      "captureRefused": 8,
+      "exported": 304,
+      "tinyEndpointRecords": 152,
+      "unsupportedNominal": 0
+    },
+    "times": {
+      "vertexCompileMs": 0.10000000149011612,
+      "fragmentCompileMs": 3.099999997764826,
+      "linkMs": 0.4000000022351742,
+      "firstDrawReadMs": 766.6000000014901
+    },
+    "draws": 2645,
+    "totalWallMs": 1537.2000000029802,
+    "scope": "conditional shared-pair arithmetic prototype; not live rendering, an unconditional backend proof, full-frame cost, serialized MRT transport or occupancy equivalence"
+  },
+  "commands": [
+    "node tools/check-queue.js page-check --three-geometry --timeout=150",
+    "node tools/check-queue.js page-check --three-geometry --sw --timeout=240"
+  ],
+  "scope": "Conditional arithmetic prototype. Real renderer polynomial in a one-pixel shared-pair test. No live certificates, full-frame improvement, or universal backend guarantee.",
+  "node": {
+    "command": "node tools/test.js",
+    "suites": "139/139"
+  }
+}

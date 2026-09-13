@@ -35,9 +35,11 @@ Standalone enclosure arithmetic now passes exact dyadic references, 138/138 Node
 suites and both GPU backends; live certificate consumption is unchanged. See
 docs/qa/refinement-enclosure-review.md. Actual GPU transfer-band encoding now
 widens tiny normal endpoints without changing states; see
-docs/qa/refinement-transfer-enclosure-review.md. Next: bound the implemented
-polynomial ray-curve/evaluation errors, then test serialized producer/consumer
-membership under REFINEMENT_ENCLOSURE_NEXT.md. No new live consumer yet.
+docs/qa/refinement-transfer-enclosure-review.md. The conditional polynomial
+curve-error bound and exterior predicate are implemented; see
+docs/engineering/SPHERICAL_CURVE_ERROR.md. Next: serialized producer/consumer
+integration with a shared sincos pair, bounded range/R, ownership and measured
+image/cost payoff under REFINEMENT_ENCLOSURE_NEXT.md. No new live consumer yet.
 Do not rerun blindly, enable refinement by default, or add another geometry
 while hit-side fringes and timing coverage remain unfinished.
 Muse remains paused until reported quota reset Sept14 UTC; no external agent

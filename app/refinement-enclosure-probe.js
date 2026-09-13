@@ -1,7 +1,8 @@
 import {FLOAT_BANDS_GLSL} from '../engine/geometry/spherical-miss-pass-glsl.js';
 import {ENCLOSURE_MEMBER_GLSL,ENCLOSURE_EXPORT_GLSL} from '../engine/geometry/refinement-enclosure-glsl.js';
 import {exactFloatUnits,exactMember,exactSphereBoxMiss} from '../tools/refinement-enclosure-reference.js';
-import {CONNECTED_VERTEX} from '../engine/geometry/connected-shader.js';
+import {CONNECTED_VERTEX,CONNECTED_FRAGMENT} from '../engine/geometry/connected-shader.js';
+import {deriveCurveErrorBudget} from '../engine/geometry/spherical-curve-error.js';
 
 // Standalone arithmetic experiment. No certificate is consumed by live rendering.
 export async function checkRefinementEnclosure(captured={records:[],refused:0}){
@@ -9,6 +10,12 @@ export async function checkRefinementEnclosure(captured={records:[],refused:0}){
   if(!gl||!gl.getExtension('EXT_color_buffer_float'))throw Error('Enclosure probe requires float render targets');
   gl.disable(gl.DITHER);canvas.width=canvas.height=1;
   const program=gl.createProgram(),framebuffer=gl.createFramebuffer(),texture=gl.createTexture();
+  // Execute the renderer's source, not a rewritten polynomial. Instrument the
+  // post-fold argument in the same invocation to check this contract's domain.
+  const trig=CONNECTED_FRAGMENT.match(/vec2 sincos\(float x\)\{[\s\S]*?\n\}/)?.[0];
+  if(!trig)throw Error('Renderer sincos source not found');
+  const curveBudget=deriveCurveErrorBudget();
+  if(!curveBudget.sine.holds||!curveBudget.cosine.holds||!curveBudget.dot.holds)throw Error('Curve error derivation failed');
   const fragment=`#version 300 es
 precision highp float;precision highp int;
 uniform vec4 qp,qu,plo,phi,ulo,uhi,center,vp,vu;
@@ -19,7 +26,12 @@ out vec4 result;
 ${FLOAT_BANDS_GLSL}
 ${ENCLOSURE_MEMBER_GLSL}
 ${ENCLOSURE_EXPORT_GLSL}
+const float PI=3.141592653589793;
+float curveReduced;
+${trig.replace('return vec2(', 'curveReduced=x;return vec2(')}
 void main(){
+  if(mode==2){vec2 sc=sincos(constant);vec4 p=qp*sc.y+qu*sc.x;
+    result=vec4(sc,dot(center,p),curveReduced);return;}
   float rp=radii.x,ru=radii.y;bool excluded=false;
   if(mode==0){
     BI pb,ub;
@@ -28,6 +40,7 @@ void main(){
     }
     excluded=mutant==2?enclosureSphereMiss(BI(plo,phi),BI(ulo,uhi),center,constant)
       :enclosureSphereMiss(pb,ub,center,constant);
+    if(mutant==3||mutant==4)excluded=enclosureCurveExterior(pb,ub,center,constant,mutant==4?65.:64.);
   }
   bool member=enclosureMember(vp,qp,rp)&&enclosureMember(vu,qu,ru);
   if(mutant==1)member=all(lessThanEqual(abs(vp-qp),vec4(rp)))&&all(lessThanEqual(abs(vu-qu),vec4(ru)));
@@ -114,7 +127,7 @@ void main(){
         ulo:u.map((x,k)=>f(x-w[k]*.4)),uhi:u.map((x,k)=>f(x+w[k])),
         center:[amplitude,f(Math.sqrt(1-amplitude*amplitude)),0,0],constant,vp:q,vu:u});
     }
-    let certified=0,contained=0,differentStateAccepted=0;
+    let certified=0,contained=0,differentStateAccepted=0,curveCertified=0,curveRefusedIdeal=0;
     for(const c of boxes){
       const out=read(c),[rp,ru]=out;if(!(rp>=0&&ru>=0))throw Error('Valid original box refused');
       for(const [nominal,lo,hi,r] of [[c.qp,c.plo,c.phi,rp],[c.qu,c.ulo,c.uhi,ru]]){
@@ -131,8 +144,21 @@ void main(){
           ||!exactSphereBoxMiss(c.qp,c.qu,moved[0],moved[1],c.center,c.constant))throw Error('Different in-box state not admitted');
         differentStateAccepted++;
       }
+      const guarded=read({...c,mutant:3});
+      if(guarded[2]===1){
+        const C=c.center.map(exactFloatUnits),P=c.qp.map(exactFloatUnits),U=c.qu.map(exactFloatUnits);
+        const r=exactFloatUnits(guarded[0]),s=exactFloatUnits(guarded[1]),abs=v=>v<0n?-v:v;
+        let a=0n,b=0n,total=0n,w=0n;
+        for(let k=0;k<4;k++){a+=C[k]*P[k];b+=C[k]*U[k];total+=abs(C[k]);w+=abs(C[k])*(abs(P[k])+r+abs(U[k])+s);}
+        a=abs(a)+r*total;b=abs(b)+s*total;
+        const gap=(exactFloatUnits(c.constant)<<165n)-w-(1n<<196n);
+        if(gap<=0n||gap*gap<=(a*a+b*b)<<32n)throw Error('Computed-exterior certificate failed exact budget oracle');
+        if(read({...c,mutant:4})[2]!==0)throw Error('Computed-exterior certificate accepted unsupported angle');
+        curveCertified++;
+      }else if(out[2]===1)curveRefusedIdeal++;
     }
     if(!certified||!differentStateAccepted)throw Error('No certified box accepted a distinct state');
+    if(!curveCertified||!curveRefusedIdeal)throw Error('Curve certificate lacks accepted and newly refused witnesses');
     let endpointRefusals=0;
     for(const [lo,hi] of [[2**-149,2**-126],[-(2**-126),2**-149],
       [2**-126,-(2**-126)],[2**-126,2**-125],[-(2**-125),-(2**-126)],
@@ -164,13 +190,41 @@ void main(){
       transferExported++;
     }
     if(captured.records.length&&(!transferExported||!transferTinyEndpoints))throw Error('Actual transfer corpus missed tiny endpoints');
+    let curveSamples=0,unitCircleFailures=0,idealDotFailures=0,maxPairNorm=0,maxReduced=0;
+    const curveAngles=[0,64,-64];
+    for(let k=-20;k<=20;k++)for(const offset of [-(2**-18),0,2**-18])curveAngles.push(f(k*Math.PI/2+offset));
+    for(let k=0;k<1024;k++)curveAngles.push(f(-64+128*rand()));
+    const abs=n=>n<0n?-n:n,unit=exactFloatUnits(1),pairCeiling=exactFloatUnits(1+2*curveBudget.componentError);
+    for(const theta of curveAngles){
+      const qp=[0,0,0,1],qu=[1,0,0,0];
+      const center=[f(Math.sin(theta)),0,0,f(Math.cos(theta))];
+      if(curveSamples%2){for(let k=0;k<4;k++){qp[k]=f(rand()*4-2);qu[k]=f(rand()*4-2);center[k]=f(rand()*4-2);}}
+      const out=read({mode:2,constant:theta,qp,qu,center});
+      if(!out.every(Number.isFinite)||Math.abs(out[3])>curveBudget.reducedLimit)throw Error('Curve reduced domain exceeded');
+      const s=exactFloatUnits(out[0]),c=exactFloatUnits(out[1]),pair=s*s+c*c;
+      if(pair>pairCeiling*pairCeiling)throw Error('Curve amplitude exceeded derived budget');
+      if(pair>unit*unit)unitCircleFailures++;
+      let a=0n,b=0n,w=0n;
+      for(let k=0;k<4;k++){const ck=exactFloatUnits(center[k]),p=exactFloatUnits(qp[k]),u=exactFloatUnits(qu[k]);
+        a+=ck*p;b+=ck*u;w+=abs(ck)*(abs(p)+abs(u));}
+      const v=exactFloatUnits(out[2]);
+      // Everything below is exact in units 2^-314: no rounded subtraction or
+      // square root can conceal a violation of H + 2^-16 W + 2^-118.
+      const excess=(v<<165n)-w-(1n<<196n);
+      if(excess>0n&&excess*excess>((a*a+b*b)<<32n))throw Error('Curve/dot exceeded derived budget');
+      const idealValue=v<<149n;
+      if(v>0n&&idealValue*idealValue>a*a+b*b)idealDotFailures++;
+      maxPairNorm=Math.max(maxPairNorm,Math.hypot(out[0],out[1]));maxReduced=Math.max(maxReduced,Math.abs(out[3]));curveSamples++;
+    }
+    if(!unitCircleFailures||!idealDotFailures)throw Error('Curve corpus did not falsify the zero-error shortcuts');
     const info=gl.getExtension('WEBGL_debug_renderer_info');
     return {label:'refinement-enclosure-experiment',hardware:info?gl.getParameter(info.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),
       memberships:memberships.length,accepted,rejectedInside,domainRefusals,boxes:boxes.length,contained,certified,differentStateAccepted,
       roundedDifferenceMutation,unreprovedBoxMutation:true,invalidFieldRefusals,
       endpointRefusals,tinyBoxes,
+      curve:{samples:curveSamples,unitCircleFailures,idealDotFailures,maxPairNorm,maxReduced,certifiedBoxes:curveCertified,refusedIdealBoxes:curveRefusedIdeal,budget:curveBudget},
       transfer:{captured:captured.records.length,captureRefused:captured.refused,exported:transferExported,tinyEndpointRecords:transferTinyEndpoints,unsupportedNominal:transferRefusedState},
       times,draws,totalWallMs:performance.now()-start,
-      scope:'single-pixel arithmetic prototype; exact dyadic oracle; not live rendering, full-frame cost, serialized MRT transport, or rounded trig/occupancy proof'};
+      scope:'conditional shared-pair arithmetic prototype; not live rendering, an unconditional backend proof, full-frame cost, serialized MRT transport or occupancy equivalence'};
   }finally{gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(framebuffer);gl.deleteTexture(texture);gl.deleteProgram(program);gl.getExtension('WEBGL_lose_context')?.loseContext();}
 }
