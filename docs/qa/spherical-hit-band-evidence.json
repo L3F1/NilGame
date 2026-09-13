@@ -1,11 +1,11 @@
 {
  "date": "2026-09-13",
- "base": "6e86c98",
+ "base": "ba2bfba",
  "host": "win32/Node 24.20.0",
  "command": "node tools/spherical-hit-band-evidence.js",
  "checked": "node spherical-hit-band.test.js",
  "fixture": "levels/fixtures/connected-three-geometries.nil.json",
- "wallMs": 222,
+ "wallMs": 229,
  "census": {
   "label": "spherical-hit-band",
   "width": 160,
@@ -116,7 +116,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9338280260562897,
+       "b": 0.20357245206832886,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9644742608070374,
+       "b": 0.02955842763185501,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.020547793246805668,
+       "b": -0.9970661997795105,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -197,7 +217,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9359683692455292,
+       "b": 0.2116764783859253,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.966637134552002,
+       "b": 0.021369006484746933,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.020547793246805668,
+       "b": -0.9970661997795105,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -273,7 +313,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9311367869377136,
+       "b": 0.19941061735153198,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9617742002010345,
+       "b": 0.03685242310166359,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.016948210075497627,
+       "b": -0.9970142841339111,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -346,7 +406,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9404146075248718,
+       "b": 0.23504483699798584,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9711497724056244,
+       "b": 0.0008427035063505173,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.016948210075497627,
+       "b": -0.9970142841339111,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -424,7 +504,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9313200116157532,
+       "b": 0.20140251517295837,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.961963415145874,
+       "b": 0.035501763224601746,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.016228068619966507,
+       "b": -0.9971501529216766,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -505,7 +605,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9405984282493591,
+       "b": 0.23714745044708252,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9713396430015564,
+       "b": -0.0006198380142450333,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.016228068619966507,
+       "b": -0.9971501529216766,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -586,7 +706,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9314952492713928,
+       "b": 0.20332051068544388,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9621444344520569,
+       "b": 0.03420254588127136,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.015507787931710482,
+       "b": -0.9971667528152466,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -667,7 +807,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9407742619514465,
+       "b": 0.23917224258184433,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9715211987495422,
+       "b": -0.0020269788801670074,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.015507787931710482,
+       "b": -0.9971667528152466,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -743,7 +903,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9316624999046326,
+       "b": 0.20516303181648254,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9623172283172607,
+       "b": 0.03295566514134407,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.014787377323955297,
+       "b": -0.9970619976520538,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -816,7 +996,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.940942108631134,
+       "b": 0.24111753702163696,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9716945886611938,
+       "b": -0.003377712331712246,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.014787377323955297,
+       "b": -0.9970619976520538,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -889,7 +1089,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9353792667388916,
+       "b": 0.22605469077825546,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9660922586917877,
+       "b": 0.01508840685710311,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.01118412846699357,
+       "b": -0.9970201849937439,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -962,7 +1182,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9389494061470032,
+       "b": 0.24009167402982712,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9697000682353973,
+       "b": 0.0009035088587552309,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.01118412846699357,
+       "b": -0.9970201849937439,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1035,7 +1275,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9583242237567902,
+       "b": 0.27554717659950256,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9891709387302399,
+       "b": -0.05160277709364891,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.008283567614853382,
+       "b": -0.9148220419883728,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1113,7 +1373,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.957989364862442,
+       "b": 0.2772054821252823,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9888409376144409,
+       "b": -0.052119260653853416,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.007564266677945852,
+       "b": -0.9171206951141357,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1189,7 +1469,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9571986794471741,
+       "b": 0.2792084813117981,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9880558550357819,
+       "b": -0.05215119943022728,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.0068453955464065075,
+       "b": -0.9229086935520172,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1262,7 +1562,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9568231701850891,
+       "b": 0.28046369552612305,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.987683892250061,
+       "b": -0.05233750119805336,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.006125558167695999,
+       "b": -0.924807220697403,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1340,7 +1660,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9564878046512604,
+       "b": 0.2822068780660629,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9873532950878143,
+       "b": -0.05286855809390545,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.004684874787926674,
+       "b": -0.9246082603931427,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1416,7 +1756,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9560718834400177,
+       "b": 0.2830289453268051,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9869395196437836,
+       "b": -0.052715690806508064,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.003964541247114539,
+       "b": -0.9260208308696747,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1494,7 +1854,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9561120271682739,
+       "b": 0.2835027724504471,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.986981064081192,
+       "b": -0.053060561418533325,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.00324376136995852,
+       "b": -0.9238739013671875,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1570,7 +1950,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9556960463523865,
+       "b": 0.2843399941921234,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9865672290325165,
+       "b": -0.052907709032297134,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.0018022782169282436,
+       "b": -0.9225898683071136,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1643,7 +2043,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9557121098041534,
+       "b": 0.28453104197978973,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9865838289260864,
+       "b": -0.05304640345275402,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.0010813724948093295,
+       "b": -0.9200951159000397,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1721,7 +2141,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9557201564311981,
+       "b": 0.2846266180276871,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9865920841693878,
+       "b": -0.05311577394604683,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": -0.0003604575904319063,
+       "b": -0.9174872636795044,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1802,7 +2242,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9557201564311981,
+       "b": 0.2846266180276871,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9865920841693878,
+       "b": -0.05311577394604683,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": 0.00036046034074388444,
+       "b": -0.9147674143314362,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1878,7 +2338,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9557121098041534,
+       "b": 0.28453104197978973,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9865838289260864,
+       "b": -0.05304640345275402,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": 0.0010813752305693924,
+       "b": -0.9119366705417633,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -1951,7 +2431,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9556960463523865,
+       "b": 0.2843399941921234,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9865672290325165,
+       "b": -0.052907709032297134,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": 0.0018022809526883066,
+       "b": -0.9089960157871246,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -2029,7 +2529,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9561120271682739,
+       "b": 0.2835027575492859,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.986981064081192,
+       "b": -0.053060559555888176,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": 0.003243762766942382,
+       "b": -0.8995220065116882,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -2105,7 +2625,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9560718834400177,
+       "b": 0.2830289453268051,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9869395196437836,
+       "b": -0.052715690806508064,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": 0.003964542411267757,
+       "b": -0.8962766230106354,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -2183,7 +2723,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9564878046512604,
+       "b": 0.2822068780660629,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9873532950878143,
+       "b": -0.05286855436861515,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": 0.0046848764177411795,
+       "b": -0.8896227180957794,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -2259,7 +2819,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9568231701850891,
+       "b": 0.28046368062496185,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.987683892250061,
+       "b": -0.05233749933540821,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": 0.006125560496002436,
+       "b": -0.879329651594162,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -2332,7 +2912,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9571986794471741,
+       "b": 0.2792084664106369,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9880558550357819,
+       "b": -0.05215119384229183,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": 0.006845397176221013,
+       "b": -0.8723491430282593,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -2410,7 +3010,27 @@
       "status": "unresolved",
       "reason": "overlapping-events",
       "owner": null
-     }
+     },
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.957989364862442,
+       "b": 0.2772054672241211,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9888409376144409,
+       "b": -0.052119260653853416,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": 0.007564268074929714,
+       "b": -0.8617854118347168,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
@@ -2486,7 +3106,27 @@
      "bandWidth": null,
      "widening": null,
      "allowanceLimit": 0.015625,
-     "allowanceFailure": null
+     "allowanceFailure": null,
+     "coefficients": [
+      {
+       "owner": "north-landmark",
+       "a": 0.9583242237567902,
+       "b": 0.27554717659950256,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "south-landmark",
+       "a": -0.9891709387302399,
+       "b": -0.05160277709364891,
+       "c": 0.9971888065338135
+      },
+      {
+       "owner": "return-landmark",
+       "a": 0.008283568546175957,
+       "b": -0.8545652627944946,
+       "c": 0.9971888065338135
+      }
+     ]
     },
     "exterior": {
      "certified": true,
