@@ -142,3 +142,29 @@ root envelope and re-measure separation under those bounds in a small separate
 program. Widths beyond roughly that 2x margin mean ordering cannot carry these
 pixels, and the current refusal stands. Nothing here licenses a recolour, a
 midpoint hit position or a normal.
+
+### Where the float32 cost actually lands (2026-09-13)
+
+Splitting the port question in two settles half of it. The coefficient stage is
+nearly free: dotting the same transfer boxes with the outward-rounded binary32
+intervals in float32-interval.js, using the packed float32 surface constant,
+reproduces every ordering decision at this pose with bands at most 1.129x wider.
+The transfer box, not the dot rounding, sets the width.
+
+The envelope's arctangent and arccosine carry the whole risk. sphericalRootBounds
+now accepts optional phaseAllowance and angleAllowance: absolute-radian models of
+the transcendentals a CONSUMER will execute, defaulting to 0, so this module's own
+binary64 allowance is unchanged unless a caller supplies an assumption. Sweeping
+them over the binary32 coefficients gives the requirement a GLSL port must meet:
+better than 2^-10 rad absolute to keep every pixel, 2^-8 to keep all but two.
+Failures are always overlapping entry/exit bands resolving to unresolved, never a
+different owner. Supplying an allowance is an assumption about an implementation,
+never a proof of one, and nothing measured here executed GLSL.
+
+That accuracy is the same order as the minimum commonly quoted for those built-ins
+in the ES shading language, so the port must either admit measured backend
+accuracy with evidence or avoid both transcendentals. The second route already has
+machinery: the shared-sincos contract in SPHERICAL_CURVE_ERROR.md certifies the
+VALUE of the curve at a time, which is exactly what a sign-bracketed entry band
+needs, and no phase or arccosine appears in such a proof.
+

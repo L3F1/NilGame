@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {compileConnectedCoverWorld} from './engine/world/connected-cover-world.js';
 import {sphericalBallExterior} from './engine/geometry/spherical-root-bounds.js';
+import {sphericalRootBounds} from './engine/geometry/spherical-root-bounds.js';
 import {selectAdditiveEntry} from './engine/geometry/additive-event-order.js';
 import {sphericalHitBandCensus} from './app/spherical-hit-band-census.js';
 // Measurement guard for the hit-side decision in SPHERICAL_ROOT_PRECISION.md.
@@ -46,6 +47,25 @@ for(const record of census.records){
     `A widened box still claimed an entry at ${where}`);
   assert.ok(record.inflationFailure.owner===null||record.inflationFailure.owner===record.entry.owner,
     `A widened box changed the named owner at ${where}`);
+  // The coefficient arithmetic a GPU consumer would execute must reach the same
+  // decision. A binary32 model that came out NARROWER would be a modelling
+  // error, not a better bound.
+  assert.equal(record.binary32.status,record.entry.status,`Binary32 coefficients differ at ${where}`);
+  assert.equal(record.binary32.owner,record.entry.owner??null,`Binary32 owner differs at ${where}`);
+  assert.ok(record.binary32.certified,`Binary32 start not certified outside at ${where}`);
+  if(record.entry.status==='entry')assert.ok(record.binary32.widening>=1,
+    `Binary32 band narrower than the binary64 band at ${where}`);
+  // The transcendental sweep is a requirement on the consumer's arctangent and
+  // arccosine, so a traced hit must show where that requirement bites.
+  if(record.cpu.status==='hit'){
+    assert.ok(record.binary32.allowanceFailure,`No measured transcendental limit at ${where}`);
+    assert.ok(record.binary32.allowanceLimit>0&&
+      record.binary32.allowanceLimit<record.binary32.allowanceFailure.allowance,`Unordered limit at ${where}`);
+    assert.notEqual(record.binary32.allowanceFailure.status,'entry',
+      `A looser transcendental still claimed an entry at ${where}`);
+    assert.equal(record.binary32.allowanceFailure.owner,null,
+      `A looser transcendental named an owner at ${where}`);
+  }
 }
 assert.ok(entries>0&&misses>0,'Census must cover traced hits and traced misses');
 assert.equal(census.summary.missingTracedRoot,0);
@@ -68,7 +88,23 @@ assert.throws(()=>sphericalBallExterior({point:[0,0,0,1],...exact}),/missing inp
 assert.throws(()=>selectAdditiveEntry([],{maxDistance:1}),/certified outside starts/);
 assert.throws(()=>sphericalHitBandCensus({world,pose:{...pose,regionId:'sphere'}}),/E3 entry region/);
 assert.throws(()=>sphericalHitBandCensus({world,pose,inflations:[2,4]}),/Inflation factors/);
+assert.throws(()=>sphericalHitBandCensus({world,pose,allowances:[2**-11]}),/Transcendental allowances/);
+// A consumer allowance is an input to the contract, and an invalid one refuses.
+for(const bad of [-1,2,NaN,Infinity])assert.throws(()=>sphericalRootBounds({a:1,b:0,c:.5,
+  errorA:0,errorB:0,errorC:0,curvatureRadius:1,maxDistance:1,phaseAllowance:bad}),/Invalid spherical/);
+// Each consumer allowance must reach the bands on its own: an arctangent model
+// that is silently dropped would leave a band the consumer cannot honour.
+const coefficients={a:1,b:0,c:.5,errorA:1e-9,errorB:1e-9,errorC:1e-9,curvatureRadius:1,maxDistance:3};
+const tight=sphericalRootBounds(coefficients);
+assert.equal(tight.status,'roots');
+for(const allowance of ['phaseAllowance','angleAllowance']){
+  const loose=sphericalRootBounds({...coefficients,[allowance]:1e-3});
+  assert.ok(loose.events[0].lower<tight.events[0].lower-5e-4
+    &&loose.events[0].upper>tight.events[0].upper+5e-4,`${allowance} did not widen the bands`);
+}
 
 console.log(`spherical hit band: ${census.summary.flagged} guarded pixels, ${entries} ordered entries `
   +`(band width ${census.summary.bandWidth.min.toPrecision(3)}..${census.summary.bandWidth.max.toPrecision(3)}), `
-  +`${misses} certified misses, separation limits ${JSON.stringify(census.summary.inflation)}`);
+  +`${misses} certified misses, box separation limits ${JSON.stringify(census.summary.inflation)}, `
+  +`binary32 coefficients agree with widening <=${census.summary.binary32.widening.max.toPrecision(3)}x, `
+  +`transcendental allowance limits ${JSON.stringify(census.summary.binary32.allowance)} rad`);

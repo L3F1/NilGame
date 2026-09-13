@@ -26,7 +26,8 @@ function surfaceConstant(radius,radiusError,curvatureRadius){
 // mandatory; zero means the caller explicitly treats those inputs as exact.
 // R is the declared physical unit scale, not an uncertain measured parameter.
 export function sphericalBallRootBounds({position,direction,center,positionError,
-  directionError,centerError,radius,radiusError,curvatureRadius,maxDistance,maxEvents}){
+  directionError,centerError,radius,radiusError,curvatureRadius,maxDistance,maxEvents,
+  phaseAllowance,angleAllowance}){
   const vectors=[position,direction,center,positionError,directionError,centerError];
   if(vectors.some(v=>!Array.isArray(v)||v.length!==4||!v.every(Number.isFinite))
     ||[positionError,directionError,centerError].some(v=>v.some(x=>x<0))
@@ -37,15 +38,20 @@ export function sphericalBallRootBounds({position,direction,center,positionError
   const a=product(position,positionError,center,centerError),b=product(direction,directionError,center,centerError);
   const {c,errorC}=surfaceConstant(radius,radiusError,curvatureRadius);
   return sphericalRootBounds({a:a.value,b:b.value,c,errorA:a.error,errorB:b.error,errorC,
-    curvatureRadius,maxDistance,maxEvents});
+    curvatureRadius,maxDistance,maxEvents,phaseAllowance,angleAllowance});
 }
 
+// phaseAllowance and angleAllowance are absolute-radian models of the arctangent
+// and arccosine a CONSUMER will actually execute. Supplying one is an assumption
+// about that implementation, never a proof of it; the default 0 keeps this
+// module's own binary64 allowance and nothing else.
 export function sphericalRootBounds({a,b,c,errorA,errorB,errorC,curvatureRadius,
-  maxDistance,maxEvents=32}){
+  maxDistance,maxEvents=32,phaseAllowance=0,angleAllowance=0}){
   const values=[a,b,c,errorA,errorB,errorC,curvatureRadius,maxDistance];
   if(!values.every(Number.isFinite)||Math.max(Math.abs(a),Math.abs(b),Math.abs(c))>2
     ||[errorA,errorB,errorC].some(x=>x<0||x>2)||curvatureRadius<=0||maxDistance<0
-    ||!Number.isInteger(maxEvents)||maxEvents<1||maxEvents>1024)
+    ||!Number.isInteger(maxEvents)||maxEvents<1||maxEvents>1024
+    ||![phaseAllowance,angleAllowance].every(x=>Number.isFinite(x)&&x>=0&&x<=1))
     throw Error('Invalid spherical coefficient bounds or query limits');
   const unresolved=reason=>({status:'unresolved',reason,events:[]});
   if(c-errorC<=0)return unresolved('unsupported-coefficient-domain');
@@ -57,12 +63,12 @@ export function sphericalRootBounds({a,b,c,errorA,errorB,errorC,curvatureRadius,
   if(hLow<=0)return unresolved('phase-indeterminate');
   // A coefficient rectangle lies within this disk. Its angular extent about
   // the origin is asin(dh/h), not an arbitrary angle epsilon.
-  const phase=Math.atan2(b,a),phaseError=Math.asin(Math.min(1,dh/h))+rounding(phase);
+  const phase=Math.atan2(b,a),phaseError=Math.asin(Math.min(1,dh/h))+rounding(phase)+phaseAllowance;
   const ratioLow=Math.max(0,cLow/hHigh-rounding(cLow/hHigh));
   const ratioHigh=cHigh/hLow+rounding(cHigh/hLow);
   const ambiguous=ratioHigh>=1;
-  const angleLow=ambiguous?0:Math.max(0,Math.acos(ratioHigh)-rounding(Math.acos(ratioHigh)));
-  const angleHigh=Math.acos(Math.min(1,ratioLow))+rounding(Math.acos(Math.min(1,ratioLow)));
+  const angleLow=ambiguous?0:Math.max(0,Math.acos(ratioHigh)-rounding(Math.acos(ratioHigh))-angleAllowance);
+  const angleHigh=Math.acos(Math.min(1,ratioLow))+rounding(Math.acos(Math.min(1,ratioLow)))+angleAllowance;
   const horizon=maxDistance/curvatureRadius;
   if(!Number.isFinite(horizon))return unresolved('range-overflow');
   const first=Math.floor((-phase-angleHigh-phaseError)/TAU)-1;

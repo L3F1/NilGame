@@ -14,13 +14,21 @@ ordered entry naming the traced owner and bracketing the traced root (band
 certified outside. Headroom is thin: the narrowest pixels tolerate only about a
 2x wider transfer box before the first event stops being provably first.
 
-Next: derive float32 operation bounds for a GLSL sphericalBallRootBounds port
-and re-measure separation under them in a small separate program, colours
-unchanged. If derived float32 widths exceed that ~2x headroom, ordering cannot
-carry these pixels and the refusal stands. Read the independent audit
-docs/qa/claude-s3-hit-contract-audit.md for the remaining missing assumptions
-(a/b/c float32 error, a2/ac error, portal/edge band, shading tolerance).
-Do not promote a band midpoint to a root and do not recolour on this evidence.
+The float32 half is now measured too, and it splits. Binary32 coefficients cost
+almost nothing: same 14 entries and 18 misses, bands at most 1.129x wider. The
+envelope's atan/acos carry the whole risk - a GLSL port must be accurate to
+better than 2^-10 rad absolute to keep every pixel, 2^-8 to keep all but two,
+which is the same order as the minimum commonly quoted for those built-ins.
+
+Next: DECIDE the envelope route before writing GLSL. Either measure atan/acos
+absolute error on both backends against a binary64 oracle over the actual
+coefficient range and admit a constant only with margin over 2^-10 rad, or avoid
+both transcendentals by producing the band from certified sign brackets on the
+curve value, reusing the shared-sincos contract in SPHERICAL_CURVE_ERROR.md.
+The second route needs no new precision assumption and is the recommendation.
+Read the independent audit docs/qa/claude-s3-hit-contract-audit.md for what is
+still missing either way (portal/edge band, shading tolerance, FMA/backend
+model). Do not promote a band midpoint to a root and do not recolour.
 
 
 Current readiness: see docs/qa/enclosure-interactive-review.md. Hardware480x360 AA cost is measured and screenshots inspected; purple hit-side fringes remain. Stop expanding the miss-only acceptance corpus. Optional candidate exposure is now implemented; see docs/qa/enclosure-ui-review.md. Next delivery: fix remaining hit-side artifacts. Software performance remains qualified by actual timing status.

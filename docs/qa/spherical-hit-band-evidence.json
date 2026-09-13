@@ -1,11 +1,11 @@
 {
  "date": "2026-09-13",
- "base": "3a0543a",
+ "base": "6e86c98",
  "host": "win32/Node 24.20.0",
  "command": "node tools/spherical-hit-band-evidence.js",
  "checked": "node spherical-hit-band.test.js",
  "fixture": "levels/fixtures/connected-three-geometries.nil.json",
- "wallMs": 236,
+ "wallMs": 222,
  "census": {
   "label": "spherical-hit-band",
   "width": 160,
@@ -71,6 +71,18 @@
    512,
    1024
   ],
+  "allowances": [
+   0,
+   5.960464477539063e-8,
+   9.5367431640625e-7,
+   0.0000152587890625,
+   0.00006103515625,
+   0.000244140625,
+   0.00048828125,
+   0.0009765625,
+   0.00390625,
+   0.015625
+  ],
   "records": [
    {
     "x": 78,
@@ -90,6 +102,21 @@
       2.108006715774536,
       2.1080172061920166
      ]
+    },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "return-landmark",
+     "certified": true,
+     "bandWidth": 0.005743823895585365,
+     "widening": 1.091910276394376,
+     "allowanceLimit": 0.00390625,
+     "allowanceFailure": {
+      "allowance": 0.015625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
     },
     "exterior": {
      "certified": true,
@@ -157,6 +184,21 @@
       2.1080172061920166
      ]
     },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "return-landmark",
+     "certified": true,
+     "bandWidth": 0.005743823895585365,
+     "widening": 1.091910276394376,
+     "allowanceLimit": 0.00390625,
+     "allowanceFailure": {
+      "allowance": 0.015625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.06121995432829086,
@@ -223,6 +265,16 @@
       2.0793960094451904
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.06605151623159278,
@@ -286,6 +338,16 @@
       2.0793960094451904
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.05677367622463059,
@@ -348,6 +410,21 @@
       2.0733511447906494,
       2.073361873626709
      ]
+    },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "return-landmark",
+     "certified": true,
+     "bandWidth": 0.005930463002385977,
+     "widening": 1.0860996829523681,
+     "allowanceLimit": 0.00390625,
+     "allowanceFailure": {
+      "allowance": 0.015625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
     },
     "exterior": {
      "certified": true,
@@ -415,6 +492,21 @@
       2.073361873626709
      ]
     },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "return-landmark",
+     "certified": true,
+     "bandWidth": 0.005930463002385977,
+     "widening": 1.0860996829523681,
+     "allowanceLimit": 0.00390625,
+     "allowanceFailure": {
+      "allowance": 0.015625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.056589850548077414,
@@ -480,6 +572,21 @@
       2.0675625801086426,
       2.067573070526123
      ]
+    },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "return-landmark",
+     "certified": true,
+     "bandWidth": 0.005464699514391214,
+     "widening": 1.0831917131706488,
+     "allowanceLimit": 0.00390625,
+     "allowanceFailure": {
+      "allowance": 0.015625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
     },
     "exterior": {
      "certified": true,
@@ -547,6 +654,21 @@
       2.067573070526123
      ]
     },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "return-landmark",
+     "certified": true,
+     "bandWidth": 0.005464699514391214,
+     "widening": 1.0831917131706488,
+     "allowanceLimit": 0.00390625,
+     "allowanceFailure": {
+      "allowance": 0.015625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.056414035282287944,
@@ -613,6 +735,16 @@
       2.062032461166382
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.06552575058615784,
@@ -675,6 +807,16 @@
       2.0620219707489014,
       2.062032461166382
      ]
+    },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
     },
     "exterior": {
      "certified": true,
@@ -739,6 +881,16 @@
       2.0332999229431152
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.061809084915150136,
@@ -801,6 +953,16 @@
       2.0332894325256348,
       2.0332999229431152
      ]
+    },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
     },
     "exterior": {
      "certified": true,
@@ -865,6 +1027,16 @@
       2.190397024154663
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.03886387970184557,
@@ -927,6 +1099,21 @@
       2.1786646842956543,
       2.1786766052246094
      ]
+    },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "north-landmark",
+     "certified": true,
+     "bandWidth": 0.003182758934756613,
+     "widening": 1.107634433363663,
+     "allowanceLimit": 0.00390625,
+     "allowanceFailure": {
+      "allowance": 0.015625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
     },
     "exterior": {
      "certified": true,
@@ -994,6 +1181,16 @@
       2.158832311630249
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.03998945621188266,
@@ -1057,6 +1254,16 @@
       2.1482081413269043
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.040364905807483864,
@@ -1119,6 +1326,21 @@
       2.136244058609009,
       2.1362557411193848
      ]
+    },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "north-landmark",
+     "certified": true,
+     "bandWidth": 0.0037244861646286154,
+     "widening": 1.1167025177505439,
+     "allowanceLimit": 0.00390625,
+     "allowanceFailure": {
+      "allowance": 0.015625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
     },
     "exterior": {
      "certified": true,
@@ -1186,6 +1408,16 @@
       2.1267995834350586
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.041116283536710374,
@@ -1248,6 +1480,21 @@
       2.12550687789917,
       2.125518321990967
      ]
+    },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "north-landmark",
+     "certified": true,
+     "bandWidth": 0.0033980917895526375,
+     "widening": 1.1226465360220346,
+     "allowanceLimit": 0.00390625,
+     "allowanceFailure": {
+      "allowance": 0.015625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
     },
     "exterior": {
      "certified": true,
@@ -1315,6 +1562,16 @@
       2.116013765335083
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.0414921466319248,
@@ -1378,6 +1635,16 @@
       2.1154985427856445
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.04147603551833867,
@@ -1440,6 +1707,21 @@
       2.115230083465576,
       2.115241050720215
      ]
+    },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "north-landmark",
+     "certified": true,
+     "bandWidth": 0.007425995930997686,
+     "widening": 1.1292013392084475,
+     "allowanceLimit": 0.0009765625,
+     "allowanceFailure": {
+      "allowance": 0.00390625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
     },
     "exterior": {
      "certified": true,
@@ -1507,6 +1789,21 @@
       2.115241050720215
      ]
     },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "north-landmark",
+     "certified": true,
+     "bandWidth": 0.007425995930997686,
+     "widening": 1.1292013392084475,
+     "allowanceLimit": 0.0009765625,
+     "allowanceFailure": {
+      "allowance": 0.00390625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.04146803496750551,
@@ -1573,6 +1870,16 @@
       2.1154985427856445
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.04147603551833867,
@@ -1636,6 +1943,16 @@
       2.116013765335083
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.0414921466319248,
@@ -1698,6 +2015,21 @@
       2.12550687789917,
       2.125518321990967
      ]
+    },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "north-landmark",
+     "certified": true,
+     "bandWidth": 0.0034174281711103482,
+     "widening": 1.1180443423802024,
+     "allowanceLimit": 0.00390625,
+     "allowanceFailure": {
+      "allowance": 0.015625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
     },
     "exterior": {
      "certified": true,
@@ -1765,6 +2097,16 @@
       2.1267995834350586
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.04111628171262838,
@@ -1827,6 +2169,21 @@
       2.136244058609009,
       2.1362557411193848
      ]
+    },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "north-landmark",
+     "certified": true,
+     "bandWidth": 0.0037244861646286154,
+     "widening": 1.1150710665670538,
+     "allowanceLimit": 0.00390625,
+     "allowanceFailure": {
+      "allowance": 0.015625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
     },
     "exterior": {
      "certified": true,
@@ -1894,6 +2251,16 @@
       2.1482081413269043
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.040364905807483864,
@@ -1957,6 +2324,16 @@
       2.158832550048828
      ]
     },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
+    },
     "exterior": {
      "certified": true,
      "minMargin": 0.039989452563718664,
@@ -2019,6 +2396,21 @@
       2.1786646842956543,
       2.1786766052246094
      ]
+    },
+    "binary32": {
+     "status": "entry",
+     "reason": null,
+     "owner": "north-landmark",
+     "certified": true,
+     "bandWidth": 0.0031988671224087994,
+     "widening": 1.101142641757203,
+     "allowanceLimit": 0.00390625,
+     "allowanceFailure": {
+      "allowance": 0.015625,
+      "status": "unresolved",
+      "reason": "overlapping-events",
+      "owner": null
+     }
     },
     "exterior": {
      "certified": true,
@@ -2085,6 +2477,16 @@
       2.190385341644287,
       2.190397024154663
      ]
+    },
+    "binary32": {
+     "status": "miss",
+     "reason": null,
+     "owner": null,
+     "certified": true,
+     "bandWidth": null,
+     "widening": null,
+     "allowanceLimit": 0.015625,
+     "allowanceFailure": null
     },
     "exterior": {
      "certified": true,
@@ -2154,8 +2556,26 @@
     "8": 4,
     "16": 11,
     "32": 11
+   },
+   "binary32": {
+    "entry": {
+     "entry|": 14,
+     "miss|": 18
+    },
+    "bandWidth": {
+     "min": 0.003182758934756613,
+     "max": 0.007425995930997686
+    },
+    "widening": {
+     "max": 1.1292013392084475
+    },
+    "allowance": {
+     "0.00390625": 12,
+     "0.015625": 18,
+     "0.0009765625": 2
+    }
    }
   },
-  "scope": "binary64 reference model over one recorded pose; ordering and owner only, no shading position, normal, float32 operation bound or live rendering claim"
+  "scope": "one recorded pose; ordering and owner only. The binary32 columns model a GPU consumer coefficient arithmetic and a supplied transcendental allowance; they are not an executed GLSL measurement, a shading position, a normal or a rendering claim"
  }
 }
